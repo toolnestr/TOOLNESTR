@@ -73,7 +73,8 @@ When you finish a phase, we move to the next.
   - [x] Trust pages: About / Privacy (with ad disclosure) / Contact
   - [x] +6 tools (Percentage, Tip, Roman, Color, Hashtag, Emoji) — 20 tools
   - [x] +6 tools (Unit, Tax/GST, EMI, Number Base, Timestamp, Text Repeater) — **26 tools, 30 pages**
-  - [ ] Deploy (GitHub + Cloudflare Pages) + dark mode + Search Console
+  - [x] **DEPLOYED LIVE → https://testtool-8zf.pages.dev** (Cloudflare Pages, auto-deploy on push)
+  - [ ] Search Console + custom domain + real email + dark mode
 - [ ] Phase 2.5: backend + admin dashboard
 - [ ] Phase 3: AdSense application
 - [ ] Phase 4: remaining tools + growth
