@@ -36,6 +36,7 @@ export const tools = [
   { slug: 'time-calculator', title: 'Time Calculator', short: 'Add or subtract hours, minutes & seconds.', category: 'everyday', emoji: '⌛', enabled: true, status: 'live' },
   { slug: 'gpa-calculator', title: 'GPA Calculator', short: 'Grade point average from courses & credits.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
   { slug: 'grade-calculator', title: 'Grade Calculator', short: 'Weighted final grade from your scores.', category: 'everyday', emoji: '📝', enabled: true, status: 'live' },
+  { slug: 'german-grade-calculator', title: 'German Grade Calculator', short: 'Convert GPA, %, CGPA to the German 1.0–5.0 scale.', category: 'everyday', emoji: '🇩🇪', enabled: true, status: 'live' },
 
   // ── Health & Fitness ──
   { slug: 'bmi-calculator', title: 'BMI Calculator', short: 'Body Mass Index from height & weight.', category: 'health', emoji: '⚖️', enabled: true, status: 'live' },
