@@ -37,6 +37,8 @@ export const tools = [
   { slug: 'gpa-calculator', title: 'GPA Calculator', short: 'Grade point average from courses & credits.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
   { slug: 'grade-calculator', title: 'Grade Calculator', short: 'Weighted final grade from your scores.', category: 'everyday', emoji: '📝', enabled: true, status: 'live' },
   { slug: 'german-grade-calculator', title: 'German Grade Calculator', short: 'Convert GPA, %, CGPA to the German 1.0–5.0 scale.', category: 'everyday', emoji: '🇩🇪', enabled: true, status: 'live' },
+  { slug: 'cgpa-to-percentage', title: 'CGPA to Percentage Calculator', short: 'Convert CGPA to percentage (CBSE & custom).', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
+  { slug: 'percentage-to-cgpa', title: 'Percentage to CGPA Calculator', short: 'Convert a percentage back to CGPA.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
 
   // ── Health & Fitness ──
   { slug: 'bmi-calculator', title: 'BMI Calculator', short: 'Body Mass Index from height & weight.', category: 'health', emoji: '⚖️', enabled: true, status: 'live' },
@@ -53,6 +55,8 @@ export const tools = [
   { slug: 'inflation-calculator', title: 'Inflation Calculator', short: 'How inflation changes money over time.', category: 'finance', emoji: '🪙', enabled: true, status: 'live' },
   { slug: 'salary-calculator', title: 'Salary Calculator', short: 'Convert hourly, weekly, monthly & yearly pay.', category: 'finance', emoji: '💵', enabled: true, status: 'live' },
   { slug: 'auto-loan', title: 'Auto Loan Calculator', short: 'Car loan monthly payment & total interest.', category: 'finance', emoji: '🚗', enabled: true, status: 'live' },
+  { slug: 'profit-margin', title: 'Profit Margin Calculator', short: 'Margin, markup and profit from cost & price.', category: 'finance', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'roas-calculator', title: 'ROAS Calculator', short: 'Return on ad spend and ACoS for campaigns.', category: 'finance', emoji: '📣', enabled: true, status: 'live' },
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: true, status: 'soon' },
 
   // ── Math ──
