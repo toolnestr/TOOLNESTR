@@ -32,14 +32,18 @@ export const tools = [
   { slug: 'unit-converter', title: 'Unit Converter', short: 'Length, weight, temperature, speed & volume.', category: 'everyday', emoji: '📏', enabled: true, status: 'live' },
   { slug: 'tax-calculator', title: 'GST / VAT / Tax Calculator', short: 'Add or remove tax at any rate, any currency.', category: 'everyday', emoji: '🧾', enabled: true, status: 'live' },
   { slug: 'emi-calculator', title: 'Loan / EMI Calculator', short: 'Monthly payment, total interest & cost.', category: 'everyday', emoji: '🏦', enabled: true, status: 'live' },
+  { slug: 'hours-calculator', title: 'Hours Calculator', short: 'Hours & minutes between two times.', category: 'everyday', emoji: '⏰', enabled: true, status: 'live' },
+  { slug: 'time-calculator', title: 'Time Calculator', short: 'Add or subtract hours, minutes & seconds.', category: 'everyday', emoji: '⌛', enabled: true, status: 'live' },
+  { slug: 'gpa-calculator', title: 'GPA Calculator', short: 'Grade point average from courses & credits.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
+  { slug: 'grade-calculator', title: 'Grade Calculator', short: 'Weighted final grade from your scores.', category: 'everyday', emoji: '📝', enabled: true, status: 'live' },
 
   // ── Health & Fitness ──
   { slug: 'bmi-calculator', title: 'BMI Calculator', short: 'Body Mass Index from height & weight.', category: 'health', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'bmr-calculator', title: 'BMR Calculator', short: 'Calories your body burns at rest.', category: 'health', emoji: '🔥', enabled: true, status: 'live' },
   { slug: 'calorie-calculator', title: 'Calorie Calculator', short: 'Daily calories to maintain, lose or gain.', category: 'health', emoji: '🍎', enabled: true, status: 'live' },
   { slug: 'ideal-weight', title: 'Ideal Weight Calculator', short: 'Healthy weight range for your height.', category: 'health', emoji: '🎯', enabled: true, status: 'live' },
-  { slug: 'body-fat', title: 'Body Fat Calculator', short: 'Estimate body fat percentage.', category: 'health', emoji: '📊', enabled: true, status: 'soon' },
-  { slug: 'pace-calculator', title: 'Pace Calculator', short: 'Running pace, time and distance.', category: 'health', emoji: '🏃', enabled: true, status: 'soon' },
+  { slug: 'body-fat', title: 'Body Fat Calculator', short: 'Estimate body fat percentage (US Navy method).', category: 'health', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'pace-calculator', title: 'Pace Calculator', short: 'Running pace, time and distance.', category: 'health', emoji: '🏃', enabled: true, status: 'live' },
 
   // ── Finance ──
   { slug: 'mortgage-calculator', title: 'Mortgage Calculator', short: 'Monthly home loan payment & total cost.', category: 'finance', emoji: '🏠', enabled: true, status: 'live' },
