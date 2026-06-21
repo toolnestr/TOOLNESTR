@@ -12,6 +12,7 @@
 export const categories = [
   { id: 'everyday', name: 'Everyday & Students', emoji: '🧮' },
   { id: 'health', name: 'Health & Fitness', emoji: '💪' },
+  { id: 'finance', name: 'Finance', emoji: '💰' },
   { id: 'pdf', name: 'PDF Tools', emoji: '📄' },
   { id: 'creators', name: 'Creators', emoji: '🎨' },
   { id: 'developers', name: 'Developers', emoji: '💻' },
@@ -38,6 +39,15 @@ export const tools = [
   { slug: 'ideal-weight', title: 'Ideal Weight Calculator', short: 'Healthy weight range for your height.', category: 'health', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'body-fat', title: 'Body Fat Calculator', short: 'Estimate body fat percentage.', category: 'health', emoji: '📊', enabled: true, status: 'soon' },
   { slug: 'pace-calculator', title: 'Pace Calculator', short: 'Running pace, time and distance.', category: 'health', emoji: '🏃', enabled: true, status: 'soon' },
+
+  // ── Finance ──
+  { slug: 'mortgage-calculator', title: 'Mortgage Calculator', short: 'Monthly home loan payment & total cost.', category: 'finance', emoji: '🏠', enabled: true, status: 'live' },
+  { slug: 'compound-interest', title: 'Compound Interest Calculator', short: 'Grow savings with compounding over time.', category: 'finance', emoji: '📈', enabled: true, status: 'live' },
+  { slug: 'investment-calculator', title: 'Investment Calculator', short: 'Future value with regular contributions.', category: 'finance', emoji: '💹', enabled: true, status: 'live' },
+  { slug: 'inflation-calculator', title: 'Inflation Calculator', short: 'How inflation changes money over time.', category: 'finance', emoji: '🪙', enabled: true, status: 'live' },
+  { slug: 'salary-calculator', title: 'Salary Calculator', short: 'Convert hourly, weekly, monthly & yearly pay.', category: 'finance', emoji: '💵', enabled: true, status: 'live' },
+  { slug: 'auto-loan', title: 'Auto Loan Calculator', short: 'Car loan monthly payment & total interest.', category: 'finance', emoji: '🚗', enabled: true, status: 'live' },
+  { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: true, status: 'soon' },
 
   // ── PDF Tools (run in your browser — files never upload) ──
   { slug: 'merge-pdf', title: 'Merge PDF', short: 'Combine several PDF files into one document.', category: 'pdf', emoji: '📑', enabled: true, status: 'live' },

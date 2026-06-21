@@ -1,0 +1,89 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Compound Interest Calculator';
+const description =
+  'Free compound interest calculator. See how your savings grow over time with compounding, ' +
+  'including optional monthly contributions. Works in any currency.';
+const intro =
+  'Enter a starting amount, interest rate and time to see how compounding grows your money — add a monthly contribution to supercharge it.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is compound interest?', a: 'Compound interest is interest earned on both your original money and the interest it has already earned. Over time this “interest on interest” can grow your savings dramatically.' },
+  { q: 'What does compounding frequency mean?', a: 'It’s how often interest is added — yearly, monthly or daily. More frequent compounding grows money slightly faster.' },
+  { q: 'Can I include regular deposits?', a: 'Yes. Add a monthly contribution and the calculator includes those deposits and the interest they earn.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Currency</span>
+        <select id="cur" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option>$</option><option>€</option><option>£</option><option>₹</option><option>₨</option><option>¥</option><option>₦</option><option>A$</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Starting amount</span>
+        <input id="principal" type="number" step="any" placeholder="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual interest rate %</span>
+        <input id="rate" type="number" step="any" placeholder="7" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Years</span>
+        <input id="years" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Compounding</span>
+        <select id="freq" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1">Yearly</option><option value="4">Quarterly</option><option value="12" selected>Monthly</option><option value="365">Daily</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Monthly contribution (optional)</span>
+        <input id="contrib" type="number" step="any" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Future value</div><div id="r-fv" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total contributed</div><div id="r-contrib" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total interest</div><div id="r-int" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About compound interest</h2>
+    <p class="mt-2 text-slate-600">
+      Albert Einstein reportedly called compound interest “the eighth wonder of the world.” The
+      earlier you start and the longer you leave money invested, the more powerful it becomes,
+      because you earn interest on your interest. This calculator shows that growth clearly, with
+      or without regular monthly deposits.
+    </p>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try the <a href="/tools/investment-calculator" class="font-medium text-indigo-600 hover:underline">Investment Calculator</a>
+      or <a href="/tools/inflation-calculator" class="font-medium text-indigo-600 hover:underline">Inflation Calculator</a>.
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const cur = el('cur');
+    const fmt = (n) => cur.value + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function update() {
+      const P = parseFloat(el('principal').value) || 0;
+      const rate = parseFloat(el('rate').value);
+      const years = parseFloat(el('years').value);
+      const n = parseFloat(el('freq').value);
+      const pmt = parseFloat(el('contrib').value) || 0;
+      if (isNaN(rate) || isNaN(years) || years <= 0) { ['r-fv', 'r-contrib', 'r-int'].forEach((id) => (el(id).textContent = '—')); return; }
+      const r = rate / 100 / n;
+      const periods = n * years;
+      // lump sum growth
+      let fv = P * Math.pow(1 + r, periods);
+      // monthly contributions compounded monthly (approx using monthly rate)
+      const mr = rate / 100 / 12, months = years * 12;
+      const fvContrib = mr === 0 ? pmt * months : pmt * ((Math.pow(1 + mr, months) - 1) / mr);
+      fv += fvContrib;
+      const contributed = P + pmt * months;
+      el('r-fv').textContent = fmt(fv);
+      el('r-contrib').textContent = fmt(contributed);
+      el('r-int').textContent = fmt(fv - contributed);
+    }
+    ['cur', 'principal', 'rate', 'years', 'freq', 'contrib'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
