@@ -10,7 +10,8 @@ Each computer just keeps a **working copy**. To move between PCs you:
 > Golden rule: **`pull` before you start, `push` when you finish.**
 > That keeps every PC (and the live site) identical.
 
-**Repository:** https://github.com/amirpersonal135-pixel/TESTTOOL.git
+**Repository:** https://github.com/toolnestr/TOOLNESTR.git
+**GitHub account to use:** `toolnestr` (sign in as this account, not any other)
 
 ---
 
@@ -35,12 +36,12 @@ Sign in to GitHub once so it's allowed to upload your changes.
 ## 2. Get the project onto the new PC (do this once per PC)
 
 ### Option A — GitHub Desktop (recommended)
-File → **Clone repository** → choose `amirpersonal135-pixel/TESTTOOL` → **Clone**.
+File → **Clone repository** → choose `toolnestr/TOOLNESTR` → **Clone**.
 
 ### Option B — command line
 ```bash
-git clone https://github.com/amirpersonal135-pixel/TESTTOOL.git
-cd TESTTOOL
+git clone https://github.com/toolnestr/TOOLNESTR.git
+cd TOOLNESTR
 npm install      # rebuilds the node_modules folder (not stored on GitHub)
 ```
 
