@@ -1,0 +1,106 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Loan / EMI Calculator';
+const description =
+  'Free loan EMI calculator. Work out your monthly loan payment, total interest and total ' +
+  'cost for any loan amount, interest rate and term. Works in any currency.';
+const intro =
+  'Enter the loan amount, interest rate and term to see your monthly payment (EMI), the total interest, and the total you’ll repay.';
+const category = { id: 'everyday', name: 'Everyday & Students' };
+const faqs = [
+  { q: 'What is EMI?', a: 'EMI stands for Equated Monthly Installment — the fixed amount you pay each month until a loan is fully repaid, covering both principal and interest.' },
+  { q: 'How is the monthly payment calculated?', a: 'It uses the standard amortization formula based on the loan amount, the monthly interest rate, and the number of monthly payments.' },
+  { q: 'Does it work for car, home or personal loans?', a: 'Yes. The math is the same for any fixed-rate loan — just enter your amount, rate and term.' },
+  { q: 'Is my data private?', a: 'Yes, the calculation runs entirely in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Currency</span>
+        <select id="currency" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option>$</option><option>€</option><option>£</option><option>₹</option><option>₨</option><option>¥</option><option>₦</option><option>A$</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Loan amount</span>
+        <input id="principal" type="number" min="0" step="any" placeholder="100000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Interest rate % (per year)</span>
+        <input id="rate" type="number" min="0" step="any" placeholder="8.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Term</span>
+        <div class="mt-1 flex gap-2">
+          <input id="term" type="number" min="1" step="1" placeholder="5" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="term-unit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="years">Years</option>
+            <option value="months">Months</option>
+          </select>
+        </div>
+      </label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-sm opacity-80">Monthly payment</div><div id="r-emi" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Total interest</div><div id="r-interest" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Total payment</div><div id="r-total" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this EMI calculator</h2>
+    <p class="mt-2 text-slate-600">
+      Before taking a loan, it helps to know exactly what the monthly repayments will be and how
+      much interest you’ll pay overall. This calculator works for car loans, home loans, personal
+      loans and more — enter the amount, the annual interest rate and the term, and it shows your
+      monthly EMI, the total interest, and the total amount repaid.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Pick your currency and enter the loan amount.</li>
+      <li>Enter the annual interest rate.</li>
+      <li>Enter the term in years or months.</li>
+      <li>See your monthly payment and total cost instantly.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try the <a href="/tools/percentage-calculator" class="font-medium text-indigo-600 hover:underline">Percentage Calculator</a>
+      or <a href="/" class="font-medium text-indigo-600 hover:underline">browse all tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const currency = el('currency'), principal = el('principal'), rate = el('rate'), term = el('term'), termUnit = el('term-unit');
+
+    function fmt(n) { return currency.value + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function update() {
+      const P = parseFloat(principal.value);
+      const annual = parseFloat(rate.value);
+      let t = parseFloat(term.value);
+      if (isNaN(P) || isNaN(annual) || isNaN(t) || P <= 0 || t <= 0) {
+        el('r-emi').textContent = el('r-interest').textContent = el('r-total').textContent = '—'; return;
+      }
+      const n = termUnit.value === 'years' ? t * 12 : t;
+      const r = annual / 100 / 12;
+      let emi;
+      if (r === 0) emi = P / n;
+      else emi = P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+      const total = emi * n;
+      el('r-emi').textContent = fmt(emi);
+      el('r-interest').textContent = fmt(total - P);
+      el('r-total').textContent = fmt(total);
+    }
+
+    [currency, principal, rate, term, termUnit].forEach((e) => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

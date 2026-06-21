@@ -1,0 +1,124 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Discount Calculator';
+const description =
+  'Free discount calculator. Enter a price and a percentage off to instantly see how much ' +
+  'you save and the final price. Works with any currency, right in your browser.';
+const intro =
+  'Enter the original price and the discount percentage to see exactly how much you save and what you’ll pay.';
+const category = { id: 'everyday', name: 'Everyday & Students' };
+const faqs = [
+  { q: 'How do I calculate a percentage discount?', a: 'Multiply the original price by the discount percentage, then subtract that from the price. This tool does it for you instantly.' },
+  { q: 'Can I apply a second discount?', a: 'Yes. Turn on “extra discount” to stack a second percentage off, applied after the first.' },
+  { q: 'Does it work with any currency?', a: 'Yes — pick your currency symbol. The math is the same worldwide, so it works in any country.' },
+  { q: 'Is anything sent to a server?', a: 'No. The calculator runs entirely in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Currency</span>
+        <select id="currency" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="$">$ — USD / others</option>
+          <option value="€">€ — EUR</option>
+          <option value="£">£ — GBP</option>
+          <option value="₹">₹ — INR</option>
+          <option value="₨">₨ — PKR</option>
+          <option value="¥">¥ — JPY / CNY</option>
+          <option value="₦">₦ — NGN</option>
+          <option value="₩">₩ — KRW</option>
+          <option value="R$">R$ — BRL</option>
+          <option value="A$">A$ — AUD</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Original price</span>
+        <input id="price" type="number" min="0" step="any" placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Discount %</span>
+        <input id="discount" type="number" min="0" max="100" step="any" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <label class="mt-3 flex items-center gap-2 text-sm text-slate-600">
+      <input id="use-extra" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
+      Add an extra discount (stacked)
+    </label>
+    <div id="extra-wrap" class="mt-2 hidden">
+      <label class="block sm:max-w-[12rem]">
+        <span class="text-sm font-medium text-slate-700">Extra discount %</span>
+        <input id="extra" type="number" min="0" max="100" step="any" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-5 text-center">
+        <div class="text-sm text-slate-500">You save</div>
+        <div id="saved" class="mt-1 text-2xl font-bold text-emerald-600">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Final price</div>
+        <div id="final" class="mt-1 text-2xl font-bold">—</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this discount calculator</h2>
+    <p class="mt-2 text-slate-600">
+      Shopping the sales? This calculator instantly works out the real price after a percentage
+      off, and shows exactly how much you’re saving. You can even stack a second discount — handy
+      for “extra 10% off sale items” promotions. It works in any currency, so it’s useful
+      wherever you are in the world.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Pick your currency.</li>
+      <li>Enter the original price and the discount percentage.</li>
+      <li>Optionally add a second, stacked discount.</li>
+      <li>See your savings and final price update instantly.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      More everyday tools are on the way. <a href="/" class="font-medium text-indigo-600 hover:underline">Browse all tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const currency = el('currency'), price = el('price'), discount = el('discount');
+    const useExtra = el('use-extra'), extra = el('extra'), extraWrap = el('extra-wrap');
+
+    function fmt(n) {
+      return currency.value + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function update() {
+      const p = parseFloat(price.value);
+      const d = parseFloat(discount.value) || 0;
+      if (isNaN(p) || p < 0) { el('saved').textContent = '—'; el('final').textContent = '—'; return; }
+
+      let final = p * (1 - Math.min(d, 100) / 100);
+      if (useExtra.checked) {
+        const e = parseFloat(extra.value) || 0;
+        final = final * (1 - Math.min(e, 100) / 100);
+      }
+      const saved = p - final;
+      el('saved').textContent = fmt(saved);
+      el('final').textContent = fmt(final);
+    }
+
+    useExtra.addEventListener('change', () => {
+      extraWrap.classList.toggle('hidden', !useExtra.checked);
+      update();
+    });
+    [currency, price, discount, extra].forEach((e) => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

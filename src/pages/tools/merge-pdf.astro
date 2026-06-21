@@ -1,0 +1,139 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Merge PDF';
+const description =
+  'Free online PDF merger. Combine multiple PDF files into one, in the order you choose. ' +
+  '100% private — your files are merged in your browser and never uploaded.';
+const intro =
+  'Add your PDF files, drag them into the order you want, then merge them into a single PDF. Everything happens in your browser — your files never leave your device.';
+const category = { id: 'pdf', name: 'PDF Tools' };
+const faqs = [
+  { q: 'Are my files uploaded to a server?', a: 'No. This tool merges your PDFs directly in your browser, so your documents never leave your device. That makes it private and fast.' },
+  { q: 'Is there a file size or count limit?', a: 'There’s no fixed limit, but very large files use your device’s memory. Most everyday documents merge instantly.' },
+  { q: 'Can I change the order of the files?', a: 'Yes. Use the up/down arrows next to each file to set the order before merging.' },
+  { q: 'Why did my password-protected PDF fail?', a: 'Encrypted PDFs can’t be merged directly. Remove the password first, then merge.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+      <span class="text-3xl">📑</span>
+      <span class="mt-2 font-medium text-slate-700">Click to add PDF files</span>
+      <span class="mt-1 text-sm text-slate-400">You can add several — they’ll merge in the order below</span>
+      <input id="file-input" type="file" accept="application/pdf" multiple class="hidden" />
+    </label>
+
+    <ul id="file-list" class="mt-4 space-y-2"></ul>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <button id="merge-btn" disabled class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Merge PDFs</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear all</button>
+      <span id="status" class="text-sm text-slate-500"></span>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About merging PDFs</h2>
+    <p class="mt-2 text-slate-600">
+      Combining PDFs is handy for joining scanned pages, putting a report and its appendix into one
+      file, or bundling invoices. Unlike most online tools that upload your documents to a server,
+      this merger does everything inside your browser — so your files stay completely private and
+      the merge happens instantly.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Click the box above and select two or more PDF files.</li>
+      <li>Use the arrows to put them in the order you want.</li>
+      <li>Click “Merge PDFs”.</li>
+      <li>Your combined PDF downloads automatically.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try <a href="/tools/jpg-to-pdf" class="font-medium text-indigo-600 hover:underline">JPG to PDF</a>
+      or <a href="/#pdf" class="font-medium text-indigo-600 hover:underline">see all PDF tools →</a>
+    </p>
+  </Fragment>
+
+  <script>
+    import { PDFDocument } from 'pdf-lib';
+
+    const input = document.getElementById('file-input');
+    const list = document.getElementById('file-list');
+    const mergeBtn = document.getElementById('merge-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const status = document.getElementById('status');
+
+    let files = [];
+
+    function render() {
+      list.innerHTML = '';
+      files.forEach((file, i) => {
+        const li = document.createElement('li');
+        li.className = 'flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3';
+        const sizeKB = (file.size / 1024).toFixed(0);
+        li.innerHTML =
+          `<span class="text-lg">📄</span>` +
+          `<span class="min-w-0 flex-1 truncate text-sm text-slate-700">${file.name}</span>` +
+          `<span class="shrink-0 text-xs text-slate-400">${sizeKB} KB</span>` +
+          `<button data-up="${i}" class="shrink-0 rounded p-1 text-slate-500 hover:bg-slate-200" title="Move up" ${i === 0 ? 'disabled style=opacity:.3' : ''}>▲</button>` +
+          `<button data-down="${i}" class="shrink-0 rounded p-1 text-slate-500 hover:bg-slate-200" title="Move down" ${i === files.length - 1 ? 'disabled style=opacity:.3' : ''}>▼</button>` +
+          `<button data-del="${i}" class="shrink-0 rounded p-1 text-red-500 hover:bg-red-50" title="Remove">✕</button>`;
+        list.appendChild(li);
+      });
+      mergeBtn.disabled = files.length < 1;
+      status.textContent = files.length ? `${files.length} file${files.length === 1 ? '' : 's'} ready` : '';
+    }
+
+    list.addEventListener('click', (e) => {
+      const t = e.target.closest('button');
+      if (!t) return;
+      if (t.dataset.del !== undefined) files.splice(+t.dataset.del, 1);
+      else if (t.dataset.up !== undefined) { const i = +t.dataset.up; [files[i - 1], files[i]] = [files[i], files[i - 1]]; }
+      else if (t.dataset.down !== undefined) { const i = +t.dataset.down; [files[i + 1], files[i]] = [files[i], files[i + 1]]; }
+      render();
+    });
+
+    input.addEventListener('change', () => {
+      files = files.concat(Array.from(input.files));
+      input.value = '';
+      render();
+    });
+
+    clearBtn.addEventListener('click', () => { files = []; render(); });
+
+    mergeBtn.addEventListener('click', async () => {
+      if (!files.length) return;
+      mergeBtn.disabled = true;
+      status.textContent = 'Merging…';
+      try {
+        const merged = await PDFDocument.create();
+        for (const file of files) {
+          const bytes = await file.arrayBuffer();
+          const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await merged.copyPages(src, src.getPageIndices());
+          pages.forEach((p) => merged.addPage(p));
+        }
+        const out = await merged.save();
+        const blob = new Blob([out], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'merged.pdf';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        status.textContent = '✓ Done! Your merged PDF was downloaded.';
+      } catch (err) {
+        status.textContent = '⚠️ Could not merge — one file may be corrupted or password-protected.';
+      } finally {
+        mergeBtn.disabled = files.length < 1;
+      }
+    });
+
+    render();
+  </script>
+</ToolLayout>

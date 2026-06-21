@@ -1,0 +1,106 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'GST / VAT / Sales Tax Calculator';
+const description =
+  'Free GST, VAT and sales tax calculator. Add tax to a price or remove tax from a total at ' +
+  'any rate. Works for any country and currency, right in your browser.';
+const intro =
+  'Enter an amount and a tax rate, then choose whether to add tax or work it out backwards from a tax-inclusive total.';
+const category = { id: 'everyday', name: 'Everyday & Students' };
+const faqs = [
+  { q: 'Does this work for my country?', a: 'Yes. GST, VAT and sales tax all work the same way mathematically — just enter your country’s rate (for example 5%, 10%, 18% or 20%).' },
+  { q: 'How do I remove tax from a total?', a: 'Choose “Remove tax”, enter the tax-inclusive total and the rate, and it shows the original price plus the tax portion.' },
+  { q: 'Can I change the currency?', a: 'Yes — pick your currency symbol. Only the symbol changes; the calculation is universal.' },
+  { q: 'Is it private?', a: 'Yes, all calculations happen in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+      <button id="mode-add" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">Add tax</button>
+      <button id="mode-remove" class="flex-1 rounded-lg py-2 text-slate-500">Remove tax</button>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Currency</span>
+        <select id="currency" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option>$</option><option>€</option><option>£</option><option>₹</option><option>₨</option><option>¥</option><option>₦</option><option>A$</option>
+        </select>
+      </label>
+      <label class="block">
+        <span id="amount-label" class="text-sm font-medium text-slate-700">Amount (before tax)</span>
+        <input id="amount" type="number" min="0" step="any" placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Tax rate %</span>
+        <input id="rate" type="number" min="0" step="any" placeholder="18" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div id="l1" class="text-sm text-slate-500">Net amount</div><div id="r-net" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Tax</div><div id="r-tax" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div id="l3" class="text-sm opacity-80">Gross total</div><div id="r-gross" class="mt-1 text-xl font-bold">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this tax calculator</h2>
+    <p class="mt-2 text-slate-600">
+      GST, VAT and sales tax are all percentage taxes added to a price. This calculator works two
+      ways: add a tax rate to a net price to find the total, or remove tax from a tax-inclusive
+      total to find the original price and the tax portion. Because you enter the rate yourself, it
+      works for any country and any currency.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Choose “Add tax” or “Remove tax”.</li>
+      <li>Pick your currency and enter the amount.</li>
+      <li>Enter your tax rate (e.g. 5, 10, 18 or 20).</li>
+      <li>See the net, tax and gross figures instantly.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try the <a href="/tools/discount-calculator" class="font-medium text-indigo-600 hover:underline">Discount Calculator</a>
+      or <a href="/tools/percentage-calculator" class="font-medium text-indigo-600 hover:underline">Percentage Calculator</a>.
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const currency = el('currency'), amount = el('amount'), rate = el('rate');
+    let mode = 'add';
+
+    function fmt(n) { return currency.value + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    function setMode(m) {
+      mode = m;
+      el('mode-add').className = 'flex-1 rounded-lg py-2 ' + (m === 'add' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('mode-remove').className = 'flex-1 rounded-lg py-2 ' + (m === 'remove' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('amount-label').textContent = m === 'add' ? 'Amount (before tax)' : 'Total (incl. tax)';
+      update();
+    }
+
+    function update() {
+      const a = parseFloat(amount.value);
+      const r = parseFloat(rate.value) || 0;
+      if (isNaN(a) || a < 0) { el('r-net').textContent = el('r-tax').textContent = el('r-gross').textContent = '—'; return; }
+      let net, tax, gross;
+      if (mode === 'add') { net = a; tax = a * r / 100; gross = net + tax; }
+      else { gross = a; net = a / (1 + r / 100); tax = gross - net; }
+      el('r-net').textContent = fmt(net);
+      el('r-tax').textContent = fmt(tax);
+      el('r-gross').textContent = fmt(gross);
+    }
+
+    el('mode-add').addEventListener('click', () => setMode('add'));
+    el('mode-remove').addEventListener('click', () => setMode('remove'));
+    [currency, amount, rate].forEach((e) => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

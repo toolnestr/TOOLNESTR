@@ -1,0 +1,100 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Number Base Converter';
+const description =
+  'Free number base converter. Convert between binary, octal, decimal and hexadecimal ' +
+  'instantly. Enter a value in any base and see all the others. Private and free.';
+const intro =
+  'Type a number and choose its base — the binary, octal, decimal and hexadecimal versions all update instantly.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'Which bases are supported?', a: 'Binary (base 2), octal (base 8), decimal (base 10) and hexadecimal (base 16) — the four most common in computing.' },
+  { q: 'What is hexadecimal used for?', a: 'Hex is widely used in programming for colors (#ff0000), memory addresses and byte values, because each hex digit maps neatly to 4 binary bits.' },
+  { q: 'Why is my input invalid?', a: 'Each base only allows certain digits — binary uses 0–1, octal 0–7, decimal 0–9, and hex 0–9 plus A–F. Check your input matches the chosen base.' },
+  { q: 'Is it private?', a: 'Yes, everything runs in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="block flex-1">
+        <span class="text-sm font-medium text-slate-700">Value</span>
+        <input id="value" type="text" placeholder="e.g. 255" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Input base</span>
+        <select id="base" class="mt-1 rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="2">Binary (2)</option>
+          <option value="8">Octal (8)</option>
+          <option value="10" selected>Decimal (10)</option>
+          <option value="16">Hex (16)</option>
+        </select>
+      </label>
+    </div>
+    <p id="error" class="mt-2 hidden text-sm text-red-600"></p>
+
+    <div class="mt-5 space-y-3">
+      {[['Binary', 'bin'], ['Octal', 'oct'], ['Decimal', 'dec'], ['Hexadecimal', 'hex']].map(([label, id]) => (
+        <div class="flex items-center gap-2">
+          <span class="w-28 text-sm font-semibold text-slate-500">{label}</span>
+          <input id={`out-${id}`} type="text" readonly class="flex-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 font-mono text-sm outline-none" />
+          <button data-copy={`out-${id}`} class="copy rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Copy</button>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About number bases</h2>
+    <p class="mt-2 text-slate-600">
+      Computers work in binary, but programmers regularly switch between binary, octal, decimal and
+      hexadecimal. This converter lets you type a value in any of those bases and instantly see it
+      in all the others — handy for debugging, working with colors, bit masks or memory addresses.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Select the base of the number you’re entering.</li>
+      <li>Type the value.</li>
+      <li>Read the equivalents and copy any one you need.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Browse more <a href="/#developers" class="font-medium text-indigo-600 hover:underline">developer tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const value = el('value'), base = el('base'), error = el('error');
+    const valid = { 2: /^[01]+$/, 8: /^[0-7]+$/, 10: /^[0-9]+$/, 16: /^[0-9a-fA-F]+$/ };
+
+    function update() {
+      const raw = value.value.trim().replace(/^0x/i, '');
+      if (!raw) { ['bin', 'oct', 'dec', 'hex'].forEach((id) => (el('out-' + id).value = '')); error.classList.add('hidden'); return; }
+      const b = parseInt(base.value, 10);
+      if (!valid[b].test(raw)) {
+        error.textContent = `Not a valid base-${b} number.`;
+        error.classList.remove('hidden');
+        return;
+      }
+      error.classList.add('hidden');
+      const n = parseInt(raw, b);
+      el('out-bin').value = n.toString(2);
+      el('out-oct').value = n.toString(8);
+      el('out-dec').value = n.toString(10);
+      el('out-hex').value = n.toString(16).toUpperCase();
+    }
+
+    [value, base].forEach((e) => e.addEventListener('input', update));
+    document.querySelectorAll('.copy').forEach((btn) => btn.addEventListener('click', async () => {
+      const v = el(btn.dataset.copy).value;
+      if (!v) return;
+      try { await navigator.clipboard.writeText(v); const o = btn.textContent; btn.textContent = '✓'; setTimeout(() => (btn.textContent = o), 1000); } catch (e) {}
+    }));
+  </script>
+</ToolLayout>

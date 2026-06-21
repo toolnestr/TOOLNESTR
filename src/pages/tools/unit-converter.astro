@@ -1,0 +1,108 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Unit Converter';
+const description =
+  'Free unit converter for length, weight, temperature, speed and volume. Convert between ' +
+  'metric and imperial units instantly. Works in your browser on any device.';
+const intro =
+  'Choose a category, pick your units and type a value — the converted result appears instantly. Supports both metric and imperial.';
+const category = { id: 'everyday', name: 'Everyday & Students' };
+const faqs = [
+  { q: 'Which units can I convert?', a: 'Length, weight/mass, temperature, speed and volume — covering common metric and imperial units like meters, miles, kilograms, pounds, Celsius, Fahrenheit and more.' },
+  { q: 'Does it handle temperature correctly?', a: 'Yes. Temperature uses proper formulas (not simple ratios), so Celsius, Fahrenheit and Kelvin convert accurately.' },
+  { q: 'Can I quickly swap the units?', a: 'Yes — use the swap button to flip the “from” and “to” units instantly.' },
+  { q: 'Is it private?', a: 'Yes, everything runs in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Category</span>
+      <select id="cat" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></select>
+    </label>
+
+    <div class="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">From</span>
+        <select id="from" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></select>
+        <input id="value" type="number" step="any" value="1" class="mt-2 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <button id="swap" title="Swap" class="mb-2 self-end rounded-xl border border-slate-300 px-3 py-3 text-lg transition hover:bg-slate-50">⇄</button>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">To</span>
+        <select id="to" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></select>
+        <input id="result" type="text" readonly class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-semibold text-indigo-700 outline-none" />
+      </label>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this unit converter</h2>
+    <p class="mt-2 text-slate-600">
+      Whether you’re cooking with a foreign recipe, doing homework, planning a trip or working on a
+      project, converting units quickly is essential. This converter covers length, weight,
+      temperature, speed and volume, switching between metric and imperial in an instant — all in
+      your browser.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Choose a category (e.g. Length).</li>
+      <li>Pick the “from” and “to” units.</li>
+      <li>Type a value — the result updates instantly.</li>
+      <li>Use ⇄ to swap the units.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Browse more <a href="/" class="font-medium text-indigo-600 hover:underline">everyday tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    // factors are "how many base units in 1 of this unit"
+    const data = {
+      Length: { base: 'Meter', units: { Meter: 1, Kilometer: 1000, Centimeter: 0.01, Millimeter: 0.001, Mile: 1609.344, Yard: 0.9144, Foot: 0.3048, Inch: 0.0254 } },
+      Weight: { base: 'Kilogram', units: { Kilogram: 1, Gram: 0.001, Milligram: 1e-6, Tonne: 1000, Pound: 0.45359237, Ounce: 0.028349523, Stone: 6.35029318 } },
+      Speed: { units: { 'Meters/sec': 1, 'Km/hour': 0.277777778, 'Miles/hour': 0.44704, Knot: 0.514444444 } },
+      Volume: { units: { Liter: 1, Milliliter: 0.001, 'Cubic meter': 1000, 'Gallon (US)': 3.785411784, 'Quart (US)': 0.946352946, 'Cup (US)': 0.2365882365, 'Fluid oz (US)': 0.0295735296 } },
+      Temperature: { temp: true, units: { Celsius: 'C', Fahrenheit: 'F', Kelvin: 'K' } },
+    };
+
+    const catSel = el('cat'), fromSel = el('from'), toSel = el('to'), value = el('value'), result = el('result');
+    Object.keys(data).forEach((c) => { const o = document.createElement('option'); o.textContent = c; catSel.appendChild(o); });
+
+    function fillUnits() {
+      const units = Object.keys(data[catSel.value].units);
+      [fromSel, toSel].forEach((sel) => { sel.innerHTML = ''; units.forEach((u) => { const o = document.createElement('option'); o.textContent = u; sel.appendChild(o); }); });
+      toSel.selectedIndex = Math.min(1, units.length - 1);
+      convert();
+    }
+
+    function tempConvert(v, from, to) {
+      let c; // to Celsius
+      if (from === 'Celsius') c = v; else if (from === 'Fahrenheit') c = (v - 32) * 5 / 9; else c = v - 273.15;
+      if (to === 'Celsius') return c; if (to === 'Fahrenheit') return c * 9 / 5 + 32; return c + 273.15;
+    }
+
+    function convert() {
+      const v = parseFloat(value.value);
+      if (isNaN(v)) { result.value = ''; return; }
+      const cat = data[catSel.value];
+      let out;
+      if (cat.temp) out = tempConvert(v, fromSel.value, toSel.value);
+      else out = v * cat.units[fromSel.value] / cat.units[toSel.value];
+      result.value = Math.round(out * 1e6) / 1e6;
+    }
+
+    catSel.addEventListener('change', fillUnits);
+    [fromSel, toSel, value].forEach((e) => e.addEventListener('input', convert));
+    el('swap').addEventListener('click', () => { const i = fromSel.selectedIndex; fromSel.selectedIndex = toSel.selectedIndex; toSel.selectedIndex = i; convert(); });
+
+    fillUnits();
+  </script>
+</ToolLayout>

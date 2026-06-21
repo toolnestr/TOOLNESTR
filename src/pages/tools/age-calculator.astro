@@ -1,0 +1,145 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Age Calculator';
+const description =
+  'Free age calculator. Enter your date of birth to see your exact age in years, ' +
+  'months and days — plus total weeks, days, hours and a countdown to your next birthday.';
+const intro =
+  'Enter your date of birth (and optionally a date to calculate up to). You’ll get your ' +
+  'exact age and a countdown to your next birthday — instantly and privately.';
+const category = { id: 'everyday', name: 'Everyday & Students' };
+const faqs = [
+  { q: 'How is my exact age calculated?', a: 'We compare your date of birth to today (or a date you choose) and break the difference into full years, months and days.' },
+  { q: 'Can I calculate age on a past or future date?', a: 'Yes. Change the “Age at date” field to any date to see how old someone was, or will be, then.' },
+  { q: 'Does it account for leap years?', a: 'Yes. The calculation uses real calendar dates, so leap years and different month lengths are handled correctly.' },
+  { q: 'Is my data private?', a: 'Completely. The calculator runs in your browser — no dates are sent anywhere.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Date of birth</span>
+        <input id="dob" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Age at date</span>
+        <input id="asof" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Your age is</div>
+        <div id="main-age" class="mt-1 text-2xl font-bold sm:text-3xl">—</div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div id="t-months" class="text-lg font-bold text-slate-800">0</div>
+          <div class="text-xs text-slate-500">Months</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div id="t-weeks" class="text-lg font-bold text-slate-800">0</div>
+          <div class="text-xs text-slate-500">Weeks</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div id="t-days" class="text-lg font-bold text-slate-800">0</div>
+          <div class="text-xs text-slate-500">Days</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div id="t-hours" class="text-lg font-bold text-slate-800">0</div>
+          <div class="text-xs text-slate-500">Hours</div>
+        </div>
+      </div>
+
+      <p id="next-bday" class="mt-4 text-center text-sm text-slate-600"></p>
+    </div>
+
+    <p id="hint" class="mt-4 text-center text-sm text-slate-400">Pick your date of birth to see your age.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this age calculator</h2>
+    <p class="mt-2 text-slate-600">
+      This tool tells you exactly how old you are — not just in years, but in months, weeks,
+      days and even hours. It’s useful for filling in forms, checking eligibility, planning
+      birthdays, or simply out of curiosity. Because it uses real calendar dates, it correctly
+      handles leap years and months of different lengths.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Select your date of birth.</li>
+      <li>Leave “Age at date” as today, or change it to any past or future date.</li>
+      <li>See your exact age and the countdown to your next birthday update instantly.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try the <a href="/tools/date-difference" class="font-medium text-indigo-600 hover:underline">Date Difference Calculator</a>
+      or <a href="/" class="font-medium text-indigo-600 hover:underline">browse all tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const dob = document.getElementById('dob');
+    const asof = document.getElementById('asof');
+    const result = document.getElementById('result');
+    const hint = document.getElementById('hint');
+    const el = (id) => document.getElementById(id);
+
+    // default "as of" to today
+    asof.value = new Date().toISOString().slice(0, 10);
+
+    function diffYMD(from, to) {
+      let y = to.getFullYear() - from.getFullYear();
+      let m = to.getMonth() - from.getMonth();
+      let d = to.getDate() - from.getDate();
+      if (d < 0) {
+        m--;
+        d += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+      }
+      if (m < 0) { y--; m += 12; }
+      return { y, m, d };
+    }
+
+    function update() {
+      if (!dob.value || !asof.value) return;
+      const from = new Date(dob.value);
+      const to = new Date(asof.value);
+      if (to < from) {
+        hint.textContent = '“Age at date” must be after the date of birth.';
+        hint.classList.remove('hidden');
+        result.classList.add('hidden');
+        return;
+      }
+
+      const { y, m, d } = diffYMD(from, to);
+      const ms = to - from;
+      const totalDays = Math.floor(ms / 86400000);
+
+      el('main-age').textContent = `${y} years, ${m} months, ${d} days`;
+      el('t-months').textContent = (y * 12 + m).toLocaleString();
+      el('t-weeks').textContent = Math.floor(totalDays / 7).toLocaleString();
+      el('t-days').textContent = totalDays.toLocaleString();
+      el('t-hours').textContent = (totalDays * 24).toLocaleString();
+
+      // next birthday from "as of" date
+      let next = new Date(to.getFullYear(), from.getMonth(), from.getDate());
+      if (next < to) next = new Date(to.getFullYear() + 1, from.getMonth(), from.getDate());
+      const daysToBday = Math.ceil((next - to) / 86400000);
+      el('next-bday').textContent =
+        daysToBday === 0 ? '🎉 It’s your birthday today!' : `🎂 Next birthday in ${daysToBday} day${daysToBday === 1 ? '' : 's'}.`;
+
+      result.classList.remove('hidden');
+      hint.classList.add('hidden');
+    }
+
+    dob.addEventListener('change', update);
+    asof.addEventListener('change', update);
+  </script>
+</ToolLayout>

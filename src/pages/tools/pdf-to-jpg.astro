@@ -1,0 +1,128 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PDF to JPG';
+const description =
+  'Free PDF to JPG converter. Turn each page of a PDF into a high-quality image (JPG or PNG). ' +
+  'Private and fast — your PDF is rendered in your browser and never uploaded.';
+const intro =
+  'Upload a PDF and each page is turned into an image you can preview and download. Everything runs in your browser, so your file stays private.';
+const category = { id: 'pdf', name: 'PDF Tools' };
+const faqs = [
+  { q: 'Are my files uploaded?', a: 'No. Your PDF is rendered to images entirely in your browser. Nothing is sent to a server.' },
+  { q: 'What image quality do I get?', a: 'Pages are rendered at 2× scale for sharp, high-resolution images suitable for sharing or printing.' },
+  { q: 'Can I get PNG instead of JPG?', a: 'Yes — switch the format to PNG if you prefer a lossless image or need transparency.' },
+  { q: 'Can I download all pages at once?', a: 'Use “Download all” to save every page. Each page is saved as its own image file.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+      <span class="text-3xl">🏞️</span>
+      <span class="mt-2 font-medium text-slate-700">Click to add a PDF</span>
+      <span class="mt-1 text-sm text-slate-400">Each page becomes a downloadable image</span>
+      <input id="file-input" type="file" accept="application/pdf" class="hidden" />
+    </label>
+
+    <div class="mt-4 flex flex-wrap items-center gap-4">
+      <label class="flex items-center gap-2 text-sm text-slate-700">
+        Format
+        <select id="format" class="rounded-md border border-slate-300 px-2 py-1 text-sm">
+          <option value="image/jpeg">JPG</option>
+          <option value="image/png">PNG</option>
+        </select>
+      </label>
+      <button id="download-all" class="hidden rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Download all</button>
+      <span id="status" class="text-sm text-slate-500"></span>
+    </div>
+
+    <div id="pages" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About converting PDF to images</h2>
+    <p class="mt-2 text-slate-600">
+      Turning PDF pages into images is useful for posting a page to social media, inserting it into
+      a slideshow, or sharing a quick preview. This converter renders every page at high resolution
+      right in your browser, so your document stays private and you can download exactly the pages
+      you need.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Click the box and choose a PDF.</li>
+      <li>Pick JPG or PNG.</li>
+      <li>Preview the pages, then download individually or use “Download all”.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try <a href="/tools/jpg-to-pdf" class="font-medium text-indigo-600 hover:underline">JPG to PDF</a>
+      or <a href="/#pdf" class="font-medium text-indigo-600 hover:underline">see all PDF tools →</a>
+    </p>
+  </Fragment>
+
+  <script>
+    import * as pdfjsLib from 'pdfjs-dist';
+    import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+
+    const input = document.getElementById('file-input');
+    const pagesEl = document.getElementById('pages');
+    const status = document.getElementById('status');
+    const formatSel = document.getElementById('format');
+    const downloadAll = document.getElementById('download-all');
+
+    let rendered = []; // { dataUrl, ext }
+
+    function ext() { return formatSel.value === 'image/png' ? 'png' : 'jpg'; }
+
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+      pagesEl.innerHTML = '';
+      rendered = [];
+      downloadAll.classList.add('hidden');
+      status.textContent = 'Rendering…';
+      try {
+        const data = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
+        for (let n = 1; n <= pdf.numPages; n++) {
+          const page = await pdf.getPage(n);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          const dataUrl = canvas.toDataURL(formatSel.value, 0.92);
+          rendered.push({ dataUrl, n });
+
+          const card = document.createElement('div');
+          card.className = 'overflow-hidden rounded-xl border border-slate-200 bg-slate-50';
+          card.innerHTML =
+            `<img src="${dataUrl}" class="w-full" alt="Page ${n}">` +
+            `<a href="${dataUrl}" download="page-${n}.${ext()}" class="block bg-indigo-600 py-1.5 text-center text-sm font-medium text-white transition hover:bg-indigo-700">Download page ${n}</a>`;
+          pagesEl.appendChild(card);
+          status.textContent = `Rendered ${n} of ${pdf.numPages}…`;
+        }
+        status.textContent = `✓ ${pdf.numPages} page${pdf.numPages === 1 ? '' : 's'} ready.`;
+        downloadAll.classList.remove('hidden');
+      } catch (err) {
+        status.textContent = '⚠️ Could not read this PDF — it may be corrupted or password-protected.';
+      }
+    });
+
+    downloadAll.addEventListener('click', () => {
+      rendered.forEach((p, i) => {
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.href = p.dataUrl;
+          a.download = `page-${p.n}.${ext()}`;
+          a.click();
+        }, i * 300);
+      });
+    });
+  </script>
+</ToolLayout>

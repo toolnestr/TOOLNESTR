@@ -1,0 +1,120 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Color Converter (HEX, RGB, HSL)';
+const description =
+  'Free color converter. Convert between HEX, RGB and HSL color codes, pick a color visually ' +
+  'and copy the value you need. Fast, free and private.';
+const intro =
+  'Pick a color or type a HEX code to instantly get its RGB and HSL values. Copy whichever format you need.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'What’s the difference between HEX, RGB and HSL?', a: 'They’re three ways of describing the same color. HEX (#4f46e5) is common in web design, RGB sets red/green/blue levels, and HSL uses hue, saturation and lightness, which is intuitive for adjusting colors.' },
+  { q: 'Can I type a HEX code directly?', a: 'Yes. Enter a 3- or 6-digit HEX code (with or without the #) and the RGB and HSL values update instantly.' },
+  { q: 'Can I copy the values?', a: 'Yes — each format has a copy button so you can paste it straight into your CSS or design tool.' },
+  { q: 'Is it private?', a: 'Yes, the conversion runs entirely in your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <!-- One big, obviously-clickable color well -->
+    <div class="relative">
+      <input id="picker" type="color" value="#4f46e5" aria-label="Pick a color"
+        class="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+      <div id="swatch" class="flex h-32 items-center justify-center rounded-xl border border-slate-300 shadow-inner transition" style="background:#4f46e5">
+        <span class="pointer-events-none inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-black/5">
+          🎨 Click here to pick a color
+        </span>
+      </div>
+    </div>
+
+    <div class="mt-5 space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="w-12 text-sm font-semibold text-slate-500">HEX</span>
+        <input id="hex" type="text" value="#4f46e5" class="flex-1 rounded-lg border border-slate-300 p-2.5 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <button data-copy="hex" class="copy rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Copy</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-12 text-sm font-semibold text-slate-500">RGB</span>
+        <input id="rgb" type="text" readonly class="flex-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 font-mono text-sm outline-none" />
+        <button data-copy="rgb" class="copy rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Copy</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="w-12 text-sm font-semibold text-slate-500">HSL</span>
+        <input id="hsl" type="text" readonly class="flex-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 font-mono text-sm outline-none" />
+        <button data-copy="hsl" class="copy rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this color converter</h2>
+    <p class="mt-2 text-slate-600">
+      Designers and developers constantly switch between color formats. This tool lets you pick a
+      color or paste a HEX code and instantly see its RGB and HSL equivalents, each ready to copy
+      into your CSS or design software. It’s a fast way to grab the exact value you need.
+    </p>
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Use the color picker, or type a HEX code.</li>
+      <li>See the matching RGB and HSL values.</li>
+      <li>Click “Copy” on the format you want.</li>
+    </ol>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Browse more <a href="/#developers" class="font-medium text-indigo-600 hover:underline">developer tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const picker = el('picker'), hex = el('hex'), rgb = el('rgb'), hsl = el('hsl'), swatch = el('swatch');
+
+    function normalizeHex(v) {
+      v = v.replace('#', '').trim();
+      if (/^[0-9a-fA-F]{3}$/.test(v)) v = v.split('').map((c) => c + c).join('');
+      return /^[0-9a-fA-F]{6}$/.test(v) ? '#' + v.toLowerCase() : null;
+    }
+    function hexToRgb(h) {
+      const n = parseInt(h.slice(1), 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0; const l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h /= 6;
+      }
+      return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+    }
+
+    function render(h) {
+      const { r, g, b } = hexToRgb(h);
+      const { h: hh, s, l } = rgbToHsl(r, g, b);
+      rgb.value = `rgb(${r}, ${g}, ${b})`;
+      hsl.value = `hsl(${hh}, ${s}%, ${l}%)`;
+      swatch.style.background = h;
+      picker.value = h;
+    }
+
+    picker.addEventListener('input', () => { hex.value = picker.value; render(picker.value); });
+    hex.addEventListener('input', () => { const n = normalizeHex(hex.value); if (n) render(n); });
+
+    document.querySelectorAll('.copy').forEach((btn) => btn.addEventListener('click', async () => {
+      const val = el(btn.dataset.copy).value;
+      try { await navigator.clipboard.writeText(val); const o = btn.textContent; btn.textContent = '✓'; setTimeout(() => (btn.textContent = o), 1000); } catch (e) {}
+    }));
+
+    render('#4f46e5');
+  </script>
+</ToolLayout>
