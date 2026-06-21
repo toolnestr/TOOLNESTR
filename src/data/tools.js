@@ -39,6 +39,7 @@ export const tools = [
   { slug: 'german-grade-calculator', title: 'German Grade Calculator', short: 'Convert GPA, %, CGPA to the German 1.0–5.0 scale.', category: 'everyday', emoji: '🇩🇪', enabled: true, status: 'live' },
   { slug: 'cgpa-to-percentage', title: 'CGPA to Percentage Calculator', short: 'Convert CGPA to percentage (CBSE & custom).', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
   { slug: 'percentage-to-cgpa', title: 'Percentage to CGPA Calculator', short: 'Convert a percentage back to CGPA.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
+  { slug: 'cgpa-to-gpa', title: 'CGPA to GPA Calculator', short: 'Convert CGPA to the US 4.0 GPA scale.', category: 'everyday', emoji: '🎓', enabled: true, status: 'live' },
 
   // ── Health & Fitness ──
   { slug: 'bmi-calculator', title: 'BMI Calculator', short: 'Body Mass Index from height & weight.', category: 'health', emoji: '⚖️', enabled: true, status: 'live' },
@@ -47,6 +48,8 @@ export const tools = [
   { slug: 'ideal-weight', title: 'Ideal Weight Calculator', short: 'Healthy weight range for your height.', category: 'health', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'body-fat', title: 'Body Fat Calculator', short: 'Estimate body fat percentage (US Navy method).', category: 'health', emoji: '📊', enabled: true, status: 'live' },
   { slug: 'pace-calculator', title: 'Pace Calculator', short: 'Running pace, time and distance.', category: 'health', emoji: '🏃', enabled: true, status: 'live' },
+  { slug: 'sleep-calculator', title: 'Sleep Calculator', short: 'Best bedtime & wake-up times by sleep cycle.', category: 'health', emoji: '😴', enabled: true, status: 'live' },
+  { slug: 'dog-age-calculator', title: 'Dog Age Calculator', short: 'Your dog’s age in human years.', category: 'health', emoji: '🐶', enabled: true, status: 'live' },
 
   // ── Finance ──
   { slug: 'mortgage-calculator', title: 'Mortgage Calculator', short: 'Monthly home loan payment & total cost.', category: 'finance', emoji: '🏠', enabled: true, status: 'live' },
@@ -57,6 +60,7 @@ export const tools = [
   { slug: 'auto-loan', title: 'Auto Loan Calculator', short: 'Car loan monthly payment & total interest.', category: 'finance', emoji: '🚗', enabled: true, status: 'live' },
   { slug: 'profit-margin', title: 'Profit Margin Calculator', short: 'Margin, markup and profit from cost & price.', category: 'finance', emoji: '📊', enabled: true, status: 'live' },
   { slug: 'roas-calculator', title: 'ROAS Calculator', short: 'Return on ad spend and ACoS for campaigns.', category: 'finance', emoji: '📣', enabled: true, status: 'live' },
+  { slug: 'break-even', title: 'Break-even Calculator', short: 'Units & revenue needed to break even.', category: 'finance', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: true, status: 'soon' },
 
   // ── Math ──
@@ -78,6 +82,7 @@ export const tools = [
   { slug: 'hashtag-generator', title: 'Hashtag Generator', short: 'Relevant hashtags for any topic or niche.', category: 'creators', emoji: '#️⃣', enabled: true, status: 'live' },
   { slug: 'emoji-picker', title: 'Emoji & Symbol Picker', short: 'Copy-paste emojis and aesthetic symbols.', category: 'creators', emoji: '😀', enabled: true, status: 'live' },
   { slug: 'text-repeater', title: 'Text Repeater', short: 'Repeat any text or emoji many times.', category: 'creators', emoji: '🔁', enabled: true, status: 'live' },
+  { slug: 'love-calculator', title: 'Love Calculator', short: 'Just-for-fun love compatibility score.', category: 'creators', emoji: '💕', enabled: true, status: 'live' },
 
   // ── Developers ──
   { slug: 'json-formatter', title: 'JSON Formatter', short: 'Format, validate and minify JSON instantly.', category: 'developers', emoji: '🧩', enabled: true, status: 'live' },
