@@ -13,6 +13,7 @@ export const categories = [
   { id: 'everyday', name: 'Everyday & Students', emoji: '🧮' },
   { id: 'health', name: 'Health & Fitness', emoji: '💪' },
   { id: 'finance', name: 'Finance', emoji: '💰' },
+  { id: 'math', name: 'Math', emoji: '🔢' },
   { id: 'pdf', name: 'PDF Tools', emoji: '📄' },
   { id: 'creators', name: 'Creators', emoji: '🎨' },
   { id: 'developers', name: 'Developers', emoji: '💻' },
@@ -48,6 +49,14 @@ export const tools = [
   { slug: 'salary-calculator', title: 'Salary Calculator', short: 'Convert hourly, weekly, monthly & yearly pay.', category: 'finance', emoji: '💵', enabled: true, status: 'live' },
   { slug: 'auto-loan', title: 'Auto Loan Calculator', short: 'Car loan monthly payment & total interest.', category: 'finance', emoji: '🚗', enabled: true, status: 'live' },
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: true, status: 'soon' },
+
+  // ── Math ──
+  { slug: 'scientific-calculator', title: 'Scientific Calculator', short: 'Full calculator with trig, log, powers & more.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },
+  { slug: 'fraction-calculator', title: 'Fraction Calculator', short: 'Add, subtract, multiply & divide fractions.', category: 'math', emoji: '➗', enabled: true, status: 'live' },
+  { slug: 'random-number', title: 'Random Number Generator', short: 'Random numbers in any range.', category: 'math', emoji: '🎲', enabled: true, status: 'live' },
+  { slug: 'standard-deviation', title: 'Standard Deviation Calculator', short: 'Mean, variance & standard deviation.', category: 'math', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'triangle-calculator', title: 'Triangle Calculator', short: 'Area, perimeter & angles from 3 sides.', category: 'math', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'average-calculator', title: 'Average Calculator', short: 'Mean, median, mode & range.', category: 'math', emoji: '📊', enabled: true, status: 'live' },
 
   // ── PDF Tools (run in your browser — files never upload) ──
   { slug: 'merge-pdf', title: 'Merge PDF', short: 'Combine several PDF files into one document.', category: 'pdf', emoji: '📑', enabled: true, status: 'live' },

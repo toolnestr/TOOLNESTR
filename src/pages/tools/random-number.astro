@@ -1,0 +1,92 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Random Number Generator';
+const description =
+  'Free random number generator. Generate one or many random numbers in any range, with or ' +
+  'without duplicates. Great for draws, games, lotteries and testing.';
+const intro =
+  'Set a range and how many numbers you need, then generate. Choose integers or decimals, and allow or prevent duplicates.';
+const category = { id: 'math', name: 'Math' };
+const faqs = [
+  { q: 'Can I generate numbers without duplicates?', a: 'Yes — untick “allow duplicates” and every number generated will be unique (useful for raffles and draws).' },
+  { q: 'Are the numbers truly random?', a: 'They use your browser’s built-in random generator, which is more than random enough for games, draws and everyday use.' },
+  { q: 'Can I generate decimals?', a: 'Yes — untick “integers only” to get decimal numbers within your range.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Minimum</span>
+        <input id="min" type="number" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Maximum</span>
+        <input id="max" type="number" value="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">How many</span>
+        <input id="count" type="number" value="1" min="1" max="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
+      <label class="flex items-center gap-2"><input id="ints" type="checkbox" checked class="h-4 w-4 rounded border-slate-300" /> Integers only</label>
+      <label class="flex items-center gap-2"><input id="dupes" type="checkbox" checked class="h-4 w-4 rounded border-slate-300" /> Allow duplicates</label>
+    </div>
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <button id="gen" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate</button>
+      <button id="copy" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+    </div>
+    <div id="output" class="mt-4 min-h-[3rem] rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-2xl font-bold text-indigo-600">—</div>
+    <p id="err" class="mt-2 hidden text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this random number generator</h2>
+    <p class="mt-2 text-slate-600">
+      Need to pick a winner, roll a number, run a quick draw or generate test data? This tool
+      creates random numbers in any range you set. Generate a single number or a whole list, with
+      or without repeats — all instantly in your browser.
+    </p>
+  </section>
+
+  <Fragment slot="related">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Try the <a href="/tools/password-generator" class="font-medium text-indigo-600 hover:underline">Password Generator</a>
+      or <a href="/" class="font-medium text-indigo-600 hover:underline">browse all tools →</a>
+    </p>
+  </Fragment>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function generate() {
+      const min = parseFloat(el('min').value), max = parseFloat(el('max').value);
+      let count = Math.max(1, Math.min(parseInt(el('count').value, 10) || 1, 1000));
+      const ints = el('ints').checked, dupes = el('dupes').checked;
+      el('err').classList.add('hidden');
+      if (isNaN(min) || isNaN(max) || min > max) { el('err').textContent = 'Minimum must be less than or equal to maximum.'; el('err').classList.remove('hidden'); return; }
+      if (!dupes && ints) {
+        const range = Math.floor(max) - Math.ceil(min) + 1;
+        if (count > range) { el('err').textContent = `Only ${range} unique whole numbers fit in this range.`; el('err').classList.remove('hidden'); return; }
+      }
+      const out = [];
+      const seen = new Set();
+      let guard = 0;
+      while (out.length < count && guard < count * 1000 + 1000) {
+        guard++;
+        let n = Math.random() * (max - min) + min;
+        if (ints) n = Math.floor(Math.random() * (Math.floor(max) - Math.ceil(min) + 1)) + Math.ceil(min);
+        else n = Math.round(n * 1000) / 1000;
+        if (!dupes) { if (seen.has(n)) continue; seen.add(n); }
+        out.push(n);
+      }
+      el('output').textContent = out.join(', ');
+    }
+
+    el('gen').addEventListener('click', generate);
+    el('copy').addEventListener('click', async () => {
+      const t = el('output').textContent;
+      if (!t || t === '—') return;
+      try { await navigator.clipboard.writeText(t); const b = el('copy'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200); } catch (e) {}
+    });
+    generate();
+  </script>
+</ToolLayout>
