@@ -4,7 +4,7 @@
 // tool page only needs to provide its tool UI and a bit of content.
 import BaseLayout from './BaseLayout.astro';
 import { site } from '../data/site.js';
-import { toolsByCategory } from '../data/tools.js';
+import { categories, tools } from '../data/tools.js';
 
 const {
   title,
@@ -15,9 +15,11 @@ const {
   appCategory = 'UtilitiesApplication',
 } = Astro.props;
 
-const sameCategoryTools = toolsByCategory(category.id).filter(
-  (t) => t.enabled && t.status === 'live' && t.title !== title
+const liveTools = tools.filter((t) => t.enabled && t.status === 'live');
+const categoryCounts = Object.fromEntries(
+  categories.map((c) => [c.id, liveTools.filter((t) => t.category === c.id).length])
 );
+const otherCategories = categories.filter((c) => c.id !== category.id && categoryCounts[c.id] > 0);
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -75,30 +77,35 @@ const jsonLd = {
     )}
 
     <section class="mt-8 border-t border-slate-200 pt-8">
-      <slot name="related">
-        <h2 class="text-xl font-bold text-slate-900">More {category.name} tools</h2>
-        {sameCategoryTools.length > 0 && (
-          <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {sameCategoryTools.map((t) => (
-              <a
-                href={`/tools/${t.slug}`}
-                class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md"
-              >
-                <span class="text-xl">{t.emoji}</span>
-                <div>
-                  <span class="text-sm font-semibold text-slate-900">{t.title}</span>
-                  <p class="text-xs text-slate-500">{t.short}</p>
-                </div>
-              </a>
+      <h2 class="text-xl font-bold text-slate-900">All tool categories</h2>
+      <div class="mt-4 space-y-1.5">
+        <!-- current category shown first, expanded -->
+        <details class="group rounded-xl border border-indigo-200 bg-indigo-50" open>
+          <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-indigo-800">
+            <span>{category.emoji} {category.name} <span class="font-normal text-indigo-500">({categoryCounts[category.id]} tools)</span></span>
+            <svg class="h-4 w-4 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </summary>
+          <div class="grid gap-2 border-t border-indigo-200 px-4 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+            {liveTools.filter((t) => t.category === category.id && t.slug !== Astro.url.pathname.split('/').pop()).map((t) => (
+              <a href={`/tools/${t.slug}`} class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 transition hover:bg-indigo-100 hover:text-indigo-700">{t.emoji} {t.title}</a>
             ))}
           </div>
-        )}
-        <p class="mt-4">
-          <a href={`/tools/${category.id}`} class="font-medium text-indigo-600 hover:underline"
-            >Browse all {category.name} tools →</a
-          >
-        </p>
-      </slot>
+        </details>
+        <!-- other categories, collapsed -->
+        {otherCategories.map((c) => (
+          <details class="group rounded-xl border border-slate-200 bg-white">
+            <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-semibold text-slate-800">
+              <span>{c.emoji} {c.name} <span class="font-normal text-slate-400">({categoryCounts[c.id]} tools)</span></span>
+              <svg class="h-4 w-4 text-slate-400 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </summary>
+            <div class="grid gap-2 border-t border-slate-200 px-4 pb-3 pt-3 sm:grid-cols-2 lg:grid-cols-3">
+              {liveTools.filter((t) => t.category === c.id).map((t) => (
+                <a href={`/tools/${t.slug}`} class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100 hover:text-indigo-700">{t.emoji} {t.title}</a>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
     </section>
   </div>
 </BaseLayout>
