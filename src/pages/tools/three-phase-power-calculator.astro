@@ -1,0 +1,253 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = '3-Phase Power Calculator';
+const description = 'Free 3-phase power calculator. Calculate kW, kVA, kVAR and power factor for balanced three-phase systems using line-to-line or line-to-neutral voltage.';
+const intro = 'Enter voltage, current and power factor for a balanced three-phase system to compute real power (kW), apparent power (kVA) and reactive power (kVAR).';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is three-phase power?', a: 'Three-phase power is an electrical distribution method using three alternating currents that are 120 degrees out of phase with each other. It is the standard for industrial and commercial power distribution because it is more efficient than single-phase for high-power loads.' },
+  { q: 'What is the difference between line-to-line and line-to-neutral voltage?', a: 'Line-to-line voltage (VLL) is measured between any two phase conductors. Line-to-neutral voltage (VLN) is measured between a phase conductor and neutral. In a wye system, VLL = \u221a3 \u00d7 VLN. For example, 208V line-to-line corresponds to 120V line-to-neutral.' },
+  { q: 'What is power factor in a three-phase system?', a: 'Power factor (PF) is the ratio of real power (kW) to apparent power (kVA). It ranges from 0 to 1 and indicates how effectively the current is being converted into useful work. A PF of 1 is ideal, while lower values indicate reactive power from inductive or capacitive loads.' },
+  { q: 'What causes poor power factor?', a: 'Inductive loads like motors, transformers, and fluorescent lighting ballasts cause the current to lag behind the voltage, reducing power factor. Arc furnaces, welders, and certain types of lighting also contribute to poor PF.' },
+  { q: 'How do I calculate three-phase power?', a: 'For line-to-line: P(kW) = \u221a3 \u00d7 VLL \u00d7 I \u00d7 PF / 1000. For line-to-neutral: P(kW) = 3 \u00d7 VLN \u00d7 I \u00d7 PF / 1000. Apparent power S(kVA) = \u221a3 \u00d7 VLL \u00d7 I / 1000.' },
+  { q: 'What are typical power factor values for motors?', a: 'Induction motors at full load typically have a power factor of 0.7 to 0.9. Small motors tend toward the lower end, while large motors (100 HP+) can reach 0.92. At partial load, power factor drops significantly.' },
+  { q: 'Why is power factor correction important?', a: 'Utilities often charge penalties for power factors below 0.85 or 0.90. Poor power factor means higher current for the same real power, causing increased I\u00b2R losses in wiring, transformers, and generators. Correcting PF reduces these losses and avoids penalties.' },
+  { q: 'What is the difference between star (wye) and delta?', a: 'Star (wye) has a neutral point and provides both line-to-line and line-to-neutral voltages. Delta has no neutral and only provides line-to-line voltage. Star is common for distribution, delta for motor windings and high-current applications.' },
+  { q: 'How does the \u221a3 factor appear in three-phase calculations?', a: 'The \u221a3 (approximately 1.732) factor appears because the line-to-line voltage is \u221a3 times the phase voltage in a wye system. It adjusts the single-phase power formula to account for the contribution of all three phases.' },
+  { q: 'Can I convert single-phase to three-phase?', a: 'Yes, using a phase converter (rotary or static) or a variable frequency drive (VFD). VFDs are the most efficient method, creating three-phase power from a single-phase input for motor applications. However, the total power capacity is limited by the single-phase supply.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Configuration</span>
+        <select id="config" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="ll">Line-to-Line (Wye/Delta)</option><option value="ln">Line-to-Neutral (Wye)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Calculation mode</span>
+        <select id="calcMode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="pf">Use power factor</option><option value="kw">Use kW & kVAR</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Voltage (V)</span>
+        <input id="voltage" type="number" step="any" placeholder="480" value="480" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current (A)</span>
+        <input id="current" type="number" step="any" placeholder="100" value="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block" id="pf-wrap"><span class="text-sm font-medium text-slate-700">Power factor (0 \u2013 1)</span>
+        <input id="pf" type="number" step="any" placeholder="0.85" value="0.85" min="0" max="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block" id="kw-wrap" style="display:none"><span class="text-sm font-medium text-slate-700">Real power (kW)</span>
+        <input id="kw" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block" id="kvar-wrap" style="display:none"><span class="text-sm font-medium text-slate-700">Reactive power (kVAR)</span>
+        <input id="kvar" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Real Power (kW)</div><div id="r-kw" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Apparent Power (kVA)</div><div id="r-kva" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Reactive Power (kVAR)</div><div id="r-kvar" class="mt-1 text-2xl font-bold text-amber-600">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different power factor ranges mean</h2>
+    <p class="mt-2 text-slate-600">Power factor indicates how efficiently electrical power is being used. Higher is better for both utility costs and system capacity.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.95 \u2013 1.00</span><span class="text-slate-400">Excellent \u2014 near unity, no penalty</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.90 \u2013 0.95</span><span class="text-slate-400">Good \u2014 typical utility threshold</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:93%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.80 \u2013 0.90</span><span class="text-slate-400">Fair \u2014 may incur penalties</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:85%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.70 \u2013 0.80</span><span class="text-slate-400">Poor \u2014 correction recommended</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:75%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.50 \u2013 0.70</span><span class="text-slate-400">Bad \u2014 significant waste, heavy penalties</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:60%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&lt; 0.50</span><span class="text-slate-400">Critical \u2014 urgent correction needed</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-700" style="width:30%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u2699\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrical Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design and analyze three-phase power distribution systems for industrial plants, commercial buildings, and infrastructure projects.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83C\uDFE2</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Facility Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitor power usage and power factor in commercial buildings to optimize energy costs and avoid utility penalties.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u26A1</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Industrial Electrician</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify motor loads, transformer sizing, and feeder capacity for three-phase equipment installations and upgrades.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDEE1\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Generator Installer</h3>
+      <p class="mt-1 text-sm text-slate-600">Size backup generators correctly for three-phase loads, accounting for both real power and reactive power requirements.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Equipment type</th><th class="p-3">Typical PF range</th><th class="p-3">Load type</th><th class="p-3">Correction needed?</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Induction motor (large)</td><td class="p-3">0.85 \u2013 0.92</td><td class="p-3">Inductive</td><td class="p-3">Often</td></tr>
+        <tr><td class="p-3 font-medium">Induction motor (small)</td><td class="p-3">0.70 \u2013 0.85</td><td class="p-3">Inductive</td><td class="p-3">Recommended</td></tr>
+        <tr><td class="p-3 font-medium">LED lighting</td><td class="p-3">0.90 \u2013 1.00</td><td class="p-3">Resistive</td><td class="p-3">Rarely</td></tr>
+        <tr><td class="p-3 font-medium">Fluorescent lighting</td><td class="p-3">0.50 \u2013 0.90</td><td class="p-3">Inductive</td><td class="p-3">Yes (ballasts)</td></tr>
+        <tr><td class="p-3 font-medium">Electric furnace</td><td class="p-3">0.85 \u2013 0.95</td><td class="p-3">Resistive</td><td class="p-3">Rarely</td></tr>
+        <tr><td class="p-3 font-medium">Welder (transformer type)</td><td class="p-3">0.50 \u2013 0.70</td><td class="p-3">Highly inductive</td><td class="p-3">Strongly recommended</td></tr>
+        <tr><td class="p-3 font-medium">UPS systems</td><td class="p-3">0.80 \u2013 0.99</td><td class="p-3">Mixed</td><td class="p-3">Depends on type</td></tr>
+        <tr><td class="p-3 font-medium">VFD (variable frequency drive)</td><td class="p-3">0.95 \u2013 0.99</td><td class="p-3">Corrected</td><td class="p-3">Built-in</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the 3-Phase Power Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select configuration and mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose line-to-line or line-to-neutral voltage configuration. Select the calculation mode based on available data.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter electrical values</h3>
+        <p class="mt-1 text-sm text-slate-600">Provide voltage, current and power factor (or kW and kVAR). The calculator computes all three power values in real time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review and apply</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the kW, kVA and kVAR results for generator sizing, transformer rating, cable sizing and power factor correction planning.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for three-phase power systems</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always verify voltage configuration</h3>
+        <p class="mt-1 text-sm text-slate-600">Line-to-line and line-to-neutral voltages differ by a factor of \u221a3. Using the wrong configuration will give incorrect results. Confirm whether your system is wye or delta before calculating.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Size transformers for kVA, not kW</h3>
+        <p class="mt-1 text-sm text-slate-600">Transformers are rated in kVA because their capacity is limited by current heating, which depends on apparent power. A 500 kVA transformer can supply 500 kW only at unity power factor.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Monitor PF at the service entrance</h3>
+        <p class="mt-1 text-sm text-slate-600">Install power factor monitoring at the main service entrance. Many utilities charge based on the lowest PF measured during the billing period, so intermittent low PF events can be costly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Correct PF at the load, not the source</h3>
+        <p class="mt-1 text-sm text-slate-600">Power factor correction capacitors should be placed as close to the inductive load as possible. This reduces reactive current in the wiring between the source and the load, maximizing the benefit.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding three-phase power formulas</h2>
+    <p class="mt-2 text-slate-600">Three-phase power calculations depend on the system configuration. For line-to-line (VLL) in both wye and delta systems, the real power is P = \u221a3 \u00d7 VLL \u00d7 I \u00d7 PF, apparent power S = \u221a3 \u00d7 VLL \u00d7 I, and reactive power Q = \u221a3 \u00d7 VLL \u00d7 I \u00d7 sin(arccos(PF)). For line-to-neutral (VLN) in wye systems only, P = 3 \u00d7 VLN \u00d7 I \u00d7 PF.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Power factor explained</h2>
+    <p class="mt-2 text-slate-600">Power factor is the cosine of the phase angle between voltage and current. In purely resistive loads, voltage and current are in phase (PF = 1). Inductive loads cause the current to lag (PF lagging), while capacitive loads cause the current to lead (PF leading). Most industrial loads have lagging power factors due to induction motors.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Why power factor correction matters</h2>
+    <p class="mt-2 text-slate-600">Utilities deliver both real power (kW) and reactive power (kVAR), but only bill for real power. However, they impose power factor penalties to recover the cost of distribution capacity used by reactive current. A facility with PF of 0.7 draws 43% more current than one with PF of 1.0 for the same real power, requiring larger transformers, switchgear, and wiring.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Star (Wye) vs Delta configuration</h2>
+    <p class="mt-2 text-slate-600">In a wye (star) configuration, each phase winding connects to a common neutral point. This provides two voltage levels: line-to-line (\u221a3 \u00d7 phase voltage) and line-to-neutral (phase voltage). In a delta configuration, the windings form a closed loop with no neutral, providing only line-to-line voltage. Delta is often used for motor windings and high-current applications because it allows higher current per winding for the same line current.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function setCalcMode(mode) {
+      el('pf-wrap').style.display = mode === 'pf' ? 'block' : 'none';
+      el('kw-wrap').style.display = mode === 'kw' ? 'block' : 'none';
+      el('kvar-wrap').style.display = mode === 'kw' ? 'block' : 'none';
+      update();
+    }
+
+    function update() {
+      const conf = el('config').value;
+      const cmode = el('calcMode').value;
+      const v = parseFloat(el('voltage').value);
+      const i = parseFloat(el('current').value);
+      const sqrt3 = Math.sqrt(3);
+
+      if (isNaN(v) || isNaN(i) || v <= 0 || i <= 0) {
+        el('r-kw').textContent = '\u2014';
+        el('r-kva').textContent = '\u2014';
+        el('r-kvar').textContent = '\u2014';
+        return;
+      }
+
+      let s, p, q;
+
+      if (conf === 'll') {
+        s = sqrt3 * v * i / 1000;
+      } else {
+        s = 3 * v * i / 1000;
+      }
+
+      if (cmode === 'pf') {
+        const pf = parseFloat(el('pf').value);
+        if (isNaN(pf) || pf <= 0 || pf > 1) {
+          el('r-kw').textContent = '\u2014';
+          el('r-kva').textContent = s.toFixed(2) + ' kVA';
+          el('r-kvar').textContent = '\u2014';
+          return;
+        }
+        p = s * pf;
+        q = s * Math.sqrt(1 - pf * pf);
+      } else {
+        const kw = parseFloat(el('kw').value);
+        const kvar = parseFloat(el('kvar').value);
+        if (isNaN(kw) || isNaN(kvar)) {
+          el('r-kw').textContent = '\u2014';
+          el('r-kva').textContent = s.toFixed(2) + ' kVA';
+          el('r-kvar').textContent = '\u2014';
+          return;
+        }
+        p = kw;
+        q = kvar;
+        const pf = p / s;
+        if (pf > 1) {
+          el('r-kw').textContent = '\u2014';
+          el('r-kva').textContent = s.toFixed(2) + ' kVA';
+          el('r-kvar').textContent = '\u2014';
+          return;
+        }
+      }
+
+      el('r-kw').textContent = p.toFixed(2) + ' kW';
+      el('r-kva').textContent = s.toFixed(2) + ' kVA';
+      el('r-kvar').textContent = q.toFixed(2) + ' kVAR';
+    }
+
+    el('calcMode').addEventListener('change', () => setCalcMode(el('calcMode').value));
+    ['config','calcMode','voltage','current','pf','kw','kvar'].forEach(id => {
+      const elm = el(id);
+      if (elm) elm.addEventListener('input', update);
+    });
+    ['config','calcMode'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

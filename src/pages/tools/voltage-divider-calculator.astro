@@ -1,0 +1,231 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Voltage Divider Calculator';
+const description = 'Free voltage divider calculator. Calculate the output voltage of a resistor divider network. Find R1, R2 or Vout given any two values.';
+const intro = 'Enter the input voltage and two resistor values to find the output voltage of your voltage divider circuit. Or enter Vout to find the required resistor ratio.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is a voltage divider?', a: 'A voltage divider is a passive circuit consisting of two resistors in series that produces an output voltage that is a fraction of the input voltage. The output voltage is determined by the ratio of the two resistors: Vout = Vin \u00d7 R2 \u00f7 (R1 + R2).' },
+  { q: 'What is the voltage divider formula?', a: 'The formula is Vout = Vin \u00d7 R2 / (R1 + R2), where Vin is the input voltage, R1 is the resistor connected to the input, and R2 is the resistor connected to ground. The output is taken across R2.' },
+  { q: 'How do I choose resistor values for a voltage divider?', a: 'Choose values that give the desired voltage ratio while keeping the current through the divider reasonable. A good rule is to make the current through the divider (I = Vin / (R1 + R2)) about 10\u2013100 times larger than any load current drawn from Vout.' },
+  { q: 'What is the loading effect in a voltage divider?', a: 'When a load is connected to the output of a voltage divider, it draws current that changes the effective resistance, altering Vout. To minimize loading, keep the divider resistors small relative to the load resistance, or use a buffer amplifier.' },
+  { q: 'Can I use a voltage divider for voltage regulation?', a: 'No \u2014 voltage dividers are not regulated. Vout changes with the load current and input voltage variations. For stable voltage, use a voltage regulator IC instead of a resistor divider.' },
+  { q: 'What is the difference between a voltage divider and a potential divider?', a: 'They are the same thing. Both terms refer to a resistor network that divides a voltage into a smaller proportion. The term potential divider is more common in British English.' },
+  { q: 'How do I calculate R1 and R2 given Vout?', a: 'First determine the ratio R2 / (R1 + R2) = Vout / Vin. Choose a total current for the divider, calculate R1 + R2 = Vin / I, then solve for R2 = ratio \u00d7 (R1 + R2) and R1 = (R1 + R2) \u2013 R2.' },
+  { q: 'Can voltage dividers work with AC signals?', a: 'Yes, voltage dividers work with AC signals using the same formula for resistive dividers. For frequency-dependent dividers, capacitors or inductors replace one resistor to create high-pass or low-pass filters.' },
+  { q: 'What is a loaded voltage divider?', a: 'A loaded voltage divider has a load resistor in parallel with R2, which changes the effective lower resistance. The new R2\u2032 = (R2 \u00d7 RL) \u00f7 (R2 + RL), and Vout is recalculated using this effective value.' },
+  { q: 'What are common applications of voltage dividers?', a: 'Voltage dividers are used for ADC input scaling, sensor signal conditioning, setting bias voltages in transistor circuits, level shifting between logic families, and creating reference voltages.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700">Mode</label>
+      <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <button id="mode-vout" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">Find Vout</button>
+        <button id="mode-r2" class="flex-1 rounded-lg py-2 text-slate-500">Find R2</button>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Input voltage Vin (V)</span>
+        <input id="vin" type="number" step="any" placeholder="12" value="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R1 (&Omega;)</span>
+        <input id="r1" type="number" step="any" placeholder="1000" value="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R2 (&Omega;)</span>
+        <input id="r2" type="number" step="any" placeholder="2000" value="2000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block" id="target-vout-wrap" style="display:none"><span class="text-sm font-medium text-slate-700">Target Vout (V)</span>
+        <input id="target-vout" type="number" step="any" placeholder="5" value="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Vout</div><div id="r-vout" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Voltage ratio</div><div id="r-ratio" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Divider current</div><div id="r-current" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different voltage division ratios mean</h2>
+    <p class="mt-2 text-slate-600">The output voltage as a percentage of input voltage determines how much the signal is attenuated. Different ratios suit different applications.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0 \u2013 10%</span><span class="text-slate-400">Strong attenuation, sensor output reduction</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">10 \u2013 25%</span><span class="text-slate-400">Heavy division, high-voltage ADC scaling</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:25%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">25 \u2013 50%</span><span class="text-slate-400">Moderate division, bias voltages</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">50 \u2013 75%</span><span class="text-slate-400">Light division, level shifting</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:75%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">75 \u2013 90%</span><span class="text-slate-400">Minimal attenuation, reference near Vin</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:90%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">90 \u2013 100%</span><span class="text-slate-400">Near-unity, very large R1 or tiny R2</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD17</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Circuit Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design bias networks, level shifters and reference voltage sources for analog and digital circuits quickly.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83C\uDF31</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sensor User</h3>
+      <p class="mt-1 text-sm text-slate-600">Scale sensor outputs to match ADC input ranges, ensuring maximum resolution in your data acquisition system.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD0C</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Learn the fundamental concept of voltage division by experimenting with different resistor values and observing the results.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83C\uDFB5</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Audio Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design passive attenuator pads, volume controls and signal level matching networks for audio equipment.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Ratio (Vout/Vin)</th><th class="p-3">R1 : R2</th><th class="p-3">Example R1</th><th class="p-3">Example R2</th><th class="p-3">Typical use</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">0.10</td><td class="p-3">9 : 1</td><td class="p-3">9 k\u03a9</td><td class="p-3">1 k\u03a9</td><td class="p-3">High-voltage ADC input</td></tr>
+        <tr><td class="p-3 font-medium">0.25</td><td class="p-3">3 : 1</td><td class="p-3">7.5 k\u03a9</td><td class="p-3">2.5 k\u03a9</td><td class="p-3">Battery level monitoring</td></tr>
+        <tr><td class="p-3 font-medium">0.33</td><td class="p-3">2 : 1</td><td class="p-3">6.8 k\u03a9</td><td class="p-3">3.4 k\u03a9</td><td class="p-3">3.3V from 5V logic</td></tr>
+        <tr><td class="p-3 font-medium">0.50</td><td class="p-3">1 : 1</td><td class="p-3">10 k\u03a9</td><td class="p-3">10 k\u03a9</td><td class="p-3">Mid-rail reference</td></tr>
+        <tr><td class="p-3 font-medium">0.67</td><td class="p-3">1 : 2</td><td class="p-3">3.4 k\u03a9</td><td class="p-3">6.8 k\u03a9</td><td class="p-3">5V from 3.3V logic</td></tr>
+        <tr><td class="p-3 font-medium">0.75</td><td class="p-3">1 : 3</td><td class="p-3">2.5 k\u03a9</td><td class="p-3">7.5 k\u03a9</td><td class="p-3">LED dimming threshold</td></tr>
+        <tr><td class="p-3 font-medium">0.90</td><td class="p-3">1 : 9</td><td class="p-3">1 k\u03a9</td><td class="p-3">9 k\u03a9</td><td class="p-3">Near-rail reference</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Voltage Divider Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose the mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Select \u201cFind Vout\u201d to compute output voltage from resistor values, or \u201cFind R2\u201d to calculate the resistor needed for a target voltage.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill in Vin and the required resistor or target voltage values. All fields update instantly as you type.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the results</h3>
+        <p class="mt-1 text-sm text-slate-600">See the output voltage, voltage division ratio, and the current flowing through the divider. Use these to check loading effects.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for designing voltage dividers</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep divider current 10\u00d7 above load current</h3>
+        <p class="mt-1 text-sm text-slate-600">If your load draws 1 mA, design the divider to draw at least 10 mA. This ensures the load does not significantly alter the output voltage. Use the displayed divider current to verify.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use standard resistor values</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose resistors from the E12 or E24 series (10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82 and their multiples). This makes sourcing components practical.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider tolerance effects</h3>
+        <p class="mt-1 text-sm text-slate-600">A 5% resistor divider can have up to 10% error in Vout. For precision applications, use 1% or better resistors. The worst-case output voltage can be calculated from the resistor tolerances.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use a buffer for variable loads</h3>
+        <p class="mt-1 text-sm text-slate-600">If the load current varies, the output voltage will vary too. Place an op-amp voltage follower between the divider and the load to eliminate loading effects entirely.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How voltage dividers work</h2>
+    <p class="mt-2 text-slate-600">A voltage divider is one of the most fundamental circuits in electronics. It consists of two resistors connected in series across a voltage source. The output voltage is tapped from the junction between the two resistors. Because the same current flows through both resistors (neglecting load current), the voltage drop across each resistor is proportional to its resistance.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">The formula Vout = Vin \u00d7 R2 / (R1 + R2)</h2>
+    <p class="mt-2 text-slate-600">This simple formula is derived from Ohm\u2019s Law. The total resistance is R1 + R2, so the current is I = Vin / (R1 + R2). The voltage across R2 is Vout = I \u00d7 R2 = Vin \u00d7 R2 / (R1 + R2). The output is always less than the input, making this a passive attenuator.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Loading effects and impedance</h2>
+    <p class="mt-2 text-slate-600">The output impedance of a voltage divider is R1 || R2 (the parallel combination of both resistors). This impedance limits how much current can be drawn from the output. A rule of thumb: the load resistance should be at least 10\u00d7 the divider\u2019s output impedance to keep error under 10%.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Applications across electronics</h2>
+    <p class="mt-2 text-slate-600">Voltage dividers appear in nearly every electronic device. They scale battery voltages for ADC monitoring, set bias points for transistors and op-amps, shift logic levels between 5V and 3.3V systems, provide reference voltages for comparators, and form the basis of more complex circuits like Wheatstone bridges and attenuators.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let mode = 'vout';
+
+    function setMode(m) {
+      mode = m;
+      el('mode-vout').className = 'flex-1 rounded-lg py-2 ' + (m === 'vout' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('mode-r2').className = 'flex-1 rounded-lg py-2 ' + (m === 'r2' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('target-vout-wrap').style.display = m === 'r2' ? 'block' : 'none';
+      update();
+    }
+
+    function update() {
+      const vin = parseFloat(el('vin').value);
+      const r1 = parseFloat(el('r1').value);
+      const r2 = parseFloat(el('r2').value);
+
+      if (mode === 'vout') {
+        if (isNaN(vin) || isNaN(r1) || isNaN(r2) || r1 <= 0 || r2 <= 0 || vin <= 0) {
+          el('r-vout').textContent = '\u2014';
+          el('r-ratio').textContent = '\u2014';
+          el('r-current').textContent = '\u2014';
+          return;
+        }
+        const vout = vin * r2 / (r1 + r2);
+        const ratio = r2 / (r1 + r2);
+        const current = vin / (r1 + r2);
+        el('r-vout').textContent = vout.toFixed(3) + ' V';
+        el('r-ratio').textContent = (ratio * 100).toFixed(1) + '%';
+        el('r-current').textContent = (current * 1000).toFixed(2) + ' mA';
+      } else {
+        const target = parseFloat(el('target-vout').value);
+        if (isNaN(vin) || isNaN(r1) || isNaN(target) || vin <= 0 || r1 <= 0 || target >= vin || target <= 0) {
+          el('r-vout').textContent = '\u2014';
+          el('r-ratio').textContent = '\u2014';
+          el('r-current').textContent = '\u2014';
+          return;
+        }
+        const ratio = target / vin;
+        const r2calc = r1 * ratio / (1 - ratio);
+        const current = vin / (r1 + r2calc);
+        el('r-vout').textContent = target.toFixed(3) + ' V';
+        el('r-ratio').textContent = (ratio * 100).toFixed(1) + '%';
+        el('r-current').textContent = (current * 1000).toFixed(2) + ' mA';
+        el('r2').value = r2calc.toFixed(0);
+      }
+    }
+
+    el('mode-vout').addEventListener('click', () => setMode('vout'));
+    el('mode-r2').addEventListener('click', () => setMode('r2'));
+    ['vin','r1','r2','target-vout'].forEach(id => {
+      const elm = el(id);
+      if (elm) elm.addEventListener('input', update);
+    });
+  </script>
+</ToolLayout>

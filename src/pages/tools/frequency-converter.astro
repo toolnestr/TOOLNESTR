@@ -1,0 +1,305 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Frequency & Period Converter';
+const description = 'Free frequency and period converter. Convert between frequency (Hz) and period (s), with automatic unit scaling for Hz, kHz, MHz, GHz.';
+const intro = 'Enter a frequency or a period value and instantly see the converted result. Supports automatic scaling between Hz, kHz, MHz, GHz and seconds, milliseconds, microseconds, nanoseconds.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the relationship between frequency and period?', a: 'Frequency (f) and period (T) are reciprocals: f = 1/T and T = 1/f. Frequency measures how many cycles occur per second (Hz), while period measures the time duration of one cycle. A higher frequency means a shorter period, and vice versa.' },
+  { q: 'What are the common units for frequency?', a: 'Frequency is measured in hertz (Hz), where 1 Hz = 1 cycle per second. Common multiples are kHz (10\u00b3 Hz), MHz (10\u2076 Hz), and GHz (10\u2079 Hz). Radio frequencies range from kHz to GHz, while audio frequencies are typically 20 Hz to 20 kHz.' },
+  { q: 'What are the common units for period?', a: 'Period is measured in seconds (s). For high frequencies, smaller units are used: milliseconds (ms = 10\u207b\u00b3 s), microseconds (\u00b5s = 10\u207b\u2076 s), and nanoseconds (ns = 10\u207b\u2079 s). A 1 GHz signal has a period of 1 ns.' },
+  { q: 'How do I convert frequency to wavelength?', a: 'Wavelength \u03bb = c / f, where c is the speed of light (approximately 3 \u00d7 10\u2078 m/s) and f is frequency in Hz. For example, 100 MHz has a wavelength of about 3 meters. Radio engineers often use this to determine antenna sizes.' },
+  { q: 'What is the electromagnetic spectrum?', a: 'The electromagnetic spectrum spans from extremely low frequency (ELF, 3\u201330 Hz) through radio waves, microwaves, infrared, visible light, ultraviolet, X-rays, and gamma rays. This calculator covers the radio frequency range from ELF to SHF (up to 30 GHz).' },
+  { q: 'What frequency bands are used for Wi-Fi?', a: 'Wi-Fi primarily uses two bands: 2.4 GHz (2400\u20132483.5 MHz) with longer range and better wall penetration, and 5 GHz (5150\u20135850 MHz) with higher speeds but shorter range. Wi-Fi 6E adds the 6 GHz band (5925\u20137125 MHz).' },
+  { q: 'What is the frequency of AC power?', a: 'Mains AC power is 50 Hz in most of the world (Europe, Asia, Africa, Australia) and 60 Hz in North America and parts of South America. Some applications use 400 Hz for aerospace systems to reduce transformer weight.' },
+  { q: 'How do I measure frequency with an oscilloscope?', a: 'Measure the time between two consecutive identical points on the waveform (e.g., zero crossing to zero crossing). This is the period T. Then calculate f = 1/T. Many oscilloscopes have automatic frequency measurement built in.' },
+  { q: 'What is the difference between frequency and duty cycle?', a: 'Frequency is how often a cycle repeats. Duty cycle is the percentage of one period during which the signal is active (high). For example, a 1 kHz signal with 30% duty cycle is high for 0.3 ms and low for 0.7 ms of each 1 ms period.' },
+  { q: 'Can I convert between any frequency and period units?', a: 'Yes. The calculator supports all common units: Hz, kHz, MHz, GHz for frequency and seconds, milliseconds, microseconds, nanoseconds for period. Enter any value in any unit and the corresponding period or frequency is automatically computed and displayed in all units.' },
+];
+
+const freqUnits = ['Hz', 'kHz', 'MHz', 'GHz'];
+const periodUnits = ['s', 'ms', '\u00b5s', 'ns'];
+const freqMultipliers = [1, 1e3, 1e6, 1e9];
+const periodMultipliers = [1, 1e-3, 1e-6, 1e-9];
+const freqUnitSelect = freqUnits.map((u, i) => `<option value="${i}">${u}</option>`).join('');
+const periodUnitSelect = periodUnits.map((u, i) => `<option value="${i}">${u}</option>`).join('');
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Frequency</label>
+        <div class="mt-1 flex gap-2">
+          <input id="freq" type="number" step="any" placeholder="1000" value="1000" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="freq-unit" class="w-24 rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" set:html={freqUnitSelect}></select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Period</label>
+        <div class="mt-1 flex gap-2">
+          <input id="period" type="number" step="any" placeholder="0.001" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="period-unit" class="w-24 rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" set:html={periodUnitSelect}></select>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <label class="block text-sm font-medium text-slate-700">Wavelength (radio waves in free space)</label>
+      <div id="r-wavelength" class="mt-1 rounded-xl bg-slate-50 p-3 text-lg font-bold text-indigo-600">&mdash;</div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Frequency</div><div id="r-freq" class="mt-1 text-lg font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Period</div><div id="r-period" class="mt-1 text-lg font-bold text-emerald-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Band</div><div id="r-band" class="mt-1 text-lg font-bold text-amber-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Wavelength</div><div id="r-wavelength-short" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different frequency bands mean</h2>
+    <p class="mt-2 text-slate-600">The radio frequency spectrum is divided into bands with different propagation characteristics and applications.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">ELF &mdash; Extremely Low Frequency</span><span class="text-slate-400">3 &ndash; 30 Hz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:2%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">VF &mdash; Voice Frequency</span><span class="text-slate-400">30 &ndash; 300 Hz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:2%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">VLF &mdash; Very Low Frequency</span><span class="text-slate-400">1 &ndash; 30 kHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">LF &mdash; Low Frequency</span><span class="text-slate-400">30 &ndash; 300 kHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-yellow-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">MF &mdash; Medium Frequency</span><span class="text-slate-400">300 kHz &ndash; 3 MHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">HF &mdash; High Frequency</span><span class="text-slate-400">3 &ndash; 30 MHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">VHF &mdash; Very High Frequency</span><span class="text-slate-400">30 &ndash; 300 MHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">UHF &mdash; Ultra High Frequency</span><span class="text-slate-400">300 MHz &ndash; 3 GHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-violet-500" style="width:3%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">SHF &mdash; Super High Frequency</span><span class="text-slate-400">3 &ndash; 30 GHz</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-purple-500" style="width:3%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">RF Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Convert between frequency, period and wavelength for antenna design, filter tuning and link budget calculations.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Ham Radio Operator</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly convert between amateur radio bands, calculate antenna lengths, and understand your operating frequencies.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3A4;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Audio Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Convert audio frequencies to periods for delay timing, reverb calculations, and digital audio workstation setups.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Understand the fundamental relationship between frequency and period, and explore the electromagnetic spectrum.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Frequency</th><th class="p-3">Period</th><th class="p-3">Wavelength</th><th class="p-3">Band</th><th class="p-3">Typical use</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">50 Hz</td><td class="p-3">20.00 ms</td><td class="p-3">6000 km</td><td class="p-3">VF</td><td class="p-3">Mains power</td></tr>
+        <tr><td class="p-3 font-medium">1 kHz</td><td class="p-3">1.00 ms</td><td class="p-3">300 km</td><td class="p-3">VLF</td><td class="p-3">Audio test tone</td></tr>
+        <tr><td class="p-3 font-medium">1 MHz</td><td class="p-3">1.00 &micro;s</td><td class="p-3">300 m</td><td class="p-3">MF</td><td class="p-3">AM radio</td></tr>
+        <tr><td class="p-3 font-medium">100 MHz</td><td class="p-3">10.00 ns</td><td class="p-3">3 m</td><td class="p-3">VHF</td><td class="p-3">FM radio</td></tr>
+        <tr><td class="p-3 font-medium">1 GHz</td><td class="p-3">1.00 ns</td><td class="p-3">30 cm</td><td class="p-3">UHF</td><td class="p-3">Mobile phones</td></tr>
+        <tr><td class="p-3 font-medium">10 GHz</td><td class="p-3">100 ps</td><td class="p-3">3 cm</td><td class="p-3">SHF</td><td class="p-3">Satellite / radar</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Frequency & Period Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter a value</h3>
+        <p class="mt-1 text-sm text-slate-600">Type a frequency or period value in either input field. The other field updates automatically in real time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select units</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the appropriate unit prefix for each value. All common scaling factors from Hz to GHz and ns to s are supported.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read band and wavelength</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator identifies the frequency band and computes the free-space wavelength, useful for RF and antenna work.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with frequency and period</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Remember the reciprocal relationship</h3>
+        <p class="mt-1 text-sm text-slate-600">Frequency and period are always reciprocals. If you can remember one conversion (e.g., 1 MHz = 1 &micro;s), you can derive the rest. 1 kHz = 1 ms, 1 GHz = 1 ns.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use scientific notation for large ranges</h3>
+        <p class="mt-1 text-sm text-slate-600">When working across many orders of magnitude, use metric prefixes: 1 GHz = 10&sup9; Hz, 1 ns = 10&supmin;^9 s. This prevents errors from counting zeros.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Wavelength determines antenna size</h3>
+        <p class="mt-1 text-sm text-slate-600">A half-wave dipole antenna is approximately &lambda;/2 long. For 100 MHz (&lambda; = 3 m), a dipole is about 1.5 m. For 2.4 GHz (&lambda; = 12.5 cm), it is only 6.25 cm.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check units before calculating</h3>
+        <p class="mt-1 text-sm text-slate-600">Always verify that you are using consistent units. The calculator handles this automatically, but when doing your own math, convert everything to base Hz and seconds first.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The f = 1/T relationship</h2>
+    <p class="mt-2 text-slate-600">Frequency and period are mathematically reciprocal. If a signal completes 1000 cycles per second, its frequency is 1000 Hz (1 kHz) and each cycle takes 1/1000 of a second (1 ms). This relationship is fundamental to all time-varying signals in electronics, communications, and physics.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Unit prefixes explained</h2>
+    <p class="mt-2 text-slate-600">Metric prefixes allow convenient scaling: kilo (k = 10&sup3;), mega (M = 10&sup6;), giga (G = 10&sup9;). For period: milli (m = 10&supmin;^3), micro (&micro; = 10&supmin;^6), nano (n = 10&supmin;^9). Using the correct prefix avoids unwieldy numbers &mdash; 0.000000001 s is better written as 1 ns.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Wavelength formula &lambda; = c / f</h2>
+    <p class="mt-2 text-slate-600">Wavelength is the physical distance a wave travels during one complete cycle. In free space, radio waves travel at the speed of light c &asymp; 3 &times; 10&sup8; m/s. The wavelength is therefore &lambda; = c / f. This is critical for antenna design: antennas are typically sized as fractions of a wavelength (&lambda;/2, &lambda;/4, etc.).</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Applications across electronics</h2>
+    <p class="mt-2 text-slate-600">Frequency and period conversion is essential in countless applications: setting oscilloscope timebases, designing filters, calculating baud rates for serial communication, tuning radio receivers, specifying crystal oscillators, designing switching power supplies, and synchronizing digital systems. Every electronic device that uses a clock or a carrier wave relies on this fundamental relationship.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const c = 299792458;
+
+    const bands = [
+      { min: 3, max: 30, name: 'ELF \u2014 Extremely Low Frequency' },
+      { min: 30, max: 300, name: 'VF \u2014 Voice Frequency' },
+      { min: 1000, max: 30000, name: 'VLF \u2014 Very Low Frequency' },
+      { min: 30000, max: 300000, name: 'LF \u2014 Low Frequency' },
+      { min: 300000, max: 3000000, name: 'MF \u2014 Medium Frequency' },
+      { min: 3000000, max: 30000000, name: 'HF \u2014 High Frequency' },
+      { min: 30000000, max: 300000000, name: 'VHF \u2014 Very High Frequency' },
+      { min: 300000000, max: 3000000000, name: 'UHF \u2014 Ultra High Frequency' },
+      { min: 3000000000, max: 30000000000, name: 'SHF \u2014 Super High Frequency' },
+    ];
+
+    const freqUnits = ['Hz', 'kHz', 'MHz', 'GHz'];
+    const periodUnits = ['s', 'ms', '\u00b5s', 'ns'];
+    const freqMul = [1, 1e3, 1e6, 1e9];
+    const periodMul = [1, 1e-3, 1e-6, 1e-9];
+
+    let editing = null;
+
+    function fmtHz(v) {
+      if (v >= 1e9) return (v / 1e9).toFixed(4) + ' GHz';
+      if (v >= 1e6) return (v / 1e6).toFixed(4) + ' MHz';
+      if (v >= 1e3) return (v / 1e3).toFixed(4) + ' kHz';
+      return v.toFixed(4) + ' Hz';
+    }
+
+    function fmtSec(v) {
+      if (v >= 1) return v.toFixed(4) + ' s';
+      if (v >= 1e-3) return (v * 1e3).toFixed(4) + ' ms';
+      if (v >= 1e-6) return (v * 1e6).toFixed(4) + ' \u00b5s';
+      return (v * 1e9).toFixed(4) + ' ns';
+    }
+
+    function getBand(freqHz) {
+      for (const b of bands) {
+        if (freqHz >= b.min && freqHz < b.max) return b.name;
+      }
+      return 'Beyond SHF';
+    }
+
+    function fmtWavelength(m) {
+      if (m >= 1000) return (m / 1000).toFixed(2) + ' km';
+      if (m >= 1) return m.toFixed(2) + ' m';
+      if (m >= 0.01) return (m * 100).toFixed(2) + ' cm';
+      return (m * 1000).toFixed(2) + ' mm';
+    }
+
+    function update(source) {
+      const freqVal = parseFloat(el('freq').value);
+      const freqUnitIdx = parseInt(el('freq-unit').value);
+      const periodVal = parseFloat(el('period').value);
+      const periodUnitIdx = parseInt(el('period-unit').value);
+
+      let freqHz;
+      if (source === 'freq' || source === 'freq-unit') {
+        if (isNaN(freqVal)) {
+          el('r-freq').textContent = '\u2014';
+          el('r-period').textContent = '\u2014';
+          el('r-band').textContent = '\u2014';
+          el('r-wavelength').textContent = '\u2014';
+          el('r-wavelength-short').textContent = '\u2014';
+          return;
+        }
+        freqHz = freqVal * freqMul[freqUnitIdx];
+      } else {
+        if (isNaN(periodVal)) {
+          el('r-freq').textContent = '\u2014';
+          el('r-period').textContent = '\u2014';
+          el('r-band').textContent = '\u2014';
+          el('r-wavelength').textContent = '\u2014';
+          el('r-wavelength-short').textContent = '\u2014';
+          return;
+        }
+        freqHz = 1 / (periodVal * periodMul[periodUnitIdx]);
+      }
+
+      const periodSec = 1 / freqHz;
+      const wavelength = c / freqHz;
+
+      if (source !== 'freq' && source !== 'freq-unit') {
+        el('freq').value = freqHz >= 1e9 ? (freqHz / 1e9) : freqHz >= 1e6 ? (freqHz / 1e6) : freqHz >= 1e3 ? (freqHz / 1e3) : freqHz;
+        if (freqHz >= 1e9) el('freq-unit').value = '3';
+        else if (freqHz >= 1e6) el('freq-unit').value = '2';
+        else if (freqHz >= 1e3) el('freq-unit').value = '1';
+        else el('freq-unit').value = '0';
+      }
+      if (source !== 'period' && source !== 'period-unit') {
+        el('period').value = periodSec >= 1 ? periodSec : periodSec >= 1e-3 ? (periodSec * 1e3) : periodSec >= 1e-6 ? (periodSec * 1e6) : (periodSec * 1e9);
+        if (periodSec >= 1) el('period-unit').value = '0';
+        else if (periodSec >= 1e-3) el('period-unit').value = '1';
+        else if (periodSec >= 1e-6) el('period-unit').value = '2';
+        else el('period-unit').value = '3';
+      }
+
+      el('r-freq').textContent = fmtHz(freqHz);
+      el('r-period').textContent = fmtSec(periodSec);
+      el('r-band').textContent = getBand(freqHz);
+      el('r-wavelength').textContent = fmtWavelength(wavelength);
+      el('r-wavelength-short').textContent = fmtWavelength(wavelength);
+    }
+
+    ['freq', 'period'].forEach(id => el(id).addEventListener('input', () => update(id)));
+    ['freq-unit', 'period-unit'].forEach(id => el(id).addEventListener('change', () => update(id)));
+  </script>
+</ToolLayout>

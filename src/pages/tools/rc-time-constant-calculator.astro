@@ -1,0 +1,153 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'RC Time Constant Calculator';
+const description = 'Free RC time constant calculator. Calculate the charge and discharge time constant (\u03c4 = R\u00d7C) for resistor-capacitor circuits.';
+const intro = 'Enter resistance and capacitance to compute the RC time constant \u03c4, along with charge/discharge times to various percentages.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the RC time constant?', a: 'The RC time constant \u03c4 (tau) is the time required to charge a capacitor through a resistor to 63.2% of the supply voltage, or discharge it to 36.8%. It is calculated as \u03c4 = R \u00d7 C, where R is resistance in ohms and C is capacitance in farads.' },
+  { q: 'What is the 5\u03c4 rule?', a: 'After 5 time constants (5\u03c4), a capacitor is considered fully charged (99.3% of final voltage) or fully discharged (0.7% remaining). This rule is used to estimate settling time in RC circuits. 1\u03c4 = 63.2%, 2\u03c4 = 86.5%, 3\u03c4 = 95%, 4\u03c4 = 98.2%, 5\u03c4 = 99.3%.' },
+  { q: 'How do I calculate the charge time to a specific voltage?', a: 'The voltage at time t is V(t) = V\u209b\u2055 \u00d7 (1 - e\u207b\u1d63/\u1d7b). To find time to reach a specific voltage, rearrange: t = -\u03c4 \u00d7 ln(1 - V/V\u209b\u2055). For example, to charge to 90%: t = -\u03c4 \u00d7 ln(0.1) \u2248 2.3\u03c4.' },
+  { q: 'What is the difference between charging and discharging?', a: 'Charging: V(t) = V\u209b\u2055 \u00d7 (1 - e\u207b\u1d63/\u1d7b). Discharging: V(t) = V\u2080 \u00d7 e\u207b\u1d63/\u1d7b. Charging follows a rising exponential curve towards the supply voltage, while discharging follows a falling exponential curve towards zero.' },
+  { q: 'How is the RC time constant used in filters?', a: 'In low-pass filters, the cutoff frequency f\u1d04 = 1/(2\u03c0RC). Frequencies below f\u1d04 pass through, while higher frequencies are attenuated. In high-pass filters, the opposite occurs. The time constant determines the filter\u2019s response speed.' },
+  { q: 'What happens if I use a very large RC time constant?', a: 'A large time constant means slow charging and discharging. This is useful for timing circuits like 555 timer delays, debouncing switches, and power supply smoothing. A large capacitor with a large resistor creates long delays up to minutes.' },
+  { q: 'What is a coupling capacitor in audio circuits?', a: 'A coupling capacitor blocks DC while passing AC audio signals. The RC time constant formed with the input impedance determines the low-frequency cutoff. For good bass response, the time constant should be long enough that the capacitor charges slowly compared to the lowest audio frequency.' },
+  { q: 'How do I choose R and C for a timing circuit?', a: 'For a desired time delay t, choose R and C such that RC = t. Standard timer circuits like the 555 use RC networks where the output period is proportional to RC. For example, t = 1.1 \u00d7 RC for a 555 monostable configuration.' },
+  { q: 'What is the effect of load resistance on an RC circuit?', a: 'A load resistor in parallel with the capacitor forms a voltage divider and changes the effective time constant. The equivalent resistance is the parallel combination of the charging resistor and the load resistor, which reduces the time constant.' },
+  { q: 'Can I use this for power supply decoupling design?', a: 'Yes. RC decoupling networks filter noise from power supplies. The time constant should be much longer than the noise period. For a 100 Hz power supply ripple, choose RC \u2265 10 ms. A 100 \u03a9 resistor with 100 \u00b5F capacitor gives \u03c4 = 10 ms, providing significant filtering.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resistance (R)</span>
+        <div class="mt-1 flex gap-2"><input id="rVal" type="number" step="any" placeholder="10" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="rUnit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="ohm">\u03a9</option><option value="kohm">k\u03a9</option><option value="Mohm">M\u03a9</option></select></div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Capacitance (C)</span>
+        <div class="mt-1 flex gap-2"><input id="cVal" type="number" step="any" placeholder="100" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="cUnit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="pF">pF</option><option value="nF">nF</option><option value="uF">\u00b5F</option></select></div></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Time constant \u03c4</div><div id="r-tau" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Charge to 63.2% (1\u03c4)</div><div id="r-1t" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Discharge to 36.8% (1\u03c4)</div><div id="r-1td" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-5">
+      <div class="rounded-xl bg-indigo-50 p-3 text-center"><div class="text-xs text-slate-500">63.2% (1\u03c4)</div><div id="r-63" class="mt-1 text-sm font-bold text-indigo-700">\u2014</div></div>
+      <div class="rounded-xl bg-indigo-50 p-3 text-center"><div class="text-xs text-slate-500">86.5% (2\u03c4)</div><div id="r-86" class="mt-1 text-sm font-bold text-indigo-700">\u2014</div></div>
+      <div class="rounded-xl bg-indigo-50 p-3 text-center"><div class="text-xs text-slate-500">95.0% (3\u03c4)</div><div id="r-95" class="mt-1 text-sm font-bold text-indigo-700">\u2014</div></div>
+      <div class="rounded-xl bg-indigo-50 p-3 text-center"><div class="text-xs text-slate-500">98.2% (4\u03c4)</div><div id="r-98" class="mt-1 text-sm font-bold text-indigo-700">\u2014</div></div>
+      <div class="rounded-xl bg-indigo-50 p-3 text-center"><div class="text-xs text-slate-500">99.3% (5\u03c4)</div><div id="r-99" class="mt-1 text-sm font-bold text-indigo-700">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Charge percentage over time constants</h2>
+    <p class="mt-2 text-slate-600">The capacitor charges to specific percentages at each time constant. These values follow a predictable exponential curve.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1\u03c4 \u2014 63.2% charged</span><span class="text-slate-400">63.2% of V\u209b\u2055</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:63.2%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2\u03c4 \u2014 86.5% charged</span><span class="text-slate-400">86.5% of V\u209b\u2055</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:86.5%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">3\u03c4 \u2014 95.0% charged</span><span class="text-slate-400">95.0% of V\u209b\u2055</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:95%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">4\u03c4 \u2014 98.2% charged</span><span class="text-slate-400">98.2% of V\u209b\u2055</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:98.2%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">5\u03c4 \u2014 99.3% charged</span><span class="text-slate-400">99.3% of V\u209b\u2055</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-green-600" style="width:99.3%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔧</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Engineer</h3><p class="mt-1 text-sm text-slate-600">Design timing circuits, filters and decoupling networks with precise RC time constant calculations for reliable circuit performance.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔌</span><h3 class="mt-2 font-semibold text-slate-900">Circuit Designer</h3><p class="mt-1 text-sm text-slate-600">Select appropriate R and C values for signal conditioning, debouncing and timing applications in analog and digital designs.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📚</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Student</h3><p class="mt-1 text-sm text-slate-600">Learn the exponential charge and discharge behavior of capacitors and verify textbook calculations with interactive results.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🎵</span><h3 class="mt-2 font-semibold text-slate-900">Audio Engineer</h3><p class="mt-1 text-sm text-slate-600">Calculate coupling capacitor values and filter cutoff frequencies for audio signal processing and amplifier design.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Resistance</th><th class="p-3">Capacitance</th><th class="p-3">Time constant \u03c4</th><th class="p-3">5\u03c4 (fully charged)</th><th class="p-3">Application</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">1 k\u03a9</td><td class="p-3">100 pF</td><td class="p-3">100 ns</td><td class="p-3">500 ns</td><td class="p-3">High-speed signal</td></tr>
+        <tr><td class="p-3 font-medium">10 k\u03a9</td><td class="p-3">10 nF</td><td class="p-3">100 \u00b5s</td><td class="p-3">500 \u00b5s</td><td class="p-3">Audio filter</td></tr>
+        <tr><td class="p-3 font-medium">100 k\u03a9</td><td class="p-3">100 nF</td><td class="p-3">10 ms</td><td class="p-3">50 ms</td><td class="p-3">Power supply decoupling</td></tr>
+        <tr><td class="p-3 font-medium">100 k\u03a9</td><td class="p-3">10 \u00b5F</td><td class="p-3">1 s</td><td class="p-3">5 s</td><td class="p-3">Timer / delay</td></tr>
+        <tr><td class="p-3 font-medium">1 M\u03a9</td><td class="p-3">100 \u00b5F</td><td class="p-3">100 s</td><td class="p-3">500 s</td><td class="p-3">Long timer</td></tr>
+        <tr><td class="p-3 font-medium">10 \u03a9</td><td class="p-3">1000 \u00b5F</td><td class="p-3">10 ms</td><td class="p-3">50 ms</td><td class="p-3">Power supply smoothing</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the RC Time Constant Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter resistance</h3><p class="mt-1 text-sm text-slate-600">Type the resistor value and select the unit (\u03a9, k\u03a9 or M\u03a9). Most timing circuits use resistors in the k\u03a9 range.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter capacitance</h3><p class="mt-1 text-sm text-slate-600">Type the capacitor value and select the unit (pF, nF or \u00b5F). Electrolytic capacitors are typically in the \u00b5F range.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Read charge times</h3><p class="mt-1 text-sm text-slate-600">The calculator shows \u03c4 and the charge times at each time constant level from 1\u03c4 to 5\u03c4 for quick reference.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using RC circuits</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Use the 5\u03c4 rule for settling time</h3><p class="mt-1 text-sm text-slate-600">In digital circuits, the RC time constant determines signal rise time. For reliable logic levels, allow at least 5\u03c4 for a signal to settle. For a 10 k\u03a9 pull-up and 50 pF load, settling time is 5 \u00d7 500 ns = 2.5 \u00b5s.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Choose capacitor type carefully for timing</h3><p class="mt-1 text-sm text-slate-600">Electrolytic capacitors have wide tolerance (\u00b120%) and high leakage current, making them unsuitable for precision timing. Use film or ceramic capacitors with tight tolerance for accurate time constants.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Account for input impedance of following stage</h3><p class="mt-1 text-sm text-slate-600">The input impedance of the next stage acts in parallel with the resistor, changing the effective time constant. Always ensure the load impedance is much higher than the RC circuit resistor to avoid altering the timing.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Use a buffer for consistent timing</h3><p class="mt-1 text-sm text-slate-600">For critical timing applications, buffer the RC output with a comparator or Schmitt trigger. This provides clean digital edges at a precise threshold voltage and prevents loading effects from downstream circuits.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The RC time constant formula: \u03c4 = RC</h2>
+    <p class="mt-2 text-slate-600">The time constant \u03c4 (tau) is the fundamental parameter of any RC circuit. It is simply the product of resistance and capacitance. When R is in ohms and C in farads, \u03c4 is in seconds. A 10 k\u03a9 resistor with 100 \u00b5F capacitor gives \u03c4 = 0.01 \u00d7 0.0001 = 1 second. This single parameter determines how quickly the circuit responds to voltage changes.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">The exponential charge curve explained</h2>
+    <p class="mt-2 text-slate-600">When a voltage step is applied to an RC circuit, the capacitor voltage follows an exponential curve: V(t) = V_final \u00d7 (1 - e\u207b\u1d63/\u1d7b). Initially, the capacitor charges quickly because the voltage difference is large. As it approaches the final voltage, the charging rate slows down. After 1\u03c4, it reaches 63.2%; after 3\u03c4, 95%; and after 5\u03c4, 99.3%. The curve never reaches 100% theoretically, but in practice 5\u03c4 is considered fully charged.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Practical applications of RC circuits</h2>
+    <p class="mt-2 text-slate-600">RC circuits are the building blocks of countless electronic functions. In power supplies, large capacitors smooth rectified AC into DC. In audio, coupling capacitors block DC while passing AC signals. In oscillators, RC networks determine frequency. In digital circuits, RC delays debounce switches and set reset pulse widths. In analog filters, RC networks shape frequency response for everything from subwoofer crossovers to RF bandpass filters.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">RC filters: low-pass and high-pass</h2>
+    <p class="mt-2 text-slate-600">A simple RC low-pass filter places the resistor in series and the capacitor to ground. Frequencies below the cutoff f\u1d04 = 1/(2\u03c0RC) pass through largely unchanged, while higher frequencies are attenuated at 20 dB per decade. A high-pass filter swaps the components: the capacitor blocks DC and low frequencies while passing high frequencies. The same cutoff formula applies, but the response is inverted.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function fmtTime(s) {
+      if (s >= 1) return s.toFixed(3) + ' s';
+      if (s >= 0.001) return (s * 1000).toFixed(2) + ' ms';
+      if (s >= 0.000001) return (s * 1000000).toFixed(1) + ' \u00b5s';
+      return (s * 1000000000).toFixed(1) + ' ns';
+    }
+    function update() {
+      const rVal = parseFloat(el('rVal').value);
+      const rUnit = el('rUnit').value;
+      const cVal = parseFloat(el('cVal').value);
+      const cUnit = el('cUnit').value;
+      if (isNaN(rVal) || isNaN(cVal) || rVal <= 0 || cVal <= 0) {
+        el('r-tau').textContent = '\u2014';
+        el('r-1t').textContent = '\u2014';
+        el('r-1td').textContent = '\u2014';
+        el('r-63').textContent = '\u2014';
+        el('r-86').textContent = '\u2014';
+        el('r-95').textContent = '\u2014';
+        el('r-98').textContent = '\u2014';
+        el('r-99').textContent = '\u2014';
+        return;
+      }
+      let rOhm = rUnit === 'kohm' ? rVal * 1000 : rUnit === 'Mohm' ? rVal * 1000000 : rVal;
+      let cF = cUnit === 'pF' ? cVal / 1000000000000 : cUnit === 'nF' ? cVal / 1000000000 : cVal / 1000000;
+      let tau = rOhm * cF;
+      el('r-tau').textContent = fmtTime(tau);
+      el('r-1t').textContent = fmtTime(tau);
+      el('r-1td').textContent = fmtTime(tau);
+      el('r-63').textContent = fmtTime(1 * tau);
+      el('r-86').textContent = fmtTime(2 * tau);
+      el('r-95').textContent = fmtTime(3 * tau);
+      el('r-98').textContent = fmtTime(4 * tau);
+      el('r-99').textContent = fmtTime(5 * tau);
+    }
+    ['rVal','rUnit','cVal','cUnit'].forEach(id => el(id).addEventListener('input', update));
+    ['rUnit','cUnit'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

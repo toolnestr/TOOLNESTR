@@ -17,6 +17,7 @@ export const categories = [
   { id: 'pdf', name: 'PDF Tools', emoji: '📄' },
   { id: 'creators', name: 'Creators', emoji: '🎨' },
   { id: 'developers', name: 'Developers', emoji: '💻' },
+  { id: 'engineering', name: 'Electrical Engineering', emoji: '⚡' },
 ];
 
 export const tools = [
@@ -93,6 +94,28 @@ export const tools = [
   { slug: 'qr-generator', title: 'QR Code Generator', short: 'Make QR codes for links, text and Wi-Fi.', category: 'developers', emoji: '📱', enabled: true, status: 'live' },
   { slug: 'password-generator', title: 'Password Generator', short: 'Create strong, random, secure passwords.', category: 'developers', emoji: '🔒', enabled: true, status: 'live' },
   { slug: 'temporary-email', title: 'Temporary Email', short: 'Disposable temp email inbox — receive messages instantly.', category: 'developers', emoji: '📧', enabled: true, status: 'live' },
+
+  // ── Electrical Engineering ──
+  { slug: 'ohms-law-calculator', title: 'Ohm\'s Law Calculator', short: 'Calculate voltage, current, resistance & power using V=IR.', category: 'engineering', emoji: '⚡', enabled: true, status: 'live' },
+  { slug: 'resistor-color-code', title: 'Resistor Color Code Calculator', short: 'Decode 4, 5 and 6 band resistor values & tolerance.', category: 'engineering', emoji: '🌈', enabled: true, status: 'live' },
+  { slug: 'voltage-drop-calculator', title: 'Voltage Drop Calculator', short: 'Voltage drop across wires based on material, length & gauge.', category: 'engineering', emoji: '📉', enabled: true, status: 'live' },
+  { slug: 'power-calculator', title: 'Power Calculator', short: 'Calculate electrical power from voltage, current & resistance.', category: 'engineering', emoji: '💡', enabled: true, status: 'live' },
+  { slug: 'led-resistor-calculator', title: 'LED Resistor Calculator', short: 'Find the right resistor value for any LED circuit.', category: 'engineering', emoji: '🔴', enabled: true, status: 'live' },
+  { slug: 'wire-gauge-calculator', title: 'Wire Gauge / AWG Calculator', short: 'Ampacity, resistance & diameter for standard wire gauges.', category: 'engineering', emoji: '🔌', enabled: true, status: 'live' },
+  { slug: 'voltage-divider-calculator', title: 'Voltage Divider Calculator', short: 'Calculate output voltage from two resistors in series.', category: 'engineering', emoji: '🔽', enabled: true, status: 'live' },
+  { slug: 'three-phase-power-calculator', title: '3-Phase Power Calculator', short: 'kW, kVA & kVAR for three-phase electrical systems.', category: 'engineering', emoji: '🔋', enabled: true, status: 'live' },
+  { slug: 'kva-to-kw-calculator', title: 'kVA to kW / Power Factor Calculator', short: 'Convert apparent power to real power with power factor.', category: 'engineering', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'transformer-calculator', title: 'Transformer Calculator', short: 'Turns ratio, voltage & current for ideal transformers.', category: 'engineering', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'battery-runtime-calculator', title: 'Battery Runtime Calculator', short: 'Estimate device runtime from battery capacity & consumption.', category: 'engineering', emoji: '🔋', enabled: true, status: 'live' },
+  { slug: 'capacitor-code-calculator', title: 'Capacitor Code Calculator', short: 'Decode capacitor values from printed codes & markings.', category: 'engineering', emoji: '💾', enabled: true, status: 'live' },
+  { slug: 'lc-resonant-frequency-calculator', title: 'LC Resonant Frequency Calculator', short: 'Resonant frequency of LC tank circuits.', category: 'engineering', emoji: '📡', enabled: true, status: 'live' },
+  { slug: 'rc-time-constant-calculator', title: 'RC Time Constant Calculator', short: 'RC charge/discharge time constant from R & C values.', category: 'engineering', emoji: '⏱️', enabled: true, status: 'live' },
+  { slug: 'star-delta-conversion-calculator', title: 'Star-Delta Conversion Calculator', short: 'Convert between star (Y) and delta (Δ) resistor networks.', category: 'engineering', emoji: '🔺', enabled: true, status: 'live' },
+  { slug: 'pcb-trace-width-calculator', title: 'PCB Trace Width Calculator', short: 'Required trace width for a given current & copper weight.', category: 'engineering', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'frequency-converter', title: 'Frequency & Period Converter', short: 'Convert between frequency and period for any waveform.', category: 'engineering', emoji: '〰️', enabled: true, status: 'live' },
+  { slug: 'conduit-fill-calculator', title: 'Conduit Fill Calculator', short: 'Calculate conduit fill percentage per NEC guidelines.', category: 'engineering', emoji: '📦', enabled: true, status: 'live' },
+  { slug: 'smd-resistor-code-calculator', title: 'SMD Resistor Code Calculator', short: 'Decode 3 and 4 digit SMD resistor codes to ohms.', category: 'engineering', emoji: '🔬', enabled: true, status: 'live' },
+  { slug: 'motor-hp-kw-converter', title: 'Motor HP / kW Converter', short: 'Convert between horsepower, kilowatts and amps for motors.', category: 'engineering', emoji: '⚙️', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

@@ -1,0 +1,216 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'LED Resistor Calculator';
+const description = 'Free LED resistor calculator. Find the correct current-limiting resistor value for any LED circuit with series/parallel configurations.';
+const intro = 'Enter your supply voltage, LED forward voltage and LED current to calculate the resistor value, nearest standard value and power dissipation.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'Why do LEDs need a current-limiting resistor?', a: 'LEDs have a very low internal resistance and will draw excessive current if connected directly to a voltage source. The resistor limits current to a safe level determined by the LED\u2019s forward voltage and desired operating current.' },
+  { q: 'How do I calculate the resistor value for an LED?', a: 'Use the formula: R = (V\u209b\u2055 - V\u2092) / I, where V\u209b\u2055 is the supply voltage, V\u2092 is the LED forward voltage, and I is the desired current in amps. For example, R = (12V - 2V) / 0.02A = 500 \u03a9.' },
+  { q: 'What happens if I use a resistor with too low a value?', a: 'Too low a resistor allows excessive current, which makes the LED brighter but dramatically shortens its lifespan. The LED may overheat, change color, or fail permanently within minutes or hours.' },
+  { q: 'Can I connect multiple LEDs in series?', a: 'Yes. The same current flows through all LEDs in series. The resistor value becomes R = (V\u209b\u2055 - N \u00d7 V\u2092) / I, where N is the number of LEDs. The total forward voltage must not exceed the supply voltage.' },
+  { q: 'What are the standard resistor values (E12 series)?', a: 'The E12 series includes: 10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82 and multiples of these by powers of 10. Always round up to the next standard value to keep current below the LED\u2019s maximum rating.' },
+  { q: 'How do I choose the resistor power rating?', a: 'Calculate power as P = I\u00b2 \u00d7 R (or P = V\u1d04\u1d47\u1d42\u1d43\u1d34\u1d35\u1d34 \u00d7 I). Choose a resistor with at least 2\u00d7 the calculated power dissipation. A 1/4W (0.25W) resistor is fine for most small indicator LEDs at low currents.' },
+  { q: 'What are typical LED forward voltages?', a: 'Forward voltage varies by color: Red ~1.8\u20132.2V, Yellow/Orange ~2.0\u20132.4V, Green ~2.0\u20133.0V, Blue ~3.0\u20133.6V, White ~3.0\u20133.6V, UV ~3.3\u20133.8V. Always check the datasheet for exact values.' },
+  { q: 'What is the typical current for an indicator LED?', a: 'Standard indicator LEDs run at 10\u201320 mA. High-brightness LEDs may need 20\u201350 mA, and power LEDs can require 350\u20131500 mA. For longest life, run LEDs at around 15 mA rather than their absolute maximum.' },
+  { q: 'Can I connect LEDs in parallel with one resistor?', a: 'This is not recommended because minor differences in forward voltage cause uneven current sharing. One LED may draw most of the current and fail. Use a separate resistor for each LED or connect them in series.' },
+  { q: 'What does \u201cforward voltage\u201d mean?', a: 'Forward voltage (V\u2092) is the voltage drop across the LED when it is conducting current. It varies by the LED\u2019s semiconductor material (color) and is specified in the datasheet. The supply voltage must be higher than V\u2092 for the LED to light.' },
+];
+
+const e12Values = [10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82];
+const e12Full = [];
+for (let exp = 0; exp <= 6; exp++) {
+  e12Values.forEach(v => e12Full.push(v * Math.pow(10, exp)));
+}
+e12Full.sort((a, b) => a - b);
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Supply voltage (V)</span>
+        <input id="vs" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">LED forward voltage (V)</span>
+        <input id="vf" type="number" step="any" placeholder="2.0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">LED current (mA)</span>
+        <input id="ledma" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of LEDs in series</span>
+        <input id="nled" type="number" step="1" placeholder="1" value="1" min="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Resistor value</div><div id="r-rval" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Nearest standard (E12/E24)</div><div id="r-std" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Resistor power</div><div id="r-pwr" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Standard resistor values (E12 series)</h2>
+    <p class="mt-2 text-slate-600">The E12 series provides 12 resistance values per decade with \u00b110% tolerance. Always round up to the next standard value for LED current limiting.</p>
+    <div class="mt-5 space-y-3">
+      {e12Values.map((v, idx) => (
+        <div>
+          <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">{v} \u03a9</span><span class="text-slate-400">\u00b110% tolerance</span></div>
+          <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style={`width:${(idx + 1) * 8.33}%`}></div></div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDEE0\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hobbyist</h3>
+      <p class="mt-1 text-sm text-slate-600">Add LEDs to your DIY projects without worrying about burning them out \u2014 get the right resistor value every time.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD0C</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electronics Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Learn the relationship between supply voltage, forward voltage, current and resistance in practical LED circuits.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDCA1</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Lighting Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan LED arrays and displays with confidence, knowing every LED string has the correct current-limiting resistor.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDE80</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Arduino User</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly find the right resistor for LEDs connected to your microcontroller pins and avoid damaging your board.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">LED color</th><th class="p-3">Forward voltage range</th><th class="p-3">Typical V\u2092</th><th class="p-3">Resistor for 12V, 20mA</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3"><span class="inline-block h-3 w-3 rounded-full bg-red-500 align-middle"></span> Red</td><td class="p-3">1.8 \u2013 2.2 V</td><td class="p-3">2.0 V</td><td class="p-3">500 \u03a9</td></tr>
+        <tr><td class="p-3"><span class="inline-block h-3 w-3 rounded-full bg-yellow-400 align-middle"></span> Yellow</td><td class="p-3">2.0 \u2013 2.4 V</td><td class="p-3">2.2 V</td><td class="p-3">490 \u03a9</td></tr>
+        <tr><td class="p-3"><span class="inline-block h-3 w-3 rounded-full bg-green-600 align-middle"></span> Green</td><td class="p-3">2.0 \u2013 3.0 V</td><td class="p-3">2.5 V</td><td class="p-3">475 \u03a9</td></tr>
+        <tr><td class="p-3"><span class="inline-block h-3 w-3 rounded-full bg-blue-600 align-middle"></span> Blue</td><td class="p-3">3.0 \u2013 3.6 V</td><td class="p-3">3.3 V</td><td class="p-3">435 \u03a9</td></tr>
+        <tr><td class="p-3"><span class="inline-block h-4 w-4 rounded-full border bg-white align-middle"></span> White</td><td class="p-3">3.0 \u2013 3.6 V</td><td class="p-3">3.3 V</td><td class="p-3">435 \u03a9</td></tr>
+        <tr><td class="p-3"><span class="inline-block h-3 w-3 rounded-full bg-violet-700 align-middle"></span> UV</td><td class="p-3">3.3 \u2013 3.8 V</td><td class="p-3">3.5 V</td><td class="p-3">425 \u03a9</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the LED Resistor Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter supply voltage</h3>
+        <p class="mt-1 text-sm text-slate-600">Type your power supply voltage (e.g., 5V for Arduino, 12V for automotive, 3.3V for ESP32). The supply must exceed the LED forward voltage.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter LED specs</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the LED forward voltage (check datasheet or use typical values from the table above) and the desired current in mA.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select nearest resistor</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator shows the exact resistor value and the nearest standard E12/E24 value. Always round up to the next standard value for safety.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for LED resistor selection</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always round up to the next standard value</h3>
+        <p class="mt-1 text-sm text-slate-600">If your calculation gives 475 \u03a9 and the nearest E12 values are 470 \u03a9 and 560 \u03a9, choose 560 \u03a9. The slightly lower current protects the LED with no visible brightness difference.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use a higher wattage resistor than calculated</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose a resistor with at least 2\u00d7 the calculated power dissipation. A resistor running at its exact power rating gets very hot and may fail over time. A 1/2W resistor is a safe choice for most indicator LEDs.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Combine LEDs in series when possible</h3>
+        <p class="mt-1 text-sm text-slate-900">Connecting LEDs in series with one resistor is more efficient than parallel with separate resistors. The calculator supports series strings \u2014 just enter the number of LEDs. Ensure total forward voltage is less than supply voltage.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check the datasheet for exact values</h3>
+        <p class="mt-1 text-sm text-slate-600">LED forward voltage and maximum current vary by manufacturer and even between batches. Always consult the datasheet for the specific LED you are using, and design with a safety margin below the maximum ratings.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why LEDs need resistors</h2>
+    <p class="mt-2 text-slate-600">LEDs are current-driven devices, not voltage-driven. Unlike incandescent bulbs which have built-in resistance, an LED\u2019s resistance drops sharply once its forward voltage is reached. Without a current-limiting resistor, the LED would draw unlimited current and destroy itself almost instantly. The resistor sets the operating point and ensures the LED receives exactly the current it was designed for.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Calculating for series strings</h2>
+    <p class="mt-2 text-slate-600">For multiple LEDs in series, the total forward voltage is the sum of each LED\u2019s V\u2092. The resistor drops the remaining voltage: V\u1d04\u1d47\u1d42\u1d43\u1d34\u1d35\u1d34 = V\u209b\u2055 - N \u00d7 V\u2092. The same current flows through all LEDs, making series connections more efficient than parallel. The calculator handles this automatically \u2014 just enter the number of LEDs in series.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Power dissipation</h2>
+    <p class="mt-2 text-slate-600">The resistor dissipates power as heat according to P = I\u00b2R. For a 560 \u03a9 resistor at 20 mA: P = 0.02\u00b2 \u00d7 560 = 0.224 W. A standard 1/4W resistor would be marginal \u2014 a 1/2W resistor is safer. Higher supply voltages or currents may require 1W or larger resistors. Always check the resistor\u2019s power rating before finalizing your design.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Standard resistor series</h2>
+    <p class="mt-2 text-slate-600">Resistors are manufactured in standard values defined by the E-series. E12 (\u00b110% tolerance) has 12 values per decade: 10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82. E24 (\u00b15% tolerance) adds 12 intermediate values. E48 and E96 offer even finer resolution for precision applications. For LED current limiting, E12 values are usually sufficient.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const e12Vals = [10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82];
+    const e24Vals = [10, 11, 12, 13, 15, 16, 18, 20, 22, 24, 27, 30, 33, 36, 39, 43, 47, 51, 56, 62, 68, 75, 82, 91];
+
+    function nearestStandard(val) {
+      for (let exp = 0; exp <= 6; exp++) {
+        const scale = Math.pow(10, exp);
+        for (const sv of e24Vals) {
+          const svv = sv * scale;
+          if (svv >= val) return svv;
+        }
+      }
+      return val;
+    }
+
+    function update() {
+      const vs = parseFloat(el('vs').value);
+      const vf = parseFloat(el('vf').value);
+      const ledMa = parseFloat(el('ledma').value);
+      const nLed = parseInt(el('nled').value) || 1;
+
+      if (isNaN(vs) || isNaN(vf) || isNaN(ledMa) || vs <= 0 || vf <= 0 || ledMa <= 0 || nLed < 1) {
+        el('r-rval').textContent = '\u2014';
+        el('r-std').textContent = '\u2014';
+        el('r-pwr').textContent = '\u2014';
+        return;
+      }
+
+      const iA = ledMa / 1000;
+      const totalVf = vf * nLed;
+
+      if (totalVf >= vs) {
+        el('r-rval').textContent = 'V\u2092 too high';
+        el('r-std').textContent = '\u2014';
+        el('r-pwr').textContent = '\u2014';
+        return;
+      }
+
+      const rVal = (vs - totalVf) / iA;
+      const nearest = nearestStandard(rVal);
+      const pwr = iA * iA * nearest;
+
+      let rDisplay;
+      if (rVal >= 1000000) rDisplay = (rVal / 1000000).toFixed(1) + ' M\u03a9';
+      else if (rVal >= 1000) rDisplay = (rVal / 1000).toFixed(1) + ' k\u03a9';
+      else rDisplay = Math.round(rVal) + ' \u03a9';
+
+      let nDisplay;
+      if (nearest >= 1000000) nDisplay = (nearest / 1000000).toFixed(1) + ' M\u03a9';
+      else if (nearest >= 1000) nDisplay = (nearest / 1000).toFixed(1) + ' k\u03a9';
+      else nDisplay = nearest + ' \u03a9';
+
+      el('r-rval').textContent = rDisplay;
+      el('r-std').textContent = nDisplay;
+      el('r-pwr').textContent = pwr < 0.25 ? (pwr * 1000).toFixed(1) + ' mW' : pwr.toFixed(2) + ' W';
+    }
+
+    ['vs','vf','ledma','nled'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

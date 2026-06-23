@@ -1,0 +1,192 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Star-Delta Conversion Calculator';
+const description = 'Free star-delta (Y-\u0394) conversion calculator. Convert resistor networks between star (wye) and delta (pi) configurations.';
+const intro = 'Enter three resistor values in either star or delta configuration to instantly get the equivalent values in the other configuration.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is star-delta conversion?', a: 'Star-delta (Y-\u0394) conversion is a mathematical technique used to transform a three-terminal resistor network from a star (wye) configuration into an equivalent delta (pi) configuration, and vice versa. The equivalent networks behave identically from the perspective of the three terminals.' },
+  { q: 'Why do I need star-delta conversion?', a: 'Star-delta conversion simplifies circuit analysis by transforming networks that cannot be reduced using simple series-parallel rules. It is essential for analyzing bridge circuits, three-phase power systems, and impedance matching networks.' },
+  { q: 'How do I convert star to delta?', a: 'Star-to-delta formulas: R\u2081\u2082 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2093, R\u2082\u2083 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2090, R\u2083\u2081 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2091. Each delta resistor equals the sum of all star product pairs divided by the opposite star resistor.' },
+  { q: 'How do I convert delta to star?', a: 'Delta-to-star formulas: R\u2090 = (R\u2081\u2082 \u00d7 R\u2083\u2081) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081), R\u2091 = (R\u2081\u2082 \u00d7 R\u2082\u2083) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081), R\u2093 = (R\u2082\u2083 \u00d7 R\u2083\u2081) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081). Each star resistor is the product of the two adjacent delta resistors divided by the sum of all three delta resistors.' },
+  { q: 'When is star-delta conversion used in power systems?', a: 'Three-phase power systems use star (wye) or delta configurations for generator windings, transformer connections and motor windings. Star-delta conversion allows analyzing unbalanced loads, calculating equivalent impedances, and designing motor starters.' },
+  { q: 'Are the star and delta networks exactly equivalent?', a: 'Yes, from the perspective of the three terminals, the star and delta networks are electrically identical. The resistance measured between any two terminals is the same in both configurations. This equivalence holds for resistors, impedances, or any linear components.' },
+  { q: 'What happens if all three resistors are equal?', a: 'For equal star resistors R_Y, the equivalent delta resistors are R_\u0394 = 3 \u00d7 R_Y. Conversely, for equal delta resistors R_\u0394, the equivalent star resistors are R_Y = R_\u0394 / 3. This simple 3:1 ratio makes symmetrical networks easy to convert.' },
+  { q: 'Can I use star-delta conversion for capacitors and inductors?', a: 'Yes. Star-delta conversion works for any linear impedances including capacitors and inductors, using the same formulas. For capacitors, impedances are 1/(j\u03c9C), and for inductors, impedances are j\u03c9L. The conversion applies to the complex impedance values.' },
+  { q: 'What is the delta-star transformation also called?', a: 'The delta-star transformation is also known as the \u0394-Y transformation, delta-wye conversion, or the Kennelly theorem (named after Arthur Edwin Kennelly who published the transformation in 1899). In European literature it is sometimes called the \u0394-\u03a0 transformation.' },
+  { q: 'Is there a mnemonic to remember the formulas?', a: 'For delta-to-star: each star resistor = (product of adjacent delta resistors) / (sum of all three delta resistors). For star-to-delta: each delta resistor = (sum of all products of star resistor pairs) / (opposite star resistor). Think: "star = product over sum; delta = sum over opposite."' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2"><button id="modeStar" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Star \u2192 Delta</button><button id="modeDelta" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600">Delta \u2192 Star</button></div>
+
+    <div id="starMode" class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2090 (\u03a9)</span>
+        <input id="ra" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2091 (\u03a9)</span>
+        <input id="rb" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2093 (\u03a9)</span>
+        <input id="rc" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div id="deltaMode" class="hidden grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2081\u2082 (\u03a9)</span>
+        <input id="r12" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2082\u2083 (\u03a9)</span>
+        <input id="r23" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">R\u2083\u2081 (\u03a9)</span>
+        <input id="r31" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div id="r-label-1" class="text-sm opacity-80">R\u2081\u2082</div><div id="r-out-1" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="r-label-2" class="text-sm text-slate-500">R\u2082\u2083</div><div id="r-out-2" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="r-label-3" class="text-sm text-slate-500">R\u2083\u2081</div><div id="r-out-3" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Resistance ranges comparison</h2>
+    <p class="mt-2 text-slate-600">Star and delta resistor values span different ranges depending on the application. The chart below shows common resistance ranges used in electronics.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Low resistance</span><span class="text-slate-400">1 \u2013 100 \u03a9</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:5%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Medium resistance</span><span class="text-slate-400">100 \u03a9 \u2013 10 k\u03a9</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">High resistance</span><span class="text-slate-400">10 k\u03a9 \u2013 1 M\u03a9</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:30%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">⚡</span><h3 class="mt-2 font-semibold text-slate-900">Electrical Engineer</h3><p class="mt-1 text-sm text-slate-600">Analyze complex resistor networks and simplify bridge circuits for precise measurement and control system design.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏭</span><h3 class="mt-2 font-semibold text-slate-900">Power Systems Engineer</h3><p class="mt-1 text-sm text-slate-600">Convert between wye and delta configurations for three-phase transformer connections, motor windings and load analysis.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📚</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Student</h3><p class="mt-1 text-sm text-slate-600">Master the star-delta transformation technique used extensively in circuit analysis textbooks and exam problems.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔌</span><h3 class="mt-2 font-semibold text-slate-900">Circuit Designer</h3><p class="mt-1 text-sm text-slate-600">Simplify impedance matching networks and filter designs by converting between equivalent network topologies.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Conversion</th><th class="p-3">Formula</th><th class="p-3">Equal values</th><th class="p-3">Notes</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Star \u2192 Delta</td><td class="p-3 p-3">R\u2081\u2082 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2093</td><td class="p-3">R_\u0394 = 3 \u00d7 R_Y</td><td class="p-3">Each delta resistor = sum of products / opposite star</td></tr>
+        <tr><td class="p-3 font-medium">Star \u2192 Delta</td><td class="p-3 p-3">R\u2082\u2083 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2090</td><td class="p-3">R_\u0394 = 3 \u00d7 R_Y</td><td class="p-3">Same numerator, divided by opposite star resistor</td></tr>
+        <tr><td class="p-3 font-medium">Star \u2192 Delta</td><td class="p-3 p-3">R\u2083\u2081 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2091</td><td class="p-3">R_\u0394 = 3 \u00d7 R_Y</td><td class="p-3">Same numerator, divided by opposite star resistor</td></tr>
+        <tr><td class="p-3 font-medium">Delta \u2192 Star</td><td class="p-3 p-3">R\u2090 = (R\u2081\u2082 \u00d7 R\u2083\u2081) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081)</td><td class="p-3">R_Y = R_\u0394 / 3</td><td class="p-3">Product of adjacent deltas / sum of all deltas</td></tr>
+        <tr><td class="p-3 font-medium">Delta \u2192 Star</td><td class="p-3 p-3">R\u2091 = (R\u2081\u2082 \u00d7 R\u2082\u2083) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081)</td><td class="p-3">R_Y = R_\u0394 / 3</td><td class="p-3">Product of adjacent deltas / sum of all deltas</td></tr>
+        <tr><td class="p-3 font-medium">Delta \u2192 Star</td><td class="p-3 p-3">R\u2093 = (R\u2082\u2083 \u00d7 R\u2083\u2081) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081)</td><td class="p-3">R_Y = R_\u0394 / 3</td><td class="p-3">Product of adjacent deltas / sum of all deltas</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Star-Delta Conversion Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Choose conversion direction</h3><p class="mt-1 text-sm text-slate-600">Select either \u201cStar \u2192 Delta\u201d or \u201cDelta \u2192 Star\u201d depending on which configuration you have and what you need to find.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter three known values</h3><p class="mt-1 text-sm text-slate-600">Input the three resistor values in your current configuration. All values must be in ohms (positive numbers only).</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Read equivalent values</h3><p class="mt-1 text-sm text-slate-600">The output section instantly displays the three equivalent resistor values for the other configuration.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for star-delta conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Check symmetry first</h3><p class="mt-1 text-sm text-slate-600">If all three resistors are equal in star (R_Y), the delta equivalent is simply 3 \u00d7 R_Y. For equal delta (R_\u0394), star is R_\u0394 / 3. This shortcut saves time in balanced circuits like three-phase systems.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Verify your conversion</h3><p class="mt-1 text-sm text-slate-600">After converting, measure the resistance between any two terminals in both configurations \u2014 they should be identical. For example, R_ab(Y) = R_a + R_b should equal R_ab(\u0394) = R_12 || (R_23 + R_31).</p></div>
+      <div><h3 class="font-semibold text-slate-900">Use star-delta for bridge circuits</h3><p class="mt-1 text-sm text-slate-600">Wheatstone bridge circuits cannot be simplified using series-parallel rules. Apply star-delta conversion to one side of the bridge (usually the \u0394 on one side) to transform it into a solvable network.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Watch for floating point precision</h3><p class="mt-1 text-sm text-slate-600">When very large and very small resistor values are combined, precision loss can occur. Use consistent units and be aware that extremely unbalanced networks may give results that are sensitive to rounding.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use star-delta conversion</h2>
+    <p class="mt-2 text-slate-600">Star-delta conversion is essential when analyzing circuits that cannot be simplified using only series and parallel resistor combinations. The classic example is the Wheatstone bridge \u2014 a five-resistor network that forms a delta configuration. By converting one delta to a star, the entire circuit becomes a simple series-parallel network that can be solved with Ohm\u2019s Law. This technique is also used in three-phase power system analysis, filter design, and impedance matching.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Star-delta formulas explained</h2>
+    <p class="mt-2 text-slate-600">The star-to-delta conversion formula for R\u2081\u2082 is: R\u2081\u2082 = (R\u2090R\u2091 + R\u2091R\u2093 + R\u2093R\u2090) / R\u2093. The numerator is the sum of all pairwise products of the three star resistors. Each delta resistor uses this same numerator but divides by the opposite star resistor. For delta-to-star: R\u2090 = (R\u2081\u2082 \u00d7 R\u2083\u2081) / (R\u2081\u2082 + R\u2082\u2083 + R\u2083\u2081). Each star resistor is the product of the two adjacent delta resistors divided by the sum of all three delta resistors.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Applications in three-phase systems</h2>
+    <p class="mt-2 text-slate-600">Three-phase power systems use star (wye) and delta configurations for generator and transformer windings. Star connections provide a neutral point and two voltage levels (phase and line). Delta connections provide higher current capacity without a neutral. Converting between configurations is necessary for analyzing unbalanced loads, calculating fault currents, and designing motor starters such as star-delta starters that reduce inrush current during motor startup.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Impedance matching with star-delta</h2>
+    <p class="mt-2 text-slate-600">In RF and audio circuits, star-delta (or pi-wye) transformations are used for impedance matching networks. A pi-network (\u0394 configuration) can be converted to a tee-network (Y configuration) and vice versa, allowing designers to choose the topology that best suits their component arrangement and parasitic management. This is particularly useful in antenna matching, filter design, and amplifier interstage coupling.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let currentMode = 'star';
+
+    function fmtR(val) {
+      if (isNaN(val) || val === Infinity || val <= 0) return '\u2014';
+      if (val >= 1000000) return (val / 1000000).toFixed(2) + ' M\u03a9';
+      if (val >= 1000) return (val / 1000).toFixed(2) + ' k\u03a9';
+      return val.toFixed(2) + ' \u03a9';
+    }
+
+    function updateStar() {
+      const ra = parseFloat(el('ra').value);
+      const rb = parseFloat(el('rb').value);
+      const rc = parseFloat(el('rc').value);
+      if (isNaN(ra) || isNaN(rb) || isNaN(rc) || ra <= 0 || rb <= 0 || rc <= 0) {
+        el('r-out-1').textContent = '\u2014';
+        el('r-out-2').textContent = '\u2014';
+        el('r-out-3').textContent = '\u2014';
+        return;
+      }
+      const sum = ra * rb + rb * rc + rc * ra;
+      const r12 = sum / rc;
+      const r23 = sum / ra;
+      const r31 = sum / rb;
+      el('r-out-1').textContent = fmtR(r12);
+      el('r-out-2').textContent = fmtR(r23);
+      el('r-out-3').textContent = fmtR(r31);
+    }
+
+    function updateDelta() {
+      const r12 = parseFloat(el('r12').value);
+      const r23 = parseFloat(el('r23').value);
+      const r31 = parseFloat(el('r31').value);
+      if (isNaN(r12) || isNaN(r23) || isNaN(r31) || r12 <= 0 || r23 <= 0 || r31 <= 0) {
+        el('r-out-1').textContent = '\u2014';
+        el('r-out-2').textContent = '\u2014';
+        el('r-out-3').textContent = '\u2014';
+        return;
+      }
+      const sum = r12 + r23 + r31;
+      const ra = (r12 * r31) / sum;
+      const rb = (r12 * r23) / sum;
+      const rc = (r23 * r31) / sum;
+      el('r-out-1').textContent = fmtR(ra);
+      el('r-out-2').textContent = fmtR(rb);
+      el('r-out-3').textContent = fmtR(rc);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      if (mode === 'star') {
+        el('modeStar').className = 'rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+        el('modeDelta').className = 'rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600';
+        el('starMode').classList.remove('hidden');
+        el('deltaMode').classList.add('hidden');
+        el('r-label-1').textContent = 'R\u2081\u2082';
+        el('r-label-2').textContent = 'R\u2082\u2083';
+        el('r-label-3').textContent = 'R\u2083\u2081';
+        updateStar();
+      } else {
+        el('modeDelta').className = 'rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+        el('modeStar').className = 'rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600';
+        el('starMode').classList.add('hidden');
+        el('deltaMode').classList.remove('hidden');
+        el('r-label-1').textContent = 'R\u2090';
+        el('r-label-2').textContent = 'R\u2091';
+        el('r-label-3').textContent = 'R\u2093';
+        updateDelta();
+      }
+    }
+
+    el('modeStar').addEventListener('click', () => setMode('star'));
+    el('modeDelta').addEventListener('click', () => setMode('delta'));
+    ['ra','rb','rc'].forEach(id => el(id).addEventListener('input', updateStar));
+    ['r12','r23','r31'].forEach(id => el(id).addEventListener('input', updateDelta));
+  </script>
+</ToolLayout>

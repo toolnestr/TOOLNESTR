@@ -1,0 +1,241 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'kVA to kW / Power Factor Calculator';
+const description = 'Free kVA to kW calculator. Convert apparent power (kVA) to real power (kW) and calculate power factor from kW and kVA values.';
+const intro = 'Enter any two values \u2014 kVA, kW or power factor \u2014 to calculate the third. Also find kVAR reactive power for AC power system analysis.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the difference between kVA and kW?', a: 'kVA (kilovolt-amps) is apparent power, which is the total power supplied by the source. kW (kilowatts) is real power, which is the actual power consumed by the load doing useful work. The difference is reactive power (kVAR), which sustains magnetic fields but does no work.' },
+  { q: 'How do I convert kVA to kW?', a: 'Multiply kVA by the power factor: kW = kVA \u00d7 PF. For example, 100 kVA at 0.8 PF = 80 kW. Without knowing the power factor, you cannot accurately convert kVA to kW.' },
+  { q: 'What is power factor?', a: 'Power factor is the ratio of real power (kW) to apparent power (kVA): PF = kW / kVA. It ranges from 0 to 1 and indicates how efficiently the electrical power is being used. A PF of 1.0 means all power is doing useful work.' },
+  { q: 'What causes reactive power (kVAR)?', a: 'Reactive power is caused by inductive loads such as motors, transformers, and fluorescent lighting ballasts, which require magnetic fields to operate. These fields store and release energy each AC cycle, creating a phase shift between voltage and current.' },
+  { q: 'How are kVA, kW and kVAR related?', a: 'They form a right-triangle relationship: kVA\u00b2 = kW\u00b2 + kVAR\u00b2. kVA is the hypotenuse, kW is the adjacent side (real power), and kVAR is the opposite side (reactive power). Power factor is cos(\u03b8) = kW / kVA.' },
+  { q: 'Why do utilities charge for power factor?', a: 'Low power factor means higher current for the same real power, which requires larger transformers, switchgear, and wiring. Utilities add PF penalties to recover these infrastructure costs. Typical PF thresholds are 0.85 to 0.90.' },
+  { q: 'What is a typical power factor for a generator?', a: 'Generators are typically rated at 0.8 PF. This means a 500 kVA generator can supply 400 kW continuously. Operating above the rated PF may overheat the generator, while operating below it under-utilizes the machine.' },
+  { q: 'How do I improve power factor?', a: 'Add power factor correction capacitors in parallel with inductive loads. Capacitors supply leading reactive power that cancels the lagging reactive power of motors and transformers. Automatic PF correction banks switch capacitor stages as needed.' },
+  { q: 'What is the power triangle?', a: 'The power triangle graphically shows the relationship between kW (horizontal), kVAR (vertical), and kVA (hypotenuse). The angle between kW and kVA is the phase angle \u03b8, and cos(\u03b8) = PF. Vector addition of kW and kVAR gives kVA.' },
+  { q: 'Can power factor be leading?', a: 'Yes, when capacitive loads exceed inductive loads, power factor becomes leading. While utilities prefer near-unity PF, slightly leading PF is generally acceptable. Large installations with extensive capacitor banks can become leading during light load periods.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Apparent power (kVA)</span>
+        <input id="kva" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Real power (kW)</span>
+        <input id="kw" type="number" step="any" placeholder="80" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Power factor (0 \u2013 1)</span>
+        <input id="pf" type="number" step="any" placeholder="0.80" min="0" max="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Reactive power (kVAR)</span>
+        <input id="kvar" type="number" step="any" placeholder="60" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Power Factor</div><div id="r-pf" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Real Power (kW)</div><div id="r-kw" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Reactive Power (kVAR)</div><div id="r-kvar" class="mt-1 text-2xl font-bold text-amber-600">\u2014</div></div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Apparent Power (kVA)</div><div id="r-kva" class="mt-1 text-lg font-bold text-slate-800">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Phase angle</div><div id="r-angle" class="mt-1 text-lg font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different power factor correction levels mean</h2>
+    <p class="mt-2 text-slate-600">Power factor correction improves system efficiency. Here is how different PF levels affect your electrical system.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.60 \u2013 0.70</span><span class="text-slate-400">Uncorrected \u2014 heavy penalties, high losses</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:65%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.70 \u2013 0.80</span><span class="text-slate-400">Partially corrected \u2014 still incurring penalties</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:75%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.80 \u2013 0.90</span><span class="text-slate-400">Typical \u2014 meets most utility thresholds</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:85%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.90 \u2013 0.95</span><span class="text-slate-400">Good \u2014 most utilities waive penalties</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:93%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.95 \u2013 0.99</span><span class="text-slate-400">Excellent \u2014 optimal efficiency</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:98%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.99 \u2013 1.00</span><span class="text-slate-400">Near unity \u2014 ideal, all power is real</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83C\uDFE2</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Facility Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitor and track power factor across your facility to avoid utility penalties and optimize energy costs.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDEE1\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Generator Operator</h3>
+      <p class="mt-1 text-sm text-slate-600">Size generators correctly by converting load kW to kVA at the expected power factor to ensure adequate capacity.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u26A1</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Utility Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Analyze customer load profiles and determine power factor penalty structures for industrial and commercial accounts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u2600\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Solar Installer</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify that inverter power factor settings match grid requirements and that solar generation does not cause PF issues.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Motor rating (HP)</th><th class="p-3">kW approx</th><th class="p-3">Typical PF</th><th class="p-3">Required kVAR correction</th><th class="p-3">Capacitor size (&mu;F @ 480V)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">5 HP</td><td class="p-3">3.7 kW</td><td class="p-3">0.80</td><td class="p-3">2.8 kVAR</td><td class="p-3">38 &mu;F</td></tr>
+        <tr><td class="p-3 font-medium">10 HP</td><td class="p-3">7.5 kW</td><td class="p-3">0.82</td><td class="p-3">5.2 kVAR</td><td class="p-3">72 &mu;F</td></tr>
+        <tr><td class="p-3 font-medium">25 HP</td><td class="p-3">18.7 kW</td><td class="p-3">0.84</td><td class="p-3">12.1 kVAR</td><td class="p-3">167 &mu;F</td></tr>
+        <tr><td class="p-3 font-medium">50 HP</td><td class="p-3">37.3 kW</td><td class="p-3">0.86</td><td class="p-3">22.1 kVAR</td><td class="p-3">306 &mu;F</td></tr>
+        <tr><td class="p-3 font-medium">100 HP</td><td class="p-3">74.6 kW</td><td class="p-3">0.88</td><td class="p-3">40.3 kVAR</td><td class="p-3">557 &mu;F</td></tr>
+        <tr><td class="p-3 font-medium">200 HP</td><td class="p-3">149 kW</td><td class="p-3">0.90</td><td class="p-3">72.2 kVAR</td><td class="p-3">998 &mu;F</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the kVA to kW Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter any two values</h3>
+        <p class="mt-1 text-sm text-slate-600">Type in any two of the four values: kVA, kW, power factor, or kVAR. The remaining fields compute automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Verify the power triangle</h3>
+        <p class="mt-1 text-sm text-slate-600">Check that the displayed kVA, kW and kVAR satisfy the power triangle relationship. The phase angle shows the lead/lag condition.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Plan correction if needed</h3>
+        <p class="mt-1 text-sm text-slate-600">If power factor is below your utility\u2019s threshold, use the kVAR result to size correction capacitors and improve efficiency.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for power factor management</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Know your utility\u2019s PF threshold</h3>
+        <p class="mt-1 text-sm text-slate-600">Most utilities set a power factor penalty threshold between 0.85 and 0.90. Check your utility tariff to know the exact value and avoid unexpected charges on your bill.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Automatic correction banks are worth it</h3>
+        <p class="mt-1 text-sm text-slate-600">For facilities with variable loads, automatic PF correction banks with multiple capacitor stages adjust to maintain target PF. The investment often pays back in 1\u20133 years through penalty avoidance.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid over-correction</h3>
+        <p class="mt-1 text-sm text-slate-900">Adding too many capacitors can make the PF leading, which can cause over-voltage conditions, harmonic resonance, and damage to equipment. Target a PF of 0.95\u20130.98 lagging for best results.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">VFDs improve PF naturally</h3>
+        <p class="mt-1 text-sm text-slate-600">Variable frequency drives include built-in DC bus capacitors that provide power factor correction. A VFD-driven motor often has PF of 0.95+ without external capacitors, reducing the need for dedicated correction equipment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Apparent vs real vs reactive power</h2>
+    <p class="mt-2 text-slate-600">In AC power systems, the total power supplied by the source is called apparent power (S), measured in kVA. Only part of this power does useful work \u2014 this is real power (P), measured in kW. The remainder, reactive power (Q), measured in kVAR, flows back and forth between the source and magnetic fields in inductive loads. The vector sum of real and reactive power gives apparent power: S\u00b2 = P\u00b2 + Q\u00b2.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Power factor formula</h2>
+    <p class="mt-2 text-slate-600">Power factor is defined as PF = P / S = kW / kVA. It is also the cosine of the phase angle between voltage and current: PF = cos(\u03b8). For sinusoidal AC systems, \u03b8 = arccos(PF). The reactive power can be calculated as Q = S \u00d7 sin(\u03b8) or Q = \u221a(S\u00b2 - P\u00b2).</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Why power factor matters</h2>
+    <p class="mt-2 text-slate-600">Low power factor has several negative consequences: increased current for the same real power, causing higher I\u00b2R losses in conductors; larger voltage drops in distribution systems; reduced capacity of transformers and generators; and utility penalties that can add 10\u201330% to the electric bill. Improving PF from 0.70 to 0.95 reduces current by about 26% and eliminates most penalties.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to correct power factor</h2>
+    <p class="mt-2 text-slate-600">Power factor correction involves adding capacitors in parallel with inductive loads. The required capacitance in kVAR is Q_correct = P \u00d7 (tan(\u03b8_initial) - tan(\u03b8_target)). For a 500 kW load improving from 0.80 to 0.95 PF, about 187 kVAR of capacitance is needed. Automatic capacitor banks with power factor controllers switch stages in and out to maintain the target PF as load varies.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let updating = false;
+
+    function update(source) {
+      if (updating) return;
+      updating = true;
+
+      const kva = parseFloat(el('kva').value);
+      const kw = parseFloat(el('kw').value);
+      const pf = parseFloat(el('pf').value);
+      const kvar = parseFloat(el('kvar').value);
+
+      const hasKVA = !isNaN(kva) && kva > 0;
+      const hasKW = !isNaN(kw) && kw > 0;
+      const hasPF = !isNaN(pf) && pf > 0 && pf <= 1;
+      const hasKVAR = !isNaN(kvar);
+
+      const count = (hasKVA ? 1 : 0) + (hasKW ? 1 : 0) + (hasPF ? 1 : 0) + (hasKVAR ? 1 : 0);
+
+      if (count < 2) {
+        el('r-kva').textContent = '\u2014';
+        el('r-pf').textContent = '\u2014';
+        el('r-kw').textContent = '\u2014';
+        el('r-kvar').textContent = '\u2014';
+        el('r-angle').textContent = '\u2014';
+        updating = false;
+        return;
+      }
+
+      let rKVA = NaN, rKW = NaN, rPF = NaN, rKVAR = NaN;
+
+      if (hasKVA && hasKW) {
+        rKVA = kva; rKW = kw; rPF = kw / kva; rKVAR = Math.sqrt(kva * kva - kw * kw);
+      } else if (hasKVA && hasPF) {
+        rKVA = kva; rPF = pf; rKW = kva * pf; rKVAR = kva * Math.sqrt(1 - pf * pf);
+      } else if (hasKVA && hasKVAR) {
+        rKVA = kva; rKVAR = kvar; rKW = Math.sqrt(kva * kva - kvar * kvar); rPF = rKW / kva;
+      } else if (hasKW && hasPF) {
+        rKW = kw; rPF = pf; rKVA = kw / pf; rKVAR = rKVA * Math.sqrt(1 - pf * pf);
+      } else if (hasKW && hasKVAR) {
+        rKW = kw; rKVAR = kvar; rKVA = Math.sqrt(kw * kw + kvar * kvar); rPF = kw / rKVA;
+      } else if (hasPF && hasKVAR) {
+        rPF = pf; rKVAR = kvar; rKVA = kvar / Math.sqrt(1 - pf * pf); rKW = rKVA * pf;
+      } else {
+        updating = false;
+        return;
+      }
+
+      if (count >= 2) {
+        if (source !== 'kva' && !isNaN(rKVA)) el('kva').value = parseFloat(rKVA.toFixed(4));
+        if (source !== 'kw' && !isNaN(rKW)) el('kw').value = parseFloat(rKW.toFixed(4));
+        if (source !== 'pf' && !isNaN(rPF) && rPF <= 1) el('pf').value = parseFloat(rPF.toFixed(4));
+        if (source !== 'kvar' && !isNaN(rKVAR)) el('kvar').value = parseFloat(rKVAR.toFixed(4));
+      }
+
+      const angle = Math.acos(rPF) * 180 / Math.PI;
+
+      el('r-kva').textContent = isNaN(rKVA) ? '\u2014' : rKVA.toFixed(2) + ' kVA';
+      el('r-kw').textContent = isNaN(rKW) ? '\u2014' : rKW.toFixed(2) + ' kW';
+      el('r-pf').textContent = isNaN(rPF) ? '\u2014' : rPF.toFixed(4);
+      el('r-kvar').textContent = isNaN(rKVAR) ? '\u2014' : rKVAR.toFixed(2) + ' kVAR';
+      el('r-angle').textContent = isNaN(angle) ? '\u2014' : angle.toFixed(1) + '\u00b0';
+
+      updating = false;
+    }
+
+    ['kva','kw','pf','kvar'].forEach(id => el(id).addEventListener('input', () => update(id)));
+  </script>
+</ToolLayout>

@@ -1,0 +1,195 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PCB Trace Width Calculator';
+const description = 'Free PCB trace width calculator. Calculate the required trace width for a given current, copper weight and temperature rise using IPC-2221 standards.';
+const intro = 'Enter the current, copper thickness (oz/ft\u00b2) and allowable temperature rise to get the minimum trace width for internal and external PCB layers.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the IPC-2221 standard?', a: 'IPC-2221 is the industry standard for PCB design that includes formulas for calculating trace width based on current, copper thickness, and allowable temperature rise. The formula used is I = k \u00d7 \u0394T^0.44 \u00d7 A^0.725, where I is current, \u0394T is temperature rise, A is cross-sectional area, and k is a constant (0.048 for external, 0.024 for internal layers).' },
+  { q: 'What is the difference between internal and external PCB traces?', a: 'External traces are on the outer layers of the PCB and are exposed to air, allowing better heat dissipation. Internal traces are buried in the PCB and surrounded by insulating material, which traps heat. As a result, external traces can carry more current than internal traces of the same width.' },
+  { q: 'What is copper weight in PCBs?', a: 'Copper weight refers to the thickness of the copper layer on the PCB, measured in ounces per square foot (oz/ft\u00b2). Standard copper weights are 0.5 oz (17.5 \u00b5m), 1 oz (35 \u00b5m), and 2 oz (70 \u00b5m). Heavier copper allows higher current capacity but makes etching finer traces more difficult.' },
+  { q: 'What temperature rise is safe for PCB traces?', a: 'A 10\u00b0C to 20\u00b0C temperature rise is typical for most designs. A 10\u00b0C rise is conservative and recommended for sensitive circuits or high-reliability applications. Up to 30\u00b0C may be acceptable for power boards if the PCB material can handle the temperature. FR-4 is typically rated for 130\u2013140\u00b0C continuous.' },
+  { q: 'How do I convert trace width from mm to mils?', a: '1 mil = 0.001 inch = 0.0254 mm. To convert mm to mils, divide by 0.0254. For example, 0.5 mm = 19.7 mils. The calculator shows both units for your convenience.' },
+  { q: 'Can I use the calculator for high-frequency designs?', a: 'For high-frequency designs, trace width also affects impedance. The IPC-2221 formula only considers current-carrying capacity. For RF designs, use an impedance calculator in addition to this tool to ensure controlled impedance.' },
+  { q: 'What happens if the trace is too narrow?', a: 'A trace that is too narrow for its current will overheat, potentially causing the copper to delaminate from the PCB substrate. The trace may act like a fuse and burn open, or the excessive heat can damage nearby components and solder joints.' },
+  { q: 'Should I use a safety margin on trace width?', a: 'Yes. IPC-2221 gives the minimum width for a given temperature rise. It is good practice to add 20\u201330% margin for reliability, especially in high-temperature environments or when the trace passes near heat-sensitive components.' },
+  { q: 'How does trace length affect current capacity?', a: 'The IPC-2221 formula does not account for trace length directly. However, longer traces have higher resistance and thus more voltage drop. For high-current traces, keep them as short as possible and consider using copper pours or bus bars for very long runs.' },
+  { q: 'What is cross-sectional area and why does it matter?', a: 'Cross-sectional area is trace width multiplied by copper thickness. It determines the trace\'s resistance and current-carrying capacity. A larger cross-section means lower resistance, less voltage drop, and better heat dissipation. The calculator displays the minimum area required.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current (A)</span>
+        <input id="current" type="number" step="any" placeholder="5" value="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Copper weight (oz/ft&sup2;)</span>
+        <select id="copper" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0.5">0.5 oz (17.5 &micro;m)</option>
+          <option value="1" selected>1 oz (35 &micro;m)</option>
+          <option value="2">2 oz (70 &micro;m)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Temperature rise (&deg;C)</span>
+        <input id="temp-rise" type="number" step="any" placeholder="10" value="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Layer type</span>
+        <select id="layer" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="external">External (exposed to air)</option>
+          <option value="internal">Internal (buried)</option>
+        </select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Trace width (mm)</div><div id="r-mm" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Trace width (mils)</div><div id="r-mils" class="mt-1 text-2xl font-bold text-emerald-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Cross-sectional area</div><div id="r-area" class="mt-1 text-2xl font-bold text-slate-800">&mdash;</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different trace widths mean</h2>
+    <p class="mt-2 text-slate-600">Minimum trace width increases with current. These examples assume 1 oz copper on an external layer with a 10&deg;C temperature rise.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1 A</span><span class="text-slate-400">~0.3 mm (12 mil)</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:4%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2 A</span><span class="text-slate-400">~0.6 mm (24 mil)</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:9%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">5 A</span><span class="text-slate-400">~2.2 mm (87 mil)</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:32%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">10 A</span><span class="text-slate-400">~6.8 mm (268 mil)</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E0;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">PCB Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Route power traces with confidence, ensuring your PCB meets current requirements without excessive heating or voltage drop.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2699;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hardware Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Validate your board design against IPC standards early in the process, avoiding costly respins due to inadequate trace widths.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F527;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hobbyist</h3>
+      <p class="mt-1 text-sm text-slate-600">Design your own PCBs at home with proper trace sizing for power supplies, motor drivers, and other high-current circuits.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Learn the relationship between current, copper thickness, temperature rise, and trace geometry in practical PCB design.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Trace width (mm)</th><th class="p-3">1 oz external</th><th class="p-3">1 oz internal</th><th class="p-3">2 oz external</th><th class="p-3">2 oz internal</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">0.25 mm</td><td class="p-3">0.8 A</td><td class="p-3">0.6 A</td><td class="p-3">1.4 A</td><td class="p-3">1.0 A</td></tr>
+        <tr><td class="p-3 font-medium">0.50 mm</td><td class="p-3">1.5 A</td><td class="p-3">1.0 A</td><td class="p-3">2.5 A</td><td class="p-3">1.8 A</td></tr>
+        <tr><td class="p-3 font-medium">1.00 mm</td><td class="p-3">2.8 A</td><td class="p-3">2.0 A</td><td class="p-3">4.8 A</td><td class="p-3">3.4 A</td></tr>
+        <tr><td class="p-3 font-medium">2.00 mm</td><td class="p-3">5.0 A</td><td class="p-3">3.5 A</td><td class="p-3">8.5 A</td><td class="p-3">6.0 A</td></tr>
+        <tr><td class="p-3 font-medium">3.00 mm</td><td class="p-3">7.0 A</td><td class="p-3">5.0 A</td><td class="p-3">12.0 A</td><td class="p-3">8.5 A</td></tr>
+        <tr><td class="p-3 font-medium">5.00 mm</td><td class="p-3">11.0 A</td><td class="p-3">7.5 A</td><td class="p-3">18.5 A</td><td class="p-3">13.0 A</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the PCB Trace Width Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter current and parameters</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the maximum current the trace must carry. Select copper weight and expected temperature rise for your application.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose layer type</h3>
+        <p class="mt-1 text-sm text-slate-600">Select external for outer PCB layers (better heat dissipation) or internal for buried traces inside the board stackup.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read minimum trace width</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator shows the minimum trace width in mm and mils, plus the cross-sectional area. Apply a safety margin of 20&ndash;30% for reliability.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for PCB trace width design</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always add safety margin</h3>
+        <p class="mt-1 text-sm text-slate-600">The IPC-2221 formula provides the minimum trace width for a given temperature rise. Add 20&ndash;30% to account for manufacturing tolerances, ambient temperature, and nearby heat sources.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use copper pours for high currents</h3>
+        <p class="mt-1 text-sm text-slate-600">For currents above 10 A, consider using copper pours or polygons instead of traces. They provide lower resistance, better heat spreading, and higher current capacity.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider thermal reliefs</h3>
+        <p class="mt-1 text-sm text-slate-600">When connecting high-current traces to through-hole pads, use thermal relief spokes to prevent heat sinking during soldering. Standard thermal reliefs reduce effective trace width at the connection point.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep traces short for high currents</h3>
+        <p class="mt-1 text-sm text-slate-600">Long traces have higher resistance and voltage drop. For high-current paths, minimize trace length or use thicker copper (2 oz or more) to reduce losses and heating.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The IPC-2221 formula</h2>
+    <p class="mt-2 text-slate-600">The IPC-2221 standard provides the formula: I = k &times; &Delta;T<sup>0.44</sup> &times; A<sup>0.725</sup>, where I is current in amperes, &Delta;T is temperature rise in &deg;C, A is cross-sectional area in square mils, and k is 0.048 for external layers and 0.024 for internal layers. The calculator solves this equation for area A given current I, then divides by copper thickness to find trace width.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Internal vs external traces</h2>
+    <p class="mt-2 text-slate-600">External traces are exposed to ambient air and can dissipate heat through convection and radiation. Internal traces are buried in the PCB substrate (typically FR-4), which is a poor thermal conductor. As a result, internal traces can carry only about 60&ndash;70% of the current that the same width trace on an external layer can carry. The calculator accounts for this with different k constants.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Copper weight explained</h2>
+    <p class="mt-2 text-slate-600">Copper weight is the average thickness of copper on a PCB layer. Standard 1 oz/ft&sup2; copper is approximately 35 &micro;m (1.4 mils) thick. Heavier copper such as 2 oz (70 &micro;m) or 3 oz (105 &micro;m) provides lower resistance and higher current capacity. However, finer trace widths and spacings are more difficult to etch with thicker copper, so use heavier copper only when needed for power circuits.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Thermal considerations</h2>
+    <p class="mt-2 text-slate-600">Trace heating is caused by I&sup2;R losses. A trace carrying 10 A with 0.01 &Omega; resistance dissipates 1 W of heat. If the trace cannot radiate this heat effectively, its temperature rises. Excessive temperature rise can damage the PCB laminate, weaken solder joints, and change the resistance of nearby components. Always design for the worst-case ambient temperature and allow adequate cooling around high-current traces.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const I = parseFloat(el('current').value);
+      const copperOz = parseFloat(el('copper').value);
+      const dT = parseFloat(el('temp-rise').value);
+      const layer = el('layer').value;
+
+      if (isNaN(I) || isNaN(dT) || I <= 0 || dT <= 0) {
+        el('r-mm').textContent = '\u2014';
+        el('r-mils').textContent = '\u2014';
+        el('r-area').textContent = '\u2014';
+        return;
+      }
+
+      const k = layer === 'external' ? 0.048 : 0.024;
+      const thicknessMils = copperOz * 1.37;
+      const A_mil2 = Math.pow(I / (k * Math.pow(dT, 0.44)), 1 / 0.725);
+      const widthMils = A_mil2 / thicknessMils;
+      const widthMm = widthMils * 0.0254;
+
+      el('r-mm').textContent = widthMm.toFixed(3) + ' mm';
+      el('r-mils').textContent = widthMils.toFixed(1) + ' mil';
+      el('r-area').textContent = A_mil2.toFixed(2) + ' sq mil';
+    }
+
+    ['current', 'copper', 'temp-rise', 'layer'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

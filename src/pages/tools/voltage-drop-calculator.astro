@@ -1,0 +1,215 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Voltage Drop Calculator';
+const description = 'Free voltage drop calculator. Calculate voltage drop across wires based on material (copper/aluminum), length, current and wire gauge for DC and single-phase AC circuits.';
+const intro = 'Enter wire material, gauge, length and current to calculate voltage drop, percentage drop and the recommended minimum wire size.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is voltage drop?', a: 'Voltage drop is the reduction in voltage that occurs as electrical current flows through a conductor due to its resistance. It is calculated as V\u2093 = I \u00d7 R, where I is current and R is the total resistance of the wire.' },
+  { q: 'What is the maximum allowable voltage drop?', a: 'The NEC recommends a maximum of 3% voltage drop for branch circuits and 5% for the combined feeder and branch circuit. For critical loads like motors and medical equipment, even tighter limits may apply.' },
+  { q: 'What factors affect voltage drop?', a: 'Voltage drop depends on the conductor material (copper has lower resistance than aluminum), wire gauge (thicker wire = lower resistance), length of the wire run (both directions = total circuit length), and the amount of current flowing.' },
+  { q: 'Why does wire length matter?', a: 'Voltage drop is proportional to the total circuit length, which includes both the supply and return paths. A 100-foot run of wire actually means 200 feet of conductor length when calculating voltage drop.' },
+  { q: 'When should I use aluminum vs copper wire?', a: 'Copper has lower resistance and is more durable, making it better for most installations. Aluminum is lighter and cheaper, used mainly for large feeders and service entries, but requires special connectors and anti-oxidation treatment.' },
+  { q: 'How does wire gauge (AWG) affect voltage drop?', a: 'Larger AWG numbers mean thinner wire with higher resistance. A 14 AWG wire has about 2.5\u03a9 per 1000 ft, while a 4 AWG wire has about 0.25\u03a9 per 1000 ft. Using a thicker gauge dramatically reduces voltage drop.' },
+  { q: 'Does voltage drop matter for low-voltage circuits?', a: 'Yes, even more so. A 1V drop on a 120V circuit is less than 1%, but the same 1V drop on a 12V circuit is over 8%. Low-voltage systems like landscape lighting, audio systems, and solar panels are especially sensitive.' },
+  { q: 'How do I calculate voltage drop for 3-phase systems?', a: 'For three-phase AC, the formula is V\u2093 = \u221a3 \u00d7 I \u00d7 L \u00d7 R / 1000 (where L is one-way length in feet and R is resistance per 1000 ft). The \u221a3 factor accounts for the phase relationship.' },
+  { q: 'What is power loss due to voltage drop?', a: 'Power loss (I\u00b2R loss) is the energy dissipated as heat in the wires. It is calculated as P = I\u00b2 \u00d7 R. This wasted energy reduces system efficiency and can cause wire heating in high-current circuits.' },
+  { q: 'Can voltage drop damage equipment?', a: 'Yes. Motors running at reduced voltage draw higher current, overheat and may fail. Sensitive electronics may malfunction or reset. Lighting dims noticeably, and battery chargers may not reach full charge.' },
+];
+
+const awgData = [
+  { awg: 18, cuOhms: 6.385, alOhms: 10.450 },
+  { awg: 16, cuOhms: 4.016, alOhms: 6.572 },
+  { awg: 14, cuOhms: 2.525, alOhms: 4.131 },
+  { awg: 12, cuOhms: 1.588, alOhms: 2.599 },
+  { awg: 10, cuOhms: 0.999, alOhms: 1.635 },
+  { awg: 8, cuOhms: 0.628, alOhms: 1.028 },
+  { awg: 6, cuOhms: 0.395, alOhms: 0.646 },
+  { awg: 4, cuOhms: 0.248, alOhms: 0.406 },
+  { awg: 3, cuOhms: 0.197, alOhms: 0.322 },
+  { awg: 2, cuOhms: 0.156, alOhms: 0.256 },
+  { awg: 1, cuOhms: 0.124, alOhms: 0.203 },
+  { awg: 0, cuOhms: 0.098, alOhms: 0.161 },
+  { awg: '00', cuOhms: 0.078, alOhms: 0.128 },
+  { awg: '000', cuOhms: 0.062, alOhms: 0.101 },
+  { awg: '0000', cuOhms: 0.049, alOhms: 0.080 },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wire material</span>
+        <select id="material" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="cu">Copper</option><option value="al">Aluminum</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wire gauge (AWG)</span>
+        <select id="awg" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          {awgData.map(d => <option value={d.awg}>{d.awg}</option>)}
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">One-way length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current (A)</span>
+        <input id="current" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">System voltage (V)</span>
+        <input id="sysvoltage" type="number" step="any" placeholder="120" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Voltage drop</div><div id="r-drop" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">% Drop</div><div id="r-pct" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Power loss</div><div id="r-loss" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different voltage drop ranges mean</h2>
+    <p class="mt-2 text-slate-600">Voltage drop is categorized by its impact on system performance. Lower is always better for efficiency and equipment health.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0 \u2013 1%</span><span class="text-slate-400">Excellent \u2014 minimal loss</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1 \u2013 3%</span><span class="text-slate-400">Good \u2014 within NEC branch recommendation</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">3 \u2013 5%</span><span class="text-slate-400">Acceptable \u2014 at NEC total limit</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&gt; 5%</span><span class="text-slate-400">Needs rework \u2014 too much loss</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:20%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u26A1</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrician</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify wire sizing meets code requirements for residential and commercial installations before pulling cables.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u2600\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Solar Installer</h3>
+      <p class="mt-1 text-sm text-slate-600">Minimize I\u00b2R losses in PV array wiring to maximize energy harvest from your solar panel installation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD0A</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Audio System Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Ensure speaker wire gauge is adequate for long runs to avoid audible power loss and damping factor degradation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83C\uDFE0</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Homeowner</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan garage, workshop or outdoor wiring projects with confidence that your circuit will perform safely and efficiently.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">AWG</th><th class="p-3">Copper (&Omega;/1000 ft)</th><th class="p-3">Aluminum (&Omega;/1000 ft)</th><th class="p-3">Max amps (Cu, 60&deg;C)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        {awgData.map(d => <tr><td class="p-3 font-medium">{d.awg}</td><td class="p-3">{d.cuOhms.toFixed(3)}</td><td class="p-3">{d.alOhms.toFixed(3)}</td><td class="p-3">{Math.round(0.8 * 20 * Math.pow(1.26, 18 - (typeof d.awg === 'string' ? 0 : d.awg)))}</td></tr>)}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Voltage Drop Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter wire specs</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the wire material (copper or aluminum) and select the AWG gauge. Thicker wire has lower resistance.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the load</h3>
+        <p class="mt-1 text-sm text-slate-600">Provide the one-way wire length in feet, the load current in amps, and your system voltage. The calculator handles the rest.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check the drop</h3>
+        <p class="mt-1 text-sm text-slate-600">Review the voltage drop, percentage drop, and power loss. If the drop exceeds 3%, consider a larger wire gauge.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for minimizing voltage drop</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep drop under 3% for branch circuits</h3>
+        <p class="mt-1 text-sm text-slate-600">The NEC recommends a maximum of 3% voltage drop on branch circuits. For critical equipment, aim for 1\u20132% to ensure reliable operation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep total drop under 5%</h3>
+        <p class="mt-1 text-sm text-slate-600">The combined voltage drop of the feeder and branch circuit should not exceed 5%. Plan your wiring runs with both segments in mind.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use larger gauge for long runs</h3>
+        <p class="mt-1 text-sm text-slate-600">For runs longer than 100 feet, step up one or two AWG sizes to keep voltage drop acceptable. The extra cost is usually less than the cost of problems caused by excessive drop.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider copper for critical circuits</h3>
+        <p class="mt-1 text-sm text-slate-600">Copper has about 40% lower resistance than aluminum. For circuits where voltage drop is critical, the extra cost of copper is often justified by better performance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why voltage drop matters</h2>
+    <p class="mt-2 text-slate-600">Voltage drop is not just about lost energy \u2014 it directly affects the performance and lifespan of electrical equipment. Motors run hotter and slower, lights dim, electronic devices may malfunction, and battery charging becomes incomplete. In extreme cases, excessive voltage drop can cause equipment failure and create safety hazards due to overheated wires.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">NEC recommendations</h2>
+    <p class="mt-2 text-slate-600">The National Electrical Code (NEC) provides guidelines in Article 215 and 310 for acceptable voltage drop. The recommended limits are 3% for branch circuits and 5% for feeders plus branch circuits combined. While these are recommendations rather than absolute requirements in most jurisdictions, exceeding them often leads to inspection failures and equipment problems.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Wire sizing basics</h2>
+    <p class="mt-2 text-slate-600">Selecting the right wire gauge involves balancing three factors: current-carrying capacity (ampacity), voltage drop, and cost. Start with the minimum gauge required for ampacity, then check voltage drop over the planned distance. If the drop is too high, increase the wire size. The calculator helps you iterate through these options quickly.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const awgMap = {
+      '18': 6.385, '16': 4.016, '14': 2.525, '12': 1.588, '10': 0.999,
+      '8': 0.628, '6': 0.395, '4': 0.248, '3': 0.197, '2': 0.156,
+      '1': 0.124, '0': 0.098, '00': 0.078, '000': 0.062, '0000': 0.049
+    };
+    const awgAlMap = {
+      '18': 10.450, '16': 6.572, '14': 4.131, '12': 2.599, '10': 1.635,
+      '8': 1.028, '6': 0.646, '4': 0.406, '3': 0.322, '2': 0.256,
+      '1': 0.203, '0': 0.161, '00': 0.128, '000': 0.101, '0000': 0.080
+    };
+
+    function update() {
+      const mat = el('material').value;
+      const awgVal = el('awg').value;
+      const len = parseFloat(el('length').value);
+      const current = parseFloat(el('current').value);
+      const sysV = parseFloat(el('sysvoltage').value);
+
+      const rPer1000 = mat === 'cu' ? awgMap[awgVal] : awgAlMap[awgVal];
+
+      if (isNaN(len) || isNaN(current) || isNaN(sysV) || !rPer1000 || len <= 0 || current <= 0 || sysV <= 0) {
+        el('r-drop').textContent = '\u2014';
+        el('r-pct').textContent = '\u2014';
+        el('r-loss').textContent = '\u2014';
+        return;
+      }
+
+      const totalR = rPer1000 * len * 2 / 1000;
+      const vDrop = current * totalR;
+      const pct = vDrop / sysV * 100;
+      const loss = current * current * totalR;
+
+      el('r-drop').textContent = vDrop.toFixed(2) + ' V';
+      el('r-pct').textContent = pct.toFixed(2) + '%';
+      el('r-loss').textContent = loss.toFixed(1) + ' W';
+    }
+
+    ['material','awg','length','current','sysvoltage'].forEach(id => el(id).addEventListener('input', update));
+    ['material','awg'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

@@ -1,0 +1,345 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Conduit Fill Calculator';
+const description = 'Free conduit fill calculator. Calculate conduit fill percentage per NEC Chapter 9 tables for EMT, PVC, rigid metal and other conduit types.';
+const intro = 'Select conduit type and size, then add wire gauges and counts to see the total fill area and percentage against the maximum allowed fill.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is conduit fill?', a: 'Conduit fill is the percentage of a conduit\'s cross-sectional area occupied by the conductors inside it. The NEC (National Electrical Code) limits conduit fill to prevent overheating, allow heat dissipation, and ensure wires can be pulled without damaging insulation.' },
+  { q: 'What are the NEC conduit fill limits?', a: 'NEC Chapter 9 Table 1 specifies maximum fill percentages: 53% for one conductor, 31% for two conductors, and 40% for three or more conductors. These limits ensure adequate space for heat dissipation and wire pulling.' },
+  { q: 'What conduit types does the calculator support?', a: 'The calculator supports EMT (Electrical Metallic Tubing), PVC Schedule 40, PVC Schedule 80, and RMC (Rigid Metal Conduit). Each type has different wall thicknesses and therefore different internal diameters and fill capacities.' },
+  { q: 'Why does conduit fill matter?', a: 'Exceeding maximum fill limits can cause several problems: excessive heat buildup because air cannot circulate, difficulty pulling wires (risking insulation damage), and violation of electrical code which can lead to failed inspections and safety hazards.' },
+  { q: 'How does wire gauge affect fill?', a: 'Larger wire gauges have larger cross-sectional areas, which consume more conduit space. The calculator uses NEC Chapter 9 Table 5 area values for THHN/THWN-2 conductors, the most common building wire type.' },
+  { q: 'What is the difference between PVC Sch 40 and Sch 80?', a: 'Schedule 80 PVC has thicker walls than Schedule 40, providing higher mechanical strength but a smaller internal diameter for the same nominal size. Therefore, Schedule 80 conduit holds fewer wires than Schedule 40 of the same size.' },
+  { q: 'Can I mix different wire sizes in one conduit?', a: 'Yes. The calculator lets you add multiple wire gauge entries (e.g., 3 x 12 AWG and 2 x 10 AWG). It sums their total areas and compares against the maximum fill for the selected conduit size and number of wires.' },
+  { q: 'What is derating and how does it relate to conduit fill?', a: 'When multiple current-carrying conductors are in a conduit, they generate heat that cannot dissipate as effectively. The NEC requires derating (reducing) the ampacity of conductors based on the number of conductors in the raceway. More fill means more derating.' },
+  { q: 'Do ground wires count in conduit fill?', a: 'Equipment grounding conductors (EGCs) count for conduit fill calculations but may not count as current-carrying conductors for derating purposes, depending on the installation. The calculator counts all conductors for fill purposes.' },
+  { q: 'What happens if I exceed 40% fill?', a: 'Exceeding 40% fill for three or more conductors violates the NEC. The installation will fail inspection. Beyond code compliance, high fill makes wire pulling extremely difficult and increases the risk of insulation damage and overheating.' },
+];
+
+const emtData = [
+  { size: '1/2"', od: 0.706, area: 0.391 },
+  { size: '3/4"', od: 0.922, area: 0.668 },
+  { size: '1"', od: 1.163, area: 1.062 },
+  { size: '1-1/4"', od: 1.510, area: 1.790 },
+  { size: '1-1/2"', od: 1.740, area: 2.378 },
+  { size: '2"', od: 2.197, area: 3.791 },
+  { size: '2-1/2"', od: 2.731, area: 5.858 },
+  { size: '3"', od: 3.356, area: 8.846 },
+  { size: '4"', od: 4.334, area: 14.754 },
+];
+
+const pvc40Data = [
+  { size: '1/2"', od: 0.622, area: 0.304 },
+  { size: '3/4"', od: 0.824, area: 0.533 },
+  { size: '1"', od: 1.049, area: 0.864 },
+  { size: '1-1/4"', od: 1.380, area: 1.496 },
+  { size: '1-1/2"', od: 1.610, area: 2.036 },
+  { size: '2"', od: 2.067, area: 3.356 },
+  { size: '2-1/2"', od: 2.469, area: 4.788 },
+  { size: '3"', od: 3.068, area: 7.393 },
+  { size: '4"', od: 4.026, area: 12.730 },
+];
+
+const pvc80Data = [
+  { size: '1/2"', od: 0.546, area: 0.234 },
+  { size: '3/4"', od: 0.742, area: 0.432 },
+  { size: '1"', od: 0.957, area: 0.719 },
+  { size: '1-1/4"', od: 1.278, area: 1.283 },
+  { size: '1-1/2"', od: 1.500, area: 1.767 },
+  { size: '2"', od: 1.939, area: 2.953 },
+  { size: '2-1/2"', od: 2.323, area: 4.239 },
+  { size: '3"', od: 2.907, area: 6.638 },
+  { size: '4"', od: 3.834, area: 11.545 },
+];
+
+const rmcData = [
+  { size: '1/2"', od: 0.698, area: 0.383 },
+  { size: '3/4"', od: 0.913, area: 0.655 },
+  { size: '1"', od: 1.156, area: 1.049 },
+  { size: '1-1/4"', od: 1.503, area: 1.774 },
+  { size: '1-1/2"', od: 1.733, area: 2.359 },
+  { size: '2"', od: 2.193, area: 3.777 },
+  { size: '2-1/2"', od: 2.727, area: 5.841 },
+  { size: '3"', od: 3.352, area: 8.825 },
+  { size: '4"', od: 4.330, area: 14.728 },
+];
+
+const wireData = [
+  { awg: '14 AWG', area: 0.0133 },
+  { awg: '12 AWG', area: 0.0181 },
+  { awg: '10 AWG', area: 0.0250 },
+  { awg: '8 AWG', area: 0.0437 },
+  { awg: '6 AWG', area: 0.0726 },
+  { awg: '4 AWG', area: 0.1130 },
+  { awg: '3 AWG', area: 0.1450 },
+  { awg: '2 AWG', area: 0.1820 },
+  { awg: '1 AWG', area: 0.2270 },
+  { awg: '1/0 AWG', area: 0.2850 },
+  { awg: '2/0 AWG', area: 0.3420 },
+  { awg: '3/0 AWG', area: 0.4260 },
+  { awg: '4/0 AWG', area: 0.5290 },
+  { awg: '250 kcmil', area: 0.6550 },
+  { awg: '300 kcmil', area: 0.7530 },
+  { awg: '350 kcmil', area: 0.8530 },
+  { awg: '400 kcmil', area: 0.9480 },
+  { awg: '500 kcmil', area: 1.1390 },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Conduit type</span>
+        <select id="conduit-type" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="emt">EMT</option>
+          <option value="pvc40">PVC Schedule 40</option>
+          <option value="pvc80">PVC Schedule 80</option>
+          <option value="rmc">RMC (Rigid Metal)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Conduit size</span>
+        <select id="conduit-size" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0">1/2"</option>
+          <option value="1" selected>3/4"</option>
+          <option value="2">1"</option>
+          <option value="3">1-1/4"</option>
+          <option value="4">1-1/2"</option>
+          <option value="5">2"</option>
+          <option value="6">2-1/2"</option>
+          <option value="7">3"</option>
+          <option value="8">4"</option>
+        </select></label>
+    </div>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wire gauge</span>
+        <select id="wire-gauge" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          {wireData.map((w, i) => `<option value="${i}">${w.awg}</option>`).join('')}
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Count</span>
+        <input id="wire-count" type="number" min="1" value="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <div class="flex items-end">
+        <button id="add-wire" class="w-full rounded-xl bg-indigo-600 p-3 font-medium text-white transition hover:bg-indigo-700">+ Add wires</button>
+      </div>
+    </div>
+
+    <div id="wire-list" class="mt-3 flex flex-wrap gap-2"></div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Total wire area</div><div id="r-total" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Max fill allowed</div><div id="r-max" class="mt-1 text-2xl font-bold text-amber-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Fill percentage</div><div id="r-pct" class="mt-1 text-2xl font-bold text-slate-800">&mdash;</div></div>
+    </div>
+    <div id="r-status" class="mt-3 text-center font-semibold"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different fill percentage ranges mean</h2>
+    <p class="mt-2 text-slate-600">NEC fill limits are designed to ensure safe operation and installability at different fill levels.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Under 30%</span><span class="text-slate-400">Safe &mdash; plenty of room for pulling and heat dissipation</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:30%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">30 &ndash; 40%</span><span class="text-slate-400">Moderate &mdash; still compliant, pulling may be tighter</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">40 &ndash; 53%</span><span class="text-slate-400">NEC maximum &mdash; only allowed for 1 or 2 conductors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:53%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Over 53%</span><span class="text-slate-400">Fails NEC &mdash; not code compliant under any condition</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x26A1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrician</h3>
+      <p class="mt-1 text-sm text-slate-600">Ensure conduit installations meet NEC code requirements and wire pulls are feasible before starting work on site.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2699;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrical Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design conduit systems with correct sizing for industrial and commercial building electrical distribution systems.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3D7;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Building Inspector</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify conduit fill compliance during plan reviews and field inspections using standard NEC calculations.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F477;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Contractor</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepare accurate material takeoffs and avoid costly rework by sizing conduit correctly during the bidding stage.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Conduit size</th><th class="p-3">EMT area (in&sup2;)</th><th class="p-3">PVC 40 area (in&sup2;)</th><th class="p-3">PVC 80 area (in&sup2;)</th><th class="p-3">RMC area (in&sup2;)</th><th class="p-3">Max 40% fill (in&sup2;)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        {[0,1,2,3,4,5,6,7,8].map(i => {
+          const e = emtData[i];
+          const p40 = pvc40Data[i];
+          const p80 = pvc80Data[i];
+          const r = rmcData[i];
+          const maxFill = e.area * 0.4;
+          return `<tr><td class="p-3 font-medium">${e.size}</td><td class="p-3">${e.area.toFixed(3)}</td><td class="p-3">${p40.area.toFixed(3)}</td><td class="p-3">${p80.area.toFixed(3)}</td><td class="p-3">${r.area.toFixed(3)}</td><td class="p-3">${maxFill.toFixed(3)}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Conduit Fill Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select conduit type and size</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the conduit material and nominal trade size from the dropdown menus. The internal area updates automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add wires</h3>
+        <p class="mt-1 text-sm text-slate-600">Select wire gauge and count, then click "Add wires". The running total updates with each addition. Add multiple different gauge wires as needed.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check compliance</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator shows total wire area, maximum allowed fill, and the fill percentage. A clear pass/fail message indicates NEC compliance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for conduit fill design</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Stay below 40% for three or more conductors</h3>
+        <p class="mt-1 text-sm text-slate-600">The NEC limits fill to 40% when the conduit contains three or more conductors. This provides enough space for heat dissipation and allows wires to be pulled without excessive friction.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Account for derating</h3>
+        <p class="mt-1 text-sm text-slate-600">More than three current-carrying conductors in a conduit require ampacity derating per NEC Table 310.15(C)(1). Higher fill means more derating. Design with extra capacity to avoid derating issues.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the largest conduit practical</h3>
+        <p class="mt-1 text-sm text-slate-600">Oversizing conduit slightly makes wire pulling easier, reduces derating requirements, and allows for future circuit additions. The incremental cost of larger conduit is usually small compared to labor.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider wire pulling lubricant</h3>
+        <p class="mt-1 text-sm text-slate-600">At fill levels above 30%, wire pulling becomes significantly harder. Use approved wire pulling lubricant to reduce friction and prevent insulation damage, especially on long runs with multiple bends.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">NEC Chapter 9 rules</h2>
+    <p class="mt-2 text-slate-600">The National Electrical Code (NEC) Chapter 9 contains tables that specify conduit fill limits. Table 1 provides the maximum fill percentages (53% for 1 wire, 31% for 2 wires, 40% for 3+ wires). Tables 4 and 5 provide conduit internal areas and conductor areas respectively. The calculator uses these values to determine compliance.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Why conduit fill matters</h2>
+    <p class="mt-2 text-slate-600">Proper conduit fill is essential for three reasons: heat dissipation (conductors generate heat that must escape), wire pulling (excessive fill makes installation impossible without damaging insulation), and code compliance (NEC requirements are legally enforceable). Ignoring fill limits creates fire hazards and failed inspections.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Heat dissipation in conduit</h2>
+    <p class="mt-2 text-slate-600">When current flows through a conductor, heat is generated by I&sup2;R losses. In open air, this heat dissipates easily. Inside a conduit, the trapped air and surrounding material impede heat flow. Higher fill percentages leave less air space for cooling, increasing the operating temperature of all conductors and requiring ampacity derating.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Wire pulling ease</h2>
+    <p class="mt-2 text-slate-600">The force required to pull wires through conduit increases exponentially with fill percentage. At 40% fill, pulling forces are manageable for moderate runs with proper lubricant. Above 40%, pulling becomes extremely difficult, and the risk of stretching or damaging conductor insulation increases dramatically, especially around bends.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const wireItems = [];
+
+    const conduitDb = { emt: [], pvc40: [], pvc80: [], rmc: [] };
+    const emtD = [
+      { size: '1/2"', area: 0.391 }, { size: '3/4"', area: 0.668 }, { size: '1"', area: 1.062 },
+      { size: '1-1/4"', area: 1.790 }, { size: '1-1/2"', area: 2.378 }, { size: '2"', area: 3.791 },
+      { size: '2-1/2"', area: 5.858 }, { size: '3"', area: 8.846 }, { size: '4"', area: 14.754 },
+    ];
+    const pvc40D = [
+      { size: '1/2"', area: 0.304 }, { size: '3/4"', area: 0.533 }, { size: '1"', area: 0.864 },
+      { size: '1-1/4"', area: 1.496 }, { size: '1-1/2"', area: 2.036 }, { size: '2"', area: 3.356 },
+      { size: '2-1/2"', area: 4.788 }, { size: '3"', area: 7.393 }, { size: '4"', area: 12.730 },
+    ];
+    const pvc80D = [
+      { size: '1/2"', area: 0.234 }, { size: '3/4"', area: 0.432 }, { size: '1"', area: 0.719 },
+      { size: '1-1/4"', area: 1.283 }, { size: '1-1/2"', area: 1.767 }, { size: '2"', area: 2.953 },
+      { size: '2-1/2"', area: 4.239 }, { size: '3"', area: 6.638 }, { size: '4"', area: 11.545 },
+    ];
+    const rmcD = [
+      { size: '1/2"', area: 0.383 }, { size: '3/4"', area: 0.655 }, { size: '1"', area: 1.049 },
+      { size: '1-1/4"', area: 1.774 }, { size: '1-1/2"', area: 2.359 }, { size: '2"', area: 3.777 },
+      { size: '2-1/2"', area: 5.841 }, { size: '3"', area: 8.825 }, { size: '4"', area: 14.728 },
+    ];
+    conduitDb.emt = emtD;
+    conduitDb.pvc40 = pvc40D;
+    conduitDb.pvc80 = pvc80D;
+    conduitDb.rmc = rmcD;
+
+    const wireAreas = [0.0133, 0.0181, 0.0250, 0.0437, 0.0726, 0.1130, 0.1450, 0.1820, 0.2270, 0.2850, 0.3420, 0.4260, 0.5290, 0.6550, 0.7530, 0.8530, 0.9480, 1.1390];
+    const wireNames = ['14 AWG','12 AWG','10 AWG','8 AWG','6 AWG','4 AWG','3 AWG','2 AWG','1 AWG','1/0 AWG','2/0 AWG','3/0 AWG','4/0 AWG','250 kcmil','300 kcmil','350 kcmil','400 kcmil','500 kcmil'];
+
+    function recalc() {
+      const ctype = el('conduit-type').value;
+      const csize = parseInt(el('conduit-size').value);
+      const conduit = conduitDb[ctype][csize];
+      if (!conduit) return;
+
+      const totalWireArea = wireItems.reduce((sum, item) => sum + item.area * item.count, 0);
+      const totalConductors = wireItems.reduce((sum, item) => sum + item.count, 0);
+      const maxFillPct = totalConductors === 1 ? 0.53 : totalConductors === 2 ? 0.31 : 0.40;
+      const maxArea = conduit.area * maxFillPct;
+      const fillPct = conduit.area > 0 ? (totalWireArea / conduit.area) * 100 : 0;
+      const passes = fillPct <= maxFillPct * 100;
+
+      el('r-total').textContent = totalWireArea.toFixed(4) + ' in\u00b2';
+      el('r-max').textContent = maxArea.toFixed(4) + ' in\u00b2';
+      el('r-pct').textContent = fillPct.toFixed(1) + '%';
+      const statusEl = el('r-status');
+      if (totalConductors === 0) {
+        statusEl.textContent = 'Add wires to check fill';
+        statusEl.className = 'mt-3 text-center font-semibold text-slate-500';
+      } else if (passes) {
+        statusEl.textContent = '\u2713 PASS \u2014 NEC compliant (' + (maxFillPct * 100) + '% max for ' + totalConductors + ' conductor' + (totalConductors > 1 ? 's' : '') + ')';
+        statusEl.className = 'mt-3 text-center font-semibold text-emerald-600';
+      } else {
+        statusEl.textContent = '\u2717 FAIL \u2014 Exceeds ' + (maxFillPct * 100) + '% maximum fill for ' + totalConductors + ' conductor' + (totalConductors > 1 ? 's' : '');
+        statusEl.className = 'mt-3 text-center font-semibold text-red-600';
+      }
+    }
+
+    function renderWireList() {
+      const container = el('wire-list');
+      container.innerHTML = wireItems.map((item, idx) =>
+        '<span class="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">' +
+        item.count + 'x ' + item.name +
+        '<button data-idx="' + idx + '" class="ml-1 text-indigo-400 hover:text-red-500">&times;</button></span>'
+      ).join('');
+      container.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function () {
+          const idx = parseInt(this.dataset.idx);
+          wireItems.splice(idx, 1);
+          renderWireList();
+          recalc();
+        });
+      });
+      recalc();
+    }
+
+    el('add-wire').addEventListener('click', function () {
+      const gIdx = parseInt(el('wire-gauge').value);
+      const count = parseInt(el('wire-count').value) || 1;
+      wireItems.push({ name: wireNames[gIdx], area: wireAreas[gIdx], count: count });
+      renderWireList();
+    });
+
+    ['conduit-type', 'conduit-size'].forEach(id => el(id).addEventListener('change', recalc));
+  </script>
+</ToolLayout>

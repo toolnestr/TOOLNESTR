@@ -1,0 +1,332 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'SMD Resistor Code Calculator';
+const description = 'Free SMD resistor code calculator. Decode 3-digit, 4-digit and EIA-96 SMD resistor markings to resistance values.';
+const intro = 'Select the code type (3-digit, 4-digit or EIA-96) and enter the code printed on the SMD resistor to find its resistance value and tolerance.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'How do 3-digit SMD resistor codes work?', a: 'In a 3-digit code, the first two digits are significant figures and the third digit is the multiplier (power of 10). For example, 472 means 47 \u00d7 10\u00b2 = 4700 \u03a9 = 4.7 k\u03a9. A value of 0 or 000 indicates a zero-ohm jumper resistor.' },
+  { q: 'How do 4-digit SMD resistor codes work?', a: 'In a 4-digit code, the first three digits are significant figures and the fourth digit is the multiplier. For example, 1002 means 100 \u00d7 10\u00b2 = 10000 \u03a9 = 10 k\u03a9. Four-digit codes are used for 1% tolerance resistors with higher precision.' },
+  { q: 'What is the EIA-96 code system?', a: 'EIA-96 is a standard for 1% SMD resistors where a two-digit code (01 to 96) represents a specific resistance value, followed by a letter representing the multiplier. For example, 01Y = 100 \u03a9 \u00d7 0.01 = 1 \u03a9. This allows compact marking of precision resistors on small packages.' },
+  { q: 'What does the letter R mean in SMD codes?', a: 'The letter R represents a decimal point in 3-digit and 4-digit codes. For example, 4R7 means 4.7 \u03a9, and 0R22 means 0.22 \u03a9. This is commonly used for low-value resistors where a decimal point would be hard to read on small components.' },
+  { q: 'What are the common SMD resistor package sizes?', a: 'Common package sizes include 0201 (0.6 \u00d7 0.3 mm), 0402 (1.0 \u00d7 0.5 mm), 0603 (1.6 \u00d7 0.8 mm), 0805 (2.0 \u00d7 1.25 mm), 1206 (3.2 \u00d7 1.6 mm), 1210 (3.2 \u00d7 2.5 mm), 2010 (5.0 \u00d7 2.5 mm), and 2512 (6.3 \u00d7 3.2 mm). Larger packages can dissipate more power.' },
+  { q: 'What is the power rating of SMD resistors?', a: 'Power ratings vary by package: 0201 = 1/20W, 0402 = 1/16W, 0603 = 1/10W, 0805 = 1/8W, 1206 = 1/4W, 1210 = 1/2W, 2010 = 3/4W, 2512 = 1W. These ratings assume adequate PCB copper area for heat sinking.' },
+  { q: 'How do I read an SMD resistor marked with only a number?', a: 'If the marking is a 2-digit code, it is likely an EIA-96 code (for 1% resistors) or a special marking. If it is 3 or 4 digits, use the standard digit + multiplier system. If it has an R, treat R as the decimal point.' },
+  { q: 'What is the tolerance of SMD resistors?', a: 'Tolerance varies: 3-digit codes typically indicate \u00b15% tolerance, 4-digit codes indicate \u00b11%, and EIA-96 codes indicate \u00b11%. Some specialty resistors use \u00b10.5%, \u00b10.25%, or \u00b10.1% tolerances, usually with additional markings.' },
+  { q: 'How do I identify the value of an SMD resistor with a multimeter?', a: 'Set your multimeter to resistance mode and measure across the resistor terminals. For in-circuit measurements, be aware that other components can affect the reading. Out-of-circuit measurements are always more reliable.' },
+  { q: 'Why are SMD resistors marked with codes instead of color bands?', a: 'SMD resistors are too small for color bands. The tiny packages use alphanumeric codes because they can be printed with high precision and read under magnification. The code system is standardized by EIA and JEDEC.' },
+];
+
+const eia96Vals = {
+  '01': 100, '02': 102, '03': 105, '04': 107, '05': 110, '06': 113, '07': 115, '08': 118, '09': 121,
+  '10': 124, '11': 127, '12': 130, '13': 133, '14': 137, '15': 140, '16': 143, '17': 147, '18': 150,
+  '19': 154, '20': 158, '21': 162, '22': 165, '23': 169, '24': 174, '25': 178, '26': 182, '27': 187,
+  '28': 191, '29': 196, '30': 200, '31': 205, '32': 210, '33': 215, '34': 221, '35': 226, '36': 232,
+  '37': 237, '38': 243, '39': 249, '40': 255, '41': 261, '42': 267, '43': 274, '44': 280, '45': 287,
+  '46': 294, '47': 301, '48': 309, '49': 316, '50': 324, '51': 332, '52': 340, '53': 348, '54': 357,
+  '55': 365, '56': 374, '57': 383, '58': 392, '59': 402, '60': 412, '61': 422, '62': 432, '63': 442,
+  '64': 453, '65': 464, '66': 475, '67': 487, '68': 499, '69': 511, '70': 523, '71': 536, '72': 549,
+  '73': 562, '74': 576, '75': 590, '76': 604, '77': 619, '78': 634, '79': 649, '80': 665, '81': 681,
+  '82': 698, '83': 715, '84': 732, '85': 750, '86': 768, '87': 787, '88': 806, '89': 825, '90': 845,
+  '91': 866, '92': 887, '93': 909, '94': 931, '95': 953, '96': 976,
+};
+
+const eia96Mul = { 'Z': 0.001, 'Y': 0.01, 'R': 0.1, 'A': 1, 'B': 10, 'C': 100, 'D': 1000, 'E': 10000, 'F': 100000 };
+const eia96MulLabels = { 'Z': '\u00d70.001', 'Y': '\u00d70.01', 'R': '\u00d70.1', 'A': '\u00d71', 'B': '\u00d710', 'C': '\u00d7100', 'D': '\u00d71000', 'E': '\u00d710000', 'F': '\u00d7100000' };
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700">Code type</label>
+      <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <button id="mode-3d" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">3-digit</button>
+        <button id="mode-4d" class="flex-1 rounded-lg py-2 text-slate-500">4-digit</button>
+        <button id="mode-eia" class="flex-1 rounded-lg py-2 text-slate-500">EIA-96</button>
+      </div>
+    </div>
+
+    <label class="block"><span class="text-sm font-medium text-slate-700">Code on resistor</span>
+      <div class="mt-1 flex gap-2">
+        <input id="code" type="text" placeholder="472" value="472" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono uppercase" />
+        <button id="decode-btn" class="rounded-xl bg-indigo-600 px-6 font-medium text-white transition hover:bg-indigo-700">Decode</button>
+      </div>
+    </label>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Resistance</div><div id="r-value" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Tolerance</div><div id="r-tol" class="mt-1 text-2xl font-bold text-emerald-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">EIA series</div><div id="r-series" class="mt-1 text-2xl font-bold text-slate-800">&mdash;</div></div>
+    </div>
+
+    <div id="eia-detail" class="mt-4 hidden text-center text-sm text-slate-500"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different SMD package sizes mean</h2>
+    <p class="mt-2 text-slate-600">Package size determines power handling and suitability for different PCB assembly processes.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0201</span><span class="text-slate-400">1/20W &mdash; ultra-compact, mobile devices</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:5%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0402</span><span class="text-slate-400">1/16W &mdash; compact consumer electronics</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0603</span><span class="text-slate-400">1/10W &mdash; general purpose, most common</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0805</span><span class="text-slate-400">1/8W &mdash; prototyping, easy to hand-solder</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:30%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1206</span><span class="text-slate-400">1/4W &mdash; power circuits, LEDs</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2010 / 2512</span><span class="text-slate-400">3/4W &ndash; 1W &mdash; high-power applications</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F527;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">PCB Assembly Tech</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify resistor values during board assembly and rework without needing to desolder and measure each component.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electronics Repair</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly identify unknown SMD resistors on circuit boards during troubleshooting and repair work.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F50C;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Circuit Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Choose the correct SMD resistor code format for your BOM and ensure pick-and-place machines get the right components.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E0;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hobbyist</h3>
+      <p class="mt-1 text-sm text-slate-600">Decode SMD resistor markings on salvage boards and understand the values when building your own circuits.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Package</th><th class="p-3">Dimensions (mm)</th><th class="p-3">Power rating</th><th class="p-3">Typical marking</th><th class="p-3">Best for</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">0201</td><td class="p-3">0.6 &times; 0.3</td><td class="p-3">1/20 W</td><td class="p-3">EIA-96 only</td><td class="p-3">Smartphones, wearables</td></tr>
+        <tr><td class="p-3 font-medium">0402</td><td class="p-3">1.0 &times; 0.5</td><td class="p-3">1/16 W</td><td class="p-3">EIA-96 / 3-digit</td><td class="p-3">Compact PCBs</td></tr>
+        <tr><td class="p-3 font-medium">0603</td><td class="p-3">1.6 &times; 0.8</td><td class="p-3">1/10 W</td><td class="p-3">3-digit / 4-digit</td><td class="p-3">General purpose</td></tr>
+        <tr><td class="p-3 font-medium">0805</td><td class="p-3">2.0 &times; 1.25</td><td class="p-3">1/8 W</td><td class="p-3">3-digit / 4-digit</td><td class="p-3">Prototyping, through-hole replacement</td></tr>
+        <tr><td class="p-3 font-medium">1206</td><td class="p-3">3.2 &times; 1.6</td><td class="p-3">1/4 W</td><td class="p-3">3-digit / 4-digit</td><td class="p-3">LED current limiting</td></tr>
+        <tr><td class="p-3 font-medium">1210</td><td class="p-3">3.2 &times; 2.5</td><td class="p-3">1/2 W</td><td class="p-3">3-digit / 4-digit</td><td class="p-3">Higher power circuits</td></tr>
+        <tr><td class="p-3 font-medium">2010</td><td class="p-3">5.0 &times; 2.5</td><td class="p-3">3/4 W</td><td class="p-3">4-digit only</td><td class="p-3">Power supplies</td></tr>
+        <tr><td class="p-3 font-medium">2512</td><td class="p-3">6.3 &times; 3.2</td><td class="p-3">1 W</td><td class="p-3">4-digit only</td><td class="p-3">High-power sensing</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">EIA-96 code</th><th class="p-3">Value</th><th class="p-3">Multiplier letter</th><th class="p-3">Multiply by</th><th class="p-3">Example</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">01</td><td class="p-3">100</td><td class="p-3">Z</td><td class="p-3">&times;0.001</td><td class="p-3">01Z = 0.1 &Omega;</td></tr>
+        <tr><td class="p-3 font-medium">10</td><td class="p-3">124</td><td class="p-3">Y</td><td class="p-3">&times;0.01</td><td class="p-3">10Y = 1.24 &Omega;</td></tr>
+        <tr><td class="p-3 font-medium">25</td><td class="p-3">178</td><td class="p-3">R</td><td class="p-3">&times;0.1</td><td class="p-3">25R = 17.8 &Omega;</td></tr>
+        <tr><td class="p-3 font-medium">50</td><td class="p-3">324</td><td class="p-3">A</td><td class="p-3">&times;1</td><td class="p-3">50A = 324 &Omega;</td></tr>
+        <tr><td class="p-3 font-medium">68</td><td class="p-3">499</td><td class="p-3">B</td><td class="p-3">&times;10</td><td class="p-3">68B = 4.99 k&Omega;</td></tr>
+        <tr><td class="p-3 font-medium">75</td><td class="p-3">590</td><td class="p-3">C</td><td class="p-3">&times;100</td><td class="p-3">75C = 59 k&Omega;</td></tr>
+        <tr><td class="p-3 font-medium">96</td><td class="p-3">976</td><td class="p-3">D</td><td class="p-3">&times;1000</td><td class="p-3">96D = 976 k&Omega;</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the SMD Resistor Code Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select the code type</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose between 3-digit, 4-digit or EIA-96 format based on the marking printed on your SMD resistor.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the code</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the alphanumeric code exactly as printed on the resistor. Use uppercase letters. Letters R, Y, Z, etc. are handled automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the decoded value</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator displays the resistance value with appropriate units, tolerance, and the EIA series the code belongs to.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reading SMD resistor codes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use magnification for small packages</h3>
+        <p class="mt-1 text-sm text-slate-600">0402 and smaller packages have markings that are extremely difficult to read with the naked eye. Use a jeweler&rsquo;s loupe or microscope to read the code accurately.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check orientation before reading</h3>
+        <p class="mt-1 text-sm text-slate-600">SMD resistors can be placed in any orientation on the board. Rotate the board or use a magnifier to find the correct orientation of the printed code &mdash; it may be upside down.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify with a multimeter when possible</h3>
+        <p class="mt-1 text-sm text-slate-600">Codes can be ambiguous or damaged. If the code is unclear or the reading seems off, use a multimeter to measure the actual resistance value.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for special markings</h3>
+        <p class="mt-1 text-sm text-slate-600">Zero-ohm jumpers are marked with a single &ldquo;0&rdquo; or &ldquo;000&rdquo;. Some manufacturers use proprietary codes or omit markings on the smallest packages. When in doubt, consult the datasheet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How 3-digit codes work</h2>
+    <p class="mt-2 text-slate-600">The 3-digit code format uses two significant figures and one multiplier: ABC = AB &times; 10<sup>C</sup>. For example, code 471 means 47 &times; 10<sup>1</sup> = 470 &Omega;. Code 333 means 33 &times; 10<sup>3</sup> = 33,000 &Omega; = 33 k&Omega;. Values below 10 &Omega; use R as a decimal: 4R7 = 4.7 &Omega;. Zero-ohm jumpers are marked 000. This format is typically \u00b15% tolerance (E24 series).</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How 4-digit codes work</h2>
+    <p class="mt-2 text-slate-600">The 4-digit code format uses three significant figures and one multiplier: ABCD = ABC &times; 10<sup>D</sup>. For example, code 1002 means 100 &times; 10<sup>2</sup> = 10,000 &Omega; = 10 k&Omega;. Code 5623 means 562 &times; 10<sup>3</sup> = 562,000 &Omega; = 562 k&Omega;. Values below 100 &Omega; use R: 10R0 = 10.0 &Omega;. This format provides higher precision and is typically \u00b11% tolerance (E96 series).</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How EIA-96 codes work</h2>
+    <p class="mt-2 text-slate-600">The EIA-96 standard uses a two-digit code (01&ndash;96) followed by a letter (Z, Y, R, A, B, C, D, E, F). The two digits encode a three-digit significant figure value from the E96 series, and the letter encodes the multiplier. For example, code 01A decodes to 100 &times; 1 = 100 &Omega;, and code 96D decodes to 976 &times; 1000 = 976,000 &Omega; = 976 k&Omega;. This compact format fits on tiny 0201 and 0402 packages while maintaining \u00b11% precision.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">R notation explained</h2>
+    <p class="mt-2 text-slate-600">The letter R in SMD codes functions as a decimal point. In 3-digit codes: 4R7 = 4.7 &Omega;, 0R22 = 0.22 &Omega;, R100 = 0.100 &Omega;. In 4-digit codes: 10R0 = 10.0 &Omega;, 0R100 = 0.100 &Omega;. This notation avoids ambiguity when printing tiny decimal points on small components and is commonly used for low-value precision resistors.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let mode = '3d';
+
+    const eia96Vals = {"01":100,"02":102,"03":105,"04":107,"05":110,"06":113,"07":115,"08":118,"09":121,"10":124,"11":127,"12":130,"13":133,"14":137,"15":140,"16":143,"17":147,"18":150,"19":154,"20":158,"21":162,"22":165,"23":169,"24":174,"25":178,"26":182,"27":187,"28":191,"29":196,"30":200,"31":205,"32":210,"33":215,"34":221,"35":226,"36":232,"37":237,"38":243,"39":249,"40":255,"41":261,"42":267,"43":274,"44":280,"45":287,"46":294,"47":301,"48":309,"49":316,"50":324,"51":332,"52":340,"53":348,"54":357,"55":365,"56":374,"57":383,"58":392,"59":402,"60":412,"61":422,"62":432,"63":442,"64":453,"65":464,"66":475,"67":487,"68":499,"69":511,"70":523,"71":536,"72":549,"73":562,"74":576,"75":590,"76":604,"77":619,"78":634,"79":649,"80":665,"81":681,"82":698,"83":715,"84":732,"85":750,"86":768,"87":787,"88":806,"89":825,"90":845,"91":866,"92":887,"93":909,"94":931,"95":953,"96":976};
+    const eia96Mul = {'Z':0.001,'Y':0.01,'R':0.1,'A':1,'B':10,'C':100,'D':1000,'E':10000,'F':100000};
+
+    function fmtRes(val) {
+      if (val >= 1e6) return (val / 1e6).toFixed(3) + ' M' + '\u03a9';
+      if (val >= 1e3) return (val / 1e3).toFixed(3) + ' k' + '\u03a9';
+      if (val >= 1) return val.toFixed(3) + ' ' + '\u03a9';
+      return (val * 1000).toFixed(3) + ' m' + '\u03a9';
+    }
+
+    function setMode(m) {
+      mode = m;
+      ['3d','4d','eia'].forEach(id => {
+        el('mode-' + id).className = 'flex-1 rounded-lg py-2 ' + (mode === id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      });
+      decode();
+    }
+
+    function decode() {
+      const code = el('code').value.trim().toUpperCase();
+      const detailEl = el('eia-detail');
+
+      if (!code) {
+        el('r-value').textContent = '\u2014';
+        el('r-tol').textContent = '\u2014';
+        el('r-series').textContent = '\u2014';
+        detailEl.classList.add('hidden');
+        return;
+      }
+
+      let value, tolerance, series;
+
+      if (mode === '3d') {
+        if (/^R/i.test(code)) {
+          value = parseFloat(code.replace(/^R/i, '')) / 1000;
+          tolerance = '\u00b15%';
+          series = 'E24';
+        } else if (/R/i.test(code)) {
+          value = parseFloat(code.replace(/R/i, '.'));
+          tolerance = '\u00b15%';
+          series = 'E24';
+        } else if (/^\d{3}$/.test(code)) {
+          if (code === '000') {
+            value = 0;
+            tolerance = '\u2014';
+            series = 'Jumper';
+          } else {
+            const sig = parseInt(code.substring(0, 2));
+            const mul = Math.pow(10, parseInt(code.charAt(2)));
+            value = sig * mul;
+            tolerance = '\u00b15%';
+            series = 'E24';
+          }
+        } else {
+          el('r-value').textContent = 'Invalid code';
+          el('r-tol').textContent = '\u2014';
+          el('r-series').textContent = '\u2014';
+          detailEl.classList.add('hidden');
+          return;
+        }
+        detailEl.classList.add('hidden');
+      } else if (mode === '4d') {
+        if (/R/i.test(code)) {
+          value = parseFloat(code.replace(/R/i, '.'));
+          tolerance = '\u00b11%';
+          series = 'E96';
+        } else if (/^\d{4}$/.test(code)) {
+          const sig = parseInt(code.substring(0, 3));
+          const mul = Math.pow(10, parseInt(code.charAt(3)));
+          value = sig * mul;
+          tolerance = '\u00b11%';
+          series = 'E96';
+        } else {
+          el('r-value').textContent = 'Invalid code';
+          el('r-tol').textContent = '\u2014';
+          el('r-series').textContent = '\u2014';
+          detailEl.classList.add('hidden');
+          return;
+        }
+        detailEl.classList.add('hidden');
+      } else {
+        if (/^\d{2}[A-Z]$/.test(code)) {
+          const numPart = code.substring(0, 2);
+          const letter = code.charAt(2);
+          if (eia96Vals[numPart] && eia96Mul[letter]) {
+            value = eia96Vals[numPart] * eia96Mul[letter];
+            tolerance = '\u00b11%';
+            series = 'E96';
+            detailEl.classList.remove('hidden');
+            detailEl.textContent = 'EIA-96: ' + numPart + ' = ' + eia96Vals[numPart] + ', letter ' + letter + ' = \u00d7' + eia96Mul[letter];
+          } else {
+            el('r-value').textContent = 'Invalid code';
+            el('r-tol').textContent = '\u2014';
+            el('r-series').textContent = '\u2014';
+            detailEl.classList.add('hidden');
+            return;
+          }
+        } else {
+          el('r-value').textContent = 'Invalid code';
+          el('r-tol').textContent = '\u2014';
+          el('r-series').textContent = '\u2014';
+          detailEl.classList.add('hidden');
+          return;
+        }
+      }
+
+      el('r-value').textContent = value === 0 ? '0 \u03a9 (Jumper)' : fmtRes(value);
+      el('r-tol').textContent = tolerance;
+      el('r-series').textContent = series;
+    }
+
+    el('mode-3d').addEventListener('click', () => setMode('3d'));
+    el('mode-4d').addEventListener('click', () => setMode('4d'));
+    el('mode-eia').addEventListener('click', () => setMode('eia'));
+    el('decode-btn').addEventListener('click', decode);
+    el('code').addEventListener('input', decode);
+    el('code').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') decode();
+    });
+  </script>
+</ToolLayout>

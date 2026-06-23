@@ -1,0 +1,249 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Transformer Calculator';
+const description = 'Free transformer calculator. Calculate turns ratio, primary/secondary voltage, and primary/secondary current for ideal transformers.';
+const intro = 'Enter any three values \u2014 primary voltage, secondary voltage, primary current, secondary current or turns ratio \u2014 to compute the remaining parameters.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'How does a transformer work?', a: 'A transformer works through electromagnetic induction. Alternating current in the primary winding creates a changing magnetic field in the core, which induces a voltage in the secondary winding. The ratio of primary to secondary voltage equals the turns ratio.' },
+  { q: 'What is the turns ratio formula?', a: 'The fundamental transformer equation is Vp / Vs = Np / Ns = Is / Ip, where Vp is primary voltage, Vs is secondary voltage, Np is primary turns, Ns is secondary turns, Ip is primary current, and Is is secondary current.' },
+  { q: 'What is the difference between step-up and step-down transformers?', a: 'A step-down transformer reduces voltage (Np > Ns) and increases current. A step-up transformer increases voltage (Np < Ns) and decreases current. Step-down transformers are common in power distribution to provide safe voltage levels for homes and businesses.' },
+  { q: 'What is an ideal transformer vs a real transformer?', a: 'An ideal transformer has 100% efficiency, no losses, no leakage inductance, and no magnetizing current. Real transformers have copper losses (I\u00b2R in windings), core losses (hysteresis and eddy currents), leakage flux, and require magnetizing current to establish the magnetic field.' },
+  { q: 'What is transformer efficiency?', a: 'Transformer efficiency is the ratio of output power to input power. Large power transformers can achieve 98\u201399% efficiency. Losses come from copper losses (winding resistance), core losses (hysteresis and eddy currents), and stray losses. Efficiency is highest near full load.' },
+  { q: 'What are the common core types for transformers?', a: 'The two main core types are core-type (windings surround the core legs) and shell-type (core surrounds the windings). Core-type is common for high-voltage transformers, shell-type for high-current applications. Toroidal cores offer low EMI and compact size for low-power applications.' },
+  { q: 'What is a center-tapped transformer?', a: 'A center-tapped transformer has a tap at the midpoint of the secondary winding, providing two equal voltages that are 180 degrees out of phase. This is commonly used in full-wave rectifier circuits to produce positive and negative DC voltages from a single secondary winding.' },
+  { q: 'Can transformers work with DC?', a: 'No \u2014 transformers require a changing magnetic field to induce voltage. DC creates a constant magnetic field that does not induce any voltage in the secondary. Applying DC to a transformer can saturate the core and potentially damage the winding due to excessive current.' },
+  { q: 'What is transformer polarity?', a: 'Transformer polarity describes the relative direction of induced voltages. Additive polarity (common in distribution transformers) means the high-voltage and low-voltage terminals on the same core leg have the same instantaneous polarity. Subtractive polarity is used in larger power transformers.' },
+  { q: 'How do I size a transformer?', a: 'Size a transformer by calculating the total kVA of the connected load, adding a safety margin of 20\u201325%, and selecting the next standard size. Consider inrush current (can be 10\u201312\u00d7 rated current for large transformers) and voltage regulation requirements.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Turns ratio (Np:Ns)</span>
+        <input id="ratio" type="number" step="any" placeholder="2" value="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Primary voltage Vp (V)</span>
+        <input id="vp" type="number" step="any" placeholder="480" value="480" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Secondary voltage Vs (V)</span>
+        <input id="vs" type="number" step="any" placeholder="240" value="240" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Primary current Ip (A)</span>
+        <input id="ip" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Secondary current Is (A)</span>
+        <input id="is" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Power rating (kVA)</span>
+        <input id="power" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Turns ratio</div><div id="r-ratio" class="mt-1 text-2xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Voltage ratio</div><div id="r-vratio" class="mt-1 text-2xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Power rating</div><div id="r-pwr" class="mt-1 text-2xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different voltage transformation ratios mean</h2>
+    <p class="mt-2 text-slate-600">The turns ratio determines whether a transformer steps voltage up, steps it down, or provides isolation at the same voltage.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1:1</span><span class="text-slate-400">Isolation transformer \u2014 same V, galvanic isolation</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2:1</span><span class="text-slate-400">Step-down \u2014 480V to 240V, common in distribution</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">10:1</span><span class="text-slate-400">Step-down \u2014 2.4 kV to 240V, utility distribution</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1:2</span><span class="text-slate-400">Step-up \u2014 240V to 480V, industrial equipment</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1:10</span><span class="text-slate-400">Step-up \u2014 480V to 4.8 kV, power generation</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1:20</span><span class="text-slate-400">Step-up \u2014 240V to 4.8 kV, solar inverter</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:50%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\u2699\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrical Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design transformer specifications for power distribution systems, substations, and industrial applications.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD0C</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Power Supply Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Select the correct transformer turns ratio for AC-DC power supplies, flyback converters, and inverter designs.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDD27</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Technician</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify transformer ratings in the field during installation, troubleshooting, and maintenance of industrial equipment.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">\uD83D\uDEE0\uFE0F</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hobbyist</h3>
+      <p class="mt-1 text-sm text-slate-600">Select and verify transformers for DIY audio amplifiers, tube radios, battery chargers and other electronics projects.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Standard Vp (V)</th><th class="p-3">Standard Vs (V)</th><th class="p-3">Turns ratio</th><th class="p-3">Type</th><th class="p-3">Common use</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">480</td><td class="p-3">240</td><td class="p-3">2:1</td><td class="p-3">Step-down</td><td class="p-3">Industrial distribution</td></tr>
+        <tr><td class="p-3 font-medium">480</td><td class="p-3">208/120</td><td class="p-3">2.31:1</td><td class="p-3">Step-down w/ center tap</td><td class="p-3">Commercial buildings</td></tr>
+        <tr><td class="p-3 font-medium">240</td><td class="p-3">480</td><td class="p-3">1:2</td><td class="p-3">Step-up</td><td class="p-3">Motor drive isolation</td></tr>
+        <tr><td class="p-3 font-medium">13800</td><td class="p-3">480</td><td class="p-3">28.75:1</td><td class="p-3">Distribution</td><td class="p-3">Utility to facility</td></tr>
+        <tr><td class="p-3 font-medium">240</td><td class="p-3">24</td><td class="p-3">10:1</td><td class="p-3">Control transformer</td><td class="p-3">PLC and relay control</td></tr>
+        <tr><td class="p-3 font-medium">120</td><td class="p-3">12</td><td class="p-3">10:1</td><td class="p-3">Step-down</td><td class="p-3">Low-voltage lighting</td></tr>
+        <tr><td class="p-3 font-medium">480</td><td class="p-3">480</td><td class="p-3">1:1</td><td class="p-3">Isolation</td><td class="p-3">Medical equipment</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Transformer Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter known values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill in any three of the five values: turns ratio, Vp, Vs, Ip or Is. The calculator computes the remaining two automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check the results</h3>
+        <p class="mt-1 text-sm text-slate-600">Review the computed turns ratio, voltage ratio, and power rating. For an ideal transformer, Vp \u00d7 Ip should equal Vs \u00d7 Is.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Apply to your design</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the results to select a standard transformer, verify an existing specification, or design the winding ratio for a custom transformer.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with transformers</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Size for kVA, not voltage alone</h3>
+        <p class="mt-1 text-sm text-slate-600">A transformer\u2019s power rating in kVA determines its physical size and cost. Always calculate the kVA from the load, then select a transformer rated at least 125% of the calculated value.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Account for inrush current</h3>
+        <p class="mt-1 text-sm text-slate-600">When first energized, transformers draw a high inrush current that can be 10\u201312 times the rated current for several cycles. Ensure upstream breakers and fuses are sized to handle this without nuisance tripping.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use isolation transformers for sensitive equipment</h3>
+        <p class="mt-1 text-sm text-slate-600">A 1:1 isolation transformer provides galvanic isolation between source and load, eliminating ground loops and reducing common-mode noise. This is critical for medical equipment, audio systems, and sensitive instrumentation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider three-phase transformer configurations</h3>
+        <p class="mt-1 text-sm text-slate-600">Three-phase transformers can be connected in wye-wye, delta-delta, wye-delta, or delta-wye configurations. Each has different characteristics for grounding, harmonics, and phase shift. Delta-wye is most common for distribution because it provides a neutral for mixed loads.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How transformers work</h2>
+    <p class="mt-2 text-slate-600">A transformer is a static electrical device that transfers electrical energy between two or more circuits through electromagnetic induction. It consists of two or more coils of wire (windings) wrapped around a common magnetic core. When AC current flows through the primary winding, it creates a time-varying magnetic field in the core, which induces a voltage in the secondary winding.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">The turns ratio formula</h2>
+    <p class="mt-2 text-slate-600">The fundamental relationship governing transformer operation is Vp / Vs = Np / Ns = Is / Ip. For an ideal transformer, the power input equals power output: Vp \u00d7 Ip = Vs \u00d7 Is. If the voltage is stepped down by a factor of 2, the current is stepped up by the same factor, keeping power constant (minus losses in real transformers).</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Ideal vs real transformers</h2>
+    <p class="mt-2 text-slate-600">Ideal transformers are a theoretical simplification with 100% efficiency. Real transformers have losses: copper loss (I\u00b2R in the windings), core loss (hysteresis and eddy currents in the magnetic core), and leakage flux (magnetic field that does not link both windings). Large power transformers achieve 98\u201399% efficiency, while small signal transformers may be only 70\u201380% efficient.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Core types and materials</h2>
+    <p class="mt-2 text-slate-600">Transformer cores are made from laminated silicon steel (for power frequencies), ferrite (for high-frequency switching supplies), or amorphous metal (for ultra-efficient distribution transformers). Core design affects efficiency, size, weight, and cost. Toroidal cores offer low external magnetic fields and compact size, making them popular for audio and medical equipment.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Applications across industries</h2>
+    <p class="mt-2 text-slate-600">Transformers are essential in power generation (step-up to transmission voltages of 138\u2013765 kV), transmission (reduce losses at high voltage), distribution (step-down to 480V or 208/120V for end users), isolation (medical equipment, audio), signal coupling (audio transformers, impedance matching), and power conversion (switch-mode power supplies, flyback transformers).</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let updating = false;
+
+    function formatRatio(v) {
+      return v < 1 ? (1 / v).toFixed(2) + ':1 (step-up)' : v.toFixed(2) + ':1 (step-down)';
+    }
+
+    function update(source) {
+      if (updating) return;
+      updating = true;
+
+      const ratio = parseFloat(el('ratio').value);
+      const vp = parseFloat(el('vp').value);
+      const vs = parseFloat(el('vs').value);
+      const ip = parseFloat(el('ip').value);
+      const is = parseFloat(el('is').value);
+      const power = parseFloat(el('power').value);
+
+      const hasRatio = !isNaN(ratio) && ratio > 0;
+      const hasVp = !isNaN(vp) && vp > 0;
+      const hasVs = !isNaN(vs) && vs > 0;
+      const hasIp = !isNaN(ip) && ip > 0;
+      const hasIs = !isNaN(is) && is > 0;
+      const hasPower = !isNaN(power) && power > 0;
+
+      const known = (hasRatio ? 1 : 0) + (hasVp ? 1 : 0) + (hasVs ? 1 : 0) + (hasIp ? 1 : 0) + (hasIs ? 1 : 0) + (hasPower ? 1 : 0);
+
+      if (known < 2) {
+        el('r-ratio').textContent = '\u2014';
+        el('r-vratio').textContent = '\u2014';
+        el('r-pwr').textContent = '\u2014';
+        updating = false;
+        return;
+      }
+
+      let rRatio = NaN, rVp = NaN, rVs = NaN, rIp = NaN, rIs = NaN, rPower = NaN;
+
+      if (hasPower && hasVp && hasIp && known >= 2) {
+        rPower = power; rVp = vp; rIp = ip;
+      }
+
+      if (hasRatio && hasVp) { rRatio = ratio; rVp = vp; rVs = vp / ratio; }
+      else if (hasRatio && hasVs) { rRatio = ratio; rVs = vs; rVp = vs * ratio; }
+      else if (hasVp && hasVs) { rVp = vp; rVs = vs; rRatio = vp / vs; }
+      else if (hasRatio && hasVp === false && hasVs === false) {}
+
+      if (hasRatio && hasIp) { rRatio = ratio; rIp = ip; rIs = ip * ratio; }
+      else if (hasRatio && hasIs) { rRatio = ratio; rIs = is; rIp = is / ratio; }
+      else if (hasIp && hasIs) { rIp = ip; rIs = is; rRatio = is / ip; }
+
+      if (hasVp && hasIp) { rVp = vp; rIp = ip; rPower = vp * ip / 1000; }
+      else if (hasVs && hasIs) { rVs = vs; rIs = is; rPower = vs * is / 1000; }
+      else if (hasPower && hasVp) { rPower = power; rVp = vp; rIp = power * 1000 / vp; }
+      else if (hasPower && hasIp) { rPower = power; rIp = ip; rVp = power * 1000 / ip; }
+      else if (hasPower && hasVs) { rPower = power; rVs = vs; rIs = power * 1000 / vs; }
+      else if (hasPower && hasIs) { rPower = power; rIs = is; rVs = power * 1000 / is; }
+
+      if (source !== 'ratio' && !isNaN(rRatio)) el('ratio').value = parseFloat(rRatio.toFixed(4));
+      if (source !== 'vp' && !isNaN(rVp)) el('vp').value = parseFloat(rVp.toFixed(2));
+      if (source !== 'vs' && !isNaN(rVs)) el('vs').value = parseFloat(rVs.toFixed(2));
+      if (source !== 'ip' && !isNaN(rIp)) el('ip').value = parseFloat(rIp.toFixed(4));
+      if (source !== 'is' && !isNaN(rIs)) el('is').value = parseFloat(rIs.toFixed(4));
+      if (source !== 'power' && !isNaN(rPower)) el('power').value = parseFloat(rPower.toFixed(2));
+
+      el('r-ratio').textContent = isNaN(rRatio) ? '\u2014' : formatRatio(rRatio);
+      el('r-vratio').textContent = isNaN(rVp) || isNaN(rVs) ? '\u2014' : (rVp / rVs).toFixed(2) + ':1';
+      el('r-pwr').textContent = isNaN(rPower) ? '\u2014' : rPower.toFixed(2) + ' kVA';
+
+      updating = false;
+    }
+
+    ['ratio','vp','vs','ip','is','power'].forEach(id => el(id).addEventListener('input', () => update(id)));
+  </script>
+</ToolLayout>

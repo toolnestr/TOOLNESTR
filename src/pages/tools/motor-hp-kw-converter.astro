@@ -1,0 +1,270 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Motor HP / kW Converter';
+const description = 'Free motor horsepower to kilowatt converter. Convert between HP (mechanical and electrical), kW and amps for single and three-phase motors.';
+const intro = 'Enter horsepower or kilowatts, along with motor voltage and efficiency, to get the equivalent value and estimated full-load amperage.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the difference between mechanical HP and electrical HP?', a: 'Mechanical horsepower (HP) is defined as 745.7 watts (550 ft\u00b7lb/s). Electrical horsepower is defined as exactly 746 watts. The difference is negligible for most practical purposes, but electrical HP is used specifically for electric motor ratings while mechanical HP is used for engines and turbines.' },
+  { q: 'How do I convert HP to kW?', a: 'For mechanical HP: kW = HP \u00d7 0.7457. For electrical HP: kW = HP \u00d7 0.746. For example, a 10 HP mechanical motor equals 7.457 kW, and a 10 HP electrical motor equals 7.46 kW.' },
+  { q: 'How do I convert kW to HP?', a: 'For mechanical HP: HP = kW / 0.7457. For electrical HP: HP = kW / 0.746. For example, 7.5 kW equals approximately 10.06 mechanical HP or 10.05 electrical HP.' },
+  { q: 'How do I calculate full-load amps for a motor?', a: 'For single-phase: FLA = (kW \u00d7 1000) / (V \u00d7 PF \u00d7 \u03b7). For three-phase: FLA = (kW \u00d7 1000) / (V \u00d7 PF \u00d7 \u03b7 \u00d7 \u221a3). Where V is voltage, PF is power factor, and \u03b7 is efficiency (as a decimal).' },
+  { q: 'What is motor efficiency?', a: 'Motor efficiency (\u03b7) is the ratio of mechanical output power to electrical input power. Typical efficiencies range from 75% for small fractional-HP motors to 95%+ for large premium-efficiency motors. Higher efficiency means lower operating costs.' },
+  { q: 'What is power factor and why does it matter?', a: 'Power factor (PF) is the ratio of real power (kW) to apparent power (kVA). Induction motors typically have a PF of 0.7\u20130.9 at full load. Low power factor means higher current for the same real power, increasing distribution losses and potentially incurring utility penalties.' },
+  { q: 'What are NEMA standard motor sizes?', a: 'NEMA standardizes motor horsepower ratings: fractional (1/4, 1/3, 1/2, 3/4 HP) and integral (1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500 HP).' },
+  { q: 'What voltage ratings do motors use?', a: 'Common motor voltages include 115V, 208V, 230V, 460V, 575V for single and three-phase. High-voltage motors may use 2300V, 4160V, or 6600V. The calculator supports any voltage input for maximum flexibility.' },
+  { q: 'How can I reduce motor starting current?', a: 'Motors draw 5\u20138\u00d7 their full-load current during starting. Methods to reduce inrush include: soft starters, variable frequency drives (VFDs), star-delta starting, autotransformer starting, and reactor starting. VFDs provide the most control and energy savings.' },
+  { q: 'What is the difference between single-phase and three-phase motors?', a: 'Single-phase motors are used in residential and light commercial applications up to about 5 HP. Three-phase motors are more efficient, have better starting torque, and are used for industrial applications above 1 HP. Three-phase motors also have a higher power-to-weight ratio.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700">Input type</label>
+      <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <button id="mode-hp" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">Enter HP</button>
+        <button id="mode-kw" class="flex-1 rounded-lg py-2 text-slate-500">Enter kW</button>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div id="hp-inputs">
+        <label class="block"><span class="text-sm font-medium text-slate-700">Horsepower</span>
+          <div class="mt-1 flex gap-2">
+            <input id="hp" type="number" step="any" placeholder="10" value="10" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+            <select id="hp-type" class="w-48 rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+              <option value="mechanical">Mechanical HP</option>
+              <option value="electrical">Electrical HP</option>
+            </select>
+          </div>
+        </label>
+      </div>
+      <div id="kw-inputs" style="display:none">
+        <label class="block"><span class="text-sm font-medium text-slate-700">Kilowatts (kW)</span>
+          <input id="kw" type="number" step="any" placeholder="7.457" value="7.457" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Voltage (V)</span>
+        <input id="voltage" type="number" step="any" placeholder="460" value="460" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Phase</span>
+        <select id="phase" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="3">Three-phase</option>
+          <option value="1">Single-phase</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Efficiency (%)</span>
+        <input id="eff" type="number" step="any" placeholder="90" value="90" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Power factor</span>
+        <input id="pf" type="number" step="any" placeholder="0.85" value="0.85" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Converted value</div><div id="r-converted" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Full-load amps</div><div id="r-fla" class="mt-1 text-2xl font-bold text-emerald-600">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Apparent power</div><div id="r-kva" class="mt-1 text-2xl font-bold text-slate-800">&mdash;</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different motor sizes mean</h2>
+    <p class="mt-2 text-slate-600">Common NEMA standard motor sizes span from fractional HP to large industrial motors.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">0.5 HP</span><span class="text-slate-400">0.37 kW &mdash; small fans, pumps</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:0.5%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1 HP</span><span class="text-slate-400">0.75 kW &mdash; workshop tools, compressors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:1%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">5 HP</span><span class="text-slate-400">3.7 kW &mdash; large saws, HVAC</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:5%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">10 HP</span><span class="text-slate-400">7.5 kW &mdash; industrial pumps</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">50 HP</span><span class="text-slate-400">37 kW &mdash; large compressors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">100 HP</span><span class="text-slate-400">75 kW &mdash; chiller plants, conveyors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2699;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Maintenance Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify motor nameplate ratings, calculate expected currents, and plan electrical infrastructure for replacement motors.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3ED;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Plant Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate power consumption and operating costs of motors for budgeting and energy efficiency optimization projects.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x26A1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrician</h3>
+      <p class="mt-1 text-sm text-slate-600">Size feeders, breakers, and contactors correctly by calculating full-load amperage from motor nameplate data.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F477;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Equipment Specifier</h3>
+      <p class="mt-1 text-sm text-slate-600">Convert between HP and kW to specify motors correctly for international projects and equipment procurement.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">HP</th><th class="p-3">kW (mech)</th><th class="p-3">kW (elec)</th><th class="p-3">FLA 230V 3ph</th><th class="p-3">FLA 460V 3ph</th><th class="p-3">Efficiency</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">0.5</td><td class="p-3">0.37</td><td class="p-3">0.37</td><td class="p-3">1.6 A</td><td class="p-3">0.8 A</td><td class="p-3">77%</td></tr>
+        <tr><td class="p-3 font-medium">1</td><td class="p-3">0.75</td><td class="p-3">0.75</td><td class="p-3">2.8 A</td><td class="p-3">1.4 A</td><td class="p-3">80%</td></tr>
+        <tr><td class="p-3 font-medium">5</td><td class="p-3">3.73</td><td class="p-3">3.73</td><td class="p-3">12.0 A</td><td class="p-3">6.0 A</td><td class="p-3">85%</td></tr>
+        <tr><td class="p-3 font-medium">10</td><td class="p-3">7.46</td><td class="p-3">7.46</td><td class="p-3">22.5 A</td><td class="p-3">11.2 A</td><td class="p-3">88%</td></tr>
+        <tr><td class="p-3 font-medium">25</td><td class="p-3">18.65</td><td class="p-3">18.65</td><td class="p-3">53.0 A</td><td class="p-3">26.5 A</td><td class="p-3">91%</td></tr>
+        <tr><td class="p-3 font-medium">50</td><td class="p-3">37.30</td><td class="p-3">37.30</td><td class="p-3">103.0 A</td><td class="p-3">51.5 A</td><td class="p-3">92%</td></tr>
+        <tr><td class="p-3 font-medium">100</td><td class="p-3">74.60</td><td class="p-3">74.60</td><td class="p-3">199.0 A</td><td class="p-3">99.5 A</td><td class="p-3">94%</td></tr>
+        <tr><td class="p-3 font-medium">500</td><td class="p-3">373.00</td><td class="p-3">373.00</td><td class="p-3">980.0 A</td><td class="p-3">490.0 A</td><td class="p-3">95%</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Motor HP / kW Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter power rating</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose whether to enter HP or kW. If entering HP, select mechanical or electrical HP type for precise conversion.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter motor parameters</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill in voltage, phase (single or three), efficiency, and power factor. These are used for full-load amp calculation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read all results</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator shows the converted value (HP or kW), full-load amperage, and apparent power in kVA &mdash; all updated in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for motor power conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always use mechanical HP for engines</h3>
+        <p class="mt-1 text-sm text-slate-600">Mechanical HP (745.7 W) is the standard for engines, turbines, and other non-electric power sources. Electrical HP (746 W) is only used for electric motor ratings. The calculator supports both.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check motor nameplate for exact values</h3>
+        <p class="mt-1 text-sm text-slate-600">The full-load amp calculation is an estimate. For precise values, always refer to the motor nameplate or manufacturer datasheet. Actual FLA can vary by up to 10% depending on the motor design.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Account for service factor</h3>
+        <p class="mt-1 text-sm text-slate-600">NEMA motors have a service factor (typically 1.0 to 1.25) that indicates how much continuous overload the motor can handle. A 1.15 service factor means the motor can run at 115% of rated load. Size protective devices accordingly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify voltage compatibility</h3>
+        <p class="mt-1 text-sm text-slate-600">Motors designed for 460V can typically operate at 460\u00b110% (414\u2013506V). Using the wrong voltage reduces efficiency, increases current, and may damage the motor. Dual-voltage motors can be wired for 230V or 460V.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">HP vs kW</h2>
+    <p class="mt-2 text-slate-600">Horsepower and kilowatts are both units of power. One mechanical horsepower equals 745.7 watts (0.7457 kW), while one electrical horsepower equals exactly 746 watts (0.746 kW). The conversion is straightforward: multiply HP by 0.7457 (mechanical) or 0.746 (electrical) to get kW, or divide kW by the same constants to get HP. Horsepower is still widely used in North America, while kW is the international (SI) standard.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">FLA calculation formula</h2>
+    <p class="mt-2 text-slate-600">Full-load amperage (FLA) is calculated from real power, voltage, efficiency, and power factor. For single-phase motors: FLA = (kW \u00d7 1000) / (V \u00d7 PF \u00d7 \u03b7). For three-phase motors: FLA = (kW \u00d7 1000) / (V \u00d7 PF \u00d7 \u03b7 \u00d7 \u221a3). The \u221a3 factor (approximately 1.732) accounts for the phase relationship in three-phase power.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Motor efficiency</h2>
+    <p class="mt-2 text-slate-600">No motor converts 100% of electrical input to mechanical output. Losses come from resistive heating in windings (I\u00b2R), magnetic hysteresis, eddy currents, bearing friction, and windage. NEMA Premium Efficiency motors typically achieve 90\u201396% efficiency. The Department of Energy mandates minimum efficiency standards that vary by motor size and type.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">NEMA standards</h2>
+    <p class="mt-2 text-slate-600">NEMA MG-1 defines standard motor ratings, performance characteristics, frame sizes, and testing methods. Standard NEMA frame sizes (e.g., 143T, 184T, 256T, 364T, 445T) correspond to specific shaft heights, centerline dimensions, and mounting configurations. IEC motors use metric frame designations. Always verify NEMA or IEC frame compatibility when replacing a motor.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let inputMode = 'hp';
+
+    function setMode(m) {
+      inputMode = m;
+      el('mode-hp').className = 'flex-1 rounded-lg py-2 ' + (m === 'hp' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('mode-kw').className = 'flex-1 rounded-lg py-2 ' + (m === 'kw' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('hp-inputs').style.display = m === 'hp' ? 'block' : 'none';
+      el('kw-inputs').style.display = m === 'kw' ? 'block' : 'none';
+      update();
+    }
+
+    function update() {
+      const voltage = parseFloat(el('voltage').value);
+      const phase = el('phase').value;
+      const effPct = parseFloat(el('eff').value);
+      const pf = parseFloat(el('pf').value);
+      const hpType = el('hp-type').value;
+
+      let kW;
+      if (inputMode === 'hp') {
+        const hp = parseFloat(el('hp').value);
+        if (isNaN(hp) || hp <= 0) {
+          el('r-converted').textContent = '\u2014';
+          el('r-fla').textContent = '\u2014';
+          el('r-kva').textContent = '\u2014';
+          return;
+        }
+        kW = hp * (hpType === 'mechanical' ? 0.7457 : 0.746);
+        el('r-converted').textContent = kW.toFixed(4) + ' kW';
+      } else {
+        const kwVal = parseFloat(el('kw').value);
+        if (isNaN(kwVal) || kwVal <= 0) {
+          el('r-converted').textContent = '\u2014';
+          el('r-fla').textContent = '\u2014';
+          el('r-kva').textContent = '\u2014';
+          return;
+        }
+        kW = kwVal;
+        const hpMech = kW / 0.7457;
+        const hpElec = kW / 0.746;
+        el('r-converted').textContent = hpMech.toFixed(4) + ' HP (mech) / ' + hpElec.toFixed(4) + ' HP (elec)';
+      }
+
+      if (isNaN(voltage) || isNaN(effPct) || isNaN(pf) || voltage <= 0 || effPct <= 0 || pf <= 0) {
+        el('r-fla').textContent = '\u2014';
+        el('r-kva').textContent = '\u2014';
+        return;
+      }
+
+      const eff = effPct / 100;
+      const inputKw = kW / eff;
+      const kVA = inputKw / pf;
+
+      let fla;
+      if (phase === '3') {
+        fla = (kVA * 1000) / (voltage * Math.sqrt(3));
+      } else {
+        fla = (kVA * 1000) / voltage;
+      }
+
+      el('r-fla').textContent = fla.toFixed(2) + ' A';
+      el('r-kva').textContent = kVA.toFixed(3) + ' kVA';
+    }
+
+    el('mode-hp').addEventListener('click', () => setMode('hp'));
+    el('mode-kw').addEventListener('click', () => setMode('kw'));
+    ['hp', 'hp-type', 'kw', 'voltage', 'phase', 'eff', 'pf'].forEach(id => {
+      const e = el(id);
+      if (e) e.addEventListener('input', update);
+      if (e && e.tagName === 'SELECT') e.addEventListener('change', update);
+    });
+  </script>
+</ToolLayout>

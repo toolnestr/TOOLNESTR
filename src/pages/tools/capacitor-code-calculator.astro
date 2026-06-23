@@ -1,0 +1,205 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Capacitor Code Calculator';
+const description = 'Free capacitor code calculator. Decode ceramic capacitor markings, electrolytic values, and read capacitance from 3-digit codes and EIA markings.';
+const intro = 'Enter a capacitor code or select values to decode the capacitance, voltage rating and tolerance. Supports 3-digit codes, surface-mount markings and direct value entry.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'How do I read a 3-digit capacitor code?', a: 'The first two digits are the significant figures, and the third digit is the multiplier (number of zeros). For example, 104 means 10 \u00d7 10\u2074 = 100,000 pF = 100 nF = 0.1 \u00b5F. The result is always in picofarads (pF).' },
+  { q: 'What does a capacitor code like 221 mean?', a: '221 decodes as 22 \u00d7 10\u00b9 = 220 pF. If the code is 222, it is 22 \u00d7 10\u00b2 = 2200 pF = 2.2 nF. The third digit is the power of ten multiplier applied to the first two digits.' },
+  { q: 'How do electrolytic capacitors show their value?', a: 'Electrolytic capacitors typically print the value directly in microfarads (\u00b5F) along with the voltage rating, e.g., \u201c100 \u00b5F 25V\u201d. They may also show polarity with a stripe indicating the negative terminal.' },
+  { q: 'What is the EIA capacitor marking system?', a: 'The EIA-198 standard uses a 3-digit code for capacitance and sometimes a letter for tolerance. The first two digits are significant, the third is the multiplier. A letter suffix like J, K, or M indicates tolerance (\u00b15%, \u00b110%, \u00b120%).' },
+  { q: 'What do the letters on capacitors mean?', a: 'Common letter codes: J = \u00b15%, K = \u00b110%, M = \u00b120%, Z = +80/-20%. Voltage codes: 1A = 10V, 1C = 16V, 1E = 25V, 1H = 50V. Some manufacturers use their own proprietary marking systems.' },
+  { q: 'How do I convert between pF, nF and \u00b5F?', a: '1 \u00b5F = 1000 nF = 1,000,000 pF. To convert: pF \u00f7 1000 = nF, nF \u00f7 1000 = \u00b5F, pF \u00f7 1,000,000 = \u00b5F. A capacitor marked 104 is 100,000 pF = 100 nF = 0.1 \u00b5F.' },
+  { q: 'What surface-mount capacitor markings should I look for?', a: 'Small SMD capacitors are often not marked due to size constraints. Larger sizes (1812 and above) may use a 3-digit code. Some use a two-character code with a letter for the significant value and a number for the multiplier.' },
+  { q: 'Why do some capacitors have no visible markings?', a: 'Very small capacitors, especially SMD types in 0402 and 0603 packages, are too small to print legible codes. Their value must be determined from packaging, multimeter measurement, or the circuit schematic.' },
+  { q: 'What is the voltage rating on a capacitor?', a: "The voltage rating is the maximum DC voltage the capacitor can withstand continuously. Exceeding this rating can cause dielectric breakdown and catastrophic failure. Always use a capacitor rated at least 50% above the circuit\u2019s operating voltage.", },
+  { q: 'How do I decode a capacitor marked with a letter and number?', a: 'Some capacitors use a compact code like \u201cA2\u201d where the letter represents the base value (A=1, B=1.1, C=1.2, etc.) and the number is the multiplier power of 10. The final value is in pF. Reference charts are available for these codes.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2"><button id="modeCode" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Code \u2192 Value</button><button id="modeValue" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600">Value \u2192 Code</button></div>
+    <div id="codeMode" class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Capacitor code (3 digits)</span>
+        <input id="code" type="text" placeholder="104" maxlength="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Voltage code (optional)</span>
+        <select id="vcode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="">None</option><option value="1A">1A = 10V</option><option value="1C">1C = 16V</option><option value="1E">1E = 25V</option><option value="1H">1H = 50V</option><option value="2A">2A = 100V</option><option value="2E">2E = 250V</option></select></label>
+    </div>
+    <div id="valueMode" class="hidden grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Capacitance value</span>
+        <div class="mt-1 flex gap-2"><input id="capVal" type="number" step="any" placeholder="100" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="capUnitVal" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="pF">pF</option><option value="nF">nF</option><option value="uF">\u00b5F</option></select></div></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Capacitance</div><div id="r-cap" class="mt-1 text-xl font-bold">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">In pF</div><div id="r-pf" class="mt-1 text-xl font-bold text-emerald-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">In nF</div><div id="r-nf" class="mt-1 text-xl font-bold text-amber-600">\u2014</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">In \u00b5F</div><div id="r-uf" class="mt-1 text-xl font-bold text-slate-800">\u2014</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Capacitor types by capacitance range</h2>
+    <p class="mt-2 text-slate-600">Different capacitor technologies are suited to different capacitance ranges. The chart below shows typical ranges for common capacitor types.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Ceramic (Class 1)</span><span class="text-slate-400">1 pF \u2013 100 nF</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Film (polyester/polypropylene)</span><span class="text-slate-400">100 pF \u2013 10 \u00b5F</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:30%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Electrolytic (aluminum)</span><span class="text-slate-400">0.1 \u00b5F \u2013 100 mF</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:50%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Tantalum</span><span class="text-slate-400">0.1 \u00b5F \u2013 1000 \u00b5F</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-purple-500" style="width:35%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Supercapacitor</span><span class="text-slate-400">1 F \u2013 3000 F</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:60%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔧</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Repair Tech</h3><p class="mt-1 text-sm text-slate-600">Quickly identify unmarked capacitors on circuit boards during repairs and find suitable replacements.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔌</span><h3 class="mt-2 font-semibold text-slate-900">Circuit Designer</h3><p class="mt-1 text-sm text-slate-600">Convert between code formats and capacitance units when selecting capacitors for new designs and BOM creation.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🛠️</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Hobbyist</h3><p class="mt-1 text-sm text-slate-600">Decode the mysterious numbers on ceramic capacitors and learn to pick the right component for your projects.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📚</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Student</h3><p class="mt-1 text-sm text-slate-600">Learn the capacitor numbering system and practice converting between pF, nF and \u00b5F units used in textbooks.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">3-digit code</th><th class="p-3">Calculated value</th><th class="p-3">In nF</th><th class="p-3">In \u00b5F</th><th class="p-3">Common use</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">101</td><td class="p-3">100 pF</td><td class="p-3">0.1 nF</td><td class="p-3">0.0001 \u00b5F</td><td class="p-3">RF decoupling</td></tr>
+        <tr><td class="p-3 font-medium">102</td><td class="p-3">1000 pF</td><td class="p-3">1 nF</td><td class="p-3">0.001 \u00b5F</td><td class="p-3">Timing circuits</td></tr>
+        <tr><td class="p-3 font-medium">103</td><td class="p-3">10,000 pF</td><td class="p-3">10 nF</td><td class="p-3">0.01 \u00b5F</td><td class="p-3">Filtering, bypass</td></tr>
+        <tr><td class="p-3 font-medium">104</td><td class="p-3">100,000 pF</td><td class="p-3">100 nF</td><td class="p-3">0.1 \u00b5F</td><td class="p-3">Power supply decoupling</td></tr>
+        <tr><td class="p-3 font-medium">105</td><td class="p-3">1,000,000 pF</td><td class="p-3">1000 nF</td><td class="p-3">1 \u00b5F</td><td class="p-3">Output filtering</td></tr>
+        <tr><td class="p-3 font-medium">106</td><td class="p-3">10,000,000 pF</td><td class="p-3">10,000 nF</td><td class="p-3">10 \u00b5F</td><td class="p-3">Bulk storage</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Capacitor Code Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Choose your mode</h3><p class="mt-1 text-sm text-slate-600">Select \u201cCode \u2192 Value\u201d to decode a capacitor marking, or \u201cValue \u2192 Code\u201d to find the code for a known capacitance.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter the code or value</h3><p class="mt-1 text-sm text-slate-600">Type the 3-digit code (e.g., 104) or enter a capacitance value with the correct unit (pF, nF or \u00b5F).</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Read all conversions</h3><p class="mt-1 text-sm text-slate-600">The result boxes instantly display the value in pF, nF and \u00b5F simultaneously so you can compare across units.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reading capacitor codes</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Always verify with a multimeter</h3><p class="mt-1 text-sm text-slate-600">Capacitors can drift from their marked value over time, especially electrolytics. Use a multimeter with capacitance measurement to verify the actual value when precision matters.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Watch for non-standard codes</h3><p class="mt-1 text-sm text-slate-600">Some manufacturers use codes like R47 (0.47 \u00b5F) where the letter indicates the decimal point. A code of \u201c4n7\u201d means 4.7 nF. These are common on film capacitors and SMD types.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Check the voltage rating</h3><p class="mt-1 text-sm text-slate-600">A ceramic 104 capacitor rated for 50V is much larger than one rated for 16V. Always check the voltage rating, which may be printed separately or encoded in the marking.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Understand tolerance codes</h3><p class="mt-1 text-sm text-slate-600">Tolerance is often marked with a letter: F=\u00b11%, G=\u00b12%, J=\u00b15%, K=\u00b110%, M=\u00b120%, Z=+80/-20%. For decoupling circuits, K or M is fine; for timing and filters, J or better is needed.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How capacitor codes work</h2>
+    <p class="mt-2 text-slate-600">The 3-digit capacitor code is the most common marking system for ceramic capacitors. The first two digits are the significant figures, and the third digit is the multiplier as a power of 10. The result is always in picofarads (pF). For example, code 472 means 47 \u00d7 10\u00b2 = 4700 pF = 4.7 nF. If the third digit is 8, multiply by 0.01; if it is 9, multiply by 0.1. Values below 10 pF often use a different system like R47 for 0.47 pF.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Electrolytic capacitor markings</h2>
+    <p class="mt-2 text-slate-600">Electrolytic capacitors print the value directly in microfarads (\u00b5F) along with the voltage rating, such as \u201c100 \u00b5F 25V\u201d. They also show polarity \u2014 a stripe on the side indicates the negative terminal (for aluminum electrolytics) or positive (for tantalum). The operating temperature range is often printed as well, typically -40\u00b0C to +105\u00b0C for standard types.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tolerance and temperature coefficients</h2>
+    <p class="mt-2 text-slate-600">Ceramic capacitors are classified by temperature stability. Class 1 (C0G/NP0) has very stable capacitance with temperature, ideal for timing and RF circuits. Class 2 (X7R, X5R, Y5V) have higher capacitance density but vary with temperature and voltage. X7R varies \u00b115% from -55\u00b0C to +125\u00b0C, while Y5V can vary +22/-82% over its range.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Surface-mount capacitor identification</h2>
+    <p class="mt-2 text-slate-600">SMD capacitors in larger packages (1812 and above) may use a 3-digit code similar to through-hole types. Smaller packages (0402, 0603) are usually unmarked. Some use a two-character alphanumeric code where the letter represents the significant digits and the number is the multiplier. Without a code, the only way to determine the value is by measuring or referencing the schematic.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let currentMode = 'code';
+
+    function decodeCode(code) {
+      if (!code || code.length !== 3 || !/^\d{3}$/.test(code)) return null;
+      const d1 = parseInt(code[0]);
+      const d2 = parseInt(code[1]);
+      const d3 = parseInt(code[2]);
+      let pf;
+      if (d3 === 8) pf = (d1 * 10 + d2) * 0.01;
+      else if (d3 === 9) pf = (d1 * 10 + d2) * 0.1;
+      else pf = (d1 * 10 + d2) * Math.pow(10, d3);
+      return pf;
+    }
+
+    function encodeValue(pf) {
+      if (pf <= 0 || isNaN(pf)) return '';
+      let val = pf;
+      let exp = 0;
+      while (val >= 100) { val /= 10; exp++; }
+      if (val < 10) {
+        if (exp === -1) { val = pf / 0.01; exp = 8; }
+        else if (exp === -2) { val = pf / 0.001; exp = 9; }
+        else { val = pf; exp = 0; }
+      }
+      let sig = Math.round(val);
+      if (sig >= 100) { sig = Math.round(val / 10); exp++; }
+      return sig.toString() + exp.toString();
+    }
+
+    function fmtCap(pf) {
+      if (pf === null || isNaN(pf)) return '\u2014';
+      if (pf >= 1000000) return (pf / 1000000).toFixed(2) + ' \u00b5F';
+      if (pf >= 1000) return (pf / 1000).toFixed(2) + ' nF';
+      return pf.toFixed(2) + ' pF';
+    }
+
+    function updateCode() {
+      const code = el('code').value.trim();
+      const pf = decodeCode(code);
+      if (pf === null) {
+        el('r-cap').textContent = '\u2014';
+        el('r-pf').textContent = '\u2014';
+        el('r-nf').textContent = '\u2014';
+        el('r-uf').textContent = '\u2014';
+        return;
+      }
+      el('r-cap').textContent = fmtCap(pf);
+      el('r-pf').textContent = pf.toFixed(2) + ' pF';
+      el('r-nf').textContent = (pf / 1000).toFixed(4) + ' nF';
+      el('r-uf').textContent = (pf / 1000000).toFixed(6) + ' \u00b5F';
+    }
+
+    function updateValue() {
+      const val = parseFloat(el('capVal').value);
+      const unit = el('capUnitVal').value;
+      if (isNaN(val) || val <= 0) {
+        el('r-cap').textContent = '\u2014';
+        el('r-pf').textContent = '\u2014';
+        el('r-nf').textContent = '\u2014';
+        el('r-uf').textContent = '\u2014';
+        return;
+      }
+      let pf = unit === 'pF' ? val : unit === 'nF' ? val * 1000 : val * 1000000;
+      el('r-cap').textContent = encodeValue(pf);
+      el('r-pf').textContent = pf.toFixed(2) + ' pF';
+      el('r-nf').textContent = (pf / 1000).toFixed(4) + ' nF';
+      el('r-uf').textContent = (pf / 1000000).toFixed(6) + ' \u00b5F';
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      if (mode === 'code') {
+        el('modeCode').className = 'rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+        el('modeValue').className = 'rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600';
+        el('codeMode').classList.remove('hidden');
+        el('valueMode').classList.add('hidden');
+        updateCode();
+      } else {
+        el('modeValue').className = 'rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+        el('modeCode').className = 'rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600';
+        el('codeMode').classList.add('hidden');
+        el('valueMode').classList.remove('hidden');
+        updateValue();
+      }
+    }
+
+    el('modeCode').addEventListener('click', () => setMode('code'));
+    el('modeValue').addEventListener('click', () => setMode('value'));
+    el('code').addEventListener('input', updateCode);
+    el('capVal').addEventListener('input', updateValue);
+    el('capUnitVal').addEventListener('change', updateValue);
+  </script>
+</ToolLayout>

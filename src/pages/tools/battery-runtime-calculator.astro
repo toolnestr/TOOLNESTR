@@ -1,0 +1,156 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Battery Runtime Calculator';
+const description = 'Free battery runtime calculator. Estimate how long a battery will power your device based on battery capacity (mAh/Ah) and device current draw or power consumption.';
+const intro = 'Enter your battery capacity and your device\u2019s current draw or power consumption to estimate the runtime in hours and minutes.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'How is battery runtime calculated?', a: 'Runtime is calculated by dividing the battery capacity by the device current draw. For example, a 5000 mAh battery powering a device drawing 500 mA will last 10 hours. When using power in watts, runtime = battery energy (Wh) \u00f7 device power (W).' },
+  { q: 'What is the difference between mAh and Wh?', a: 'mAh (milliampere-hours) measures charge capacity, while Wh (watt-hours) measures energy capacity. Wh = (mAh \u00d7 V) \u00f7 1000. Wh gives a more accurate representation of total energy regardless of voltage.' },
+  { q: 'Why does my battery run out faster than calculated?', a: 'Real-world runtime is shorter due to efficiency losses, Peukert effect (batteries deliver less capacity at high discharge rates), temperature effects, battery age, and device power fluctuations. Our calculator includes an efficiency factor to account for these.' },
+  { q: 'What is the Peukert effect?', a: 'The Peukert effect describes how a battery\u2019s usable capacity decreases as the discharge rate increases. A battery rated at 100 Ah over 20 hours may only deliver 70 Ah if discharged in 1 hour. This is significant for lead-acid batteries but less so for lithium-ion.' },
+  { q: 'How does temperature affect battery runtime?', a: 'Cold temperatures increase internal resistance and reduce usable capacity. At 0\u00b0C, a lithium battery may deliver only 80% of its rated capacity. Extreme heat accelerates chemical degradation and permanent capacity loss.' },
+  { q: 'Does battery age affect runtime?', a: 'Yes. Batteries lose capacity with each charge cycle. A lithium-ion battery typically retains about 80% of its original capacity after 500 full cycles. This degradation is caused by chemical changes inside the battery.' },
+  { q: 'What is the difference between series and parallel battery configurations?', a: 'Connecting batteries in series increases voltage while keeping capacity the same. Connecting in parallel increases capacity while keeping voltage the same. For example, two 12V 100Ah batteries in series give 24V 100Ah; in parallel they give 12V 200Ah.' },
+  { q: 'How do I estimate runtime for devices with variable power draw?', a: 'Use the average power consumption for a rough estimate. For more accuracy, measure the current draw over time with a multimeter or power monitor and calculate the average. Devices like motors and processors have widely varying draw.' },
+  { q: 'What is a battery\u2019s depth of discharge (DoD)?', a: 'Depth of discharge is the percentage of battery capacity that has been used. For lead-acid batteries, limiting DoD to 50% significantly extends lifespan. Lithium batteries can handle up to 80-100% DoD with less impact on cycle life.' },
+  { q: 'How accurate are battery runtime calculators?', a: 'Calculators provide a theoretical estimate based on ideal conditions. Real-world runtime is typically 10-30% less due to efficiency losses, discharge rate effects, and environmental factors. Use the result as a guideline and add a safety margin.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity</span>
+        <div class="mt-1 flex gap-2"><input id="cap" type="number" step="any" placeholder="5000" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="capUnit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="mAh">mAh</option><option value="Ah">Ah</option></select></div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery voltage (V)</span>
+        <input id="volt" type="number" step="any" placeholder="3.7" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Device power draw (W)</span>
+        <input id="power" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Device current draw (mA)</span>
+        <input id="current" type="number" step="any" placeholder="500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">System efficiency (%)</span>
+        <input id="eff" type="number" step="any" placeholder="85" value="85" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Runtime</div><div id="r-runtime" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Energy capacity</div><div id="r-wh" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Effective current</div><div id="r-current" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different battery lifetimes mean</h2>
+    <p class="mt-2 text-slate-600">The expected lifetime of a battery depends on its chemistry, capacity and the device it powers. Typical runtimes for common devices vary widely.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Watch battery</span><span class="text-slate-400">1 – 2 years</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:40%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Smartphone</span><span class="text-slate-400">1 – 2 days</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:30%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Laptop</span><span class="text-slate-400">4 – 10 hours</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Power tool</span><span class="text-slate-400">1 – 4 hours</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Electric vehicle</span><span class="text-slate-400">4 – 8 hours</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:15%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔧</span><h3 class="mt-2 font-semibold text-slate-900">Electronics Hobbyist</h3><p class="mt-1 text-sm text-slate-600">Estimate how long your battery-powered projects will run and choose the right battery size for your portable designs.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🚗</span><h3 class="mt-2 font-semibold text-slate-900">EV Owner</h3><p class="mt-1 text-sm text-slate-600">Understand your electric vehicle\u2019s range and how factors like temperature, speed and accessories affect battery life.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">☀️</span><h3 class="mt-2 font-semibold text-slate-900">Solar System Designer</h3><p class="mt-1 text-sm text-slate-600">Size battery banks correctly for off-grid solar installations by calculating total load requirements and desired backup time.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📱</span><h3 class="mt-2 font-semibold text-slate-900">Product Developer</h3><p class="mt-1 text-sm text-slate-600">Design battery-powered consumer products with accurate runtime estimates and optimal battery capacity selection.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Device</th><th class="p-3">Battery capacity</th><th class="p-3">Typical runtime</th><th class="p-3">Chemistry</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Smartphone</td><td class="p-3">3000 – 5000 mAh</td><td class="p-3">1 – 2 days</td><td class="p-3">Li-ion</td></tr>
+        <tr><td class="p-3 font-medium">Laptop</td><td class="p-3">40 – 100 Wh</td><td class="p-3">4 – 10 hours</td><td class="p-3">Li-polymer</td></tr>
+        <tr><td class="p-3 font-medium">Power drill</td><td class="p-3">2 – 6 Ah</td><td class="p-3">1 – 4 hours</td><td class="p-3">Li-ion</td></tr>
+        <tr><td class="p-3 font-medium">Car battery</td><td class="p-3">45 – 75 Ah</td><td class="p-3">Minutes (starter)</td><td class="p-3">Lead-acid</td></tr>
+        <tr><td class="p-3 font-medium">Power bank</td><td class="p-3">5000 – 30000 mAh</td><td class="p-3">1 – 10 charges</td><td class="p-3">Li-ion</td></tr>
+        <tr><td class="p-3 font-medium">Smartwatch</td><td class="p-3">200 – 500 mAh</td><td class="p-3">1 – 3 days</td><td class="p-3">Li-ion</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Battery Runtime Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter battery specs</h3><p class="mt-1 text-sm text-slate-600">Input your battery capacity and voltage. Most batteries list these directly on the label or in the datasheet.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter device power</h3><p class="mt-1 text-sm text-slate-600">Provide either the power draw in watts or current draw in mA. Using power (W) gives more accurate results as it accounts for voltage.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Set efficiency factor</h3><p class="mt-1 text-sm text-slate-600">Adjust the system efficiency slider to account for real-world losses. Use 85% as a starting point for most systems.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate runtime estimation</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Use watt-hours (Wh) for voltage-independent comparisons</h3><p class="mt-1 text-sm text-slate-600">When comparing batteries of different voltages, always convert to Wh. A 12V 10Ah battery (120 Wh) has nearly the same energy as a 24V 5Ah battery (120 Wh). Wh is the true measure of energy capacity.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Account for the Peukert effect in lead-acid batteries</h3><p class="mt-1 text-sm text-slate-600">Lead-acid batteries lose capacity at high discharge rates. A battery rated at 100Ah for a 20-hour discharge may only deliver 60Ah if discharged in 1 hour. Lithium batteries are much less affected.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Include inverter losses for AC devices</h3><p class="mt-1 text-sm text-slate-600">If you are powering an AC device from a battery through an inverter, add 10-15% to your power draw to account for inverter conversion losses. Pure sine wave inverters are more efficient than modified sine wave.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Consider depth of discharge limits</h3><p class="mt-1 text-sm text-slate-600">For lead-acid batteries, never discharge below 50% to maximize cycle life. For lithium, 80-100% DoD is acceptable. Adjust your usable capacity accordingly when sizing a system.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Battery capacity explained: mAh vs Wh</h2>
+    <p class="mt-2 text-slate-600">Battery capacity is the total charge or energy a battery can store. It is expressed in milliampere-hours (mAh) or ampere-hours (Ah) for charge, and watt-hours (Wh) for energy. The relationship is Wh = (mAh \u00d7 V) / 1000. A 5000 mAh battery at 3.7 V stores 18.5 Wh of energy. Watt-hours are more useful for comparing batteries of different voltages because they represent total energy regardless of voltage.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Factors affecting runtime</h2>
+    <p class="mt-2 text-slate-600">Many factors reduce runtime below theoretical calculations. Device power draw varies during operation \u2014 a laptop uses more power while gaming than while idle. Battery internal resistance causes voltage sag under load, triggering low-voltage cutoffs earlier. Temperature extremes reduce capacity. Battery age and cycle count progressively degrade capacity. Our efficiency factor helps approximate these combined losses.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Efficiency losses in battery systems</h2>
+    <p class="mt-2 text-slate-600">Energy is lost as heat in wires, connectors, and the battery\u2019s own internal resistance. Voltage converters (boost/buck regulators) typically achieve 80-95% efficiency. Inverters for AC loads add 10-15% loss. The battery management system (BMS) also consumes a small amount of power. A well-designed DC system can achieve 90%+ overall efficiency.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Series vs parallel battery configurations</h2>
+    <p class="mt-2 text-slate-600">Connecting batteries in series (positive to negative) adds voltages while capacity stays the same: two 12V 100Ah in series give 24V 100Ah. Connecting in parallel (positive to positive, negative to negative) adds capacities while voltage stays the same: two 12V 100Ah in parallel give 12V 200Ah. For high-power applications, a series-parallel combination can provide both higher voltage and higher capacity.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const cap = parseFloat(el('cap').value);
+      const capUnit = el('capUnit').value;
+      const volt = parseFloat(el('volt').value);
+      const power = parseFloat(el('power').value);
+      const current = parseFloat(el('current').value);
+      const eff = parseFloat(el('eff').value) || 100;
+
+      if (isNaN(cap) || isNaN(volt) || (isNaN(power) && isNaN(current)) || cap <= 0 || volt <= 0 || eff <= 0) {
+        el('r-runtime').textContent = '\u2014';
+        el('r-wh').textContent = '\u2014';
+        el('r-current').textContent = '\u2014';
+        return;
+      }
+
+      let capAh = capUnit === 'mAh' ? cap / 1000 : cap;
+      let wh = capAh * volt;
+      let effFactor = eff / 100;
+      let runtimeH = 0;
+
+      if (!isNaN(power) && power > 0) {
+        runtimeH = (wh * effFactor) / power;
+        let displayCurrent = (power / volt) * 1000;
+        el('r-current').textContent = displayCurrent.toFixed(1) + ' mA';
+      } else if (!isNaN(current) && current > 0) {
+        let currentA = current / 1000;
+        runtimeH = (capAh * effFactor) / currentA;
+        el('r-current').textContent = current.toFixed(1) + ' mA';
+      } else {
+        el('r-runtime').textContent = '\u2014';
+        el('r-wh').textContent = '\u2014';
+        el('r-current').textContent = '\u2014';
+        return;
+      }
+
+      let hours = Math.floor(runtimeH);
+      let minutes = Math.round((runtimeH - hours) * 60);
+      el('r-runtime').textContent = hours + 'h ' + minutes + 'm';
+      el('r-wh').textContent = wh.toFixed(2) + ' Wh';
+    }
+
+    ['cap','capUnit','volt','power','current','eff'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
