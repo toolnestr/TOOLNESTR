@@ -1,0 +1,346 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Gauge / Speedometer Chart';
+const description = 'Free online gauge chart generator. Create a radial speedometer-style gauge showing a single value within a range. Runs in your browser.';
+const intro = 'Enter a value, minimum and maximum range to create a gauge chart — perfect for KPI dashboards, progress tracking and performance indicators.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'What is a gauge chart?', a: 'A gauge chart (also called a speedometer chart) is a radial chart that displays a single value within a predefined range. It uses a circular arc with colour zones and a needle to indicate where the value falls.' },
+  { q: 'When should I use a gauge chart?', a: 'Gauge charts are ideal for displaying KPIs, progress towards a goal, performance metrics, and any single-value indicator where the audience needs an immediate sense of whether the reading is good, moderate, or bad.' },
+  { q: 'What do the colour zones mean?', a: 'Colour zones divide the gauge arc into ranges — typically red (low/poor), yellow (medium/average), and green (high/good). You can customise the thresholds and colours for each zone.' },
+  { q: 'How does the needle work?', a: 'The needle rotates from the start of the arc (minimum value) to the end of the arc (maximum value). The angle of the needle is proportional to where the current value falls within the range.' },
+  { q: 'Is my data sent to a server?', a: 'No. The gauge chart is rendered entirely in your browser using HTML5 Canvas. No data is uploaded, stored, or transmitted anywhere.' },
+  { q: 'Can I customise the arc range?', a: 'Yes. You set the minimum and maximum values. The gauge adjusts automatically to show the full range from min to max, with colour zones scaled proportionally.' },
+  { q: 'What file format is the download?', a: 'The gauge chart is downloaded as a PNG image via canvas.toDataURL. It works well for dashboards, slides, and reports.' },
+  { q: 'How many colour zones are supported?', a: 'The tool supports three zones — low, medium, and high — each with customisable range thresholds and colours. This matches the most common dashboard design pattern.' },
+  { q: 'Can I use negative values?', a: 'Yes. Both the value and the min/max range can be negative. The gauge will scale the arc and needle position accordingly.' },
+  { q: 'What is the best use case for a gauge chart?', a: 'Gauge charts excel in dashboards where you need to answer "Is this number good or bad?" at a glance — such as customer satisfaction scores, server uptime, budget spend, or temperature readings.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Value</span>
+        <input id="gaugeValue" type="number" step="any" value="67" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Min</span>
+        <input id="gaugeMin" type="number" step="any" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Max</span>
+        <input id="gaugeMax" type="number" step="any" value="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+    <label class="mt-3 block">
+      <span class="text-sm font-medium text-slate-700">Title</span>
+      <input id="gaugeTitle" type="text" value="Performance Score" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    </label>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Low zone end (%)</span>
+        <input id="lowEnd" type="number" step="1" value="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mid zone end (%)</span>
+        <input id="midEnd" type="number" step="1" value="70" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">High zone end (%)</span>
+        <input id="highEnd" type="number" step="1" value="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Low colour</span>
+        <input id="lowColor" type="color" value="#ef4444" class="mt-1 h-10 w-full rounded-xl border border-slate-300 p-1" />
+      </label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mid colour</span>
+        <input id="midColor" type="color" value="#f59e0b" class="mt-1 h-10 w-full rounded-xl border border-slate-300 p-1" />
+      </label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">High colour</span>
+        <input id="highColor" type="color" value="#10b981" class="mt-1 h-10 w-full rounded-xl border border-slate-300 p-1" />
+      </label>
+    </div>
+    <button id="generateBtn" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700">Generate Gauge Chart</button>
+  </div>
+
+  <div id="result" class="mt-6 hidden">
+    <canvas id="chartCanvas" width="500" height="400" class="rounded-xl border border-slate-200"></canvas>
+    <button id="downloadBtn" class="mt-4 rounded-xl bg-emerald-600 px-6 py-2 font-semibold text-white transition hover:bg-emerald-700">Download PNG</button>
+  </div>
+
+  <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter your value range and click Generate to see the gauge chart.</p>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Gauge color zone ranges</h2>
+    <p class="mt-2 text-slate-600">Standard colour zones help viewers instantly assess whether a value is in a good range. Below are typical ranges used in dashboard design.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Red zone (poor)</span><span class="text-slate-400">0% – 30%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:30%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Yellow zone (moderate)</span><span class="text-slate-400">30% – 70%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Green zone (good)</span><span class="text-slate-400">70% – 100%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:30%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Dashboard Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Add at-a-glance performance indicators to executive dashboards — sales attainment, customer satisfaction, or system health — with custom colour thresholds.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👔</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Track team KPIs such as project completion rate, budget utilisation, or response time against targets during stand-ups and reviews.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎯</span>
+      <h3 class="mt-2 font-semibold text-slate-900">KPI Tracker</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitor individual metrics quarter-over-quarter — revenue targets, conversion rates, or operational efficiency — with clear visual status indicators.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💻</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Embed gauge charts in internal tools, admin panels, or monitoring UIs to display server load, API latency, or feature adoption rates.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Guideline</th><th class="p-3">Recommendation</th><th class="p-3">Rationale</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Arc sweep angle</td><td class="p-3">180°–240°</td><td class="p-3">Wide enough to show variation, but not a full circle (harder to read)</td></tr>
+        <tr><td class="p-3 font-medium">Colour zones</td><td class="p-3">2–4 zones</td><td class="p-3">Too many zones create confusion; red-yellow-green is the standard</td></tr>
+        <tr><td class="p-3 font-medium">Needle style</td><td class="p-3">Thin, pointed</td><td class="p-3">A sharp needle makes the reading precise; avoid thick blunt needles</td></tr>
+        <tr><td class="p-3 font-medium">Value label</td><td class="p-3">Centred at bottom</td><td class="p-3">Shows exact number so the gauge works as both an abstract and precise indicator</td></tr>
+        <tr><td class="p-3 font-medium">Tick marks</td><td class="p-3">5–11 major ticks</td><td class="p-3">Enough for reference without cluttering the arc</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Gauge Chart Generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set value and range</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the current value, minimum and maximum of your scale. The gauge will scale automatically to fit these bounds.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Customise colour zones</h3>
+        <p class="mt-1 text-sm text-slate-600">Adjust the percentage thresholds and pick colours for each zone. By default the gauge uses red-yellow-green.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and export</h3>
+        <p class="mt-1 text-sm text-slate-600">Render the gauge and download it as a PNG. The needle, tick marks, colour zones, and digital readout are all included.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective gauge charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use colour zones consistently</h3>
+        <p class="mt-1 text-sm text-slate-600">Stick to the red-yellow-green convention across your dashboards so viewers instantly understand good vs bad without re-learning each chart.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Don't overuse gauge charts</h3>
+        <p class="mt-1 text-sm text-slate-600">Gauges are space-hungry for a single number. Use them only for the most important 3–5 KPIs on a dashboard, not for every available metric.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Show the exact value</h3>
+        <p class="mt-1 text-sm text-slate-600">Always pair the gauge with a digital readout of the exact value. The arc and needle give quick context; the number provides precision.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a gauge chart?</h2>
+    <p class="mt-2 text-slate-600">A gauge chart is a radial visualisation that displays a single metric within a defined range. Inspired by an automobile speedometer, it uses a circular arc (typically 180°–270°) divided into coloured zones, with a needle pointing to the current value.</p>
+    <p class="mt-3 text-slate-600">Gauge charts are a staple of business dashboards because they answer the most common question about any KPI immediately: "Is this good or bad?" The colour zones encode that judgment, while the needle position shows magnitude within the range.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use a gauge chart</h2>
+    <p class="mt-2 text-slate-600">Gauge charts work best when you need to communicate the status of a single metric relative to a target or threshold. Common scenarios include:</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><strong>Dashboard KPIs:</strong> Revenue attainment, customer satisfaction score, net promoter score</li>
+      <li><strong>Progress tracking:</strong> Project completion percentage, budget spent, goal achievement</li>
+      <li><strong>Performance monitoring:</strong> System uptime, server response time, error rate</li>
+      <li><strong>Operational metrics:</strong> Temperature, pressure, fill level in industrial dashboards</li>
+    </ul>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Colour zones in gauge charts</h2>
+    <p class="mt-2 text-slate-600">Colour zones convert a raw number into an intuitive status indicator. The standard traffic-light convention (red, yellow, green) leverages universal colour associations:</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><strong>Red (0–30%):</strong> Critical attention needed — value is far from target</li>
+      <li><strong>Yellow (30–70%):</strong> Moderate — on the way but not yet satisfactory</li>
+      <li><strong>Green (70–100%):</strong> Good — at or near the target range</li>
+    </ul>
+    <p class="mt-3 text-slate-600">You can adjust these thresholds to match your specific domain. For example, a server uptime gauge might use green above 99.9%, yellow between 99% and 99.9%, and red below 99%.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Needle design principles</h2>
+    <p class="mt-2 text-slate-600">The needle is the focal point of a gauge chart. Good needle design follows a few principles:</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><strong>Visibility:</strong> The needle should contrast with the background arc colours — a dark needle on light zones, reversed if needed</li>
+      <li><strong>Precision:</strong> A thin, pointed tip allows the viewer to read the exact position against the tick marks</li>
+      <li><strong>Origin:</strong> The needle pivots from the centre of the arc, typically with a small circular cap over the pivot point</li>
+      <li><strong>Shadow:</strong> A subtle drop shadow helps the needle stand out from the coloured zones beneath it</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    function drawChart() {
+      const val = parseFloat(document.getElementById('gaugeValue').value);
+      const min = parseFloat(document.getElementById('gaugeMin').value);
+      const max = parseFloat(document.getElementById('gaugeMax').value);
+      const title = document.getElementById('gaugeTitle').value.trim();
+      const lowEndPct = parseFloat(document.getElementById('lowEnd').value) || 30;
+      const midEndPct = parseFloat(document.getElementById('midEnd').value) || 70;
+      const highEndPct = parseFloat(document.getElementById('highEnd').value) || 100;
+      const lowColor = document.getElementById('lowColor').value;
+      const midColor = document.getElementById('midColor').value;
+      const highColor = document.getElementById('highColor').value;
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+      const result = document.getElementById('result');
+      const hint = document.getElementById('hint');
+
+      if (isNaN(val) || isNaN(min) || isNaN(max) || max <= min) {
+        result.classList.add('hidden');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Please enter valid numeric values with max > min.';
+        return;
+      }
+
+      const w = 500, h = 400;
+      const cx = w / 2, cy = 280;
+      const outerR = 200, innerR = 170, tickR = 190;
+      const startAngle = Math.PI * 0.75;
+      const endAngle = Math.PI * 2.25;
+      const sweep = endAngle - startAngle;
+      const range = max - min;
+      const pct = Math.min(1, Math.max(0, (val - min) / range));
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 18px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(title, cx, 10);
+
+      const zones = [
+        { end: lowEndPct / 100, color: lowColor },
+        { end: midEndPct / 100, color: midColor },
+        { end: highEndPct / 100, color: highColor },
+      ];
+
+      let zoneStart = 0;
+      for (const zone of zones) {
+        const a1 = startAngle + zoneStart * sweep;
+        const a2 = startAngle + zone.end * sweep;
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, a1, a2);
+        ctx.arc(cx, cy, innerR, a2, a1, true);
+        ctx.closePath();
+        ctx.fillStyle = zone.color;
+        ctx.globalAlpha = 0.7;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        zoneStart = zone.end;
+      }
+
+      const tickCount = 11;
+      for (let i = 0; i < tickCount; i++) {
+        const angle = startAngle + (i / (tickCount - 1)) * sweep;
+        const isMajor = i % 2 === 0;
+        const inner = isMajor ? innerR + 5 : innerR + 12;
+        const outer = isMajor ? tickR + 10 : tickR;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+        ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = isMajor ? 2 : 1;
+        ctx.stroke();
+
+        if (isMajor) {
+          const tickVal = min + (i / (tickCount - 1)) * range;
+          const lx = cx + Math.cos(angle) * (tickR + 25);
+          const ly = cy + Math.sin(angle) * (tickR + 25);
+          ctx.fillStyle = '#475569';
+          ctx.font = '11px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tickVal.toFixed(tickVal % 1 === 0 ? 0 : 1), lx, ly);
+        }
+      }
+
+      const needleAngle = startAngle + pct * sweep;
+      const needleLen = outerR - 15;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(needleAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 20);
+      ctx.lineTo(-5, -5);
+      ctx.lineTo(0, -needleLen);
+      ctx.lineTo(5, -5);
+      ctx.closePath();
+      ctx.fillStyle = '#1e293b';
+      ctx.fill();
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 12, 0, 2 * Math.PI);
+      ctx.fillStyle = '#1e293b';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fill();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 32px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(String(val), cx, cy + 85);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`Min: ${min}  Max: ${max}`, cx, cy + 90);
+
+      result.classList.remove('hidden');
+      hint.classList.add('hidden');
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', drawChart);
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const canvas = document.getElementById('chartCanvas');
+      const link = document.createElement('a');
+      link.download = 'gauge-chart.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    drawChart();
+  </script>
+</ToolLayout>

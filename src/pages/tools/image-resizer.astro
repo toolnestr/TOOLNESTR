@@ -1,0 +1,277 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Image Resizer';
+const description = 'Free online image resizer. Resize any image by exact width/height dimensions or by percentage. Runs in your browser — no uploads.';
+const intro = 'Upload an image, set your target size (dimensions or percentage), and download the resized version. Your file never leaves your device.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'What is image resizing?', a: 'Image resizing changes the pixel dimensions (width and height) of an image. This tool lets you resize by exact dimensions or by percentage, with an option to lock the aspect ratio so the image doesn\'t distort.' },
+  { q: 'Does resizing affect image quality?', a: 'Reducing an image size typically maintains quality. Enlarging an image beyond its original dimensions can make it look pixelated or blurry because the software must guess new pixel information.' },
+  { q: 'What is aspect ratio?', a: 'Aspect ratio is the proportional relationship between width and height. For example, 16:9 means width is 16 units for every 9 units of height. Locking the aspect ratio ensures your image doesn\'t appear stretched or squished.' },
+  { q: 'Can I resize multiple images at once?', a: 'This tool processes one image at a time. For batch resizing, you would need dedicated desktop software or a batch processing script.' },
+  { q: 'What image formats are supported?', a: 'This tool works with any image format your browser supports, including JPEG, PNG, WebP, GIF, BMP, and AVIF.' },
+  { q: 'What\'s the difference between resizing and resampling?', a: 'Resizing changes image dimensions. Resampling changes the number of pixels while also potentially changing the image\'s data — resampling algorithms determine how pixels are interpolated.' },
+  { q: 'Is it safe to upload sensitive images?', a: 'Yes. All processing happens entirely in your browser — no data is uploaded to any server. Your image never leaves your device.' },
+  { q: 'Why does my image look blurry after resizing?', a: 'If you enlarge the image beyond its original size, the browser must interpolate new pixels, which can cause blurriness. Start with the largest version of your image for best results.' },
+  { q: 'What resolution should I use for web images?', a: 'For most web use, 72 DPI is standard. For digital displays, pixel dimensions matter more than DPI. Common web sizes range from 300×300 (thumbnails) to 1920×1080 (full width).' },
+  { q: 'How is the percentage resize calculated?', a: 'When you select percentage, both width and height are scaled by the chosen percentage. For example, 50% reduces both dimensions by half. If aspect ratio is locked, the percentage stays uniform.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="fileInput" type="file" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100" />
+
+    <div id="previewArea" class="mt-4 hidden">
+      <div class="flex justify-center">
+        <img id="preview" class="max-h-64 max-w-full rounded-lg border border-slate-200 object-contain" />
+      </div>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Width (px)</label>
+          <input id="widthInput" type="number" min="1" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700">Height (px)</label>
+          <input id="heightInput" type="number" min="1" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-3">
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input id="lockRatio" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+          Lock aspect ratio
+        </label>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-slate-700">Scale by percentage</label>
+        <input id="pctSlider" type="range" min="1" max="200" value="100" class="mt-1 w-full accent-indigo-600" />
+        <div class="flex justify-between text-xs text-slate-500"><span>1%</span><span id="pctLabel">100%</span><span>200%</span></div>
+      </div>
+
+      <div class="mt-4 text-sm text-slate-600">
+        <span id="origSize"></span> &rarr; <span id="newSize" class="font-semibold text-indigo-700"></span>
+      </div>
+
+      <button id="downloadBtn" class="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Download Resized Image
+      </button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different image sizes mean</h2>
+    <p class="mt-2 text-slate-600">Common image dimensions and their typical use cases.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Avatar &mdash; 150&times;150</span><span class="text-slate-400">Profile pictures, icons</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Thumbnail &mdash; 300&times;300</span><span class="text-slate-400">Gallery previews, product grids</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:30%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Social &mdash; 1200&times;630</span><span class="text-slate-400">OG images, link previews</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:60%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Full HD &mdash; 1920&times;1080</span><span class="text-slate-400">Desktop wallpapers, video thumbnails</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">4K &mdash; 3840&times;2160</span><span class="text-slate-400">Ultra HD displays, print</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Social Media Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Resizes brand assets to fit each platform&#39;s exact specifications — from Instagram square posts to LinkedIn banner dimensions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Optimizes images for responsive layouts, creating multiple size variants for different breakpoints without losing visual quality.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">E-commerce Seller</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepares product images at consistent dimensions for listing pages, ensuring a uniform shopping experience for customers.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Photographer</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates web-optimized versions of high-resolution photos for online portfolios, client proofs, and social sharing.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Platform</th><th class="p-3">Recommended size</th><th class="p-3">Use case</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Instagram</td><td class="p-3 font-mono text-xs">1080&times;1080</td><td class="p-3">Square feed posts</td></tr>
+        <tr><td class="p-3 font-medium">Instagram Stories</td><td class="p-3 font-mono text-xs">1080&times;1920</td><td class="p-3">Vertical stories</td></tr>
+        <tr><td class="p-3 font-medium">Facebook</td><td class="p-3 font-mono text-xs">1200&times;630</td><td class="p-3">Link previews, shared images</td></tr>
+        <tr><td class="p-3 font-medium">Twitter/X</td><td class="p-3 font-mono text-xs">1600&times;900</td><td class="p-3">In-stream images</td></tr>
+        <tr><td class="p-3 font-medium">LinkedIn Banner</td><td class="p-3 font-mono text-xs">1584&times;396</td><td class="p-3">Profile cover image</td></tr>
+        <tr><td class="p-3 font-medium">YouTube</td><td class="p-3 font-mono text-xs">1280&times;720</td><td class="p-3">Video thumbnails</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Image Resizer</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload an image</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the file input and select any image from your device. JPEG, PNG, WebP, and more are supported.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set dimensions</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter exact width and height, or use the percentage slider. Keep aspect ratio locked to avoid distortion.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the download button to save your resized image. The original file stays untouched on your device.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for resizing images</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always lock aspect ratio</h3>
+        <p class="mt-1 text-sm text-slate-600">Keeping the aspect ratio locked prevents distortion. An image stretched or squished looks unprofessional and can confuse viewers.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Start larger than needed</h3>
+        <p class="mt-1 text-sm text-slate-600">Scaling down preserves detail. If you think you might need a larger version later, keep the original and resize copies as needed.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">PNG for graphics, JPG for photos</h3>
+        <p class="mt-1 text-sm text-slate-600">Use PNG for screenshots, logos, and images with text — it preserves sharp edges. Use JPG for photographs where smaller file size matters.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 space-y-6">
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Why resize images?</h2>
+      <p class="mt-2 text-slate-600">Resizing images is essential for web performance, platform compatibility, and consistent design. Large, unoptimized images slow down page load times and consume bandwidth. By resizing your images to the exact dimensions needed, you create a faster, more professional experience for your audience while reducing storage costs.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Aspect ratio explained</h2>
+      <p class="mt-2 text-slate-600">Aspect ratio is the ratio of width to height expressed as two numbers separated by a colon (e.g. 16:9). An image with a 16:9 aspect ratio could be 1920&times;1080, 1280&times;720, or 640&times;360 — as long as width &divide; height equals 16 &divide; 9. Changing the aspect ratio crops or letterboxes the image; keeping it stretches the image.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Resolution vs file size</h2>
+      <p class="mt-2 text-slate-600">Resolution refers to pixel dimensions (e.g. 1920&times;1080). File size is how much space the image occupies on disk (e.g. 1.2 MB). Higher resolution usually means larger file size, but compression format and quality settings also significantly affect file size. A high-resolution, highly compressed JPEG can have a smaller file size than a low-resolution PNG with little compression.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+      <p class="mt-2 text-slate-600">Resizing comes in handy for social media templates, e-commerce product listings, email newsletter headers, blog featured images, responsive web design breakpoints, photo printing, and video thumbnail creation. Each platform has optimal dimensions for best display.</p>
+    </div>
+  </section>
+
+  <script is:inline>
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const previewArea = document.getElementById('previewArea');
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const lockRatio = document.getElementById('lockRatio');
+    const pctSlider = document.getElementById('pctSlider');
+    const pctLabel = document.getElementById('pctLabel');
+    const origSize = document.getElementById('origSize');
+    const newSize = document.getElementById('newSize');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let originalImg = null;
+    let originalFile = null;
+    let aspect = 1;
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      originalFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          originalImg = img;
+          aspect = img.naturalWidth / img.naturalHeight;
+          widthInput.value = img.naturalWidth;
+          heightInput.value = img.naturalHeight;
+          origSize.textContent = `${img.naturalWidth} × ${img.naturalHeight} (${(file.size / 1024).toFixed(1)} KB)`;
+          preview.src = ev.target.result;
+          previewArea.classList.remove('hidden');
+          updateSize();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function updateSize() {
+      if (!originalImg) return;
+      const w = parseInt(widthInput.value) || originalImg.naturalWidth;
+      const h = parseInt(heightInput.value) || originalImg.naturalHeight;
+      newSize.textContent = `${w} × ${h}`;
+    }
+
+    widthInput.addEventListener('input', () => {
+      if (lockRatio.checked && aspect) {
+        heightInput.value = Math.round(parseInt(widthInput.value) / aspect);
+      }
+      updateSize();
+    });
+
+    heightInput.addEventListener('input', () => {
+      if (lockRatio.checked && aspect) {
+        widthInput.value = Math.round(parseInt(heightInput.value) * aspect);
+      }
+      updateSize();
+    });
+
+    pctSlider.addEventListener('input', () => {
+      if (!originalImg) return;
+      const pct = parseInt(pctSlider.value);
+      pctLabel.textContent = `${pct}%`;
+      const w = Math.round(originalImg.naturalWidth * pct / 100);
+      const h = Math.round(originalImg.naturalHeight * pct / 100);
+      widthInput.value = w;
+      heightInput.value = h;
+      updateSize();
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!originalImg) return;
+      const w = parseInt(widthInput.value);
+      const h = parseInt(heightInput.value);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(originalImg, 0, 0, w, h);
+      const format = originalFile.type || 'image/png';
+      canvas.toBlob((blob) => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `resized-${w}x${h}.${format.split('/')[1] || 'png'}`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }, format);
+    });
+  </script>
+</ToolLayout>

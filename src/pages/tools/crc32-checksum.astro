@@ -1,0 +1,270 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'CRC32 Checksum Calculator';
+const description = 'Free online CRC32 checksum calculator. Calculate CRC32 hash for any text or uploaded file for data integrity verification.';
+const intro = 'Type text or upload a file to calculate its CRC32 checksum — a 32-bit cyclic redundancy check value.';
+const category = { id: 'security', name: 'Security & Hash' };
+const faqs = [
+  { q: 'What is CRC32?', a: 'CRC32 (Cyclic Redundancy Check 32-bit) is an error-detecting code that produces a 32-bit checksum. It is used to detect accidental changes to data during transmission or storage.' },
+  { q: 'What is CRC32 used for?', a: 'CRC32 is widely used in network protocols (Ethernet, ZIP files, PNG images), data storage (hard drives), file integrity verification, and archive formats.' },
+  { q: 'Is CRC32 cryptographically secure?', a: 'No. CRC32 is designed for error detection, not security. It is easily reversible and collision-prone. Never use CRC32 for cryptographic purposes like password hashing or digital signatures.' },
+  { q: 'What is the difference between CRC32 and MD5?', a: 'CRC32 produces a 32-bit (8 hex char) checksum while MD5 produces 128 bits (32 hex chars). CRC32 is much faster but provides no collision resistance. MD5 is also broken but still stronger than CRC32.' },
+  { q: 'What is the polynomial used by CRC32?', a: 'The most common CRC32 polynomial is 0xEDB88320 (reflected), which is the standard used by Ethernet, ZIP, and PNG. There are other CRC32 variants with different polynomials.' },
+  { q: 'How does CRC error detection work?', a: 'CRC treats data as a binary polynomial and performs polynomial division by a fixed generator polynomial. The remainder is the CRC checksum. On the receiving end, the same division is performed — a non-zero remainder indicates corruption.' },
+  { q: 'Can CRC32 detect all errors?', a: 'No. CRC32 can detect all single-bit errors, all two-bit errors (with suitable polynomial choice), all odd numbers of errors, and burst errors up to 32 bits. However, some combinations of errors can cancel out.' },
+  { q: 'What is the output format of CRC32?', a: 'CRC32 output is a 32-bit value, typically displayed as 8 hexadecimal characters. It can also be represented as a decimal number (0 to 4294967295).' },
+  { q: 'Is my data private when using this tool?', a: 'Yes. CRC32 computation happens entirely in your browser using a pure JavaScript implementation. No data is sent to any server, even when uploading files.' },
+  { q: 'What file types can I check?', a: 'Any file type works. CRC32 operates on raw binary data, so it handles text files, images, archives, executables — any file format. The checksum is computed over the full file content.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex gap-2 border-b border-slate-200 pb-3">
+      <button id="text-tab" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">Text Mode</button>
+      <button id="file-tab" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">File Mode</button>
+    </div>
+
+    <div id="text-mode" class="mt-4">
+      <textarea
+        id="text-input"
+        rows="5"
+        placeholder="Type or paste text to compute CRC32…"
+        class="w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+      ></textarea>
+      <div class="mt-3">
+        <button id="compute-text-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Compute CRC32</button>
+      </div>
+    </div>
+
+    <div id="file-mode" class="mt-4 hidden">
+      <input id="file-input" type="file" class="block w-full text-sm text-slate-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100" />
+      <p id="file-name" class="mt-2 text-xs text-slate-400 hidden">Selected: <span id="file-name-text"></span></p>
+      <div class="mt-3">
+        <button id="compute-file-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Compute CRC32</button>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <label class="text-sm font-medium text-slate-700">CRC32 Checksum (hex)</label>
+      <div class="mt-1 flex items-stretch gap-2">
+        <input id="output" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-sm outline-none" placeholder="8-character hex checksum…" />
+        <button id="copy-btn" class="shrink-0 rounded-xl bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700">Copy</button>
+      </div>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Checksum types comparison</h2>
+    <p class="mt-2 text-slate-600">Different checksum algorithms trade off speed, output size, and security. CRC32 sits in the middle — fast but not cryptographically secure.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">CRC8</span><span class="text-slate-400">8-bit — Fastest, 1 byte output</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">CRC16</span><span class="text-slate-400">16-bit — Very fast, 2 byte output</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-400" style="width:85%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">CRC32</span><span class="text-slate-400">32-bit — Fast, 4 byte output</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:70%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">CRC64</span><span class="text-slate-400">64-bit — Slower, 8 byte output</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">SHA-256</span><span class="text-slate-400">256-bit — Slowest, 32 byte output, secure</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-400" style="width:15%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses CRC32 for verifying file downloads, implementing custom protocols, and checking data integrity in applications.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Network Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Relies on CRC32 for error detection in network protocols, frame checking, and ensuring data integrity across transmission links.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4BE;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Recovery Specialist</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses CRC32 checksums to verify integrity of recovered data and detect corruption in storage media and backups.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4C1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">System Administrator</h3>
+      <p class="mt-1 text-sm text-slate-600">Verifies integrity of transferred files, checksums for archive validation, and monitors data consistency across storage systems.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Variant</th><th class="p-3">Bit Length</th><th class="p-3">Polynomial (hex)</th><th class="p-3">Common Uses</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">CRC-32</td><td class="p-3">32</td><td class="p-3 font-mono">0x04C11DB7</td><td class="p-3">Ethernet, ZIP, PNG, Gzip</td></tr>
+        <tr><td class="p-3 font-medium">CRC-32C (Castagnoli)</td><td class="p-3">32</td><td class="p-3 font-mono">0x1EDC6F41</td><td class="p-3">iSCSI, SCTP, ext4</td></tr>
+        <tr><td class="p-3 font-medium">CRC-32K (Koopman)</td><td class="p-3">32</td><td class="p-3 font-mono">0x741B8CD7</td><td class="p-3">Some embedded systems</td></tr>
+        <tr><td class="p-3 font-medium">CRC-32Q</td><td class="p-3">32</td><td class="p-3 font-mono">0x814141AB</td><td class="p-3">Aeronautical data networks</td></tr>
+        <tr><td class="p-3 font-medium">CRC-16/ARC</td><td class="p-3">16</td><td class="p-3 font-mono">0x8005</td><td class="p-3">ARC, LHA, legacy protocols</td></tr>
+        <tr><td class="p-3 font-medium">CRC-64/ECMA</td><td class="p-3">64</td><td class="p-3 font-mono">0x42F0E1EBA9EA3693</td><td class="p-3">ECMA-182, some DB systems</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use CRC32 Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose input mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Switch between Text Mode for typing strings or File Mode for uploading files to checksum.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Provide your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type text in the textarea or select a file using the file picker. CRC32 supports any input type.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Compute and copy</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Compute CRC32" to calculate the 8-character hex checksum, then copy it for verification.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using CRC32</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use CRC32 for error detection, not security</h3>
+        <p class="mt-1 text-sm text-slate-600">CRC32 detects accidental data corruption but provides no protection against intentional tampering. A malicious actor can easily modify data to produce the same CRC32 checksum.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify file transfers with CRC32</h3>
+        <p class="mt-1 text-sm text-slate-600">When transferring files over unreliable connections, compute the CRC32 checksum both before and after transfer. Matching checksums confirm no corruption occurred during transit.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Combine with other checksums for critical data</h3>
+        <p class="mt-1 text-sm text-slate-600">For critical data integrity needs, use CRC32 alongside a cryptographic hash like SHA-256. CRC32 catches random corruption quickly while SHA-256 provides collision resistance for security.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is CRC32?</h2>
+    <p class="mt-3 text-slate-600">CRC32 (Cyclic Redundancy Check 32-bit) is an error-detecting code that computes a 32-bit checksum from arbitrary data. It was invented by W. Wesley Peterson in 1961 and has become one of the most widely used error-detection mechanisms in computing. CRC32 is used in Ethernet frames, ZIP archives, PNG images, Gzip compressed files, and countless other protocols and file formats.</p>
+    <p class="mt-3 text-slate-600">The algorithm treats the input data as a large binary polynomial and performs polynomial division by a fixed 33-bit generator polynomial. The remainder of this division — always 32 bits — is the CRC value. The division uses GF(2) arithmetic (XOR without carries), making it extremely fast to implement in both hardware and software.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How CRC works (polynomial division)</h2>
+    <p class="mt-3 text-slate-600">CRC operates on the principle of polynomial division in GF(2) arithmetic. The input data is treated as a binary polynomial where each bit is a coefficient. This polynomial is divided by a fixed generator polynomial (for CRC32: x³² + x²⁶ + x²³ + x²² + x¹⁶ + x¹² + x¹¹ + x¹⁰ + x⁸ + x⁷ + x⁵ + x⁴ + x² + x + 1). The remainder is the CRC checksum.</p>
+    <p class="mt-3 text-slate-600">In practice, CRC32 is implemented using a lookup table of 256 precomputed values. Each byte of input is processed by XORing it with the current CRC register, using the result as an index into the table, and shifting. This table-driven approach processes data one byte at a time and is highly efficient — CRC32 can process hundreds of megabytes per second even in JavaScript.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">CRC vs hash: speed vs security</h2>
+    <p class="mt-3 text-slate-600">The fundamental difference between CRC and cryptographic hashes is intent. CRC is designed for error detection — catching accidental changes to data during transmission or storage. It is extremely fast and hardware-optimized but provides no security guarantees. A CRC32 checksum has only 32 bits, meaning there are only 4 billion possible values — collisions are trivially easy to create intentionally.</p>
+    <p class="mt-3 text-slate-600">Cryptographic hashes like SHA-256 are designed for security. They are intentionally slower (to resist brute-force attacks), produce larger outputs (256 bits), and are collision-resistant by design. Use CRC when you need to detect random corruption in network packets or storage media. Use SHA-256 when you need to verify that data hasn't been tampered with by an adversary.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Error detection capabilities</h2>
+    <p class="mt-3 text-slate-600">CRC32 can detect all single-bit errors, all two-bit errors (when the polynomial is chosen appropriately), all errors affecting an odd number of bits, and any burst error of length 32 bits or less. Burst errors longer than 32 bits have a detection probability of 1 - 2⁻³² (99.99999998%). This makes CRC32 highly effective for real-world error detection.</p>
+    <p class="mt-3 text-slate-600">However, CRC32 is not a cryptographically secure checksum. Given a specific checksum, an attacker can construct data that produces the same CRC32 value. This is because CRC operations are linear in GF(2), meaning CRC(a XOR b) = CRC(a) XOR CRC(b). This linearity makes CRC completely unsuitable for any security application where an adversary might intentionally corrupt data.</p>
+  </section>
+
+  <script is:inline>
+    var crc32Table = (function() {
+      var table = new Uint32Array(256);
+      for (var i = 0; i < 256; i++) {
+        var c = i;
+        for (var j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        table[i] = c;
+      }
+      return table;
+    })();
+
+    function crc32(data) {
+      var crc = 0xFFFFFFFF;
+      for (var i = 0; i < data.length; i++) crc = crc32Table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    function crc32Hex(data) {
+      return crc32(data).toString(16).padStart(8, '0');
+    }
+
+    var el = function(id) { return document.getElementById(id); };
+    var output = el('output'), status = el('status');
+    var textMode = el('text-mode'), fileMode = el('file-mode');
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function computeFromText() {
+      var text = el('text-input').value;
+      if (!text) { output.value = ''; show('Enter some text first.', false); return; }
+      var enc = new TextEncoder().encode(text);
+      output.value = crc32Hex(enc);
+      show('CRC32 checksum computed from text', true);
+    }
+
+    function computeFromFile() {
+      var fileInput = el('file-input');
+      if (!fileInput.files || !fileInput.files[0]) { show('Select a file first.', false); return; }
+      var file = fileInput.files[0];
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var arr = new Uint8Array(e.target.result);
+        output.value = crc32Hex(arr);
+        show('CRC32 checksum computed from "' + file.name + '"', true);
+      };
+      reader.onerror = function() { show('Error reading file.', false); };
+      reader.readAsArrayBuffer(file);
+    }
+
+    el('text-tab').addEventListener('click', function() {
+      textMode.classList.remove('hidden');
+      fileMode.classList.add('hidden');
+      this.className = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+      el('file-tab').className = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';
+    });
+
+    el('file-tab').addEventListener('click', function() {
+      fileMode.classList.remove('hidden');
+      textMode.classList.add('hidden');
+      this.className = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white';
+      el('text-tab').className = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';
+    });
+
+    el('compute-text-btn').addEventListener('click', computeFromText);
+    el('compute-file-btn').addEventListener('click', computeFromFile);
+    el('copy-btn').addEventListener('click', async function() {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        var b = el('copy-btn'); var o = b.textContent; b.textContent = 'Copied!'; setTimeout(function() { b.textContent = o; }, 1200);
+      } catch (e) {}
+    });
+    el('file-input').addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        el('file-name-text').textContent = this.files[0].name + ' (' + (this.files[0].size / 1024).toFixed(1) + ' KB)';
+        el('file-name').classList.remove('hidden');
+      }
+    });
+  </script>
+</ToolLayout>

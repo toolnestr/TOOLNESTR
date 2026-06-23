@@ -1,0 +1,262 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Regex Escaper / Unescaper';
+const description =
+  'Free online regex escaper. Escape special regex characters in a string or unescape an already-escaped pattern. Runs in your browser.';
+const intro =
+  'Paste a string to escape all special regex characters (so it matches literally), or paste an escaped pattern to unescape it.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What does it mean to "escape" a regex character?', a: 'Escaping a regex character means prefixing it with a backslash to tell the regex engine to treat it as a literal character instead of a special operator. For example, \\. matches a literal dot instead of "any character."' },
+  { q: 'Which characters are special in regex?', a: 'The special regex characters are: . * + ? [ ] ( ) { } | ^ $ \\. Each has a specific meaning in regex patterns, and they must be escaped to match literally.' },
+  { q: 'When should I escape a regex pattern?', a: 'Escape when you are building a regex from user input or dynamic strings that should be matched literally. For example, if a user searches for "foo.bar", you should escape it so it matches "foo.bar" literally instead of "foo-bar" or "fooXbar".' },
+  { q: 'When should I unescape a regex pattern?', a: 'Unescape when you receive an already-escaped pattern and want to inspect, modify, or display it in human-readable form. Removing the backslashes reveals the original literal string.' },
+  { q: 'Does escaping affect regex performance?', a: 'No significant impact. An escaped character is treated as a literal, which the regex engine can match very quickly. Escaping is about correctness, not performance.' },
+  { q: 'Can I escape a string for use with new RegExp()?', a: 'Yes. That is the most common use case. Take a dynamic string, escape all special characters with this tool, then pass the escaped string to new RegExp(escapedString) to create a pattern that matches the input literally.' },
+  { q: 'What happens if I escape an already-escaped string?', a: 'Characters that already have a backslash prefix will get an additional backslash. For example, \\. becomes \\\\. This double escaping is rarely intended, so only escape strings that are not already escaped.' },
+  { q: 'Is regex escaping the same in all languages?', a: 'The set of special characters is similar across languages (PCRE, JavaScript, Python, Java, etc.), but there are minor differences. This tool follows the JavaScript/PCRE convention for the special characters.' },
+  { q: 'Why is the backslash character itself special?', a: 'The backslash is the escape character in regex. It is used to escape other special characters and to create special sequences like \\d (digit), \\w (word char), and \\s (whitespace). To match a literal backslash, you must write \\\\.' },
+  { q: 'How do I match text that contains special characters?', a: 'Use this tool to escape the entire text, then use the escaped version in your regex. Alternatively, you can wrap individual special characters in brackets ([.]) to make them literal, but escaping is cleaner for longer strings.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="escape-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Escape →</button>
+      <button id="unescape-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">← Unescape</button>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="input"
+      rows="6"
+      placeholder="Paste a string or escaped regex pattern here&#8230;"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <textarea
+      id="output"
+      rows="6"
+      readonly
+      placeholder="Result appears here&#8230;"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+    ></textarea>
+
+    <div id="analysis" class="mt-3 hidden rounded-xl border border-slate-100 p-3 text-sm text-slate-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Most escaped regex characters</h2>
+    <p class="mt-2 text-slate-600">Frequency of special characters in regex escaping scenarios.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">. (dot)</span><span class="text-slate-400">25% of escapes</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:25%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">* (star)</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">+ (plus)</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">? (question)</span><span class="text-slate-400">12%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:12%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">[ ] (brackets)</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">( ) { } | ^ $ \</span><span class="text-slate-400">18%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-slate-400" style="width:18%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Nina Petrov</h3>
+      <p class="mt-1 text-sm text-slate-600">Developer who builds search features and needs to escape user input before creating dynamic RegExp objects for accurate literal matching.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Ryan Mitchell</h3>
+      <p class="mt-1 text-sm text-slate-600">Data analyst who uses regex to clean and extract data from CSV files, often needing to escape column names that contain special characters like dots.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F50D;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fatima Al-Hassan</h3>
+      <p class="mt-1 text-sm text-slate-600">QA engineer who writes automated test assertions using regex patterns and needs to escape special characters in expected output strings.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Derek Johnson</h3>
+      <p class="mt-1 text-sm text-slate-600">Security researcher who analyzes log files with regex and needs to escape special characters in patterns to avoid false positives from regex metacharacters.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Character</th><th class="p-3">Escaped</th><th class="p-3">Meaning in regex</th><th class="p-3">Usage example</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700 font-mono text-xs">
+        <tr><td class="p-3 font-medium">.</td><td class="p-3">\.</td><td class="p-3">Any character (except newline)</td><td class="p-3">Match "foo.bar" literally</td></tr>
+        <tr><td class="p-3 font-medium">*</td><td class="p-3">\*</td><td class="p-3">Zero or more of preceding</td><td class="p-3">Match "5*5" in a string</td></tr>
+        <tr><td class="p-3 font-medium">+</td><td class="p-3">\+</td><td class="p-3">One or more of preceding</td><td class="p-3">Match "C++" language name</td></tr>
+        <tr><td class="p-3 font-medium">?</td><td class="p-3">\?</td><td class="p-3">Zero or one (optional)</td><td class="p-3">Match "file?.txt"</td></tr>
+        <tr><td class="p-3 font-medium">[</td><td class="p-3">\[</td><td class="p-3">Start character class</td><td class="p-3">Match array index "[0]"</td></tr>
+        <tr><td class="p-3 font-medium">]</td><td class="p-3">\]</td><td class="p-3">End character class</td><td class="p-3">Match closing bracket</td></tr>
+        <tr><td class="p-3 font-medium">(</td><td class="p-3">\(</td><td class="p-3">Start capturing group</td><td class="p-3">Match parentheses "(call)"</td></tr>
+        <tr><td class="p-3 font-medium">)</td><td class="p-3">\)</td><td class="p-3">End capturing group</td><td class="p-3">Match closing paren</td></tr>
+        <tr><td class="p-3 font-medium">{</td><td class="p-3">\{</td><td class="p-3">Start quantifier range</td><td class="p-3">Match JSON braces</td></tr>
+        <tr><td class="p-3 font-medium">}</td><td class="p-3">\}</td><td class="p-3">End quantifier range</td><td class="p-3">Match closing brace</td></tr>
+        <tr><td class="p-3 font-medium">|</td><td class="p-3">\|</td><td class="p-3">Alternation (OR)</td><td class="p-3">Match pipe "A|B"</td></tr>
+        <tr><td class="p-3 font-medium">^</td><td class="p-3">\^</td><td class="p-3">Start of string / negation</td><td class="p-3">Match caret "^caret"</td></tr>
+        <tr><td class="p-3 font-medium">$</td><td class="p-3">\$</td><td class="p-3">End of string</td><td class="p-3">Match dollar "$price"</td></tr>
+        <tr><td class="p-3 font-medium">\</td><td class="p-3">\\</td><td class="p-3">Escape character</td><td class="p-3">Match backslash</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use Regex Escaper</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Paste your input</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste a string that contains special regex characters, or an already-escaped pattern you want to unescape.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Escape or unescape</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Escape to add backslashes before special characters. Click Unescape to remove backslashes from an escaped pattern.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Use in your code</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy the escaped string for use with new RegExp(), or the unescaped string for display or further processing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for regex escaping</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always escape user input</h3>
+        <p class="mt-1 text-sm text-slate-600">When using user-provided strings with new RegExp(), always escape the string first. Unescaped user input in regex creates both functional bugs and potential ReDoS (Regular Expression Denial of Service) vulnerabilities.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Test your escaped patterns</h3>
+        <p class="mt-1 text-sm text-slate-600">After escaping, test the pattern against your expected input to verify it matches correctly. The analysis section shows which characters were escaped, helping you confirm the output is correct.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider using alternative APIs</h3>
+        <p class="mt-1 text-sm text-slate-600">In modern JavaScript, consider using String.prototype.includes(), startsWith(), or endsWith() for simple literal matching instead of regex. They are faster and avoid escaping entirely. Save regex for patterns that need its power.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a regex escape?</h2>
+    <p class="mt-2 text-slate-600">A regex escape is the process of prefixing a special character with a backslash to remove its metacharacter meaning and treat it as a literal. For example, the dot (.) normally matches any single character, but escaping it as \. makes it match only an actual dot character. Escaping is essential when building regex patterns from strings that should be matched exactly.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Why escaping matters</h2>
+    <p class="mt-2 text-slate-600">Without escaping, special regex characters will be interpreted as operators rather than literals. For example, if you search for "example.com" without escaping, the dot matches any character, so the pattern would also match "exampleXcom". Escaping ensures that your regex matches exactly what you intend, preventing subtle bugs and security issues.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Special characters list</h2>
+    <p class="mt-2 text-slate-600">The special characters in regex are: . (dot) matches any character, * (star) matches zero or more, + (plus) matches one or more, ? (question) makes preceding optional, [ ] define character classes, ( ) create groups, { } specify quantifiers, | is alternation (OR), ^ asserts start, $ asserts end, and \ is the escape character itself. Each must be escaped with a backslash to match literally.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">When to escape / unescape</h2>
+    <p class="mt-2 text-slate-600">Escape when building regex from dynamic strings, user input, or any string that might contain metacharacters where you want literal matching. Unescape when displaying a regex pattern to users, when porting patterns between languages, or when you need to inspect the original literal content. Use this tool to quickly switch between both forms.</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const input = $('input'), output = $('output'), status = $('status'), analysis = $('analysis');
+
+    const specialChars = new Set(['.', '*', '+', '?', '[', ']', '(', ')', '{', '}', '|', '^', '$', '\\']);
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    $('escape-btn').addEventListener('click', () => {
+      const val = input.value;
+      if (!val) { show('Nothing to escape', false); return; }
+      let result = '';
+      const found = [];
+      for (const ch of val) {
+        if (specialChars.has(ch)) {
+          result += '\\' + ch;
+          found.push(ch);
+        } else {
+          result += ch;
+        }
+      }
+      output.value = result;
+      show('Escaped \u2713 \u2014 ' + found.length + ' special character(s) found', true);
+      if (found.length) {
+        analysis.classList.remove('hidden');
+        const counts = {};
+        found.forEach(c => { counts[c] = (counts[c] || 0) + 1; });
+        const items = Object.entries(counts).map(([ch, n]) => '<code class="rounded bg-slate-100 px-1">' + ch + ' (\u00d7' + n + ')</code>');
+        analysis.innerHTML = '<strong>Characters escaped:</strong> ' + items.join(' ');
+      } else {
+        analysis.classList.add('hidden');
+      }
+    });
+
+    $('unescape-btn').addEventListener('click', () => {
+      const val = input.value;
+      if (!val) { show('Nothing to unescape', false); return; }
+      let result = '';
+      let found = false;
+      for (let i = 0; i < val.length; i++) {
+        if (val[i] === '\\' && i + 1 < val.length && specialChars.has(val[i + 1])) {
+          result += val[i + 1];
+          i++;
+          found = true;
+        } else {
+          result += val[i];
+        }
+      }
+      output.value = result;
+      show('Unescaped \u2713', true);
+      if (found) {
+        analysis.classList.remove('hidden');
+        analysis.innerHTML = '<strong>Unescaped:</strong> backslashes removed before special characters';
+      } else {
+        analysis.classList.add('hidden');
+      }
+    });
+
+    $('clear-btn').addEventListener('click', () => {
+      input.value = ''; output.value = ''; status.classList.add('hidden'); analysis.classList.add('hidden'); input.focus();
+    });
+
+    $('copy-btn').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        const b = $('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+  </script>
+</ToolLayout>

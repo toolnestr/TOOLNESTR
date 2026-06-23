@@ -19,6 +19,13 @@ export const categories = [
   { id: 'developers', name: 'Developers', emoji: '💻' },
   { id: 'engineering', name: 'Electrical Engineering', emoji: '⚡' },
   { id: 'automotive', name: 'Automotive', emoji: '🚗' },
+  { id: 'images', name: 'Image Tools', emoji: '🖼️' },
+  { id: 'security', name: 'Security & Hash', emoji: '🔐' },
+  { id: 'text', name: 'Text Tools', emoji: '📝' },
+  { id: 'seo', name: 'SEO Tools', emoji: '🔍' },
+  { id: 'converters', name: 'Converters', emoji: '🔄' },
+  { id: 'time-date', name: 'Time & Date', emoji: '🕐' },
+  { id: 'charts', name: 'Chart Generators', emoji: '📊' },
 ];
 
 export const tools = [
@@ -134,6 +141,85 @@ export const tools = [
   { slug: 'ev-battery-replacement', title: 'EV Battery Replacement Cost Calculator', short: 'Estimate when to replace battery and projected cost.', category: 'automotive', emoji: '🪫', enabled: true, status: 'live' },
   { slug: 'ev-charger-speed', title: 'EV Charger Speed / Power Calculator', short: 'kW delivered, voltage, amps & charge rate for any EVSE.', category: 'automotive', emoji: '⚡', enabled: true, status: 'live' },
   { slug: 'ev-weight-payload', title: 'EV Weight / Payload Calculator', short: 'Curb weight, GVWR, payload & battery weight impact.', category: 'automotive', emoji: '⚖️', enabled: true, status: 'live' },
+
+  // ── Image Tools ──
+  { slug: 'image-resizer', title: 'Image Resizer', short: 'Resize any image by dimensions or percentage — in your browser.', category: 'images', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'image-compressor', title: 'Image Compressor', short: 'Reduce image file size with adjustable quality — 100% private.', category: 'images', emoji: '🗜️', enabled: true, status: 'live' },
+  { slug: 'image-cropper', title: 'Image Cropper', short: 'Crop any image with a drag-select area — no upload needed.', category: 'images', emoji: '✂️', enabled: true, status: 'live' },
+  { slug: 'image-to-png', title: 'Image to PNG', short: 'Convert JPG, WebP, AVIF and other formats to PNG instantly.', category: 'images', emoji: '🔲', enabled: true, status: 'live' },
+  { slug: 'image-to-jpg', title: 'Image to JPG', short: 'Convert any image to JPEG with adjustable quality.', category: 'images', emoji: '🖼️', enabled: true, status: 'live' },
+  { slug: 'image-to-webp', title: 'Image to WebP', short: 'Convert images to modern WebP format — smaller & faster.', category: 'images', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'image-to-avif', title: 'Image to AVIF', short: 'Convert images to next-gen AVIF format for best compression.', category: 'images', emoji: '✨', enabled: true, status: 'live' },
+  { slug: 'image-to-base64', title: 'Image to Base64', short: 'Encode any image as a Base64 data URI string.', category: 'images', emoji: '🔣', enabled: true, status: 'live' },
+  { slug: 'image-rotator', title: 'Image Rotator', short: 'Rotate images by 90°, 180°, 270° or any custom angle.', category: 'images', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'image-flip', title: 'Image Mirror / Flip', short: 'Flip images horizontally or vertically with one click.', category: 'images', emoji: '🪞', enabled: true, status: 'live' },
+
+  // ── Security & Hash ──
+  { slug: 'md5-hash-generator', title: 'MD5 Hash Generator', short: 'Generate MD5 hashes for any text or string input.', category: 'security', emoji: '🔑', enabled: true, status: 'live' },
+  { slug: 'sha256-hash-generator', title: 'SHA-256 Hash Generator', short: 'Generate SHA-256 hashes for any text or string input.', category: 'security', emoji: '🔒', enabled: true, status: 'live' },
+  { slug: 'hmac-generator', title: 'HMAC Generator', short: 'Generate keyed-hash message authentication codes with any algorithm.', category: 'security', emoji: '🔐', enabled: true, status: 'live' },
+  { slug: 'uuid-generator', title: 'UUID / GUID Generator', short: 'Generate random v4 UUIDs — one or many at once.', category: 'security', emoji: '🆔', enabled: true, status: 'live' },
+  { slug: 'password-strength-tester', title: 'Password Strength Tester', short: 'Test your password strength, crack time & character analysis.', category: 'security', emoji: '💪', enabled: true, status: 'live' },
+  { slug: 'random-token-generator', title: 'Random Token Generator', short: 'Generate secure random tokens with custom length & charset.', category: 'security', emoji: '🎲', enabled: true, status: 'live' },
+  { slug: 'crc32-checksum', title: 'CRC32 Checksum Calculator', short: 'Calculate CRC32 checksums for text or file integrity verification.', category: 'security', emoji: '✅', enabled: true, status: 'live' },
+
+  // ── Text Tools ──
+  { slug: 'lorem-ipsum-generator', title: 'Lorem Ipsum Generator', short: 'Generate placeholder text in various lengths and formats.', category: 'text', emoji: '📜', enabled: true, status: 'live' },
+  { slug: 'text-reverser', title: 'Text Reverser', short: 'Reverse text, reverse words or reverse sentences instantly.', category: 'text', emoji: '↩️', enabled: true, status: 'live' },
+  { slug: 'text-diff-checker', title: 'Text Diff Checker', short: 'Compare two texts and highlight the differences side-by-side.', category: 'text', emoji: '🔍', enabled: true, status: 'live' },
+  { slug: 'text-cleaner', title: 'Text Cleaner / Formatter', short: 'Remove extra spaces, blank lines and special characters.', category: 'text', emoji: '🧹', enabled: true, status: 'live' },
+  { slug: 'upside-down-text', title: 'Upside Down Text', short: 'Flip text upside down using unicode characters.', category: 'text', emoji: '🙃', enabled: true, status: 'live' },
+  { slug: 'strikethrough-generator', title: 'Strikethrough Text Generator', short: 'Convert text to strikethrough, glitch and zalgo styles.', category: 'text', emoji: '̶', enabled: true, status: 'live' },
+  { slug: 'syllable-counter', title: 'Syllable Counter', short: 'Count syllables in any English text or word.', category: 'text', emoji: '🔤', enabled: true, status: 'live' },
+  { slug: 'reading-time-calculator', title: 'Reading Time Calculator', short: 'Estimate reading time and speaking time for any text.', category: 'text', emoji: '📖', enabled: true, status: 'live' },
+  { slug: 'palindrome-checker', title: 'Palindrome Checker', short: 'Check if any text reads the same forwards and backwards.', category: 'text', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'small-text-generator', title: 'Small Text Generator', short: 'Convert text to subscript, superscript and small caps.', category: 'text', emoji: 'ₓ', enabled: true, status: 'live' },
+
+  // ── SEO Tools ──
+  { slug: 'keyword-density-checker', title: 'Keyword Density Checker', short: 'Analyze keyword frequency and density in any text.', category: 'seo', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'keyword-cloud-generator', title: 'Keyword Cloud Generator', short: 'Generate a visual word cloud from any text.', category: 'seo', emoji: '☁️', enabled: true, status: 'live' },
+  { slug: 'meta-tag-analyzer', title: 'Meta Tag Analyzer', short: 'Extract and analyze meta tags from pasted HTML source.', category: 'seo', emoji: '🏷️', enabled: true, status: 'live' },
+  { slug: 'robots-txt-generator', title: 'Robots.txt Generator', short: 'Generate robots.txt files from simple settings.', category: 'seo', emoji: '🤖', enabled: true, status: 'live' },
+  { slug: 'html-sitemap-generator', title: 'HTML Sitemap Generator', short: 'Generate XML sitemap from a list of URLs.', category: 'seo', emoji: '🗺️', enabled: true, status: 'live' },
+  { slug: 'html-tag-inspector', title: 'HTML Tag Inspector', short: 'Count and analyze H1-H6, img alt, links in pasted HTML.', category: 'seo', emoji: '🔬', enabled: true, status: 'live' },
+  { slug: 'url-cleaner', title: 'URL Cleaner / Parameter Stripper', short: 'Remove tracking parameters from any URL.', category: 'seo', emoji: '🧹', enabled: true, status: 'live' },
+  { slug: 'readability-checker', title: 'Text Readability Checker', short: 'Flesch-Kincaid, Gunning Fog & SMOG readability scores.', category: 'seo', emoji: '📖', enabled: true, status: 'live' },
+  { slug: 'keyword-extractor', title: 'Keyword Extractor', short: 'Extract most frequent words and phrases from text.', category: 'seo', emoji: '🎯', enabled: true, status: 'live' },
+  { slug: 'heading-hierarchy-checker', title: 'Heading Hierarchy Checker', short: 'Validate H1 to H6 heading structure from pasted HTML.', category: 'seo', emoji: '📐', enabled: true, status: 'live' },
+
+  // ── Converters ──
+  { slug: 'csv-to-json', title: 'CSV ↔ JSON Converter', short: 'Convert CSV data to JSON and back — bidirectional.', category: 'converters', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'json-to-yaml', title: 'JSON ↔ YAML Converter', short: 'Convert between JSON and YAML formats instantly.', category: 'converters', emoji: '📄', enabled: true, status: 'live' },
+  { slug: 'json-to-xml', title: 'JSON ↔ XML Converter', short: 'Convert between JSON and XML formats bidirectionally.', category: 'converters', emoji: '🔀', enabled: true, status: 'live' },
+  { slug: 'text-to-binary', title: 'Text ↔ Binary Converter', short: 'Convert text to binary and binary back to text.', category: 'converters', emoji: '💿', enabled: true, status: 'live' },
+  { slug: 'text-to-hex', title: 'Text ↔ Hex Converter', short: 'Convert text to hexadecimal and hex back to text.', category: 'converters', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'url-encoder-decoder', title: 'URL Encoder / Decoder', short: 'Encode or decode URLs and query parameters.', category: 'converters', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'html-entity-converter', title: 'HTML Entity Converter', short: 'Encode or decode HTML entities in any text.', category: 'converters', emoji: '🏷️', enabled: true, status: 'live' },
+  { slug: 'morse-code-converter', title: 'Morse Code Converter', short: 'Convert text to Morse code and Morse code to text.', category: 'converters', emoji: '📡', enabled: true, status: 'live' },
+  { slug: 'ascii-code-converter', title: 'ASCII Code Converter', short: 'Convert characters to ASCII codes and back.', category: 'converters', emoji: '💻', enabled: true, status: 'live' },
+  { slug: 'regex-escaper', title: 'Regex Escaper / Unescaper', short: 'Escape or unescape special regex characters.', category: 'converters', emoji: '🔤', enabled: true, status: 'live' },
+
+  // ── Time & Date ──
+  { slug: 'world-clock', title: 'World Clock', short: 'Current time in multiple cities and timezones around the world.', category: 'time-date', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'time-zone-converter', title: 'Time Zone Converter', short: 'Convert a date and time from one timezone to another.', category: 'time-date', emoji: '🌍', enabled: true, status: 'live' },
+  { slug: 'countdown-timer', title: 'Countdown Timer', short: 'Count down days, hours, minutes & seconds to any target date.', category: 'time-date', emoji: '⏳', enabled: true, status: 'live' },
+  { slug: 'stopwatch', title: 'Stopwatch', short: 'Precision stopwatch with lap time and split time recording.', category: 'time-date', emoji: '⏱️', enabled: true, status: 'live' },
+  { slug: 'week-number-calculator', title: 'Week Number Calculator', short: 'Find the ISO week number for any date.', category: 'time-date', emoji: '📅', enabled: true, status: 'live' },
+  { slug: 'day-of-year-calculator', title: 'Day of Year Calculator', short: 'Day number, week number and days remaining in the year.', category: 'time-date', emoji: '🗓️', enabled: true, status: 'live' },
+  { slug: 'work-hours-calculator', title: 'Work Hours Calculator', short: 'Calculate total work hours between start and end times with breaks.', category: 'time-date', emoji: '💼', enabled: true, status: 'live' },
+  { slug: 'meeting-time-planner', title: 'Meeting Time Planner', short: 'Find overlapping available times across multiple timezones.', category: 'time-date', emoji: '🤝', enabled: true, status: 'live' },
+  { slug: 'business-days-calculator', title: 'Business Days Calculator', short: 'Add or subtract business days from any date.', category: 'time-date', emoji: '📆', enabled: true, status: 'live' },
+  { slug: 'age-in-seconds', title: 'Age in Seconds Calculator', short: 'Your exact age in seconds, minutes, hours, days and more.', category: 'time-date', emoji: '⏰', enabled: true, status: 'live' },
+
+  // ── Chart Generators ──
+  { slug: 'bar-chart-generator', title: 'Bar Chart Generator', short: 'Create vertical bar charts from labels and values.', category: 'charts', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'pie-chart-generator', title: 'Pie Chart Generator', short: 'Create proportional pie charts from your data.', category: 'charts', emoji: '🥧', enabled: true, status: 'live' },
+  { slug: 'line-chart-generator', title: 'Line Chart Generator', short: 'Create line charts from XY data points.', category: 'charts', emoji: '📈', enabled: true, status: 'live' },
+  { slug: 'grouped-bar-chart', title: 'Grouped Bar Chart Generator', short: 'Compare multiple datasets side-by-side with grouped bars.', category: 'charts', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'donut-chart-generator', title: 'Donut Chart Generator', short: 'Create donut charts with percentage labels.', category: 'charts', emoji: '🍩', enabled: true, status: 'live' },
+  { slug: 'histogram-generator', title: 'Histogram Generator', short: 'Create frequency distribution histograms from raw data.', category: 'charts', emoji: '📶', enabled: true, status: 'live' },
+  { slug: 'gauge-chart', title: 'Gauge / Speedometer Chart', short: 'Create a radial gauge chart for single value display.', category: 'charts', emoji: '🎯', enabled: true, status: 'live' },
+  { slug: 'percentage-bar-chart', title: 'Percentage Bar Chart', short: 'Create 100% stacked bar charts showing composition.', category: 'charts', emoji: '📊', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

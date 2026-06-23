@@ -1,0 +1,257 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Image Compressor';
+const description = 'Free online image compressor. Reduce JPEG, PNG and WebP file size with adjustable quality. 100% private — runs in your browser.';
+const intro = 'Upload an image, adjust the quality slider to balance file size vs visual quality, and download the compressed version.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'What is image compression?', a: 'Image compression reduces file size by removing or approximating image data. Lossy compression discards some data permanently, while lossless compression preserves all original data but achieves smaller size reductions.' },
+  { q: 'What quality setting should I use?', a: 'For most use cases, 80% quality is the sweet spot. It looks nearly identical to the original to the human eye while reducing file size by 50-80% depending on the image.' },
+  { q: 'Why is my PNG file still large after compression?', a: 'PNG uses lossless compression, which preserves every pixel. The quality slider has limited effect on PNG. To significantly reduce PNG size, consider converting to JPEG (for photos) or WebP.' },
+  { q: 'Does re-compressing a JPEG lose quality?', a: 'Yes. Every time you save a JPEG using lossy compression, the algorithm discards more data. Always compress from the original image to avoid progressive quality loss across generations.' },
+  { q: 'What image formats can I use as output?', a: 'You can save your compressed image as JPEG, PNG, or WebP. Choose JPEG for photos, PNG for graphics with transparency, and WebP for modern web use with best compression.' },
+  { q: 'Does the tool support batch compression?', a: 'This tool compresses one image at a time. For batch workflows, try desktop software like ImageOptim or Squoosh CLI.' },
+  { q: 'Is there any upload to a server?', a: 'No, all processing happens in your browser using the Canvas API. Your files never leave your device.' },
+  { q: 'What is WebP compression?', a: 'WebP is a modern image format by Google that provides superior compression. Lossy WebP files are typically 25-35% smaller than equivalent JPEGs at the same quality level.' },
+  { q: 'Can I compress images for email?', a: 'Yes. Aim for under 500 KB total for email attachments. Use 60-70% quality for photos to hit that target while maintaining acceptable visual quality.' },
+  { q: 'Why does my compressed image look pixelated?', a: 'Pixelation occurs when the quality is too low for the image content, especially in areas with fine details or text. Raise the quality slider until the artifacts are no longer distracting.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="fileInput" type="file" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100" />
+
+    <div id="previewArea" class="mt-4 hidden">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p class="text-xs font-medium text-slate-500">Original</p>
+          <img id="origPreview" class="mt-1 max-h-48 w-full rounded object-contain" />
+          <p id="origSize" class="mt-1 text-xs text-slate-500"></p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p class="text-xs font-medium text-slate-500">Compressed</p>
+          <img id="compPreview" class="mt-1 max-h-48 w-full rounded object-contain" />
+          <p id="compSize" class="mt-1 text-xs text-slate-500"></p>
+          <p id="savings" class="mt-0.5 text-xs font-semibold text-emerald-600"></p>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-slate-700">Quality: <span id="qualityLabel">80</span>%</label>
+        <input id="qualitySlider" type="range" min="1" max="100" value="80" class="mt-1 w-full accent-indigo-600" />
+        <div class="flex justify-between text-xs text-slate-500"><span>1% (smallest)</span><span>100% (best quality)</span></div>
+      </div>
+
+      <div class="mt-3">
+        <label class="block text-sm font-medium text-slate-700">Output format</label>
+        <select id="formatSelect" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="image/jpeg">JPEG</option>
+          <option value="image/png">PNG</option>
+          <option value="image/webp">WebP</option>
+        </select>
+      </div>
+
+      <button id="downloadBtn" class="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Download Compressed Image
+      </button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different quality levels mean</h2>
+    <p class="mt-2 text-slate-600">How quality settings affect visual fidelity and file size.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">100% &mdash; Original quality</span><span class="text-slate-400">Maximum file size, no visible loss</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">80% &mdash; Great</span><span class="text-slate-400">Visually lossless, ~60% smaller</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">60% &mdash; Good</span><span class="text-slate-400">Slight artifacts on close inspection</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:60%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">40% &mdash; Fair</span><span class="text-slate-400">Visible compression artifacts</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">20% &mdash; Poor</span><span class="text-slate-400">Heavy artifacts, very small file</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:20%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Compresses hero images and product photos to under 100 KB to keep websites fast on slow connections without sacrificing visual quality.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x270F;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Blogger</h3>
+      <p class="mt-1 text-sm text-slate-600">Optimizes all article images for fast page loads, better Core Web Vitals, and higher search engine rankings.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">E-commerce Seller</h3>
+      <p class="mt-1 text-sm text-slate-600">Compresses product galleries to balance visual appeal with quick loading times, improving conversion rates.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Social Media User</h3>
+      <p class="mt-1 text-sm text-slate-600">Shrinks images before sharing to stay under platform file size limits and reduce data usage for followers.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Use case</th><th class="p-3">Target file size</th><th class="p-3">Recommended quality</th><th class="p-3">Format</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Web page images</td><td class="p-3 font-mono text-xs">&lt;100 KB</td><td class="p-3">70-80%</td><td class="p-3">WebP / JPEG</td></tr>
+        <tr><td class="p-3 font-medium">Email attachments</td><td class="p-3 font-mono text-xs">&lt;500 KB</td><td class="p-3">60-75%</td><td class="p-3">JPEG</td></tr>
+        <tr><td class="p-3 font-medium">Social media</td><td class="p-3 font-mono text-xs">&lt;1 MB</td><td class="p-3">80-90%</td><td class="p-3">JPEG / WebP</td></tr>
+        <tr><td class="p-3 font-medium">Print</td><td class="p-3 font-mono text-xs">&gt;5 MB</td><td class="p-3">95-100%</td><td class="p-3">JPEG / PNG</td></tr>
+        <tr><td class="p-3 font-medium">Thumbnails</td><td class="p-3 font-mono text-xs">&lt;30 KB</td><td class="p-3">40-60%</td><td class="p-3">JPEG</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Image Compressor</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload an image</h3>
+        <p class="mt-1 text-sm text-slate-600">Select any JPEG, PNG, or WebP image from your device. The original preview and file size are shown for comparison.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Adjust quality &amp; format</h3>
+        <p class="mt-1 text-sm text-slate-600">Drag the quality slider and choose your output format. The compressed preview updates in real time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download smaller file</h3>
+        <p class="mt-1 text-sm text-slate-600">Click download to save the compressed image. The savings badge shows how much file size you trimmed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for image compression</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">80% quality is the sweet spot</h3>
+        <p class="mt-1 text-sm text-slate-600">For most images, 80% quality is visually indistinguishable from the original but cuts file size by over half. Start at 80% and go lower only if you need smaller files.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">PNG compresses differently</h3>
+        <p class="mt-1 text-sm text-slate-600">PNG uses lossless compression, so the quality slider has less effect. For significant size reduction on photos, convert to JPEG or WebP.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Re-compressing degrades quality</h3>
+        <p class="mt-1 text-sm text-slate-600">Every lossy save adds progressive quality loss. Always start from the original image file rather than re-compressing an already compressed image.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 space-y-6">
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Lossy vs lossless compression</h2>
+      <p class="mt-2 text-slate-600">Lossy compression reduces file size by permanently discarding some image data. The more you compress, the more quality degrades. Lossless compression preserves every pixel exactly, keeping the image identical to the original but typically achieving less size reduction. JPEG is lossy, PNG is lossless, and WebP supports both modes.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">JPEG vs PNG vs WebP compression</h2>
+      <p class="mt-2 text-slate-600">JPEG excels at compressing photographs with smooth gradients — it achieves small files at moderate quality. PNG is best for graphics with sharp edges, text, and transparency but produces larger files. WebP combines the best of both: lossy WebP is 25-35% smaller than JPEG at equivalent quality, and lossless WebP is smaller than PNG.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Quality vs file size tradeoff</h2>
+      <p class="mt-2 text-slate-600">The relationship between quality and file size is not linear. Going from 100% to 90% can halve file size with no visible difference. Going from 50% to 40% saves much less while introducing noticeable artifacts. The sweet spot depends on your image content — photos with smooth gradients compress better than those with fine text or noise.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Batch compression tips</h2>
+      <p class="mt-2 text-slate-600">For consistent results across many images, pick a single quality setting (try 80% first) and the same output format. Keep backups of original files. Consider using WebP for web projects where browser support is sufficient. Different image types may need different settings — photos can go lower, but logos and screenshots need higher quality.</p>
+    </div>
+  </section>
+
+  <script is:inline>
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+    const origPreview = document.getElementById('origPreview');
+    const compPreview = document.getElementById('compPreview');
+    const origSize = document.getElementById('origSize');
+    const compSize = document.getElementById('compSize');
+    const savings = document.getElementById('savings');
+    const qualitySlider = document.getElementById('qualitySlider');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const formatSelect = document.getElementById('formatSelect');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let originalFile = null;
+    let compressedBlob = null;
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      originalFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        origPreview.src = ev.target.result;
+        origSize.textContent = `${(file.size / 1024).toFixed(1)} KB (${file.type || 'unknown'})`;
+        previewArea.classList.remove('hidden');
+        compress(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    qualitySlider.addEventListener('input', () => {
+      qualityLabel.textContent = qualitySlider.value;
+      if (origPreview.src) compress(origPreview.src);
+    });
+
+    formatSelect.addEventListener('change', () => {
+      if (origPreview.src) compress(origPreview.src);
+    });
+
+    function compress(dataUrl) {
+      const quality = parseInt(qualitySlider.value) / 100;
+      const mimeType = formatSelect.value;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          compressedBlob = blob;
+          const blobUrl = URL.createObjectURL(blob);
+          compPreview.src = blobUrl;
+          const origKB = originalFile.size / 1024;
+          const compKB = blob.size / 1024;
+          const saved = origKB - compKB;
+          const pct = ((saved / origKB) * 100).toFixed(1);
+          compSize.textContent = `${compKB.toFixed(1)} KB (${blob.type || mimeType})`;
+          savings.textContent = saved > 0 ? `Saved ${saved.toFixed(1)} KB (${pct}%)` : 'Size increased';
+        }, mimeType, quality);
+      };
+      img.src = dataUrl;
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      if (!compressedBlob) return;
+      const ext = formatSelect.value.split('/')[1] || 'jpeg';
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(compressedBlob);
+      link.download = `compressed.${ext}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  </script>
+</ToolLayout>

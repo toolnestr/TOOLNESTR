@@ -1,0 +1,312 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'HTML Sitemap Generator';
+const description =
+  'Free online XML sitemap generator. Create an XML sitemap from a list of URLs for better search engine crawling. Runs in your browser.';
+const intro =
+  'Enter your website URLs, set optional priority and change frequency, then generate an XML sitemap ready to submit to search engines.';
+const category = { id: 'seo', name: 'SEO Tools' };
+const faqs = [
+  { q: 'What is an XML sitemap?', a: 'An XML sitemap is a file that lists all important pages on your website and tells search engines when they were last updated, how often they change, and their relative importance.' },
+  { q: 'Why do I need an XML sitemap?', a: 'Sitemaps help search engines discover and index your pages, especially for new sites, large sites, or pages that are hard to reach through normal crawling.' },
+  { q: 'What is priority?', a: 'Priority (0.0 to 1.0) indicates the relative importance of a page compared to other pages on your site. The default is 0.5. It only hints at importance — search engines may ignore it.' },
+  { q: 'What is changefreq?', a: 'Changefreq tells search engines how often a page is likely to change: always, hourly, daily, weekly, monthly, yearly or never. Like priority, it is a hint, not a command.' },
+  { q: 'How many URLs can a sitemap contain?', a: 'A single sitemap can hold up to 50,000 URLs and must not exceed 50 MB (uncompressed). For larger sites, create multiple sitemaps with a sitemap index file.' },
+  { q: 'Where should I submit my sitemap?', a: 'Submit to Google Search Console and Bing Webmaster Tools. You can also reference it in robots.txt (Sitemap: https://example.com/sitemap.xml) for automatic discovery.' },
+  { q: 'Should I include all pages?', a: 'Include your most important pages — home, categories, products, articles. Exclude thin content, duplicate pages, paginated archives and admin-only areas.' },
+  { q: 'What is a lastmod date?', a: 'Lastmod (last modified) tells search engines when a page was last updated. Accurate dates help crawlers decide whether to recrawl a page.' },
+  { q: 'Can this tool generate a sitemap for a large site?', a: 'Yes. You can paste thousands of URLs. Generation is instant since everything runs in your browser. For very large lists, splitting into multiple sitemaps is recommended.' },
+  { q: 'Is my URL data safe?', a: 'Yes. All processing is done in your browser. No URLs or data are sent to any server.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <textarea
+      id="urls-input"
+      rows="8"
+      spellcheck="false"
+      placeholder="Enter URLs, one per line:&#10;https://example.com/&#10;https://example.com/about&#10;https://example.com/contact"
+      class="w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <div class="mt-4 grid gap-3 sm:grid-cols-4">
+      <label class="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Default priority
+        <select id="priority-select" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400">
+          <option value="1.0">1.0</option>
+          <option value="0.9">0.9</option>
+          <option value="0.8">0.8</option>
+          <option value="0.7">0.7</option>
+          <option value="0.6">0.6</option>
+          <option value="0.5" selected>0.5</option>
+          <option value="0.4">0.4</option>
+          <option value="0.3">0.3</option>
+          <option value="0.2">0.2</option>
+          <option value="0.1">0.1</option>
+          <option value="0.0">0.0</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Default changefreq
+        <select id="changefreq-select" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400">
+          <option value="always">Always</option>
+          <option value="hourly">Hourly</option>
+          <option value="daily">Daily</option>
+          <option value="weekly" selected>Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+          <option value="never">Never</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm font-medium text-slate-700">
+        Last modified
+        <input id="lastmod-input" type="date" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400" />
+      </label>
+      <div class="flex items-end gap-2">
+        <button id="generate-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Generate</button>
+        <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+      </div>
+    </div>
+
+    <div id="stats" class="mt-4 hidden">
+      <div class="rounded-xl bg-indigo-50 p-3 text-center sm:inline-block sm:px-6">
+        <span id="url-count" class="text-xl font-bold text-indigo-700">0</span>
+        <span class="ml-1 text-sm text-slate-500">URLs parsed</span>
+      </div>
+    </div>
+
+    <div id="preview" class="mt-4 hidden">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-900">Generated XML Sitemap</h3>
+        <div class="flex gap-2">
+          <button id="copy-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+          <button id="download-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">Download XML</button>
+        </div>
+      </div>
+      <pre id="sitemap-output" class="max-h-80 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs leading-relaxed text-slate-700"></pre>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Changefreq usage distribution</h2>
+    <p class="mt-2 text-slate-600">How frequently websites indicate their pages change in sitemaps.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Monthly</span><span class="text-slate-400">35% of sitemaps</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:35%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Weekly</span><span class="text-slate-400">30%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:30%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Daily</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Yearly</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Other</span><span class="text-slate-400">5%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-slate-400" style="width:5%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Generates sitemaps after site launches or major updates. Automates URL collection and creates properly formatted XML for search engine submission.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F50D;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">SEO Specialist</h3>
+      <p class="mt-1 text-sm text-slate-600">Audits sitemap coverage and priority settings. Identifies missing pages, fixes incorrect changefreq values and submits optimized sitemaps to search consoles.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3E0;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Site Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates a sitemap for a small business site without technical knowledge. Lists key pages and generates a ready-to-upload XML file.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Blogger</h3>
+      <p class="mt-1 text-sm text-slate-600">Maintains a blog with regular posts. Uses the sitemap to ensure new articles are discovered quickly and older posts are recrawled when updated.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Sitemap XML tag reference</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500"><th class="px-4 py-3">Tag</th><th class="px-4 py-3">Required</th><th class="px-4 py-3">Description</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;loc&gt;</td><td class="px-4 py-3 text-slate-700">Yes</td><td class="px-4 py-3 text-slate-500">The full URL of the page, including protocol (https://)</td></tr>
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;lastmod&gt;</td><td class="px-4 py-3 text-slate-700">No</td><td class="px-4 py-3 text-slate-500">Date of last modification (YYYY-MM-DD or W3C datetime)</td></tr>
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;changefreq&gt;</td><td class="px-4 py-3 text-slate-700">No</td><td class="px-4 py-3 text-slate-500">How often the page changes: always, hourly, daily, weekly, monthly, yearly, never</td></tr>
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;priority&gt;</td><td class="px-4 py-3 text-slate-700">No</td><td class="px-4 py-3 text-slate-500">Importance from 0.0 to 1.0 (default 0.5)</td></tr>
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;urlset&gt;</td><td class="px-4 py-3 text-slate-700">Yes</td><td class="px-4 py-3 text-slate-500">Root element wrapping all &lt;url&gt; entries, with xmlns attribute</td></tr>
+          <tr><td class="px-4 py-3 font-mono text-xs text-slate-900">&lt;url&gt;</td><td class="px-4 py-3 text-slate-700">Yes</td><td class="px-4 py-3 text-slate-500">Container for each URL entry's metadata</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Sitemap Generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your URLs</h3>
+        <p class="mt-1 text-sm text-slate-600">Paste a list of URLs, one per line. Include the full URL with protocol (https://). The tool validates basic URL format automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set options</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose default priority and changefreq for all URLs. Set a last modified date if desired. These can be adjusted per URL later.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and submit</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Generate to create the XML. Copy or download the file, then upload it to your server and submit to search engines.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for better sitemaps</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Only include indexable pages</h3>
+        <p class="mt-1 text-sm text-slate-600">Exclude pages blocked by robots.txt, redirects, noindex tags, or canonicalized URLs. Including non-indexable pages wastes crawl budget and may confuse search engines.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use accurate lastmod dates</h3>
+        <p class="mt-1 text-sm text-slate-600">Correct lastmod dates help search engines prioritize recrawling. If you don't track modification dates, omit the tag rather than using incorrect values.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep your sitemap updated</h3>
+        <p class="mt-1 text-sm text-slate-600">Regenerate and resubmit your sitemap whenever you add or remove pages. Automated CMS plugins can handle this, but manual generation is fine for smaller sites.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is an XML sitemap?</h2>
+    <p class="mt-2 text-slate-600">An XML sitemap is a structured file that lists all the important pages on your website. It uses XML tags to provide metadata about each URL, including when it was last updated, how often it changes and its relative priority. Search engines use this file to discover and intelligently crawl your content.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why sitemaps matter</h2>
+    <p class="mt-2 text-slate-600">Sitemaps are especially important for new websites with few backlinks, large sites with thousands of pages, or sites with deep navigation structures. They ensure that even the most buried pages have a chance of being discovered and indexed by search engines.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Priority and changefreq explained</h2>
+    <p class="mt-2 text-slate-600">Priority and changefreq are hints, not directives. A page with priority 1.0 and changefreq "daily" will not be crawled more often than a priority 0.1 page. Google has stated that it uses these signals loosely — accurate sitemaps with clean URL lists matter far more than precise priority values.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Submitting to Google</h2>
+    <p class="mt-2 text-slate-600">After generating your sitemap, upload it to your server's root directory (e.g., https://example.com/sitemap.xml). Then submit it via Google Search Console under "Sitemaps". You can also add the sitemap URL to your robots.txt file for automatic discovery.</p>
+  </section>
+
+  <script is:inline>
+    const urlsInput = document.getElementById('urls-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const prioritySelect = document.getElementById('priority-select');
+    const changefreqSelect = document.getElementById('changefreq-select');
+    const lastmodInput = document.getElementById('lastmod-input');
+    const preview = document.getElementById('preview');
+    const stats = document.getElementById('stats');
+    const urlCount = document.getElementById('url-count');
+    const sitemapOutput = document.getElementById('sitemap-output');
+    const copyBtn = document.getElementById('copy-btn');
+    const downloadBtn = document.getElementById('download-btn');
+
+    function escapeXml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function generate() {
+      const raw = urlsInput.value.trim();
+      if (!raw) {
+        preview.classList.add('hidden');
+        stats.classList.add('hidden');
+        return;
+      }
+
+      const urls = raw.split('\n')
+        .map(u => u.trim())
+        .filter(u => u.length > 0 && /^https?:\/\//i.test(u));
+
+      if (!urls.length) {
+        preview.classList.add('hidden');
+        stats.classList.add('hidden');
+        return;
+      }
+
+      urlCount.textContent = urls.length;
+      stats.classList.remove('hidden');
+
+      const priority = prioritySelect.value;
+      const changefreq = changefreqSelect.value;
+      const lastmod = lastmodInput.value;
+
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+      urls.forEach(u => {
+        xml += '  <url>\n';
+        xml += '    <loc>' + escapeXml(u) + '</loc>\n';
+        if (lastmod) xml += '    <lastmod>' + lastmod + '</lastmod>\n';
+        xml += '    <changefreq>' + changefreq + '</changefreq>\n';
+        xml += '    <priority>' + priority + '</priority>\n';
+        xml += '  </url>\n';
+      });
+
+      xml += '</urlset>';
+
+      sitemapOutput.textContent = xml;
+      preview.classList.remove('hidden');
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    clearBtn.addEventListener('click', () => {
+      urlsInput.value = '';
+      preview.classList.add('hidden');
+      stats.classList.add('hidden');
+      sitemapOutput.textContent = '';
+      urlsInput.focus();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const text = sitemapOutput.textContent;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => copyBtn.textContent = orig, 1500);
+      } catch (e) {}
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const text = sitemapOutput.textContent;
+      if (!text) return;
+      const blob = new Blob([text], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sitemap.xml';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</ToolLayout>

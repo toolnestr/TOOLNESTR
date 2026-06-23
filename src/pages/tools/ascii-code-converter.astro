@@ -1,0 +1,299 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'ASCII Code Converter';
+const description =
+  'Free online ASCII code converter. Convert characters to their ASCII (decimal, hex, binary) codes and back. Supports full ASCII table.';
+const intro =
+  'Type any character to see its ASCII code in decimal, hex, binary and octal, or enter a code to find the character.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What is ASCII?', a: 'ASCII (American Standard Code for Information Interchange) is a character encoding standard that assigns numeric codes to letters, digits, punctuation, and control characters. It uses 7 bits to represent 128 characters (0–127).' },
+  { q: 'What is the difference between ASCII and Unicode?', a: 'ASCII is a 7-bit encoding covering 128 characters. Unicode is a much larger standard that can represent over a million characters from all writing systems. The first 128 Unicode code points are identical to ASCII for backward compatibility.' },
+  { q: 'What are the ASCII character categories?', a: 'ASCII divides into three groups: control characters (0–31) for non-printable functions, printable characters (32–126) including letters, digits, and punctuation, and DEL (127) which is a special control character.' },
+  { q: 'What are control characters used for?', a: 'Control characters (0–31) were designed for teletype and terminal control. Examples include NUL (null), LF (line feed), CR (carriage return), TAB (horizontal tab), and ESC (escape). Many are still used in text protocols today.' },
+  { q: 'How do I convert a character to ASCII code?', a: 'Type a single character in the input field and click Convert. The tool shows its ASCII code in decimal, hexadecimal, binary, and octal formats, plus its HTML entity and category.' },
+  { q: 'Can I convert multiple characters at once?', a: 'Yes. Enter a string of characters and the tool will show the code for each character. For bulk conversion, each character displays its own set of codes.' },
+  { q: 'What is the ASCII code for space?', a: 'The space character has ASCII decimal code 32, hexadecimal 20, binary 00100000, and octal 40. It is classified as a printable character.' },
+  { q: 'What is extended ASCII?', a: 'Extended ASCII refers to 8-bit encodings (128–255) that vary by character set. Code page 437 (IBM PC) and ISO 8859-1 (Latin-1) are common extended ASCII variants with different characters in positions 128–255.' },
+  { q: 'Why does my converted character show 63?', a: '63 is the ASCII code for a question mark (?). Some characters cannot be represented in ASCII and are converted to a question mark by the browser. Use the character-to-code mode to check if your character has a valid ASCII code.' },
+  { q: 'Is ASCII case-sensitive?', a: 'Yes. Uppercase A (65) and lowercase a (97) have different ASCII codes. They differ by exactly 32 in decimal, which is a single bit flip in binary.' },
+];
+
+function asciiCategory(code) {
+  if (code < 32) return 'Control';
+  if (code === 127) return 'Control (DEL)';
+  if (code < 128) return 'Printable';
+  return 'Extended';
+}
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="char-to-code-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Char → Code</button>
+      <button id="code-to-char-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Code → Char</button>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <input
+      id="input"
+      type="text"
+      placeholder="Type a character or ASCII code (0–255)…"
+      class="mt-3 w-full rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    />
+
+    <div id="results" class="mt-4 hidden">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Decimal</p>
+          <p id="res-dec" class="mt-1 text-2xl font-bold text-slate-900 font-mono"></p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Hexadecimal</p>
+          <p id="res-hex" class="mt-1 text-2xl font-bold text-slate-900 font-mono"></p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Binary</p>
+          <p id="res-bin" class="mt-1 text-2xl font-bold text-slate-900 font-mono"></p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Octal</p>
+          <p id="res-oct" class="mt-1 text-2xl font-bold text-slate-900 font-mono"></p>
+        </div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-3 text-sm">
+        <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-slate-700"><strong>Character:</strong> <span id="res-char" class="font-mono"></span></span>
+        <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-slate-700"><strong>HTML Entity:</strong> <span id="res-html" class="font-mono"></span></span>
+        <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-slate-700"><strong>Category:</strong> <span id="res-cat" class="font-mono"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">ASCII character categories</h2>
+    <p class="mt-2 text-slate-600">Distribution of characters across the full ASCII table.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Control (0–31)</span><span class="text-slate-400">12% of ASCII</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:12%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Printable (32–126)</span><span class="text-slate-400">37%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:37%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Extended (127–255)</span><span class="text-slate-400">51%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:51%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Priya Nair</h3>
+      <p class="mt-1 text-sm text-slate-600">Developer who needs to check ASCII codes when implementing custom serial protocols and debugging character encoding issues in network applications.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Liam O'Brien</h3>
+      <p class="mt-1 text-sm text-slate-600">CS student learning about character encoding, binary representation, and how computers store text at the fundamental level.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F527;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Yuki Tanaka</h3>
+      <p class="mt-1 text-sm text-slate-600">Embedded engineer who works with microcontrollers that use ASCII for serial communication and needs to convert between characters and hex codes.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Alex Rivera</h3>
+      <p class="mt-1 text-sm text-slate-600">Cybersecurity analyst who inspects raw packet data and needs to identify control characters and their hex values in network traffic dumps.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Dec</th><th class="p-3">Hex</th><th class="p-3">Char</th><th class="p-3">Dec</th><th class="p-3">Hex</th><th class="p-3">Char</th><th class="p-3">Dec</th><th class="p-3">Hex</th><th class="p-3">Char</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700 font-mono text-xs">
+        <tr><td class="p-3">32</td><td class="p-3">20</td><td class="p-3">Space</td><td class="p-3">64</td><td class="p-3">40</td><td class="p-3">@</td><td class="p-3">96</td><td class="p-3">60</td><td class="p-3">`</td></tr>
+        <tr><td class="p-3">33</td><td class="p-3">21</td><td class="p-3">!</td><td class="p-3">65</td><td class="p-3">41</td><td class="p-3">A</td><td class="p-3">97</td><td class="p-3">61</td><td class="p-3">a</td></tr>
+        <tr><td class="p-3">34</td><td class="p-3">22</td><td class="p-3">"</td><td class="p-3">66</td><td class="p-3">42</td><td class="p-3">B</td><td class="p-3">98</td><td class="p-3">62</td><td class="p-3">b</td></tr>
+        <tr><td class="p-3">35</td><td class="p-3">23</td><td class="p-3">#</td><td class="p-3">67</td><td class="p-3">43</td><td class="p-3">C</td><td class="p-3">99</td><td class="p-3">63</td><td class="p-3">c</td></tr>
+        <tr><td class="p-3">36</td><td class="p-3">24</td><td class="p-3">$</td><td class="p-3">68</td><td class="p-3">44</td><td class="p-3">D</td><td class="p-3">100</td><td class="p-3">64</td><td class="p-3">d</td></tr>
+        <tr><td class="p-3">37</td><td class="p-3">25</td><td class="p-3">%</td><td class="p-3">69</td><td class="p-3">45</td><td class="p-3">E</td><td class="p-3">101</td><td class="p-3">65</td><td class="p-3">e</td></tr>
+        <tr><td class="p-3">38</td><td class="p-3">26</td><td class="p-3">&amp;</td><td class="p-3">70</td><td class="p-3">46</td><td class="p-3">F</td><td class="p-3">102</td><td class="p-3">66</td><td class="p-3">f</td></tr>
+        <tr><td class="p-3">39</td><td class="p-3">27</td><td class="p-3">'</td><td class="p-3">71</td><td class="p-3">47</td><td class="p-3">G</td><td class="p-3">103</td><td class="p-3">67</td><td class="p-3">g</td></tr>
+        <tr><td class="p-3">40</td><td class="p-3">28</td><td class="p-3">(</td><td class="p-3">72</td><td class="p-3">48</td><td class="p-3">H</td><td class="p-3">104</td><td class="p-3">68</td><td class="p-3">h</td></tr>
+        <tr><td class="p-3">41</td><td class="p-3">29</td><td class="p-3">)</td><td class="p-3">73</td><td class="p-3">49</td><td class="p-3">I</td><td class="p-3">105</td><td class="p-3">69</td><td class="p-3">i</td></tr>
+        <tr><td class="p-3">42</td><td class="p-3">2A</td><td class="p-3">*</td><td class="p-3">74</td><td class="p-3">4A</td><td class="p-3">J</td><td class="p-3">106</td><td class="p-3">6A</td><td class="p-3">j</td></tr>
+        <tr><td class="p-3">43</td><td class="p-3">2B</td><td class="p-3">+</td><td class="p-3">75</td><td class="p-3">4B</td><td class="p-3">K</td><td class="p-3">107</td><td class="p-3">6B</td><td class="p-3">k</td></tr>
+        <tr><td class="p-3">44</td><td class="p-3">2C</td><td class="p-3">,</td><td class="p-3">76</td><td class="p-3">4C</td><td class="p-3">L</td><td class="p-3">108</td><td class="p-3">6C</td><td class="p-3">l</td></tr>
+        <tr><td class="p-3">45</td><td class="p-3">2D</td><td class="p-3">-</td><td class="p-3">77</td><td class="p-3">4D</td><td class="p-3">M</td><td class="p-3">109</td><td class="p-3">6D</td><td class="p-3">m</td></tr>
+        <tr><td class="p-3">46</td><td class="p-3">2E</td><td class="p-3">.</td><td class="p-3">78</td><td class="p-3">4E</td><td class="p-3">N</td><td class="p-3">110</td><td class="p-3">6E</td><td class="p-3">n</td></tr>
+        <tr><td class="p-3">47</td><td class="p-3">2F</td><td class="p-3">/</td><td class="p-3">79</td><td class="p-3">4F</td><td class="p-3">O</td><td class="p-3">111</td><td class="p-3">6F</td><td class="p-3">o</td></tr>
+        <tr><td class="p-3">48</td><td class="p-3">30</td><td class="p-3">0</td><td class="p-3">80</td><td class="p-3">50</td><td class="p-3">P</td><td class="p-3">112</td><td class="p-3">70</td><td class="p-3">p</td></tr>
+        <tr><td class="p-3">49</td><td class="p-3">31</td><td class="p-3">1</td><td class="p-3">81</td><td class="p-3">51</td><td class="p-3">Q</td><td class="p-3">113</td><td class="p-3">71</td><td class="p-3">q</td></tr>
+        <tr><td class="p-3">50</td><td class="p-3">32</td><td class="p-3">2</td><td class="p-3">82</td><td class="p-3">52</td><td class="p-3">R</td><td class="p-3">114</td><td class="p-3">72</td><td class="p-3">r</td></tr>
+        <tr><td class="p-3">51</td><td class="p-3">33</td><td class="p-3">3</td><td class="p-3">83</td><td class="p-3">53</td><td class="p-3">S</td><td class="p-3">115</td><td class="p-3">73</td><td class="p-3">s</td></tr>
+        <tr><td class="p-3">52</td><td class="p-3">34</td><td class="p-3">4</td><td class="p-3">84</td><td class="p-3">54</td><td class="p-3">T</td><td class="p-3">116</td><td class="p-3">74</td><td class="p-3">t</td></tr>
+        <tr><td class="p-3">53</td><td class="p-3">35</td><td class="p-3">5</td><td class="p-3">85</td><td class="p-3">55</td><td class="p-3">U</td><td class="p-3">117</td><td class="p-3">75</td><td class="p-3">u</td></tr>
+        <tr><td class="p-3">54</td><td class="p-3">36</td><td class="p-3">6</td><td class="p-3">86</td><td class="p-3">56</td><td class="p-3">V</td><td class="p-3">118</td><td class="p-3">76</td><td class="p-3">v</td></tr>
+        <tr><td class="p-3">55</td><td class="p-3">37</td><td class="p-3">7</td><td class="p-3">87</td><td class="p-3">57</td><td class="p-3">W</td><td class="p-3">119</td><td class="p-3">77</td><td class="p-3">w</td></tr>
+        <tr><td class="p-3">56</td><td class="p-3">38</td><td class="p-3">8</td><td class="p-3">88</td><td class="p-3">58</td><td class="p-3">X</td><td class="p-3">120</td><td class="p-3">78</td><td class="p-3">x</td></tr>
+        <tr><td class="p-3">57</td><td class="p-3">39</td><td class="p-3">9</td><td class="p-3">89</td><td class="p-3">59</td><td class="p-3">Y</td><td class="p-3">121</td><td class="p-3">79</td><td class="p-3">y</td></tr>
+        <tr><td class="p-3">58</td><td class="p-3">3A</td><td class="p-3">:</td><td class="p-3">90</td><td class="p-3">5A</td><td class="p-3">Z</td><td class="p-3">122</td><td class="p-3">7A</td><td class="p-3">z</td></tr>
+        <tr><td class="p-3">59</td><td class="p-3">3B</td><td class="p-3">;</td><td class="p-3">91</td><td class="p-3">5B</td><td class="p-3">[</td><td class="p-3">123</td><td class="p-3">7B</td><td class="p-3">{</td></tr>
+        <tr><td class="p-3">60</td><td class="p-3">3C</td><td class="p-3">&lt;</td><td class="p-3">92</td><td class="p-3">5C</td><td class="p-3">\</td><td class="p-3">124</td><td class="p-3">7C</td><td class="p-3">|</td></tr>
+        <tr><td class="p-3">61</td><td class="p-3">3D</td><td class="p-3">=</td><td class="p-3">93</td><td class="p-3">5D</td><td class="p-3">]</td><td class="p-3">125</td><td class="p-3">7D</td><td class="p-3">}</td></tr>
+        <tr><td class="p-3">62</td><td class="p-3">3E</td><td class="p-3">&gt;</td><td class="p-3">94</td><td class="p-3">5E</td><td class="p-3">^</td><td class="p-3">126</td><td class="p-3">7E</td><td class="p-3">~</td></tr>
+        <tr><td class="p-3">63</td><td class="p-3">3F</td><td class="p-3">?</td><td class="p-3">95</td><td class="p-3">5F</td><td class="p-3">_</td><td class="p-3">127</td><td class="p-3">7F</td><td class="p-3">DEL</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use ASCII Code Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter input</h3>
+        <p class="mt-1 text-sm text-slate-600">Type a character or string to convert to codes, or enter a decimal ASCII code (0–255) to find the character.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose direction</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Char → Code to see decimal, hex, binary, and octal values. Click Code → Char to find the character from a numeric code.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the results</h3>
+        <p class="mt-1 text-sm text-slate-600">View all representations side by side, plus the HTML entity and character category (control, printable, or extended).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for ASCII codes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Remember the key offsets</h3>
+        <p class="mt-1 text-sm text-slate-600">A = 65, a = 97 (difference of 32). 0 = 48. Space = 32. These anchor points make it easy to compute other codes mentally: B = 66, b = 98, 1 = 49, etc.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use hex codes in programming</h3>
+        <p class="mt-1 text-sm text-slate-600">Many programming languages use hex notation for characters (\\x41 for A). The hexadecimal view is especially useful when working with network protocols, binary files, or embedded systems.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Know your control characters</h3>
+        <p class="mt-1 text-sm text-slate-600">Common control characters include NUL (0), TAB (9), LF (10), CR (13), and ESC (27). These appear frequently in text processing and serial communication. The converter identifies them by category.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is ASCII?</h2>
+    <p class="mt-2 text-slate-600">ASCII (American Standard Code for Information Interchange) is a character encoding standard developed in the 1960s. It uses 7 bits to represent 128 characters including uppercase and lowercase letters, digits 0–9, punctuation marks, and control characters. ASCII became the foundation for digital text communication and is still the basis for modern character encodings like UTF-8.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">ASCII vs Unicode</h2>
+    <p class="mt-2 text-slate-600">While ASCII covers only 128 characters (enough for English), Unicode can represent over a million characters from every writing system in the world. The first 128 Unicode code points are identical to ASCII, ensuring backward compatibility. Unicode uses variable-length encoding (UTF-8, UTF-16, UTF-32) where ASCII-compatible characters use just one byte, making UTF-8 the dominant encoding on the web.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Character categories</h2>
+    <p class="mt-2 text-slate-600">ASCII divides into three main groups. Control characters (0–31) are non-printable codes that originally controlled teletype machines — they include common ones like LF (line feed) and TAB still used today. Printable characters (32–126) include space, digits, punctuation, and letters. The DEL character (127) is a special control character used as a delete command.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Control characters explained</h2>
+    <p class="mt-2 text-slate-600">Control characters were essential for managing early teletype and terminal communication. NUL (0) is a null filler. SOH (1) Start of Heading, STX (2) Start of Text, ETX (3) End of Text. BEL (7) rang a bell. BS (8) backspace. HT (9) horizontal tab. LF (10) line feed. CR (13) carriage return. ESC (27) escape. Many of these persist in modern protocols and file formats.</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const input = $('input'), status = $('status'), results = $('results');
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function pad(bin, n) {
+      return bin.padStart(n, '0');
+    }
+
+    function asciiCategory(code) {
+      if (code < 32) return 'Control (0–31)';
+      if (code === 127) return 'Control (DEL)';
+      if (code < 128) return 'Printable';
+      return 'Extended (128–255)';
+    }
+
+    function controlName(code) {
+      const names = {
+        0: 'NUL', 1: 'SOH', 2: 'STX', 3: 'ETX', 4: 'EOT', 5: 'ENQ',
+        6: 'ACK', 7: 'BEL', 8: 'BS', 9: 'TAB', 10: 'LF', 11: 'VT',
+        12: 'FF', 13: 'CR', 14: 'SO', 15: 'SI', 16: 'DLE', 17: 'DC1',
+        18: 'DC2', 19: 'DC3', 20: 'DC4', 21: 'NAK', 22: 'SYN', 23: 'ETB',
+        24: 'CAN', 25: 'EM', 26: 'SUB', 27: 'ESC', 28: 'FS', 29: 'GS',
+        30: 'RS', 31: 'US', 127: 'DEL',
+      };
+      return names[code] || '';
+    }
+
+    function showResults(code, char) {
+      results.classList.remove('hidden');
+      $('res-dec').textContent = code;
+      $('res-hex').textContent = code.toString(16).toUpperCase().padStart(2, '0');
+      $('res-bin').textContent = pad(code.toString(2), 8);
+      $('res-oct').textContent = code.toString(8).padStart(3, '0');
+      $('res-char').textContent = code < 32 || code === 127 ? controlName(code) : char;
+      $('res-html').textContent = code < 32 || code === 127 ? 'N/A' : '&#' + code + ';';
+      $('res-cat').textContent = asciiCategory(code);
+    }
+
+    $('char-to-code-btn').addEventListener('click', () => {
+      const val = input.value;
+      if (!val) { show('Enter a character first', false); results.classList.add('hidden'); return; }
+      const code = val.charCodeAt(0);
+      if (code > 255) {
+        show('Character is outside ASCII range (0–255). Use the first byte.', false);
+      }
+      showResults(code, val.charAt(0));
+      show('Char → Code ✓', true);
+    });
+
+    $('code-to-char-btn').addEventListener('click', () => {
+      const val = input.value.trim();
+      if (!val) { show('Enter an ASCII code first', false); results.classList.add('hidden'); return; }
+      const code = parseInt(val, 10);
+      if (isNaN(code) || code < 0 || code > 255) {
+        show('Enter a valid ASCII code between 0 and 255', false);
+        results.classList.add('hidden');
+        return;
+      }
+      const char = code >= 32 && code <= 126 ? String.fromCharCode(code) : (controlName(code) || '?');
+      showResults(code, char);
+      show('Code → Char ✓', true);
+    });
+
+    $('clear-btn').addEventListener('click', () => {
+      input.value = ''; results.classList.add('hidden'); status.classList.add('hidden'); input.focus();
+    });
+
+    $('copy-btn').addEventListener('click', async () => {
+      const text = 'Dec: ' + $('res-dec').textContent + ' | Hex: ' + $('res-hex').textContent + ' | Bin: ' + $('res-bin').textContent + ' | Oct: ' + $('res-oct').textContent + ' | Char: ' + $('res-char').textContent;
+      if (!$('res-dec').textContent) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const b = $('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+  </script>
+</ToolLayout>

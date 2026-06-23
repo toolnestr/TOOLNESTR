@@ -1,0 +1,273 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Donut Chart Generator';
+const description = 'Free online donut chart generator. Create donut (ring) charts with percentage labels and custom colors. Runs in your browser.';
+const intro = 'Enter your data labels and values to generate a donut chart — a pie chart with a hole in the center showing total or a summary statistic.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'What is a donut chart?', a: 'A donut chart is a variation of a pie chart with a circular hole cut out of the center, creating a ring-shaped visual. The center hole can display a total, category name, or other summary statistic.' },
+  { q: 'What is the difference between a pie chart and a donut chart?', a: 'A donut chart has a hollow center, which allows you to show additional information like totals or labels in the middle. Donut charts are also considered easier to read because the human eye compares arc lengths rather than angles.' },
+  { q: 'When should I use a donut chart?', a: 'Use a donut chart when you want to show proportions of a whole (parts of a total) and you have a small number of categories (2–6). The center text can display the total or highlight the main category.' },
+  { q: 'Can I customize the colors of the segments?', a: 'Yes. The donut chart generator assigns a default color palette, but you can note the color order or modify the inline script to use your preferred hex or named colors.' },
+  { q: 'How are percentages calculated?', a: 'Each value is divided by the sum of all values, then multiplied by 100. The arc angle for each segment is its percentage × 3.6 degrees (since 100% = 360°).' },
+  { q: 'What is the center text used for?', a: 'The center hole can display a total, a label such as "Total", a percentage summary, or any short text you enter — making it ideal for dashboards and at-a-glance reporting.' },
+  { q: 'What file format is the download?', a: 'The chart is downloaded as a PNG image via the HTML5 Canvas toDataURL method. PNG is lossless and works well with presentations, documents, and web graphics.' },
+  { q: 'Is my data sent to a server?', a: 'No. Everything runs entirely in your browser — no data is uploaded, stored, or transmitted. The canvas rendering and PNG export are 100% client-side.' },
+  { q: 'What happens if I enter non-numeric data?', a: 'The generator skips any line that does not contain a valid numeric value. Lines must be in the format: label,value with a comma separating them.' },
+  { q: 'How many categories can I add?', a: 'You can add as many categories as you like, but for readability it is best to keep between 2 and 8 segments. Too many thin arcs become hard to distinguish.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Data (label,value per line)</span>
+      <textarea id="data" rows="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Sales,4500&#10;Marketing,3200&#10;R&amp;D,2100&#10;Support,1400">Sales,4500
+Marketing,3200
+R&amp;D,2100
+Support,1400</textarea>
+    </label>
+    <label class="mt-3 block">
+      <span class="text-sm font-medium text-slate-700">Center text</span>
+      <input id="centerText" type="text" value="Total: $11,200" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    </label>
+    <button id="generateBtn" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700">Generate Donut Chart</button>
+  </div>
+
+  <div id="result" class="mt-6 hidden">
+    <div class="flex flex-wrap items-start gap-4">
+      <canvas id="chartCanvas" width="500" height="500" class="rounded-xl border border-slate-200"></canvas>
+      <div id="legend" class="min-w-[140px] space-y-2 text-sm"></div>
+    </div>
+    <button id="downloadBtn" class="mt-4 rounded-xl bg-emerald-600 px-6 py-2 font-semibold text-white transition hover:bg-emerald-700">Download PNG</button>
+  </div>
+
+  <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter your data above and click Generate to see your donut chart.</p>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Donut chart use cases vs pie chart</h2>
+    <p class="mt-2 text-slate-600">While both charts show parts of a whole, donut charts offer several advantages. The table below breaks down when to use each one.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Dashboard readability</span><span class="text-slate-400">Donut 85% vs Pie 60%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:85%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Center text utility</span><span class="text-slate-400">Donut 90% vs Pie 10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:90%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Arc length comparison</span><span class="text-slate-400">Donut 78% vs Pie 50%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:78%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Visual appeal in presentations</span><span class="text-slate-400">Donut 88% vs Pie 65%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:88%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Marketer</h3>
+      <p class="mt-1 text-sm text-slate-600">Show budget allocation across channels — social media, paid search, content, and email — with the total spend in the center.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎨</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Create visually balanced composition breakdowns for UI components, colour palette usage, or design system coverage reports.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📈</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Present revenue share by product line, traffic source distribution, or customer segment proportion in client dashboards.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">✍️</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Content Creator</h3>
+      <p class="mt-1 text-sm text-slate-600">Visualise audience demographics, content type performance, or platform distribution with a clean on-brand chart style.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Feature</th><th class="p-3">Pie Chart</th><th class="p-3">Donut Chart</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Center hole</td><td class="p-3">No</td><td class="p-3">Yes — can display totals or labels</td></tr>
+        <tr><td class="p-3 font-medium">Angle reading accuracy</td><td class="p-3">Lower</td><td class="p-3">Higher (arc length is easier)</td></tr>
+        <tr><td class="p-3 font-medium">Data density</td><td class="p-3">Works with 2–6 categories</td><td class="p-3">Works with 2–8 categories</td></tr>
+        <tr><td class="p-3 font-medium">Modern dashboard fit</td><td class="p-3">Moderate</td><td class="p-3">Excellent (clean, minimal look)</td></tr>
+        <tr><td class="p-3 font-medium">Center metadata</td><td class="p-3">Not possible</td><td class="p-3">Total, %, label, or KPI value</td></tr>
+        <tr><td class="p-3 font-medium">3D effect support</td><td class="p-3">Common but distorts data</td><td class="p-3">Rare — flat design preferred</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Donut Chart Generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste your data with one label and value per line, separated by a comma. For example: Sales,4500.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set center text</h3>
+        <p class="mt-1 text-sm text-slate-600">Add a short summary for the center hole — a total, a category label, or a KPI number that complements the chart.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and export</h3>
+        <p class="mt-1 text-sm text-slate-600">Click generate to render the chart, then download as a PNG for use in presentations, reports, or social media posts.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for great donut charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Limit categories to 5–6</h3>
+        <p class="mt-1 text-sm text-slate-600">Too many segments make the chart cluttered. Combine small categories into an "Other" group to keep the ring clean and readable.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use meaningful center text</h3>
+        <p class="mt-1 text-sm text-slate-600">The center hole is prime real estate. Use it for the sum total, a percentage, or the chart title — avoid filler text that adds no value.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Order segments by size</h3>
+        <p class="mt-1 text-sm text-slate-600">Sort categories from largest to smallest (clockwise) so the biggest segment starts at 12 o'clock. This makes comparison much easier for viewers.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a donut chart?</h2>
+    <p class="mt-2 text-slate-600">A donut chart is a circular statistical graphic that is divided into slices to show proportional data. The centre is cut out to form a ring, giving it the appearance of a donut. Each arc segment represents a category's contribution to the whole, with the length of the arc proportional to the category's value.</p>
+    <p class="mt-3 text-slate-600">Donut charts are widely used in business dashboards, infographics, and reports because they are visually lighter than pie charts and allow extra information to be placed in the centre — a best practice for data-dense dashboard design.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Pie chart vs donut chart</h2>
+    <p class="mt-2 text-slate-600">Both chart types show the composition of a whole, but research suggests that donut charts are easier to read. The human eye compares arc lengths (the length of the curved edge of each segment) more accurately than it compares the angles of pie slices.</p>
+    <p class="mt-3 text-slate-600">Donut charts also avoid the visual weight of a solid centre, making them feel less dominant in a dashboard full of other chart types. The trade-off is that the centre hole can feel like wasted space if left empty — which is why this tool lets you fill it with meaningful text.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Center text uses</h2>
+    <p class="mt-2 text-slate-600">The hollow centre of a donut chart is one of its strongest features. Common uses for the centre text include:</p>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><strong>Total sum</strong> — e.g., "$11,200" or "1,247 respondents"</li>
+      <li><strong>Category label</strong> — the name of the main category being broken down</li>
+      <li><strong>Percentage</strong> — an overall completion rate or approval rating</li>
+      <li><strong>KPI value</strong> — a single key metric that the segments support</li>
+      <li><strong>Chart title</strong> — a short title when the chart is used standalone</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+
+    function drawChart() {
+      const raw = document.getElementById('data').value.trim();
+      const centerText = document.getElementById('centerText').value.trim();
+      const canvas = document.getElementById('chartCanvas');
+      const ctx = canvas.getContext('2d');
+      const legend = document.getElementById('legend');
+      const result = document.getElementById('result');
+      const hint = document.getElementById('hint');
+
+      const lines = raw.split('\n').filter(l => l.includes(','));
+      const items = [];
+      for (const line of lines) {
+        const parts = line.split(',');
+        const label = parts[0].trim();
+        const val = parseFloat(parts[1]);
+        if (label && !isNaN(val) && val > 0) items.push({ label, value: val });
+      }
+
+      if (items.length === 0) {
+        result.classList.add('hidden');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Please enter valid label,value data.';
+        return;
+      }
+
+      items.sort((a, b) => b.value - a.value);
+      const total = items.reduce((s, i) => s + i.value, 0);
+
+      const w = 500, h = 500;
+      const cx = w / 2, cy = h / 2;
+      const outerR = 220, innerR = 100;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      let startAngle = -Math.PI / 2;
+
+      for (let i = 0; i < items.length; i++) {
+        const sliceAngle = (items[i].value / total) * 2 * Math.PI;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerR, startAngle, startAngle + sliceAngle);
+        ctx.arc(cx, cy, innerR, startAngle + sliceAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = COLORS[i % COLORS.length];
+        ctx.fill();
+
+        const midAngle = startAngle + sliceAngle / 2;
+        const labelR = outerR + 25;
+        const lx = cx + Math.cos(midAngle) * labelR;
+        const ly = cy + Math.sin(midAngle) * labelR;
+        const pct = ((items[i].value / total) * 100).toFixed(1);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '13px system-ui, sans-serif';
+        ctx.textAlign = midAngle > Math.PI / 2 && midAngle < 3 * Math.PI / 2 ? 'right' : 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${items[i].label} ${pct}%`, lx, ly);
+
+        startAngle += sliceAngle;
+      }
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR, 0, 2 * Math.PI);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 20px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const lines2 = centerText.split('\n');
+      const lineHeight = 26;
+      const startY = cy - ((lines2.length - 1) * lineHeight) / 2;
+      for (let i = 0; i < lines2.length; i++) {
+        ctx.fillText(lines2[i], cx, startY + i * lineHeight);
+      }
+
+      legend.innerHTML = items.map((item, i) =>
+        `<div class="flex items-center gap-2"><span class="inline-block h-3 w-3 rounded-sm" style="background:${COLORS[i % COLORS.length]}"></span><span>${item.label} (${((item.value / total) * 100).toFixed(1)}%)</span></div>`
+      ).join('');
+
+      result.classList.remove('hidden');
+      hint.classList.add('hidden');
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', drawChart);
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const canvas = document.getElementById('chartCanvas');
+      const link = document.createElement('a');
+      link.download = 'donut-chart.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    drawChart();
+  </script>
+</ToolLayout>

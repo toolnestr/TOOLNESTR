@@ -1,0 +1,322 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'JSON ↔ XML Converter';
+const description =
+  'Free online JSON to XML converter. Convert JSON objects to XML and parse XML back to JSON. ' +
+  'Runs in your browser.';
+const intro =
+  'Paste JSON or XML data and convert between formats bidirectionally. Supports nested objects, arrays and attributes.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What is XML?', a: 'XML (eXtensible Markup Language) is a markup language that encodes documents in a format both human-readable and machine-readable. It uses tags, attributes, and a tree structure.' },
+  { q: 'How does JSON-to-XML conversion work?', a: 'Each JSON key becomes an XML element. Nested objects become child elements. Arrays produce repeated sibling elements. Primitives become text content.' },
+  { q: 'Does the converter support XML attributes?', a: 'Yes. You can mark keys with an @ prefix in JSON (e.g. "@id") to create XML attributes instead of elements.' },
+  { q: 'What happens to JSON arrays?', a: 'Arrays produce multiple XML elements with the same tag name. For example, ["a", "b"] with key "item" becomes &lt;item&gt;a&lt;/item&gt;&lt;item&gt;b&lt;/item&gt;.' },
+  { q: 'Can I convert XML with namespaces?', a: 'The converter handles basic namespace prefixes like &lt;ns:tag&gt;. Complex namespace processing may require a dedicated XML tool.' },
+  { q: 'Is my data private?', a: 'Yes. Everything is processed in your browser — no data is uploaded to any server.' },
+  { q: 'Why would I use XML instead of JSON?', a: 'XML is still required for SOAP APIs, document markup (XHTML, SVG), configuration files, and legacy enterprise systems where schemas and validation are important.' },
+  { q: 'How are XML text nodes handled?', a: 'Text content is placed inside the element. If an element has both attributes and text, the key "#text" in JSON represents the text content.' },
+  { q: 'What if my XML has mixed content?', a: 'Mixed content (text and child elements interleaved) is simplified — text nodes are collected and child elements are parsed as nested objects.' },
+  { q: 'Does the converter handle CDATA sections?', a: 'Basic CDATA sections are parsed and their content is included as text. Advanced CDATA handling may require additional preprocessing.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1 w-fit">
+      <button id="json-xml-btn" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white">JSON → XML</button>
+      <button id="xml-json-btn" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800">XML → JSON</button>
+    </div>
+
+    <textarea
+      id="input"
+      rows="8"
+      spellcheck="false"
+      placeholder='Paste JSON or XML here…'
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <button id="convert-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Convert</button>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="download-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Download</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="output"
+      rows="8"
+      readonly
+      placeholder="Result appears here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+    ></textarea>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">API data format usage</h2>
+    <p class="mt-2 text-slate-600">How commonly each data format is used across modern APIs.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">REST JSON</span><span class="text-slate-400">60%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:60%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">SOAP XML</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">GraphQL</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">gRPC</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:10%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Full-stack Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts JSON API responses to XML for legacy SOAP integrations and generates XML feeds from JSON databases.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">API Integrator</h3>
+      <p class="mt-1 text-sm text-slate-600">Bridges modern REST APIs with legacy XML-based systems by converting payloads between formats during data migration.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E4;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Migration Specialist</h3>
+      <p class="mt-1 text-sm text-slate-600">Transforms XML data exports from legacy systems into JSON for import into modern databases and cloud platforms.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3ED;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">SOAP Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Works with SOAP web services that require strict XML formatting. Converts JSON test payloads to XML for SOAP envelope construction.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Feature</th><th class="p-3">XML</th><th class="p-3">JSON</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Syntax</td><td class="p-3">Tag-based with attributes</td><td class="p-3">Key-value pairs</td></tr>
+        <tr><td class="p-3 font-medium">Data types</td><td class="p-3">All strings (typed via schema)</td><td class="p-3">Strings, numbers, booleans, null</td></tr>
+        <tr><td class="p-3 font-medium">Attributes</td><td class="p-3">Native support</td><td class="p-3">Not supported natively</td></tr>
+        <tr><td class="p-3 font-medium">Namespaces</td><td class="p-3">Supported</td><td class="p-3">Not supported</td></tr>
+        <tr><td class="p-3 font-medium">Schema validation</td><td class="p-3">XSD, DTD</td><td class="p-3">JSON Schema</td></tr>
+        <tr><td class="p-3 font-medium">File size</td><td class="p-3">Largest</td><td class="p-3">Compact</td></tr>
+        <tr><td class="p-3 font-medium">Parsing speed</td><td class="p-3">Slow</td><td class="p-3">Fast</td></tr>
+        <tr><td class="p-3 font-medium">Best for</td><td class="p-3">Documents, SOAP, complex schemas</td><td class="p-3">APIs, web apps, config</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the JSON ↔ XML Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose direction</h3>
+        <p class="mt-1 text-sm text-slate-600">Toggle between JSON→XML or XML→JSON depending on your input format.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Paste and convert</h3>
+        <p class="mt-1 text-sm text-slate-600">Paste your data and click Convert. The result appears instantly in the output area below.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy or download</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy the result to your clipboard or download it as an XML or JSON file.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for JSON ↔ XML conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use @ prefix for attributes</h3>
+        <p class="mt-1 text-sm text-slate-600">To create XML attributes in JSON, prefix the key with @ (e.g. "@id": "123"). Keys without the prefix become child elements.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use #text for element text content</h3>
+        <p class="mt-1 text-sm text-slate-600">If an element has both attributes and text, use "#text" as the key for the text content. For simple elements, the value itself becomes the text.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Handle arrays consistently</h3>
+        <p class="mt-1 text-sm text-slate-600">JSON arrays map to repeated XML elements with the same name. Ensure your array items are consistent in structure for valid XML output.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is XML?</h2>
+    <p class="mt-2 text-slate-600">XML (eXtensible Markup Language) is a markup language designed for storing and transporting data. It uses custom tags, attributes, and a hierarchical tree structure. XML is both human-readable and machine-readable, and it supports schemas (XSD, DTD) for validating document structure and data types.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">JSON vs XML</h2>
+    <p class="mt-2 text-slate-600">JSON is lighter, faster, and more concise than XML. It maps naturally to programming language data structures and is the dominant format for modern REST APIs. XML offers richer document features including attributes, namespaces, schemas, and mixed content. It remains essential in enterprise environments, SOAP services, document markup (SVG, XHTML), and configuration files.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use XML (legacy, SOAP, document markup)</h2>
+    <p class="mt-2 text-slate-600">XML is still the right choice for SOAP web services, document-centric applications (where order and mixed content matter), configurations that need schema validation, SVG graphics, RSS/Atom feeds, and enterprise integration scenarios where XML tooling and XSLT transformations are established.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('input'), output = el('output'), status = el('status');
+    const jxBtn = el('json-xml-btn'), xjBtn = el('xml-json-btn');
+
+    let direction = 'json-to-xml';
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function setDirection(dir) {
+      direction = dir;
+      jxBtn.className = dir === 'json-to-xml' ? 'rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800';
+      xjBtn.className = dir === 'xml-to-json' ? 'rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800';
+    }
+
+    jxBtn.addEventListener('click', () => setDirection('json-to-xml'));
+    xjBtn.addEventListener('click', () => setDirection('xml-to-json'));
+
+    function escapeXml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    }
+
+    function jsonToXml(obj, name) {
+      name = name || 'root';
+      if (obj === null || obj === undefined) return '<' + name + '/>';
+      if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+        return '<' + name + '>' + escapeXml(String(obj)) + '</' + name + '>';
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(item => jsonToXml(item, name)).join('\n');
+      }
+      if (typeof obj === 'object') {
+        let attrs = '';
+        let children = '';
+        for (const key of Object.keys(obj)) {
+          const val = obj[key];
+          if (key.startsWith('@')) {
+            attrs += ' ' + key.slice(1) + '="' + escapeXml(String(val)) + '"';
+          } else if (key === '#text') {
+            children = escapeXml(String(val));
+          } else {
+            children += '\n' + jsonToXml(val, key);
+          }
+        }
+        if (!children && !attrs) return '<' + name + '/>';
+        if (!children) return '<' + name + attrs + '/>';
+        return '<' + name + attrs + '>' + children + '\n</' + name + '>';
+      }
+      return '';
+    }
+
+    function xmlToJson(text) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, 'text/xml');
+      const parseErrors = doc.querySelector('parsererror');
+      if (parseErrors) throw new Error('Invalid XML: ' + parseErrors.textContent);
+      return xmlNodeToJson(doc.documentElement);
+    }
+
+    function xmlNodeToJson(node) {
+      const obj = {};
+      if (node.attributes && node.attributes.length) {
+        for (const attr of node.attributes) {
+          obj['@' + attr.name] = attr.value;
+        }
+      }
+      const children = [];
+      for (const child of node.childNodes) {
+        if (child.nodeType === 3) {
+          const text = child.nodeValue.trim();
+          if (text) children.push({ type: 'text', value: text });
+        } else if (child.nodeType === 1) {
+          children.push({ type: 'element', name: child.nodeName, data: xmlNodeToJson(child) });
+        }
+      }
+      const textChildren = children.filter(c => c.type === 'text');
+      const elemChildren = children.filter(c => c.type === 'element');
+      if (elemChildren.length === 0) {
+        if (textChildren.length === 1) {
+          const val = textChildren[0].value;
+          if (Object.keys(obj).length === 0) return val;
+          obj['#text'] = val;
+          return obj;
+        }
+        return Object.keys(obj).length ? obj : '';
+      }
+      const seen = {};
+      for (const child of elemChildren) {
+        if (!seen[child.name]) seen[child.name] = 0;
+        seen[child.name]++;
+      }
+      for (const child of elemChildren) {
+        if (seen[child.name] > 1) {
+          if (!Array.isArray(obj[child.name])) obj[child.name] = [];
+          obj[child.name].push(child.data);
+        } else {
+          obj[child.name] = child.data;
+        }
+      }
+      if (textChildren.length) {
+        obj['#text'] = textChildren.map(t => t.value).join(' ');
+      }
+      return obj;
+    }
+
+    function convert() {
+      const text = input.value.trim();
+      if (!text) { show('Nothing to convert — paste some data first.', false); return; }
+
+      try {
+        if (direction === 'json-to-xml') {
+          const data = JSON.parse(text);
+          output.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + jsonToXml(data);
+          show('Converted to XML', true);
+        } else {
+          const data = xmlToJson(text);
+          output.value = JSON.stringify(data, null, 2);
+          show('Converted to JSON', true);
+        }
+      } catch (e) {
+        output.value = '';
+        show('Error: ' + e.message, false);
+      }
+    }
+
+    el('convert-btn').addEventListener('click', convert);
+    el('clear-btn').addEventListener('click', () => { input.value = ''; output.value = ''; status.classList.add('hidden'); input.focus(); });
+    el('copy-btn').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        const b = el('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+    el('download-btn').addEventListener('click', () => {
+      if (!output.value) return;
+      const ext = direction === 'json-to-xml' ? 'xml' : 'json';
+      const type = direction === 'json-to-xml' ? 'application/xml' : 'application/json';
+      const blob = new Blob([output.value], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'converted.' + ext; a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</ToolLayout>

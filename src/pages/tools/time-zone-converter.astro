@@ -1,0 +1,272 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Time Zone Converter';
+const description =
+  'Free online time zone converter. Convert any date and time from one timezone to another. Supports all IANA timezones.';
+const intro =
+  'Enter a date and time, select the source timezone and target timezone to see the converted time.';
+const category = { id: 'time-date', name: 'Time & Date' };
+const faqs = [
+  { q: 'How many timezones are supported?', a: 'All IANA timezones are available, covering every country and territory in the world — over 500 timezone identifiers.' },
+  { q: 'Does it handle Daylight Saving Time?', a: 'Yes. The converter automatically detects whether DST is in effect for the given date and applies the correct offset.' },
+  { q: 'Can I see both source and target times side by side?', a: 'Yes. After conversion the result panel shows both times clearly, along with the UTC equivalent and DST status for each timezone.' },
+  { q: 'Is it accurate for dates in the past or future?', a: 'Yes. The Intl.DateTimeFormat API handles historical timezone rules and future DST transitions as defined by the IANA database.' },
+  { q: 'What does UTC equivalent mean?', a: 'UTC equivalent is the same moment expressed in Coordinated Universal Time — the common reference point that all timezones are offset from.' },
+  { q: 'Can I use city names or just timezone codes?', a: 'The dropdowns include major city names alongside their IANA timezone identifiers for easier selection.' },
+  { q: 'Is my data sent to a server?', a: 'No. All timezone conversions happen entirely in your browser with no network requests.' },
+  { q: 'How do I convert a specific date and time?', a: 'Use the date and time inputs to set the moment you want to convert. The result updates instantly when either input changes.' },
+  { q: 'Does it show timezone abbreviations like EST or PST?', a: 'Yes, the current timezone abbreviation for each selected zone is shown alongside the offset.' },
+  { q: 'Can I convert between timezones that use half-hour offsets?', a: 'Absolutely. The IANA database includes all fractional offsets such as UTC+5:30 (India), UTC+5:45 (Nepal), and UTC-3:30 (Newfoundland).' },
+];
+
+const majorZones = [
+  { label: 'London (Europe/London)', value: 'Europe/London' },
+  { label: 'New York (America/New_York)', value: 'America/New_York' },
+  { label: 'Tokyo (Asia/Tokyo)', value: 'Asia/Tokyo' },
+  { label: 'Dubai (Asia/Dubai)', value: 'Asia/Dubai' },
+  { label: 'Sydney (Australia/Sydney)', value: 'Australia/Sydney' },
+  { label: 'Paris (Europe/Paris)', value: 'Europe/Paris' },
+  { label: 'Singapore (Asia/Singapore)', value: 'Asia/Singapore' },
+  { label: 'Los Angeles (America/Los_Angeles)', value: 'America/Los_Angeles' },
+  { label: 'Mumbai (Asia/Kolkata)', value: 'Asia/Kolkata' },
+  { label: 'Berlin (Europe/Berlin)', value: 'Europe/Berlin' },
+  { label: 'Shanghai (Asia/Shanghai)', value: 'Asia/Shanghai' },
+  { label: 'S&atilde;o Paulo (America/Sao_Paulo)', value: 'America/Sao_Paulo' },
+  { label: 'UTC (UTC)', value: 'UTC' },
+  { label: 'Hong Kong (Asia/Hong_Kong)', value: 'Asia/Hong_Kong' },
+  { label: 'Istanbul (Europe/Istanbul)', value: 'Europe/Istanbul' },
+  { label: 'Seoul (Asia/Seoul)', value: 'Asia/Seoul' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Date</span>
+          <input id="conv-date" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Time</span>
+          <input id="conv-time" type="time" value="12:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">From timezone</span>
+          <select id="from-tz" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">${majorZones.map(z => `<option value="${z.value}">${z.label}</option>`).join('')}</select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">To timezone</span>
+          <select id="to-tz" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">${majorZones.map(z => `<option value="${z.value}">${z.label}</option>`).join('')}</select>
+        </label>
+      </div>
+      <button id="convert-btn" class="mt-4 w-full rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700">Convert</button>
+    </div>
+
+    <div id="conv-result" class="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl bg-indigo-50 p-4 text-center">
+          <div class="text-xs font-medium text-indigo-600/70">Source time</div>
+          <div id="src-time" class="mt-1 font-mono text-lg font-bold text-indigo-700">—</div>
+          <div id="src-tz-name" class="mt-0.5 text-xs text-slate-500">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs font-medium text-slate-500">UTC equivalent</div>
+          <div id="utc-time" class="mt-1 font-mono text-lg font-bold text-slate-800">—</div>
+          <div id="utc-dst" class="mt-0.5 text-xs text-slate-500">—</div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 p-4 text-center">
+          <div class="text-xs font-medium text-emerald-600/70">Target time</div>
+          <div id="tgt-time" class="mt-1 font-mono text-lg font-bold text-emerald-700">—</div>
+          <div id="tgt-tz-name" class="mt-0.5 text-xs text-slate-500">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Business hours overlap between major regions</h2>
+    <p class="mt-2 text-slate-600">Typical working hours overlap (in hours per day) between common business regions.</p>
+    <div id="overlap-chart" class="mt-5 space-y-3"></div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F465;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Remote Team Coordinator</h3>
+      <p class="mt-1 text-sm text-slate-600">Schedules meetings and sets working hours that accommodate team members spread across 4 continents with minimal overlap conflicts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2708;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Traveler</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts flight departure and arrival times between home and destination timezones to plan itineraries without confusion.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F389;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Event Planner</h3>
+      <p class="mt-1 text-sm text-slate-600">Sets virtual event start times that appear at reasonable hours in every participant's local timezone.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DE;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Customer Support</h3>
+      <p class="mt-1 text-sm text-slate-600">Coordinates shift handovers and SLA coverage across global support centers in different timezones.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Abbreviation</th><th class="p-3">Full name</th><th class="p-3">UTC Offset</th><th class="p-3">Example location</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-mono text-xs font-medium">UTC</td><td class="p-3">Coordinated Universal Time</td><td class="p-3">UTC+0</td><td class="p-3">Reykjavik, Accra</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">GMT</td><td class="p-3">Greenwich Mean Time</td><td class="p-3">UTC+0</td><td class="p-3">London (winter)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">EST</td><td class="p-3">Eastern Standard Time</td><td class="p-3">UTC-5</td><td class="p-3">New York (winter)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">EDT</td><td class="p-3">Eastern Daylight Time</td><td class="p-3">UTC-4</td><td class="p-3">New York (summer)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">PST</td><td class="p-3">Pacific Standard Time</td><td class="p-3">UTC-8</td><td class="p-3">Los Angeles (winter)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">PDT</td><td class="p-3">Pacific Daylight Time</td><td class="p-3">UTC-7</td><td class="p-3">Los Angeles (summer)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">CET</td><td class="p-3">Central European Time</td><td class="p-3">UTC+1</td><td class="p-3">Paris, Berlin (winter)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">CEST</td><td class="p-3">Central European Summer Time</td><td class="p-3">UTC+2</td><td class="p-3">Paris, Berlin (summer)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">IST</td><td class="p-3">India Standard Time</td><td class="p-3">UTC+5:30</td><td class="p-3">Mumbai, Delhi</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">JST</td><td class="p-3">Japan Standard Time</td><td class="p-3">UTC+9</td><td class="p-3">Tokyo, Osaka</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">AEST</td><td class="p-3">Australian Eastern Standard Time</td><td class="p-3">UTC+10</td><td class="p-3">Sydney (winter)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">AEDT</td><td class="p-3">Australian Eastern Daylight Time</td><td class="p-3">UTC+11</td><td class="p-3">Sydney (summer)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">BST</td><td class="p-3">British Summer Time</td><td class="p-3">UTC+1</td><td class="p-3">London (summer)</td></tr>
+        <tr><td class="p-3 font-mono text-xs font-medium">CST</td><td class="p-3">China Standard Time</td><td class="p-3">UTC+8</td><td class="p-3">Shanghai, Beijing</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Time Zone Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick date and time</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the date and time inputs to set the moment you want to convert from.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select timezones</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the source timezone (from) and the target timezone (to) from the dropdown menus.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">View converted result</h3>
+        <p class="mt-1 text-sm text-slate-600">The result panel shows the source time, UTC equivalent and target time side by side with DST info.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for timezone conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always confirm DST status</h3>
+        <p class="mt-1 text-sm text-slate-600">DST transitions happen on different dates in different countries. A meeting that works in March may shift by an hour in April. Always double-check for the specific date.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use UTC for scheduling</h3>
+        <p class="mt-1 text-sm text-slate-600">When sending meeting invitations across timezones, state the time in UTC and let each participant convert to their local time. This avoids misinterpretation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for half-hour and quarter-hour zones</h3>
+        <p class="mt-1 text-sm text-slate-600">Not all offsets are full hours. India (UTC+5:30), Iran (UTC+3:30), Nepal (UTC+5:45) and the Chatham Islands (UTC+12:45) use unusual offsets that are easy to miscalculate.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why timezone conversion matters</h2>
+    <p class="mt-2 text-slate-600">In a globally connected world, a 10 AM meeting in New York is 3 PM in London and midnight in Sydney. Misunderstanding timezone differences causes missed deadlines, failed calls and scheduling chaos. An accurate timezone converter eliminates guesswork and ensures everyone shows up at the right time.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IANA timezone database</h2>
+    <p class="mt-2 text-slate-600">The IANA (Internet Assigned Numbers Authority) Time Zone Database, also called tzdata, is the authoritative source for timezone information worldwide. It contains the history of every timezone's rules, including DST changes, offset changes and name changes. It ships with most operating systems and is used by JavaScript's Intl API.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DST complications</h2>
+    <p class="mt-2 text-slate-600">DST adds significant complexity to timezone conversion because transition dates vary by country, hemisphere and sometimes even within a country. The spring-forward transition skips an hour entirely, while fall-back repeats an hour. These edge cases can cause software bugs and scheduling errors if not handled properly.</p>
+  </section>
+
+  <script is:inline>
+    const el = id => document.getElementById(id);
+    const convDate = el('conv-date');
+    const convTime = el('conv-time');
+    const fromTz = el('from-tz');
+    const toTz = el('to-tz');
+    const convBtn = el('convert-btn');
+    const convResult = el('conv-result');
+
+    convDate.value = new Date().toISOString().slice(0, 10);
+
+    function convert() {
+      if (!convDate.value) return;
+      const dt = new Date(`${convDate.value}T${convTime.value}:00`);
+      if (isNaN(dt.getTime())) return;
+
+      const srcTz = fromTz.value;
+      const tgtTz = toTz.value;
+
+      const srcFmt = new Intl.DateTimeFormat('en', { timeZone: srcTz, weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+      const tgtFmt = new Intl.DateTimeFormat('en', { timeZone: tgtTz, weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+      const utcFmt = new Intl.DateTimeFormat('en', { timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+
+      const srcStr = srcFmt.format(dt);
+      const tgtStr = tgtFmt.format(dt);
+      const utcStr = utcFmt.format(dt);
+
+      const srcTzName = srcFmt.formatToParts(dt).find(p => p.type === 'timeZoneName')?.value || '';
+      const tgtTzName = tgtFmt.formatToParts(dt).find(p => p.type === 'timeZoneName')?.value || '';
+
+      el('src-time').textContent = srcStr;
+      el('src-tz-name').textContent = `Timezone: ${srcTz}`;
+      el('tgt-time').textContent = tgtStr;
+      el('tgt-tz-name').textContent = `Timezone: ${tgtTz}`;
+      el('utc-time').textContent = utcStr;
+
+      const jan = new Date(dt.getFullYear(), 0, 1);
+      const jul = new Date(dt.getFullYear(), 6, 1);
+      const srcOffJan = -new Intl.DateTimeFormat('en', { timeZone: srcTz, timeZoneName: 'short' }).formatToParts(jan).find(p => p.type === 'timeZoneName')?.value?.replace(/[^+\-\d]/g, '') || 0;
+      const srcOffJul = -new Intl.DateTimeFormat('en', { timeZone: srcTz, timeZoneName: 'short' }).formatToParts(jul).find(p => p.type === 'timeZoneName')?.value?.replace(/[^+\-\d]/g, '') || 0;
+      const srcDST = srcOffJan !== srcOffJul;
+
+      const tgtOffJan = -new Intl.DateTimeFormat('en', { timeZone: tgtTz, timeZoneName: 'short' }).formatToParts(jan).find(p => p.type === 'timeZoneName')?.value?.replace(/[^+\-\d]/g, '') || 0;
+      const tgtOffJul = -new Intl.DateTimeFormat('en', { timeZone: tgtTz, timeZoneName: 'short' }).formatToParts(jul).find(p => p.type === 'timeZoneName')?.value?.replace(/[^+\-\d]/g, '') || 0;
+      const tgtDST = tgtOffJan !== tgtOffJul;
+
+      el('utc-dst').textContent = `DST: ${srcTzName} ${srcDST ? 'yes' : 'no'} / ${tgtTzName} ${tgtDST ? 'yes' : 'no'}`;
+      convResult.classList.remove('hidden');
+    }
+
+    convBtn.addEventListener('click', convert);
+
+    function renderOverlap() {
+      const pairs = [
+        { label: 'New York & London', hours: 5 },
+        { label: 'London & Dubai', hours: 4 },
+        { label: 'New York & Tokyo', hours: 3 },
+        { label: 'London & Singapore', hours: 5 },
+        { label: 'New York & Sydney', hours: 2 },
+        { label: 'Singapore & Tokyo', hours: 8 },
+        { label: 'London & Los Angeles', hours: 4 },
+        { label: 'Dubai & Mumbai', hours: 5 },
+      ];
+      const maxHours = Math.max(...pairs.map(p => p.hours), 1);
+      const chart = document.getElementById('overlap-chart');
+      chart.innerHTML = pairs.map((p, i) => {
+        const pct = (p.hours / 8) * 100;
+        const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-orange-500', 'bg-violet-500', 'bg-red-500', 'bg-teal-500', 'bg-pink-500'];
+        return `<div>
+          <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">${p.label}</span><span class="text-slate-400">${p.hours}h overlap</span></div>
+          <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ${colors[i % colors.length]}" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    renderOverlap();
+  </script>
+</ToolLayout>

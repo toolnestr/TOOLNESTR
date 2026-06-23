@@ -1,0 +1,329 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Bar Chart Generator';
+const description =
+  'Free online bar chart generator. Create vertical bar charts from data labels and values. ' +
+  'Customize colors, title and axis labels. Runs in your browser.';
+const intro =
+  'Enter your data labels and values, customize colors and labels, then generate a bar chart you can download as PNG.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'How do I enter data for the bar chart?', a: 'Enter one label and value per line, separated by a comma. For example: "Apples,30" followed by "Bananas,45" on the next line. The chart auto-scales the Y-axis based on your highest value.' },
+  { q: 'Can I customize the bar colors?', a: 'Yes. Use the color picker to choose a base color, and the tool generates a palette of shades for each bar. You can also type a HEX code directly into the color input.' },
+  { q: 'How do I download the chart?', a: 'Click the "Download PNG" button below the canvas. Your chart is saved as a high-resolution PNG image with a transparent background, ready for use in presentations, reports, or websites.' },
+  { q: 'What is the maximum number of bars I can create?', a: 'The tool supports up to 30 bars per chart. For more data points, consider creating multiple charts or using a grouped bar chart for comparison across categories.' },
+  { q: 'Why are my bars different widths?', a: 'Bar width is calculated automatically based on the canvas size and number of bars. All bars are the same width — if they appear uneven, check that your data lines have consistent formatting.' },
+  { q: 'Can I change the chart title and axis labels?', a: 'Yes. Use the text inputs for Chart Title, X-axis Label, and Y-axis Label. These update dynamically when you click "Generate Chart".' },
+  { q: 'What happens if I enter invalid data?', a: 'The tool validates each line and shows an error message if any line is missing a comma or contains non-numeric values. Invalid lines are skipped and a warning is displayed.' },
+  { q: 'Does the chart show exact values?', a: 'Yes. Each bar has its value displayed directly above it. Gridlines on the Y-axis also help estimate values at a glance.' },
+  { q: 'Can I use decimal values?', a: 'Yes, decimal numbers are supported. The Y-axis auto-scales to include your highest value and gridlines adjust to show appropriate increments.' },
+  { q: 'Is my data stored or uploaded?', a: 'No. The entire chart generation happens in your browser using the HTML5 Canvas API. Your data never leaves your computer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6">
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Data (label,value per line)</span>
+        <textarea id="data" rows="8" class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Apples,30&#10;Bananas,45&#10;Cherries,25&#10;Dates,60">Apples,30
+Bananas,45
+Cherries,25
+Dates,60</textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Chart Title</span>
+        <input id="title" type="text" value="Fruit Sales" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">X-axis Label</span>
+          <input id="xlabel" type="text" value="Fruit" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Y-axis Label</span>
+          <input id="ylabel" type="text" value="Quantity" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Bar Color</span>
+        <input id="barcolor" type="color" value="#4f46e5" class="mt-1 h-10 w-full cursor-pointer rounded-xl border border-slate-300" />
+      </label>
+      <button id="generate" class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate Chart</button>
+      <p id="err" class="hidden text-sm text-red-600"></p>
+    </div>
+    <div class="flex flex-col items-center justify-center">
+      <div class="w-full overflow-hidden rounded-xl border border-slate-200">
+        <canvas id="canvas" class="w-full"></canvas>
+      </div>
+      <button id="download" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Download PNG</button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different chart types mean</h2>
+    <p class="mt-2 text-slate-600">Bar charts are one of several common chart types, each suited to different kinds of data. Understanding the differences helps you choose the right visualisation.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl font-bold text-indigo-600">&#x2502;&#x2502;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares discrete categories with rectangular bars. Best for showing rankings or quantities across separate groups. Easy to read and widely understood.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x25CF;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Line Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows trends and changes over continuous time intervals. Best for tracking data points across time, like stock prices or temperature readings.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x25D0;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Pie Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows proportions of a whole using circular slices. Best for displaying percentage breakdowns with a small number of categories, like market share or budget allocation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2588;&#x2588;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Grouped Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares multiple series side by side within each category. Best for showing subgroup breakdowns, like quarterly sales across different regions.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4ca;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates bar charts to compare metrics across categories in quarterly reports, such as revenue by product line or headcount by department.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3ed;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Marketing Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses bar charts to visualise campaign performance, website traffic sources, conversion rates, and customer demographic comparisons.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4b5;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Business Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Builds bar charts for sales dashboards, expense breakdowns, inventory levels, and year-over-year growth comparisons across product lines.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Researcher</h3>
+      <p class="mt-1 text-sm text-slate-600">Generates bar charts for academic papers and presentations to compare experimental results, survey responses, and statistical data across groups.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Chart Type</th><th class="p-3">Best Used For</th><th class="p-3">Data Requirements</th><th class="p-3">Limitations</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Vertical Bar</td><td class="p-3">Comparing discrete categories</td><td class="p-3">Categorical labels + numeric values</td><td class="p-3">Cluttered with many categories</td></tr>
+        <tr><td class="p-3 font-medium">Horizontal Bar</td><td class="p-3">Rankings with long labels</td><td class="p-3">Labels + values, easy to sort</td><td class="p-3">Less intuitive for time series</td></tr>
+        <tr><td class="p-3 font-medium">Stacked Bar</td><td class="p-3">Part-to-whole comparisons</td><td class="p-3">Sub-categories summing to a total</td><td class="p-3">Hard to compare sub-categories</td></tr>
+        <tr><td class="p-3 font-medium">Grouped Bar</td><td class="p-3">Multi-series comparisons</td><td class="p-3">Multiple values per category</td><td class="p-3">Needs careful color differentiation</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to create a bar chart</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type each label and value separated by a comma on its own line. For example: "Apples,30". Add as many entries as you need.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Customise your chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Set your chart title, axis labels, and choose a bar color. Click "Generate Chart" to see your visualisation instantly.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download the PNG</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Download PNG" to save your bar chart as a high-resolution image for use in presentations, reports, or on the web.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective bar charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Start the Y-axis at zero</h3>
+        <p class="mt-1 text-sm text-slate-600">Bar charts should always have a zero baseline to accurately represent proportions. Truncating the Y-axis exaggerates differences and can mislead viewers.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Sort bars logically</h3>
+        <p class="mt-1 text-sm text-slate-600">Order bars by value (ascending or descending) to make comparisons easier. Alphabetical order is useful only when looking up specific categories.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use consistent bar spacing</h3>
+        <p class="mt-1 text-sm text-slate-600">Keep bar width and gap width consistent throughout the chart. Uneven spacing distorts visual perception and makes the chart harder to read.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Choose meaningful colors</h3>
+        <p class="mt-1 text-sm text-slate-600">Use a single color for standard bar charts to avoid visual noise. For grouped bars, use distinct, harmonious colors that are accessible to colorblind viewers.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use bar charts</h2>
+    <p class="mt-2 text-slate-600">Bar charts are the most versatile chart type for comparing discrete categories. Use them when you need to show rankings, quantities, or frequencies across separate groups. They work well for survey results, sales figures, population data, and any scenario where categories are independent and not part of a continuous sequence. Bar charts are particularly effective because the human eye can quickly compare bar heights to determine which category has the highest or lowest value.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bar chart best practices</h2>
+    <p class="mt-2 text-slate-600">Keep your bar charts clean and readable by limiting the number of bars to 20 or fewer. Use clear, concise labels and avoid diagonal or angled text that strains the eyes. Add value labels directly on or above bars so readers don't need to estimate from the axis. Choose a color palette that is both visually appealing and accessible — avoid red-green combinations for colorblind viewers. Always include a clear title and axis labels so the chart can stand alone without additional explanation.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Axes and scaling</h2>
+    <p class="mt-2 text-slate-600">The X-axis (horizontal) displays your category labels, while the Y-axis (vertical) shows the numeric scale. The Y-axis should always start at zero to maintain proportional accuracy. Gridlines on the Y-axis help readers estimate values. This tool auto-scales the Y-axis based on your maximum value to ensure optimal use of available space while keeping the zero baseline visible. Axis labels should be descriptive and include units where applicable, such as "Revenue (USD)" or "Count (people)".</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Color selection</h2>
+    <p class="mt-2 text-slate-600">Color plays a crucial role in chart readability. For single-series bar charts, a consistent color across all bars avoids distraction. If you want to highlight a specific bar, use a contrasting color for that single bar while keeping others muted. Consider colorblind-friendly palettes — use patterns or textures as a secondary differentiator. This tool generates a shade palette from your chosen base color, creating subtle variation that maintains visual interest without sacrificing readability.</p>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data'), titleEl = $('title'), xlabelEl = $('xlabel'), ylabelEl = $('ylabel');
+    const colorEl = $('barcolor'), canvas = $('canvas'), err = $('err');
+
+    function parseData(text) {
+      const lines = text.trim().split('\n').filter(Boolean);
+      const items = [];
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length < 2) continue;
+        const label = parts[0].trim();
+        const val = parseFloat(parts[1].trim());
+        if (isNaN(val)) continue;
+        items.push({ label, value: val });
+      }
+      return items;
+    }
+
+    function draw() {
+      const items = parseData(dataEl.value);
+      if (items.length === 0) {
+        err.textContent = 'Enter at least one valid data line (label,value).';
+        err.classList.remove('hidden');
+        return;
+      }
+      err.classList.add('hidden');
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = 400;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      const margin = { top: 50, right: 30, bottom: 60, left: 60 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      const maxVal = Math.max(...items.map(i => i.value));
+      const yMax = Math.ceil(maxVal * 1.1);
+      const barCount = items.length;
+      const gap = chartW * 0.15 / barCount;
+      const barW = (chartW - gap * (barCount + 1)) / barCount;
+      const baseColor = colorEl.value;
+
+      function hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+      }
+
+      const rgb = hexToRgb(baseColor);
+
+      function shade(index, total) {
+        const light = 0.5 + (index / total) * 0.5;
+        return `rgb(${Math.round(rgb.r * light)},${Math.round(rgb.g * light)},${Math.round(rgb.b * light)})`;
+      }
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(margin.left, margin.top);
+
+      const gridlines = 5;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridlines; i++) {
+        const y = chartH - (chartH / gridlines) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(chartW, y);
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round((yMax / gridlines) * i), -8, y + 4);
+      }
+
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, chartH);
+      ctx.lineTo(chartW, chartH);
+      ctx.stroke();
+
+      for (let i = 0; i < barCount; i++) {
+        const x = gap + i * (barW + gap);
+        const barH = (items[i].value / yMax) * chartH;
+        const y = chartH - barH;
+
+        ctx.fillStyle = shade(i, barCount);
+        ctx.fillRect(x, y, barW, barH);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(items[i].label, x + barW / 2, chartH + 18);
+
+        ctx.fillStyle = '#4f46e5';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(items[i].value, x + barW / 2, y - 6);
+      }
+
+      ctx.restore();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(titleEl.value, w / 2, 24);
+
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(xlabelEl.value, w / 2, h - 8);
+
+      ctx.save();
+      ctx.translate(14, margin.top + chartH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(ylabelEl.value, 0, 0);
+      ctx.restore();
+    }
+
+    $('generate').addEventListener('click', draw);
+    $('download').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'bar-chart.png';
+      a.click();
+    });
+    draw();
+  </script>
+</ToolLayout>

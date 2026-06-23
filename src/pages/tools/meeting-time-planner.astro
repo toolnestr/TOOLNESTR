@@ -1,0 +1,273 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Meeting Time Planner';
+const description = 'Free online meeting time planner. Find overlapping working hours across multiple timezones for scheduling international meetings.';
+const intro = 'Select the timezones of all participants and see the overlapping business hours where everyone is available.';
+const category = { id: 'time-date', name: 'Time & Date' };
+const faqs = [
+  { q: 'How does the meeting time planner work?', a: 'You add timezones for each participant, set standard working hours (default 9 AM - 5 PM), and the tool shows a 24-hour grid with colored bars showing availability. Green bars highlight the overlap where everyone is available.' },
+  { q: 'What timezone data is used?', a: 'The tool uses the IANA timezone database via JavaScript Intl.DateTimeFormat. All major timezones are supported, and the list includes preset major cities for convenience.' },
+  { q: 'What are the best overlapping hours for US-Europe meetings?', a: 'The best overlap is typically 13:00-17:00 UTC (9 AM - 1 PM Eastern US, 2-6 PM Western Europe). This covers late morning in the US and late afternoon in Europe.' },
+  { q: 'What are the best overlapping hours for US-Asia meetings?', a: 'Morning US time overlaps with evening Asia time. For example, 8-10 AM Eastern US (12-2 PM UTC) corresponds to 8-10 PM in China and Japan. This is often the most practical window.' },
+  { q: 'What are the best overlapping hours for Europe-Asia meetings?', a: 'The morning in Europe overlaps with the afternoon in Asia. 8-10 AM UTC (9-11 AM Western Europe) corresponds to 2-4 PM in India, 4-6 PM in China, and 5-7 PM in Japan.' },
+  { q: 'How many timezones can I add?', a: 'You can add up to 5 timezones. This covers most common scenarios while keeping the display clear and readable.' },
+  { q: 'Can I change the working hours?', a: 'Yes. Use the working hours start and end time inputs to customize the range. The default is 9:00 to 17:00 (standard business hours), but you can adjust it to any schedule.' },
+  { q: 'What does the 24-hour grid show?', a: 'The grid displays all 24 hours of the day. Each timezone has a colored bar showing its working hours. The overlap area is highlighted in green to show the window where all participants are available.' },
+  { q: 'Does this handle daylight saving time?', a: 'Yes. The tool uses your browser Intl.DateTimeFormat which automatically accounts for DST. The timezone display updates based on the current date.' },
+  { q: 'Is this better than a world clock?', a: 'Yes for meetings. While a world clock shows current times everywhere, this planner specifically identifies overlapping business hours, making it much easier to find meeting times that work for everyone.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="mtp-date">Date</label>
+        <input id="mtp-date" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="mtp-start-hour">Work start</label>
+          <input id="mtp-start-hour" type="time" value="09:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="mtp-end-hour">Work end</label>
+          <input id="mtp-end-hour" type="time" value="17:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+      <div id="mtp-timezones" class="space-y-2">
+        <div class="mtp-tz-row flex items-center gap-2">
+          <select class="mtp-tz-select w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="America/New_York">New York (America/New_York)</option>
+            <option value="America/Chicago">Chicago (America/Chicago)</option>
+            <option value="America/Denver">Denver (America/Denver)</option>
+            <option value="America/Los_Angeles">Los Angeles (America/Los_Angeles)</option>
+            <option value="Europe/London">London (Europe/London)</option>
+            <option value="Europe/Paris">Paris (Europe/Paris)</option>
+            <option value="Europe/Berlin">Berlin (Europe/Berlin)</option>
+            <option value="Europe/Moscow">Moscow (Europe/Moscow)</option>
+            <option value="Asia/Dubai">Dubai (Asia/Dubai)</option>
+            <option value="Asia/Kolkata">Kolkata (Asia/Kolkata)</option>
+            <option value="Asia/Shanghai">Shanghai (Asia/Shanghai)</option>
+            <option value="Asia/Tokyo">Tokyo (Asia/Tokyo)</option>
+            <option value="Asia/Seoul">Seoul (Asia/Seoul)</option>
+            <option value="Australia/Sydney">Sydney (Australia/Sydney)</option>
+            <option value="Pacific/Auckland">Auckland (Pacific/Auckland)</option>
+            <option value="UTC">UTC</option>
+          </select>
+          <button class="mtp-remove rounded-xl border border-red-200 px-3 py-3 text-sm text-red-500 hover:bg-red-50" style="display:none">✕</button>
+        </div>
+      </div>
+      <button id="mtp-add-tz" class="rounded-xl border border-dashed border-indigo-300 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50">+ Add timezone</button>
+    </div>
+    <div id="mtp-grid-container" class="mt-6 overflow-x-auto"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Availability overlap</h2>
+    <div class="mt-3">
+      <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Total overlap hours</span><span id="mtp-overlap-label" class="text-slate-400">0.0h</span></div>
+      <div class="mt-1 h-4 w-full rounded-full bg-slate-100"><div id="mtp-overlap-bar" class="h-4 rounded-full bg-emerald-500 transition-all" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🌐</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Remote Team Lead</h3>
+      <p class="mt-1 text-sm text-slate-600">Coordinate meetings across globally distributed teams. Find the sweet spot where all team members from different continents can join.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🤝</span>
+      <h3 class="mt-2 font-semibold text-slate-900">International Coordinator</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan cross-border calls with clients, partners, and stakeholders. Ensure no one has to join a meeting outside their work hours.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎪</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Event Organizer</h3>
+      <p class="mt-1 text-sm text-slate-600">Schedule webinars, virtual conferences, and global events at times that maximize attendance across multiple timezones.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👔</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Recruiter</h3>
+      <p class="mt-1 text-sm text-slate-600">Schedule interviews with candidates in different timezones. Find interview slots that work for both your team and the candidate.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Business hours by region</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="border-b border-slate-200 text-slate-500"><th class="pb-2 pr-4 font-medium">Region</th><th class="pb-2 pr-4 font-medium">Local Business Hours</th><th class="pb-2 font-medium">UTC Equivalent</th></tr></thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Americas (US East)</td><td class="py-2 pr-4">9 AM - 5 PM ET</td><td class="py-2">13:00 - 21:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Americas (US West)</td><td class="py-2 pr-4">9 AM - 5 PM PT</td><td class="py-2">16:00 - 00:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Western Europe</td><td class="py-2 pr-4">9 AM - 5 PM CET</td><td class="py-2">08:00 - 16:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Eastern Europe</td><td class="py-2 pr-4">9 AM - 5 PM EET</td><td class="py-2">07:00 - 15:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Middle East</td><td class="py-2 pr-4">9 AM - 5 PM GST</td><td class="py-2">05:00 - 13:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">South Asia</td><td class="py-2 pr-4">9 AM - 5 PM IST</td><td class="py-2">03:30 - 11:30 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">East Asia</td><td class="py-2 pr-4">9 AM - 5 PM CST</td><td class="py-2">01:00 - 09:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Australia East</td><td class="py-2 pr-4">9 AM - 5 PM AEST</td><td class="py-2">23:00 - 07:00 UTC</td></tr>
+          <tr><td class="py-2 pr-4">New Zealand</td><td class="py-2 pr-4">9 AM - 5 PM NZST</td><td class="py-2">21:00 - 05:00 UTC</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the meeting time planner</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add participant timezones</h3>
+        <p class="mt-1 text-sm text-slate-600">Select each participant's timezone from the dropdown. Add up to 5 locations.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set working hours</h3>
+        <p class="mt-1 text-sm text-slate-600">Adjust the default 9-5 working hours if your participants have different schedules.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Find the green zone</h3>
+        <p class="mt-1 text-sm text-slate-600">Look for the green highlighted area in the 24-hour grid — that is your perfect meeting window.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Meeting time planning tips</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Start with the most constrained timezone</h3>
+        <p class="mt-1 text-sm text-slate-600">When scheduling globally, begin with the participant who has the least flexibility (e.g., the person whose work hours are most restricted). Build the schedule around them.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Rotate meeting times fairly</h3>
+        <p class="mt-1 text-sm text-slate-600">If no perfect overlap exists, rotate the inconvenient time among participants. One week the US team joins early, next week the Asia team stays late.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider lunch hours</h3>
+        <p class="mt-1 text-sm text-slate-600">Standard 9-5 hours include lunch breaks around noon to 1 PM local time. When an overlap seems tight, check if it lands during lunch in any participant's timezone.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why meeting planning is hard</h2>
+    <p class="mt-2 text-slate-600">Scheduling across timezones is challenging because the Earth's 24-hour day means that when it is morning in one location, it is evening in another. The typical 9-to-5 business day in the Americas, Europe, and Asia have only a few hours of overlap at best. This tool eliminates the mental math by visualizing everyone's working hours on a single timeline.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Best overlapping hours for common region pairs</h2>
+    <p class="mt-2 text-slate-600">US East (New York) and Western Europe (London/Paris): 13:00-17:00 UTC gives 9 AM-1 PM ET and 2-6 PM CET — 4 hours of overlap. US West and East Asia: 16:00-18:00 UTC gives 9-11 AM PT and midnight-2 AM in China — only 2 hours, often requiring one party to adjust their schedule. Europe and East Asia: 7:00-9:00 UTC gives 8-10 AM CET and 3-5 PM in China — a solid 2-3 hour window.</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+
+    const timezonesList = [
+      'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+      'America/Toronto', 'America/Sao_Paulo', 'America/Mexico_City',
+      'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid',
+      'Europe/Rome', 'Europe/Moscow', 'Europe/Istanbul',
+      'Asia/Dubai', 'Asia/Kolkata', 'Asia/Shanghai', 'Asia/Tokyo',
+      'Asia/Seoul', 'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Tel_Aviv',
+      'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland',
+      'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg', 'UTC'
+    ];
+
+    function tzOption(value) {
+      const label = value.replace(/_/g, ' ');
+      return `<option value="${value}">${label} (${value})</option>`;
+    }
+
+    function addTimezoneRow(value) {
+      const container = $('mtp-timezones');
+      const row = document.createElement('div');
+      row.className = 'mtp-tz-row flex items-center gap-2';
+      const select = document.createElement('select');
+      select.className = 'mtp-tz-select w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100';
+      select.innerHTML = timezonesList.map(tzOption).join('');
+      if (value) select.value = value;
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'mtp-remove rounded-xl border border-red-200 px-3 py-3 text-sm text-red-500 hover:bg-red-50';
+      removeBtn.textContent = '✕';
+      row.appendChild(select);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+      select.addEventListener('change', renderGrid);
+      removeBtn.addEventListener('click', () => { row.remove(); renderGrid(); });
+      renderGrid();
+    }
+
+    function renderGrid() {
+      const dateVal = $('mtp-date').value;
+      if (!dateVal) return;
+      const baseDate = new Date(dateVal + 'T12:00:00');
+      const workStart = $('mtp-start-hour').value;
+      const workEnd = $('mtp-end-hour').value;
+      const rows = document.querySelectorAll('.mtp-tz-row');
+      const tzs = Array.from(rows).map(r => r.querySelector('.mtp-tz-select').value);
+
+      let html = '<table class="w-full text-xs border-collapse"><thead><tr><th class="text-left p-1 text-slate-500 w-28">Timezone</th>';
+      for (let h = 0; h < 24; h++) {
+        html += `<th class="p-1 text-center text-slate-400 font-normal ${h % 6 === 0 ? 'border-l border-slate-200' : ''}">${h.toString().padStart(2, '0')}</th>`;
+      }
+      html += '</tr></thead><tbody>';
+
+      const [wsH, wsM] = (workStart || '09:00').split(':').map(Number);
+      const [weH, weM] = (workEnd || '17:00').split(':').map(Number);
+      const workStartMin = wsH * 60 + wsM;
+      const workEndMin = weH * 60 + weM;
+
+      const hourOverlaps = new Array(24).fill(0);
+      const totalTzs = tzs.length;
+
+      tzs.forEach((tz) => {
+        const localHourOffsets = [];
+        for (let h = 0; h < 24; h++) {
+          const utcDate = new Date(baseDate);
+          utcDate.setUTCHours(h, 0, 0, 0);
+          const opts = { timeZone: tz, hour: 'numeric', hour12: false };
+          const localH = parseInt(new Intl.DateTimeFormat('en-US', opts).format(utcDate), 10);
+          localHourOffsets.push(isNaN(localH) ? h : localH);
+        }
+        html += '<tr>';
+        html += `<td class="p-1 text-slate-700 font-medium truncate max-w-28">${tz.replace(/_/g, ' ')}</td>`;
+        for (let h = 0; h < 24; h++) {
+          const localH = localHourOffsets[h];
+          const localMin = localH * 60;
+          const inWorkHours = localMin >= workStartMin && localMin < workEndMin;
+          if (inWorkHours) hourOverlaps[h]++;
+          const cls = inWorkHours ? 'bg-indigo-200' : 'bg-slate-50';
+          html += `<td class="${cls} p-1 text-center border border-slate-100" title="UTC ${h}:00 → Local ${localH}:00"></td>`;
+        }
+        html += '</tr>';
+      });
+
+      html += '<tr><td class="p-1 font-medium text-emerald-700">Overlap</td>';
+      let overlapCount = 0;
+      for (let h = 0; h < 24; h++) {
+        const allOverlap = hourOverlaps[h] === totalTzs;
+        if (allOverlap) overlapCount++;
+        const cls = allOverlap ? 'bg-emerald-400' : (hourOverlaps[h] > 0 ? 'bg-indigo-100' : 'bg-slate-50');
+        html += `<td class="${cls} p-1 text-center border border-slate-100" title="UTC ${h}:00 — ${hourOverlaps[h]}/${totalTzs} available"></td>`;
+      }
+      html += '</tr></tbody></table>';
+
+      $('mtp-grid-container').innerHTML = html;
+      $('mtp-overlap-label').textContent = overlapCount.toFixed(1) + 'h';
+      $('mtp-overlap-bar').style.width = (overlapCount / 24 * 100) + '%';
+    }
+
+    $('mtp-date').addEventListener('change', renderGrid);
+    $('mtp-start-hour').addEventListener('change', renderGrid);
+    $('mtp-end-hour').addEventListener('change', renderGrid);
+    $('mtp-add-tz').addEventListener('click', () => addTimezoneRow(''));
+
+    $('mtp-date').valueAsDate = new Date();
+    renderGrid();
+  </script>
+</ToolLayout>

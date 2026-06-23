@@ -1,0 +1,246 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Image to JPG';
+const description = 'Free online image to JPG converter. Convert PNG, WebP, AVIF and other formats to JPEG with adjustable quality. Runs in your browser.';
+const intro = 'Upload any image and convert it to JPEG format with your chosen quality level.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'What is JPEG format?', a: 'JPEG (Joint Photographic Experts Group) is a widely-used lossy image format that achieves small file sizes by discarding some image data. It is the most common format for photographs on the web.' },
+  { q: 'Does JPEG support transparency?', a: 'No. JPEG does not support transparency. When you convert a PNG with transparency to JPEG, the transparent areas will be filled with white by default.' },
+  { q: 'What quality setting should I use?', a: '80% is the recommended sweet spot for most web use. It provides excellent visual quality while significantly reducing file size. For prints, use 90-100%. For email, 60-75% is sufficient.' },
+  { q: 'Why is my JPEG file smaller than the original PNG?', a: 'JPEG uses lossy compression, which makes file sizes much smaller than lossless PNG. This is expected — JPEG trades some quality for smaller file size.' },
+  { q: 'Does converting to JPEG lose quality?', a: 'JPEG compression is lossy, so converting to JPEG always reduces quality slightly compared to the original lossless source. However, at high quality settings (90%+), the difference is barely noticeable.' },
+  { q: 'What image formats can I convert to JPEG?', a: 'Any format your browser supports, including PNG, WebP, AVIF, BMP, GIF, and TIFF.' },
+  { q: 'Is the conversion done on my device?', a: 'Yes. All conversion happens in your browser using the Canvas API. No data is uploaded to any server.' },
+  { q: 'Can I convert back to PNG after JPEG?', a: 'Yes, but quality lost during JPEG compression cannot be recovered. Converting JPEG to PNG will preserve the existing compression artifacts.' },
+  { q: 'What happens to EXIF data?', a: 'EXIF metadata (camera settings, GPS location, date) is not preserved during browser-based Canvas conversion. Use a dedicated EXIF-preserving tool if metadata matters.' },
+  { q: 'When should I use JPEG instead of PNG?', a: 'Use JPEG for photographs, social media images, email attachments, and any image where small file size is more important than pixel-perfect accuracy. Use PNG for text, logos, and graphics requiring transparency.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="fileInput" type="file" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100" />
+
+    <div id="previewArea" class="mt-4 hidden">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p class="text-xs font-medium text-slate-500">Original (<span id="origFormat"></span>)</p>
+          <img id="origPreview" class="mt-1 max-h-48 w-full rounded object-contain" />
+          <p id="origSize" class="mt-1 text-xs text-slate-500"></p>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p class="text-xs font-medium text-slate-500">Converted (JPEG)</p>
+          <img id="jpgPreview" class="mt-1 max-h-48 w-full rounded object-contain" />
+          <p id="jpgSize" class="mt-1 text-xs text-slate-500"></p>
+          <p id="savingsInfo" class="mt-0.5 text-xs font-semibold text-emerald-600"></p>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-slate-700">JPEG quality: <span id="qualityLabel">80</span>%</label>
+        <input id="qualitySlider" type="range" min="1" max="100" value="80" class="mt-1 w-full accent-indigo-600" />
+        <div class="flex justify-between text-xs text-slate-500"><span>1% (smallest)</span><span>100% (best quality)</span></div>
+      </div>
+
+      <p class="mt-3 text-xs text-slate-500">JPEG does not support transparency. Transparent areas will be filled with white.</p>
+
+      <button id="downloadBtn" class="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Download JPEG Image
+      </button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different JPEG quality settings mean</h2>
+    <p class="mt-2 text-slate-600">How quality settings affect visual fidelity and file size.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">100% &mdash; Maximum quality</span><span class="text-slate-400">Very large file, best fidelity</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">80% &mdash; High quality</span><span class="text-slate-400">Great for web, much smaller</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">60% &mdash; Medium quality</span><span class="text-slate-400">Noticeable on close inspection</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:60%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">40% &mdash; Low quality</span><span class="text-slate-400">Visible artifacts</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">20% &mdash; Minimum quality</span><span class="text-slate-400">Heavy artifacts, very small file</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:20%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Photographer</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts high-resolution RAW exports to JPEG for client proofs and online galleries with adjustable quality to balance size and fidelity.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Publisher</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts PNG screenshots and icons to JPEG for blog posts and articles where smaller file sizes are needed for faster page loads.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E7;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Social Media User</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts images to JPEG before uploading to platforms that prefer the format, reducing upload time and data usage.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Email Marketer</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts newsletter images to JPEG at optimized quality levels to stay under email client attachment size limits.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Quality setting</th><th class="p-3">Use case</th><th class="p-3">File size</th><th class="p-3">Visual quality</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">100%</td><td class="p-3">Lab/archival use</td><td class="p-3 font-mono text-xs">Very large</td><td class="p-3">Virtually lossless</td></tr>
+        <tr><td class="p-3 font-medium">90-95%</td><td class="p-3">Photo printing</td><td class="p-3 font-mono text-xs">Large</td><td class="p-3">Excellent</td></tr>
+        <tr><td class="p-3 font-medium">80-90%</td><td class="p-3">Web publishing</td><td class="p-3 font-mono text-xs">Moderate</td><td class="p-3">Very good</td></tr>
+        <tr><td class="p-3 font-medium">70-80%</td><td class="p-3">Social media</td><td class="p-3 font-mono text-xs">Small</td><td class="p-3">Good</td></tr>
+        <tr><td class="p-3 font-medium">60-75%</td><td class="p-3">Email attachments</td><td class="p-3 font-mono text-xs">Very small</td><td class="p-3">Acceptable</td></tr>
+        <tr><td class="p-3 font-medium">40-60%</td><td class="p-3">Thumbnails</td><td class="p-3 font-mono text-xs">Tiny</td><td class="p-3">Fair</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Image to JPG Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload an image</h3>
+        <p class="mt-1 text-sm text-slate-600">Select any image — PNG, WebP, AVIF, BMP or other — from your device for conversion.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Adjust quality</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the quality slider to balance file size against visual quality. The preview and file sizes update in real time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download JPG</h3>
+        <p class="mt-1 text-sm text-slate-600">Click download to save your image in JPEG format. Everything happens in your browser.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using JPEG format</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">JPEG does not support transparency</h3>
+        <p class="mt-1 text-sm text-slate-600">When converting images with transparency (like PNG logos), the transparent areas become white. If you need transparency, stick with PNG or WebP.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">80% is the sweet spot</h3>
+        <p class="mt-1 text-sm text-slate-600">For most images, 80% quality provides indistinguishable visual quality from the original while cutting file size dramatically. Reserve 90-100% only for print or when maximum quality is critical.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Re-saving degrades quality</h3>
+        <p class="mt-1 text-sm text-slate-600">JPEG is a lossy format — each time you re-save, compression artifacts accumulate. Always convert from the original source file to avoid generational quality loss.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 space-y-6">
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">How JPEG compression works</h2>
+      <p class="mt-2 text-slate-600">JPEG compression works by dividing the image into 8x8 pixel blocks, converting each from RGB to YCbCr color space, applying a discrete cosine transform (DCT), and then quantizing the frequency coefficients. High-frequency detail that the human eye is less sensitive to is discarded first, which is why JPEG excels at compressing photographs with smooth gradients but creates visible artifacts around sharp edges and text.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Quality vs file size</h2>
+      <p class="mt-2 text-slate-600">The quality setting in JPEG (1-100) controls the quantization table used during compression. Higher quality preserves more frequency data, resulting in larger files. The relationship is exponential: reducing quality from 100 to 90 typically halves file size with no visible loss, while dropping from 50 to 40 saves much less but introduces noticeable artifacts.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">When to use JPG vs PNG</h2>
+      <p class="mt-2 text-slate-600">Use JPEG for photographs, complex images with many colors and gradients, social media posts, email campaigns, and any scenario where small file size matters more than absolute fidelity. Use PNG for screenshots, logos, digital art with sharp edges, images with text, and any image requiring transparency or pixel-perfect reproduction.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">EXIF data</h2>
+      <p class="mt-2 text-slate-600">EXIF (Exchangeable Image File Format) data includes camera settings, GPS coordinates, date taken, and more. When converting images using the Canvas API in a browser, EXIF data is not preserved. If keeping camera metadata is important, use a dedicated EXIF-preserving tool or desktop software.</p>
+    </div>
+  </section>
+
+  <script is:inline>
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+    const origPreview = document.getElementById('origPreview');
+    const jpgPreview = document.getElementById('jpgPreview');
+    const origSize = document.getElementById('origSize');
+    const jpgSize = document.getElementById('jpgSize');
+    const origFormat = document.getElementById('origFormat');
+    const savingsInfo = document.getElementById('savingsInfo');
+    const qualitySlider = document.getElementById('qualitySlider');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let dataUrl = null;
+    let jpgBlob = null;
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        dataUrl = ev.target.result;
+        origPreview.src = dataUrl;
+        origFormat.textContent = file.type || 'unknown';
+        origSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+        previewArea.classList.remove('hidden');
+        convertToJpg();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    qualitySlider.addEventListener('input', () => {
+      qualityLabel.textContent = qualitySlider.value;
+      if (dataUrl) convertToJpg();
+    });
+
+    function convertToJpg() {
+      if (!dataUrl) return;
+      const quality = parseInt(qualitySlider.value) / 100;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          jpgBlob = blob;
+          const blobUrl = URL.createObjectURL(blob);
+          jpgPreview.src = blobUrl;
+          const origKB = dataUrl ? 0 : 0;
+          const jpgKB = blob.size / 1024;
+          jpgSize.textContent = `${jpgKB.toFixed(1)} KB`;
+        }, 'image/jpeg', quality);
+      };
+      img.src = dataUrl;
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      if (!jpgBlob) return;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(jpgBlob);
+      link.download = 'converted.jpg';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+  </script>
+</ToolLayout>

@@ -1,0 +1,384 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Grouped Bar Chart Generator';
+const description =
+  'Free online grouped bar chart generator. Compare multiple datasets side-by-side with grouped bars. ' +
+  'Customize colors and labels. Runs in your browser.';
+const intro =
+  'Enter multiple data series to create a grouped (clustered) bar chart comparing values across categories.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'How do I enter data for a grouped bar chart?', a: 'Enter one category per line with values separated by commas. The first value is the category label, followed by values for each series. For example: "Q1,100,150,200" for three series across the Q1 category.' },
+  { q: 'How do I set the series names?', a: 'Enter the series names in the "Series Names" input, separated by commas. For example: "Region A,Region B,Region C". The number of names should match the number of values per line.' },
+  { q: 'Can I customize the bar colors for each series?', a: 'Yes. Use the "Series Colors" input to enter HEX color codes separated by commas. For example: "#4f46e5,#06b6d4,#10b981". If you leave it empty, the tool generates colors automatically.' },
+  { q: 'How do I download the chart?', a: 'Click "Download PNG" below the canvas. The grouped bar chart is saved as a high-resolution PNG ready for use in presentations and reports.' },
+  { q: 'What is the maximum number of series?', a: 'The tool supports up to 6 series per chart. More than 6 series make the bars too narrow and the legend hard to read.' },
+  { q: 'What is the maximum number of categories?', a: 'Up to 20 categories are supported. Beyond that, bars become too thin to distinguish and the chart becomes cluttered.' },
+  { q: 'How does the tool handle inconsistent data?', a: 'Each line should have the same number of values. If a line has fewer values than series, the missing values are treated as zero. Lines with no valid numeric data are skipped.' },
+  { q: 'What does the legend show?', a: 'The legend displays each series name with its corresponding color. It is rendered below the chart for easy reference.' },
+  { q: 'Can I use the grouped bar chart for negative values?', a: 'The tool currently supports positive values only. Negative values are treated as zero and will not render as bars below the baseline.' },
+  { q: 'Is my data stored or uploaded?', a: 'No. The chart is rendered entirely in your browser using the HTML5 Canvas API. Your data stays on your computer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6">
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Data (label,series1,series2,... per line)</span>
+        <textarea id="data" rows="8" class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Q1,100,150,200&#10;Q2,120,180,160&#10;Q3,90,140,210&#10;Q4,140,170,190">Q1,100,150,200
+Q2,120,180,160
+Q3,90,140,210
+Q4,140,170,190</textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Chart Title</span>
+        <input id="title" type="text" value="Quarterly Revenue by Region" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Series Names (comma separated)</span>
+        <input id="seriesnames" type="text" value="Region A,Region B,Region C" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Series Colors (HEX, comma separated, optional)</span>
+        <input id="seriescolors" type="text" value="#4f46e5,#06b6d4,#10b981" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">X-axis Label</span>
+          <input id="xlabel" type="text" value="Quarter" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Y-axis Label</span>
+          <input id="ylabel" type="text" value="Revenue (k$)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <button id="generate" class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate Chart</button>
+      <p id="err" class="hidden text-sm text-red-600"></p>
+    </div>
+    <div class="flex flex-col items-center justify-center">
+      <div class="w-full overflow-hidden rounded-xl border border-slate-200">
+        <canvas id="canvas" class="w-full"></canvas>
+      </div>
+      <button id="download" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Download PNG</button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different chart types mean</h2>
+    <p class="mt-2 text-slate-600">Grouped bar charts are a specialised form of bar chart. Understanding how they compare to other chart types helps you choose the right visualisation for multi-series data.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2588;&#x2588;&#x2588;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Grouped Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares multiple series side by side within each category. Best for showing subgroup breakdowns across categories, like regional sales across quarters.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2588;&#x2588;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Stacked Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows part-to-whole relationships within each category where series are stacked on top of each other. Best for showing how components contribute to a total.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl font-bold text-indigo-600">&#x2502;&#x2502;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Simple Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares a single series across categories. Best for straightforward comparisons where only one metric per category matters.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2571;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Line Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows trends across continuous intervals. While grouped bars compare categories, line charts better show the trajectory of each series over ordered points.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3e6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Business Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses grouped bar charts to compare revenue, costs, and profit across business units, product lines, or geographic regions side by side.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3c6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Marketing Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates grouped bar charts to compare campaign performance across channels, demographic segments, or time periods in a single view.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4bc;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">HR Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Generates grouped bar charts to compare headcount, salary bands, satisfaction scores, and turnover rates across departments or locations.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4ca;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Scientist</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses grouped bar charts for A/B test results, model performance comparisons across metrics, and feature importance visualisation across categories.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Chart Type</th><th class="p-3">Best Used For</th><th class="p-3">Data Requirements</th><th class="p-3">Limitations</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Grouped Bar</td><td class="p-3">Multi-series category comparison</td><td class="p-3">Categories + 2-6 series per category</td><td class="p-3">Cluttered with many categories</td></tr>
+        <tr><td class="p-3 font-medium">Stacked Bar</td><td class="p-3">Part-to-whole across categories</td><td class="p-3">Components summing to a total</td><td class="p-3">Hard to compare sub-components</td></tr>
+        <tr><td class="p-3 font-medium">100% Stacked</td><td class="p-3">Proportion comparison across categories</td><td class="p-3">Percentage breakdown per category</td><td class="p-3">Loses absolute value context</td></tr>
+        <tr><td class="p-3 font-medium">Clustered</td><td class="p-3">Same as grouped, different layout</td><td class="p-3">Same as grouped bar</td><td class="p-3">Narrow bars with many series</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to create a grouped bar chart</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type each category label followed by comma-separated values for each series. For example: "Q1,100,150,200" for three series in Q1.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Configure series</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter series names and optional colors. The names and colors should be comma-separated and match the number of values per data line.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and download</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Generate Chart" to render the visualisation. Click "Download PNG" to save your grouped bar chart as a high-resolution image.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective grouped bar charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Limit the number of groups per category</h3>
+        <p class="mt-1 text-sm text-slate-600">Keep series to 3-5 per category. Beyond 5, bars become too narrow and the chart becomes difficult to read. Use stacked bars instead for many sub-categories.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use consistent and contrasting colors</h3>
+        <p class="mt-1 text-sm text-slate-600">Each series should have a distinct, easily distinguishable color. Use a cohesive palette where colors are visually separated. Avoid using similar hues for adjacent series.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Always include a legend</h3>
+        <p class="mt-1 text-sm text-slate-600">A clear legend is essential for grouped bar charts since each series has a different color. Position the legend below the chart and keep series names concise.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Sort categories meaningfully</h3>
+        <p class="mt-1 text-sm text-slate-900">Order categories that make sense for your data — by time, by total value, or alphabetically. Consistent ordering helps viewers find and compare data points quickly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use grouped bars</h2>
+    <p class="mt-2 text-slate-600">Grouped bar charts are ideal when you need to compare multiple data series across the same categories. Use them when you want to show how different subgroups perform within each category side by side. They are particularly useful for comparing before-and-after scenarios, regional breakdowns, demographic splits, or any dataset where each category has multiple related metrics. Grouped bars make it easy to see both the differences between series within a category and the overall pattern across categories.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Series comparison</h2>
+    <p class="mt-2 text-slate-600">The primary strength of grouped bar charts is enabling direct comparison between series within each category. By placing bars next to each other, viewers can quickly assess which series has the highest or lowest value in each group. This layout also reveals patterns — for example, if one series consistently outperforms others across all categories, or if the ranking changes between categories. For accurate comparison, ensure all series use the same scale and that the Y-axis starts at zero to maintain proportional accuracy.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Color strategy</h2>
+    <p class="mt-2 text-slate-600">Color is the most important visual cue in grouped bar charts because it identifies which series each bar belongs to. Choose a qualitative color palette where colors are distinct but harmonious. Avoid using colors that could be confused — for example, light blue and light green can look similar in small bars. Consider accessibility: use colorblind-friendly palettes and provide sufficient contrast between series. If you have a small number of series, use saturated, medium-value colors. The legend should use the same colors as the bars and be positioned clearly.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Axes labeling</h2>
+    <p class="mt-2 text-slate-600">Clear axis labels are essential for grouped bar charts. The X-axis should clearly label each category group, typically centered under the group of bars. The Y-axis should show the numeric scale starting from zero, with gridlines at regular intervals to aid value estimation. Include the unit of measurement in the Y-axis label, such as "Revenue (USD)" or "Count (people)". Series names should be listed in the legend in the same order as the bars appear in each group, typically from left to right.</p>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data'), titleEl = $('title'), xlabelEl = $('xlabel'), ylabelEl = $('ylabel');
+    const seriesNamesEl = $('seriesnames'), seriesColorsEl = $('seriescolors');
+    const canvas = $('canvas'), err = $('err');
+
+    function parseData(text) {
+      const lines = text.trim().split('\n').filter(Boolean);
+      const categories = [];
+      let maxSeries = 0;
+      for (const line of lines) {
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length < 2) continue;
+        const label = parts[0];
+        const values = [];
+        for (let i = 1; i < parts.length; i++) {
+          const v = parseFloat(parts[i]);
+          if (!isNaN(v) && v >= 0) values.push(v);
+          else values.push(0);
+        }
+        if (values.length > 0) {
+          categories.push({ label, values });
+          maxSeries = Math.max(maxSeries, values.length);
+        }
+      }
+      for (const cat of categories) {
+        while (cat.values.length < maxSeries) cat.values.push(0);
+      }
+      return { categories, seriesCount: maxSeries };
+    }
+
+    function hexToRgb(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return { r, g, b };
+    }
+
+    function draw() {
+      const parsed = parseData(dataEl.value);
+      if (parsed.categories.length === 0 || parsed.seriesCount === 0) {
+        err.textContent = 'Enter at least one category with valid numeric values.';
+        err.classList.remove('hidden');
+        return;
+      }
+      err.classList.add('hidden');
+
+      const seriesNames = seriesNamesEl.value.split(',').map(s => s.trim()).filter(Boolean);
+      while (seriesNames.length < parsed.seriesCount) {
+        seriesNames.push(`Series ${seriesNames.length + 1}`);
+      }
+
+      const customColors = seriesColorsEl.value.split(',').map(s => s.trim()).filter(Boolean);
+      const defaultColors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+      const seriesColors = [];
+      for (let i = 0; i < parsed.seriesCount; i++) {
+        if (i < customColors.length && /^#[0-9a-f]{6}$/i.test(customColors[i])) {
+          seriesColors.push(customColors[i]);
+        } else {
+          seriesColors.push(defaultColors[i % defaultColors.length]);
+        }
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = 450;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      const margin = { top: 50, right: 30, bottom: 60, left: 60 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      let maxVal = 0;
+      for (const cat of parsed.categories) {
+        for (const v of cat.values) {
+          maxVal = Math.max(maxVal, v);
+        }
+      }
+      const yMax = Math.ceil(maxVal * 1.1) || 10;
+
+      const catCount = parsed.categories.length;
+      const seriesCount = parsed.seriesCount;
+      const groupW = chartW / catCount;
+      const barGap = 2;
+      const groupPad = groupW * 0.15;
+      const barW = (groupW - groupPad * 2 - barGap * (seriesCount - 1)) / seriesCount;
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(margin.left, margin.top);
+
+      const gridlines = 5;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= gridlines; i++) {
+        const y = chartH - (chartH / gridlines) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(chartW, y);
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round((yMax / gridlines) * i), -8, y + 4);
+      }
+
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, chartH);
+      ctx.lineTo(chartW, chartH);
+      ctx.stroke();
+
+      for (let c = 0; c < catCount; c++) {
+        const groupX = c * groupW;
+        for (let s = 0; s < seriesCount; s++) {
+          const x = groupX + groupPad + s * (barW + barGap);
+          const barH = (parsed.categories[c].values[s] / yMax) * chartH;
+          const y = chartH - barH;
+
+          const rgb = hexToRgb(seriesColors[s]);
+          ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+          ctx.fillRect(x, y, barW, barH);
+
+          ctx.fillStyle = '#4f46e5';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          if (barH > 16) {
+            ctx.fillText(parsed.categories[c].values[s], x + barW / 2, y + 14);
+          } else {
+            ctx.fillText(parsed.categories[c].values[s], x + barW / 2, y - 4);
+          }
+        }
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(parsed.categories[c].label, groupX + groupW / 2, chartH + 18);
+      }
+
+      ctx.restore();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(titleEl.value, w / 2, 24);
+
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(xlabelEl.value, w / 2, h - 8);
+
+      ctx.save();
+      ctx.translate(14, margin.top + chartH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(ylabelEl.value, 0, 0);
+      ctx.restore();
+
+      const legendY = h - 38;
+      const legendStartX = w / 2 - ((seriesCount * 140) / 2);
+      ctx.font = '11px sans-serif';
+      for (let s = 0; s < seriesCount; s++) {
+        const lx = legendStartX + s * 140;
+        const rgb = hexToRgb(seriesColors[s]);
+        ctx.fillStyle = `rgb(${rgb.r},${rgb.g},${rgb.b})`;
+        ctx.fillRect(lx, legendY, 12, 12);
+        ctx.fillStyle = '#475569';
+        ctx.textAlign = 'left';
+        ctx.fillText(seriesNames[s].substring(0, 14), lx + 16, legendY + 10);
+      }
+    }
+
+    $('generate').addEventListener('click', draw);
+    $('download').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'grouped-bar-chart.png';
+      a.click();
+    });
+    draw();
+  </script>
+</ToolLayout>

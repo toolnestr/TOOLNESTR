@@ -1,0 +1,295 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'HTML Entity Converter';
+const description =
+  'Free online HTML entity converter. Encode special characters to HTML entities or decode entities back to readable text.';
+const intro =
+  'Paste text to encode special characters to HTML entities (like &copy; to copyright sign), or paste entity-encoded text to decode.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What are HTML entities?', a: 'HTML entities are codes that represent special characters in HTML. They always start with & and end with ;. For example, &lt; represents the less-than symbol (<) and &amp; represents the ampersand (&).' },
+  { q: 'Why should I encode HTML characters?', a: 'Encoding prevents special HTML characters from being interpreted as markup. Without encoding, a < in your content could be treated as the start of an HTML tag, breaking your page layout or creating security vulnerabilities.' },
+  { q: 'What is the difference between named and numeric entities?', a: 'Named entities use descriptive names like &amp; or &lt; that are easier to remember. Numeric entities use decimal or hexadecimal numbers like &#60; or &#x3C;. Both render the same character, but named entities are more readable in source code.' },
+  { q: 'Does this tool handle all HTML entities?', a: 'The tool handles the most common HTML entities including &lt;, &gt;, &amp;, &quot;, &#39;, &copy;, &reg;, &nbsp;, &euro;, and more. For less common entities, you can use the numeric format.' },
+  { q: 'Can HTML entities prevent XSS attacks?', a: 'Yes. Cross-site scripting (XSS) attacks often inject HTML or JavaScript through user input. Encoding special characters like < > & " \' ensures user input is displayed as text instead of being executed as code.' },
+  { q: 'When should I use &#39; vs &apos;?', a: '&#39; is the numeric entity for the single quote (apostrophe) and is supported in all HTML versions. &apos; is the named entity but is not supported in HTML 4, so &#39; is the safer choice for broader compatibility.' },
+  { q: 'Are HTML entities case-sensitive?', a: 'Yes. Entity names are case-sensitive. &copy; is the copyright symbol, while &COPY; would not be recognized in most browsers. Always use lowercase entity names.' },
+  { q: 'Do I need to encode spaces?', a: 'Regular spaces need no encoding. The non-breaking space entity &nbsp; is used only when you want to prevent line breaks between words, not for regular spacing.' },
+  { q: 'Can I use HTML entities in email subjects?', a: 'No. HTML entities only work in HTML content. Email subjects and plain text emails do not parse HTML entities — they would display as literal text like &amp;.' },
+  { q: 'How do I display code examples on a web page?', a: 'Encode all < > and & characters in your code snippets so the browser displays them literally rather than interpreting them as HTML tags. Our converter makes this easy.' },
+];
+
+const entityMap = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+  '©': '&copy;',
+  '®': '&reg;',
+  '™': '&trade;',
+  '€': '&euro;',
+  '£': '&pound;',
+  '¥': '&yen;',
+  '¢': '&cent;',
+  '°': '&deg;',
+  '±': '&plusmn;',
+  '•': '&bull;',
+  '·': '&middot;',
+  '…': '&hellip;',
+  '←': '&larr;',
+  '→': '&rarr;',
+  '↑': '&uarr;',
+  '↓': '&darr;',
+  ' ' : '&nbsp;',
+};
+
+const decodeMap = {};
+for (const [ch, ent] of Object.entries(entityMap)) {
+  decodeMap[ent] = ch;
+}
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="encode-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Encode →</button>
+      <button id="decode-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">← Decode</button>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="input"
+      rows="6"
+      placeholder="Paste text or HTML entities here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <textarea
+      id="output"
+      rows="6"
+      readonly
+      placeholder="Result appears here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+    ></textarea>
+
+    <div id="analysis" class="mt-3 hidden rounded-xl border border-slate-100 p-3 text-sm text-slate-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Most common HTML entities</h2>
+    <p class="mt-2 text-slate-600">Approximate usage frequency of HTML entities across the web.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&amp;amp; (ampersand)</span><span class="text-slate-400">40% of entities</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&amp;lt; (less-than)</span><span class="text-slate-400">25%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:25%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&amp;gt; (greater-than)</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&amp;quot; (double quote)</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">&amp;copy; (copyright)</span><span class="text-slate-400">5%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:5%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Elena Vasquez</h3>
+      <p class="mt-1 text-sm text-slate-600">Web developer who encodes user-generated content before rendering it in HTML templates to prevent XSS attacks and broken layouts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x270F;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Michael Chang</h3>
+      <p class="mt-1 text-sm text-slate-600">Content manager who pastes articles with special characters into the CMS and needs to ensure proper entity encoding for consistent display.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Olivia Bennett</h3>
+      <p class="mt-1 text-sm text-slate-600">Blogger who writes posts containing code snippets and needs to encode &lt; &gt; characters so they display correctly without being interpreted as HTML.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E7;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Daniel Foster</h3>
+      <p class="mt-1 text-sm text-slate-600">Email designer who encodes special characters in HTML email templates to ensure consistent rendering across email clients like Outlook and Gmail.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Character</th><th class="p-3">Named Entity</th><th class="p-3">Numeric Entity</th><th class="p-3">Description</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-mono font-medium">&amp;</td><td class="p-3 font-mono">&amp;amp;</td><td class="p-3 font-mono">&amp;#38;</td><td class="p-3">Ampersand</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&lt;</td><td class="p-3 font-mono">&amp;lt;</td><td class="p-3 font-mono">&amp;#60;</td><td class="p-3">Less-than</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&gt;</td><td class="p-3 font-mono">&amp;gt;</td><td class="p-3 font-mono">&amp;#62;</td><td class="p-3">Greater-than</td></tr>
+        <tr><td class="p-3 font-mono font-medium">"</td><td class="p-3 font-mono">&amp;quot;</td><td class="p-3 font-mono">&amp;#34;</td><td class="p-3">Double quote</td></tr>
+        <tr><td class="p-3 font-mono font-medium">'</td><td class="p-3 font-mono">&amp;apos; / &amp;#39;</td><td class="p-3 font-mono">&amp;#39;</td><td class="p-3">Single quote / apostrophe</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&copy;</td><td class="p-3 font-mono">&amp;copy;</td><td class="p-3 font-mono">&amp;#169;</td><td class="p-3">Copyright</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&reg;</td><td class="p-3 font-mono">&amp;reg;</td><td class="p-3 font-mono">&amp;#174;</td><td class="p-3">Registered trademark</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&trade;</td><td class="p-3 font-mono">&amp;trade;</td><td class="p-3 font-mono">&amp;#8482;</td><td class="p-3">Trademark</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&euro;</td><td class="p-3 font-mono">&amp;euro;</td><td class="p-3 font-mono">&amp;#8364;</td><td class="p-3">Euro currency</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&pound;</td><td class="p-3 font-mono">&amp;pound;</td><td class="p-3 font-mono">&amp;#163;</td><td class="p-3">Pound currency</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&yen;</td><td class="p-3 font-mono">&amp;yen;</td><td class="p-3 font-mono">&amp;#165;</td><td class="p-3">Yen currency</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&cent;</td><td class="p-3 font-mono">&amp;cent;</td><td class="p-3 font-mono">&amp;#162;</td><td class="p-3">Cent currency</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&nbsp;</td><td class="p-3 font-mono">&amp;nbsp;</td><td class="p-3 font-mono">&amp;#160;</td><td class="p-3">Non-breaking space</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&deg;</td><td class="p-3 font-mono">&amp;deg;</td><td class="p-3 font-mono">&amp;#176;</td><td class="p-3">Degree symbol</td></tr>
+        <tr><td class="p-3 font-mono font-medium">&plusmn;</td><td class="p-3 font-mono">&amp;plusmn;</td><td class="p-3 font-mono">&amp;#177;</td><td class="p-3">Plus-minus</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use HTML Entity Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Paste your input</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste the text containing special characters, or HTML entity codes you want to decode.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose action</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Encode to turn special characters into HTML entities, or Decode to convert entities back to readable characters.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy & use</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy the result and paste it directly into your HTML, CMS, or email template. The tool shows which characters were converted.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for HTML entities</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always encode &amp; first</h3>
+        <p class="mt-1 text-sm text-slate-600">When encoding text, always encode ampersands first to avoid double-encoding other entities. An ampersand that is encoded later could turn &lt; into &amp;lt; inadvertently.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use numeric entities for rare characters</h3>
+        <p class="mt-1 text-sm text-slate-600">Named entities exist for the most common special characters. For less common characters, using the decimal or hexadecimal numeric format (like &amp;#8212;) guarantees browser support regardless of encoding.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Decode before processing</h3>
+        <p class="mt-1 text-sm text-slate-600">If you receive entity-encoded text and need to process it programmatically, always decode it first. Operations like counting characters, searching, or truncating will be incorrect if the text contains encoded entities.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What are HTML entities?</h2>
+    <p class="mt-2 text-slate-600">HTML entities are special codes that represent characters that either have special meaning in HTML or are not easily typed on a keyboard. They always start with an ampersand (&amp;) and end with a semicolon (;). Entities allow you to display reserved characters like &lt; and &gt; in your content without the browser interpreting them as HTML tags.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Why encode HTML?</h2>
+    <p class="mt-2 text-slate-600">Without HTML encoding, special characters can break your web pages. A single unencoded less-than sign could be interpreted as the start of an HTML tag, hiding the rest of your content. Encoding also protects against XSS attacks, where malicious users inject scripts through input fields. By encoding all user-generated content before rendering, you ensure it displays as plain text.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Named vs numeric entities</h2>
+    <p class="mt-2 text-slate-600">Named entities use descriptive names like &amp;copy; that are easy to remember but only exist for commonly used characters. Numeric entities use the character's Unicode code point, either in decimal (&amp;#169;) or hexadecimal (&amp;#xA9;) format, and work for any Unicode character. Numeric entities are more universal but less readable in source code.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">XSS prevention</h2>
+    <p class="mt-2 text-slate-600">Cross-site scripting (XSS) is one of the most common web security vulnerabilities. Attackers inject malicious scripts through user input fields, comments, or URLs. HTML entity encoding is a primary defense — by converting &lt;script&gt; to &amp;lt;script&amp;gt;, the browser renders the text harmlessly instead of executing it. Always encode output, especially when displaying user-submitted content.</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const input = $('input'), output = $('output'), status = $('status'), analysis = $('analysis');
+
+    const encodeMap = {
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      '©': '&copy;', '®': '&reg;', '™': '&trade;', '€': '&euro;', '£': '&pound;',
+      '¥': '&yen;', '¢': '&cent;', '°': '&deg;', '±': '&plusmn;', '•': '&bull;',
+      '·': '&middot;', '…': '&hellip;', '←': '&larr;', '→': '&rarr;',
+      '↑': '&uarr;', '↓': '&darr;', '\u00A0': '&nbsp;',
+    };
+
+    const decodeMap = {};
+    for (const [ch, ent] of Object.entries(encodeMap)) {
+      decodeMap[ent] = ch;
+    }
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    $('encode-btn').addEventListener('click', () => {
+      const val = input.value;
+      if (!val) { show('Nothing to encode', false); return; }
+      let result = '';
+      const encoded = [];
+      for (const ch of val) {
+        if (encodeMap[ch]) {
+          result += encodeMap[ch];
+          encoded.push({ char: ch, entity: encodeMap[ch] });
+        } else {
+          result += ch;
+        }
+      }
+      output.value = result;
+      show('Encoded ✓ — ' + val.length + ' chars with ' + encoded.length + ' replacements', true);
+      if (encoded.length) {
+        analysis.classList.remove('hidden');
+        analysis.innerHTML = '<strong>Encoded characters:</strong> ' + encoded.map(e => '<code class="rounded bg-slate-100 px-1">' + e.char + ' → ' + e.entity + '</code>').join(' ');
+      } else {
+        analysis.classList.add('hidden');
+      }
+    });
+
+    $('decode-btn').addEventListener('click', () => {
+      const val = input.value;
+      if (!val) { show('Nothing to decode', false); return; }
+      let result = val;
+      const decoded = [];
+      for (const [ent, ch] of Object.entries(decodeMap)) {
+        const re = new RegExp(ent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        if (re.test(result)) {
+          decoded.push({ entity: ent, char: ch });
+          result = result.replace(re, ch);
+        }
+      }
+      output.value = result;
+      show('Decoded ✓ — ' + decoded.length + ' entity types replaced', true);
+      if (decoded.length) {
+        analysis.classList.remove('hidden');
+        analysis.innerHTML = '<strong>Decoded entities:</strong> ' + decoded.map(d => '<code class="rounded bg-slate-100 px-1">' + d.entity + ' → ' + d.char + '</code>').join(' ');
+      } else {
+        analysis.classList.add('hidden');
+      }
+    });
+
+    $('clear-btn').addEventListener('click', () => {
+      input.value = ''; output.value = ''; status.classList.add('hidden'); analysis.classList.add('hidden'); input.focus();
+    });
+
+    $('copy-btn').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        const b = $('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+  </script>
+</ToolLayout>

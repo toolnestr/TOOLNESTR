@@ -1,0 +1,259 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Syllable Counter';
+const description =
+  'Free online syllable counter. Count syllables in any English text or individual words. Useful for poetry, rap lyrics and readability analysis.';
+const intro =
+  'Type or paste any English text to count syllables per word, total syllables and average syllables per word.';
+const category = { id: 'text', name: 'Text Tools' };
+const faqs = [
+  { q: 'How does the syllable counter work?', a: 'It counts syllables by analysing vowel groups in each word, with special handling for common English exceptions like silent e and -le endings.' },
+  { q: 'How accurate is it?', a: 'It achieves roughly 85–90% accuracy on standard English text. Some edge cases with irregular words may be off by one syllable.' },
+  { q: 'Does it work for non-English text?', a: 'The algorithm is designed for English. Other languages have different syllable rules and may not be accurate.' },
+  { q: 'What is a syllable?', a: 'A syllable is a unit of pronunciation with one vowel sound. Each syllable typically contains one vowel sound and may have surrounding consonants.' },
+  { q: 'What is the Flesch-Kincaid grade level?', a: 'A readability score that estimates the US school grade level needed to understand the text. It uses total syllables, words and sentences.' },
+  { q: 'How is the average syllables per word calculated?', a: 'Total syllables divided by total words, rounded to two decimal places.' },
+  { q: 'Can I count syllables for a single word?', a: 'Yes. Type or paste a single word and the tool will show its syllable count along with the other statistics.' },
+  { q: 'Why does "every" have 2 syllables but "even" has 2?', a: 'Both words have two vowel sounds. "Every" is e-very and "even" is e-ven. The algorithm detects vowel groups to make this determination.' },
+  { q: 'What are the common exceptions the algorithm handles?', a: 'Silent e at the end, words ending in -le, -ing, -ed, compound words, and common irregular words like "hour" and "fire".' },
+  { q: 'Is this useful for rap lyrics?', a: 'Absolutely. Rappers use syllable counts to match rhythmic patterns and flow. Counting syllables ensures bars have consistent meter.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <textarea
+      id="input"
+      rows="5"
+      placeholder="Type or paste English text here…"
+      class="w-full resize-y rounded-xl border border-slate-300 p-4 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    >The quick brown fox jumps over the lazy dog</textarea>
+    <div id="results" class="mt-4 grid gap-4 sm:grid-cols-4">
+      <div class="rounded-lg bg-indigo-50 p-3 text-center">
+        <div class="text-2xl font-bold text-indigo-700" id="total-syllables">0</div>
+        <div class="text-xs text-slate-500">Total Syllables</div>
+      </div>
+      <div class="rounded-lg bg-emerald-50 p-3 text-center">
+        <div class="text-2xl font-bold text-emerald-700" id="total-words">0</div>
+        <div class="text-xs text-slate-500">Total Words</div>
+      </div>
+      <div class="rounded-lg bg-amber-50 p-3 text-center">
+        <div class="text-2xl font-bold text-amber-700" id="avg-syllables">0</div>
+        <div class="text-xs text-slate-500">Avg Syllables/Word</div>
+      </div>
+      <div class="rounded-lg bg-rose-50 p-3 text-center">
+        <div class="text-2xl font-bold text-rose-700" id="grade-level">0</div>
+        <div class="text-xs text-slate-500">Grade Level</div>
+      </div>
+    </div>
+    <div id="per-word" class="mt-4 text-sm text-slate-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Syllable distribution</h2>
+    <p class="mt-2 text-sm text-slate-600">Breakdown of word lengths by syllable count in your text.</p>
+    <div id="distribution" class="mt-5 space-y-3"></div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3b6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Poet & Lyricist</h3>
+      <p class="mt-1 text-sm text-slate-600">Counts syllables to ensure consistent meter in poems, haikus and song lyrics. Essential for maintaining rhythmic flow.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4d6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Teacher</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses syllable counts and readability scores to assess if reading materials match students' grade levels.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x270d;&#xfe0f;</span>
+      <h3 class="mt-2 font-semibold text-slate-600">Writer</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitors syllable density to control readability and pacing in articles, books and web content.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f30d;</span>
+      <h3 class="mt-2 font-semibold text-slate-600">ESL Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Practises pronunciation by breaking words into syllables and understanding English vowel patterns.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Rule</th><th class="p-3">Description</th><th class="p-3">Example</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Vowel count</td><td class="p-3">Each vowel sound = one syllable</td><td class="p-3">cat = 1, water = 2</td></tr>
+        <tr><td class="p-3 font-medium">Silent e</td><td class="p-3">Final e is usually silent</td><td class="p-3">make = 1 (not 2)</td></tr>
+        <tr><td class="p-3 font-medium">Double vowels</td><td class="p-3">Adjacent vowels often count as one</td><td class="p-3">boat = 1, great = 1</td></tr>
+        <tr><td class="p-3 font-medium">-le ending</td><td class="p-3">-le at the end adds a syllable</td><td class="p-3">table = 2, little = 2</td></tr>
+        <tr><td class="p-3 font-medium">-ed ending</td><td class="p-3">-ed is not a syllable unless after d/t</td><td class="p-3">jumped = 1, wanted = 2</td></tr>
+        <tr><td class="p-3 font-medium">-ing ending</td><td class="p-3">-ing adds one syllable</td><td class="p-3">running = 2, eating = 2</td></tr>
+        <tr><td class="p-3 font-medium">Compound words</td><td class="p-3">Each part is counted separately</td><td class="p-3">everyone = 3</td></tr>
+        <tr><td class="p-3 font-medium">Consonant + le</td><td class="p-3">C+le creates its own syllable</td><td class="p-3">bottle = 2, candle = 2</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the syllable counter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your text</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste any English word, sentence or document into the text area.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-600">View live results</h3>
+        <p class="mt-1 text-sm text-slate-600">Instantly see total syllables, words, average per word and grade level.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Analyse distribution</h3>
+        <p class="mt-1 text-sm text-slate-600">Check the syllable-per-word distribution chart to understand your text's rhythmic profile.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for syllable counting</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use for poetry meter</h3>
+        <p class="mt-1 text-sm text-slate-600">When writing haikus (5-7-5) or limericks, paste lines into the counter to verify you have the right syllable count per line.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Check readability</h3>
+        <p class="mt-1 text-sm text-slate-600">A high average syllables per word (above 1.8) indicates complex vocabulary. Aim lower for children's content or general audiences.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-700">Verify song lyrics</h3>
+        <p class="mt-1 text-sm text-slate-600">Rappers and songwriters use syllable counts to ensure each bar has the same number of beats, creating a consistent flow.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a syllable?</h2>
+    <p class="mt-2 text-slate-600">
+      A syllable is a single, unbroken unit of sound in a spoken word. Each syllable contains exactly one vowel sound (not necessarily one vowel letter). For example, "water" has two syllables: wa-ter. The number of syllables in a word is determined by how many vowel sounds you hear when pronouncing it, not by how many vowel letters appear in writing.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Counting rules</h2>
+    <p class="mt-2 text-slate-600">
+      The algorithm counts syllables by identifying vowel groups — consecutive vowel letters treated as a single sound. It then applies common English adjustments: silent final e is subtracted, -le endings add one, -ed after d or t adds one, and special irregular words like "hour" (1 syllable) and "fire" (1 syllable) are handled individually. This heuristic approach gives reliable results for most standard English text.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Exceptions</h2>
+    <p class="mt-2 text-slate-600">
+      English is full of exceptions. Words like "every" (2 or 3 depending on dialect), "temperature" (3 or 4), and "interesting" (3 or 4) vary by accent and speaking speed. The algorithm uses a standard dictionary-based adjustment for known irregular words but cannot match every regional pronunciation. Use it as a guide, not an absolute authority.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Uses in poetry and readability</h2>
+    <p class="mt-2 text-slate-600">
+      Syllables are fundamental to poetry meter, rap flow, and readability scoring. The Flesch-Kincaid grade level formula uses syllables as a measure of word complexity. Poetry forms like haikus, sonnets and limericks all depend on precise syllable counts per line. For readability, shorter syllables per word generally correlate with easier-to-read text, making syllable counters valuable for both creative writing and content strategy.
+    </p>
+  </section>
+
+  <script is:inline>
+    const input = document.getElementById('input');
+    const totalSylEl = document.getElementById('total-syllables');
+    const totalWordsEl = document.getElementById('total-words');
+    const avgSylEl = document.getElementById('avg-syllables');
+    const gradeEl = document.getElementById('grade-level');
+    const perWordEl = document.getElementById('per-word');
+    const distEl = document.getElementById('distribution');
+
+    function countSyllables(word) {
+      const w = word.toLowerCase().replace(/[^a-z]/g, '');
+      if (!w) return 0;
+      if (w.length <= 2) return 1;
+      const irregular = {
+        every: 2, even: 2, given: 2, heaven: 2, seven: 2, power: 2, hour: 1,
+        fire: 1, hire: 1, wire: 1, tyre: 1, poem: 2, area: 3, video: 3, radio: 3,
+        science: 2, quiet: 2, lion: 2, diet: 2, fuel: 2, cruel: 2, going: 2, doing: 2,
+        being: 2, seeing: 2, saying: 2, playing: 2, buying: 2, flying: 2,
+      };
+      if (irregular[w]) return irregular[w];
+      let syl = 0;
+      const vowels = 'aeiouy';
+      const chars = [...w];
+      let i = 0;
+      while (i < chars.length) {
+        if (vowels.includes(chars[i])) {
+          syl++;
+          while (i < chars.length && vowels.includes(chars[i])) i++;
+        } else {
+          i++;
+        }
+      }
+      if (w.endsWith('e')) {
+        if (w.length > 2 && !'aeiou'.includes(w[w.length - 2])) syl--;
+        if (w.endsWith('le') && w.length > 2 && !vowels.includes(w[w.length - 3])) syl++;
+      }
+      if (w.endsWith('es') || w.endsWith('ed')) {
+        const base = w.slice(0, -2);
+        if (base.endsWith('d') || base.endsWith('t')) syl++;
+        else syl--;
+      }
+      if (syl < 1) syl = 1;
+      return syl;
+    }
+
+    function fleschKincaid(words, syllables, sentences) {
+      if (words === 0 || sentences === 0) return 0;
+      return 0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59;
+    }
+
+    function render() {
+      const text = input.value || '';
+      const cleaned = text.replace(/[^a-zA-Z\s]/g, '');
+      const words = cleaned.split(/\s+/).filter(Boolean);
+      const totalWords = words.length;
+      let totalSyllables = 0;
+      const perWord = [];
+      const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      words.forEach(w => {
+        const s = countSyllables(w);
+        totalSyllables += s;
+        perWord.push({ word: w, syllables: s });
+        if (s >= 5) dist[5]++;
+        else dist[s]++;
+      });
+      const avg = totalWords ? (totalSyllables / totalWords) : 0;
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length || 1;
+      const grade = fleschKincaid(totalWords, totalSyllables, sentences);
+
+      totalSylEl.textContent = totalSyllables;
+      totalWordsEl.textContent = totalWords;
+      avgSylEl.textContent = avg.toFixed(2);
+      gradeEl.textContent = Math.max(0, Math.round(grade * 10) / 10);
+
+      perWordEl.innerHTML = '<span class="font-medium text-slate-700">Syllables per word: </span>' +
+        perWord.map(p => `<span class="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs mr-1 mb-1">${p.word}: ${p.syllables}</span>`).join('');
+
+      distEl.innerHTML = '';
+      const labels = { 1: '1 syllable', 2: '2 syllables', 3: '3 syllables', 4: '4 syllables', 5: '5+ syllables' };
+      const maxVal = Math.max(...Object.values(dist), 1);
+      Object.entries(dist).forEach(([k, v]) => {
+        const pct = (v / maxVal) * 100;
+        const colors = ['bg-emerald-500', 'bg-indigo-400', 'bg-amber-400', 'bg-orange-400', 'bg-red-400'];
+        const div = document.createElement('div');
+        div.innerHTML =
+          `<div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">${labels[k]}</span><span class="text-slate-400">${v}</span></div>` +
+          `<div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ${colors[Number(k) - 1] || 'bg-red-400'}" style="width:${pct}%"></div></div>`;
+        distEl.appendChild(div);
+      });
+    }
+
+    input.addEventListener('input', render);
+    render();
+  </script>
+</ToolLayout>

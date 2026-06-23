@@ -1,0 +1,358 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Line Chart Generator';
+const description =
+  'Free online line chart generator. Create line charts from X and Y data points with customizable ' +
+  'axes and gridlines. Runs in your browser.';
+const intro =
+  'Enter your X and Y data points to generate a line chart showing trends over time or categories.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'How do I enter data for the line chart?', a: 'Enter one X and Y value per line, separated by a comma. For example: "Jan,10" followed by "Feb,25". The X values are treated as labels or numeric values.' },
+  { q: 'Can I plot multiple data series?', a: 'This tool creates single-series line charts. For comparing multiple datasets, try the Grouped Bar Chart Generator or create separate line charts and overlay them.' },
+  { q: 'How do I show or hide data points?', a: 'Use the "Show Points" checkbox. When checked, each data point is highlighted with a small circle marker on the line. This is useful for emphasising individual data values.' },
+  { q: 'What does the line width control do?', a: 'The line width slider adjusts the thickness of the connecting line from 1 to 6 pixels. Thicker lines are more visible in presentations, while thinner lines work well for detailed charts.' },
+  { q: 'Can I change the line color?', a: 'Yes. Use the color picker to choose any line color. A contrasting color against the background ensures the line stands out clearly.' },
+  { q: 'How do I download the chart?', a: 'Click "Download PNG" below the canvas. Your line chart is saved as a high-resolution PNG image ready for use in reports or presentations.' },
+  { q: 'What does auto-scaling Y-axis mean?', a: 'The Y-axis automatically adjusts its range based on your minimum and maximum Y values, plus a 10% padding. This ensures your data fills the chart area optimally.' },
+  { q: 'Can I use text labels on the X-axis?', a: 'Yes. The X-axis labels are taken from your data. They can be text (like month names) or numeric values depending on your data.' },
+  { q: 'What if I enter non-numeric Y values?', a: 'The tool validates each line and skips entries with invalid Y values. An error message shows if no valid data is found.' },
+  { q: 'Is my data stored or uploaded?', a: 'No. The line chart is rendered entirely in your browser using the HTML5 Canvas API. Your data never leaves your computer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6">
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Data (x,y per line)</span>
+        <textarea id="data" rows="8" class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Jan,10&#10;Feb,25&#10;Mar,18&#10;Apr,42&#10;May,35">Jan,10
+Feb,25
+Mar,18
+Apr,42
+May,35</textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Chart Title</span>
+        <input id="title" type="text" value="Monthly Revenue" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">X-axis Label</span>
+          <input id="xlabel" type="text" value="Month" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Y-axis Label</span>
+          <input id="ylabel" type="text" value="Revenue (k$)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input id="showpoints" type="checkbox" checked class="h-4 w-4 accent-indigo-600" />
+          Show Points
+        </label>
+        <label class="flex items-center gap-2 text-sm text-slate-700">
+          <input id="showgrid" type="checkbox" checked class="h-4 w-4 accent-indigo-600" />
+          Show Gridlines
+        </label>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Line Color</span>
+          <input id="linecolor" type="color" value="#4f46e5" class="mt-1 h-10 w-full cursor-pointer rounded-xl border border-slate-300" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Line Width</span>
+          <input id="linewidth" type="range" min="1" max="6" step="0.5" value="2.5" class="mt-2 w-full accent-indigo-600" />
+        </label>
+      </div>
+      <button id="generate" class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate Chart</button>
+      <p id="err" class="hidden text-sm text-red-600"></p>
+    </div>
+    <div class="flex flex-col items-center justify-center">
+      <div class="w-full overflow-hidden rounded-xl border border-slate-200">
+        <canvas id="canvas" class="w-full"></canvas>
+      </div>
+      <button id="download" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Download PNG</button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different chart types mean</h2>
+    <p class="mt-2 text-slate-600">Line charts belong to a family of chart types, each designed for different data patterns. Understanding these helps you select the best visualisation.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2571;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Line Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows trends and changes over continuous intervals. Best for tracking data over time, such as stock prices, temperature, or monthly sales figures.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x2500;&#x2500;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Area Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Similar to a line chart but the area below the line is filled with color. Emphasises the magnitude of change over time, like cumulative revenue.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl font-bold text-indigo-600">&#x2502;&#x2502;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares discrete categories with rectangular bars. Best for showing rankings or quantities across separate groups rather than continuous trends.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x22EF;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Scatter Plot</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows individual data points without connecting lines. Best for visualising correlation between two variables and identifying outliers or clusters.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4c9;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Financial Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses line charts to track stock prices, interest rates, portfolio performance, and economic indicators over time for investment analysis.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3af;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sales Director</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates line charts to monitor monthly sales trends, quarterly revenue growth, conversion rate changes, and pipeline velocity over time.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3eb;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Scientist</h3>
+      <p class="mt-1 text-sm text-slate-600">Generates line charts for experimental data, time-series measurements, dose-response curves, and longitudinal study results in research publications.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4bb;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Product Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses line charts to track user engagement metrics, feature adoption rates, churn trends, and performance benchmarks across product releases.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Chart Type</th><th class="p-3">Best Used For</th><th class="p-3">Data Requirements</th><th class="p-3">Limitations</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Line Chart</td><td class="p-3">Trends over continuous intervals</td><td class="p-3">Ordered X values + numeric Y values</td><td class="p-3">Cluttered with too many series</td></tr>
+        <tr><td class="p-3 font-medium">Area Chart</td><td class="p-3">Magnitude of change over time</td><td class="p-3">Same as line, emphasises volume</td><td class="p-3">Overlapping areas obscure data</td></tr>
+        <tr><td class="p-3 font-medium">Step Chart</td><td class="p-3">Discrete changes between intervals</td><td class="p-3">Ordered X with step transitions</td><td class="p-3">Misleading for continuous data</td></tr>
+        <tr><td class="p-3 font-medium">Sparkline</td><td class="p-3">Compact inline trend visualisation</td><td class="p-3">Small data series, axes optional</td><td class="p-3">No precise value reading</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to create a line chart</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type each X and Y value separated by a comma on its own line. X values can be text labels like month names or numeric values for precise positioning.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Customise your chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Set the title, axis labels, line color, and line width. Choose whether to show data points and gridlines. Click "Generate Chart".</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download the PNG</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Download PNG" to save your line chart as a high-resolution image for use in presentations, reports, dashboards, or on the web.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective line charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always show a zero baseline</h3>
+        <p class="mt-1 text-sm text-slate-600">For most line charts, include the zero baseline to provide context. Truncating the Y-axis can exaggerate minor fluctuations and mislead viewers.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Limit the number of series</h3>
+        <p class="mt-1 text-sm text-slate-600">Plotting more than 3-4 lines on one chart creates visual clutter. Use separate charts or a different chart type if you need to compare many series.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use consistent time intervals</h3>
+        <p class="mt-1 text-sm text-slate-600">Uneven time intervals distort the visual perception of trends. Ensure your X values are evenly spaced or clearly labeled to avoid misinterpretation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Highlight data points when needed</h3>
+        <p class="mt-1 text-sm text-slate-600">Show data point markers when the exact values are important or when the chart has few data points. For dense data with many points, a smooth line without markers works better.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use line charts</h2>
+    <p class="mt-2 text-slate-600">Line charts are the go-to choice for showing trends and changes over time. Use them when your data has a natural order — time series, sequential steps, or ordered categories. They excel at highlighting upward or downward trends, seasonal patterns, and rate of change. Line charts are particularly effective because the slope of the line intuitively conveys direction and magnitude of change. Common applications include financial tracking, temperature monitoring, website traffic analysis, and any scenario where you need to show how a value evolves.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Trend analysis</h2>
+    <p class="mt-2 text-slate-600">Line charts make trend patterns immediately visible. An upward sloping line indicates growth, a downward slope indicates decline, and a flat line indicates stability. The steepness of the slope shows the rate of change. You can identify seasonal patterns as recurring peaks and troughs at regular intervals. For more detailed analysis, add a moving average trendline to smooth out short-term fluctuations and reveal the underlying direction. This tool plots raw data points, but you can manually calculate moving averages and include them in your data.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Multiple series</h2>
+    <p class="mt-2 text-slate-600">When comparing multiple datasets on a single chart, use distinct line styles (different colors, dashed or dotted patterns) for each series. Include a clear legend identifying each line. Limit multiple-series charts to 3-4 lines to maintain readability. Ensure each series has the same X-axis scale for accurate comparison. For datasets with very different magnitudes, consider using dual Y-axes or separate charts instead. This tool currently supports single-series charts, but you can overlay multiple charts using image editing software.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Axes scaling</h2>
+    <p class="mt-2 text-slate-600">Proper axis scaling is critical for accurate line chart interpretation. The Y-axis should always include zero unless the data variations are very small relative to the total. In that case, clearly indicate a broken axis. The X-axis should be evenly spaced for time series data. This tool auto-scales both axes based on your data range, applying 10% padding above and below the maximum and minimum values. Gridlines on the Y-axis help readers estimate exact values, while X-axis labels provide context for each data point.</p>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data'), titleEl = $('title'), xlabelEl = $('xlabel'), ylabelEl = $('ylabel');
+    const showPts = $('showpoints'), showGrid = $('showgrid'), lineColor = $('linecolor'), lineWidth = $('linewidth');
+    const canvas = $('canvas'), err = $('err');
+
+    function parseData(text) {
+      const lines = text.trim().split('\n').filter(Boolean);
+      const items = [];
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length < 2) continue;
+        const label = parts[0].trim();
+        const val = parseFloat(parts[1].trim());
+        if (isNaN(val)) continue;
+        items.push({ label, value: val });
+      }
+      return items;
+    }
+
+    function draw() {
+      const items = parseData(dataEl.value);
+      if (items.length < 2) {
+        err.textContent = 'Enter at least two valid data points (x,y).';
+        err.classList.remove('hidden');
+        return;
+      }
+      err.classList.add('hidden');
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = 400;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      const margin = { top: 50, right: 30, bottom: 60, left: 60 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      const minVal = Math.min(...items.map(i => i.value));
+      const maxVal = Math.max(...items.map(i => i.value));
+      const range = maxVal - minVal || 1;
+      const yMin = Math.max(0, minVal - range * 0.1);
+      const yMax = maxVal + range * 0.1;
+      const yRange = yMax - yMin;
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      ctx.translate(margin.left, margin.top);
+
+      if (showGrid.checked) {
+        const gridlines = 5;
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= gridlines; i++) {
+          const y = chartH - (chartH / gridlines) * i;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(chartW, y);
+          ctx.stroke();
+          ctx.fillStyle = '#64748b';
+          ctx.font = '11px sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(Math.round(yMin + (yRange / gridlines) * i), -8, y + 4);
+        }
+      }
+
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, chartH);
+      ctx.lineTo(chartW, chartH);
+      ctx.stroke();
+
+      const xStep = chartW / (items.length - 1);
+      const color = lineColor.value;
+      const lw = parseFloat(lineWidth.value);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < items.length; i++) {
+        const x = i * xStep;
+        const y = chartH - ((items[i].value - yMin) / yRange) * chartH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      if (showPts.checked) {
+        for (let i = 0; i < items.length; i++) {
+          const x = i * xStep;
+          const y = chartH - ((items[i].value - yMin) / yRange) * chartH;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, 2 * Math.PI);
+          ctx.fill();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < items.length; i++) {
+        const x = i * xStep;
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(items[i].label, x, chartH + 18);
+      }
+
+      ctx.restore();
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(titleEl.value, w / 2, 24);
+
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText(xlabelEl.value, w / 2, h - 8);
+
+      ctx.save();
+      ctx.translate(14, margin.top + chartH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(ylabelEl.value, 0, 0);
+      ctx.restore();
+    }
+
+    $('generate').addEventListener('click', draw);
+    $('download').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'line-chart.png';
+      a.click();
+    });
+    draw();
+  </script>
+</ToolLayout>

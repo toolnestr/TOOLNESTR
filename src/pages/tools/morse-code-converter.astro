@@ -1,0 +1,341 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Morse Code Converter';
+const description =
+  'Free online Morse code converter. Convert text to Morse code (dots and dashes) and decode Morse code back to text. Supports A-Z, 0-9.';
+const intro =
+  'Type text to hear or see its Morse code equivalent. Paste Morse code (dots, dashes, spaces) to decode to text.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What is Morse code?', a: 'Morse code is a method of transmitting text using sequences of dots (.) and dashes (-) representing letters, numbers, and punctuation. It was developed in the 1830s by Samuel Morse and Alfred Vail for use with the telegraph.' },
+  { q: 'How do I separate letters and words in Morse code?', a: 'A single space separates individual dots and dashes within a letter. Three spaces separate letters within a word. Seven spaces separate words. When decoding, the tool handles these spacing rules automatically.' },
+  { q: 'Can I hear the Morse code?', a: 'Yes. Click the Play button to hear the Morse code through your speakers. The tool uses the Web Audio API to generate beeps: short beeps for dots and longer beeps for dashes.' },
+  { q: 'Does the converter support numbers and punctuation?', a: 'The tool supports letters A–Z and numbers 0–9. Basic punctuation like periods and commas is also supported. Extended punctuation may not be available.' },
+  { q: 'What is the timing rule for Morse code?', a: 'A dot (dit) is one time unit. A dash (dah) is three time units. The gap between dots and dashes in a letter is one unit. Between letters it is three units, and between words it is seven units.' },
+  { q: 'Is Morse code still used today?', a: 'Yes. Morse code is used in amateur radio, aviation (for navigational beacons), and as an emergency communication method. The international distress signal SOS (... --- ...) is universally recognized.' },
+  { q: 'What is the difference between American and International Morse code?', a: 'International Morse code (ITU-R M.1677-1) is the modern standard used globally. American Morse code was an earlier version with slightly different patterns and spacing rules. This tool uses International Morse code.' },
+  { q: 'How fast can Morse code be sent?', a: 'Beginners typically send at 5–10 words per minute. Experienced operators can reach 20–40 wpm. The world record is over 100 wpm using computer-assisted sending.' },
+  { q: 'Why are some letters longer than others in Morse?', a: 'Samuel Morse designed the code so that the most common letters in English (E = ., T = -) have the shortest sequences. Rare letters like Q and Z have longer sequences, optimizing transmission speed.' },
+  { q: 'What does SOS sound like?', a: 'SOS in Morse code is three dots, three dashes, three dots (... --- ...) sent with no letter spacing. It sounds like: di-di-dit DAH-DAH-DAH di-di-dit. It is the universal distress signal because it is easy to recognize.' },
+];
+
+const morseMap = {
+  'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+  'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+  'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+  'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+  'Y': '-.--', 'Z': '--..',
+  '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+  '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+  '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.', '!': '-.-.--',
+  '/': '-..-.', '(': '-.--.', ')': '-.--.-', '&': '.-...', ':': '---...',
+  ';': '-.-.-.', '=': '-...-', '+': '.-.-.', '-': '-....-', '_': '..--.-',
+  '"': '.-..-.', '@': '.--.-.',
+};
+
+const textMap = {};
+for (const [ch, code] of Object.entries(morseMap)) {
+  textMap[code] = ch;
+}
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="encode-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">To Morse →</button>
+      <button id="decode-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">← To Text</button>
+      <button id="play-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Play</button>
+      <button id="stop-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Stop</button>
+      <label class="ml-1 flex items-center gap-1.5 text-sm text-slate-600">
+        Speed
+        <input id="speed" type="range" min="1" max="10" value="5" class="h-2 w-20" />
+        <span id="speed-label" class="w-8 text-xs">5</span>
+      </label>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="input"
+      rows="6"
+      placeholder="Type text or paste Morse code here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <textarea
+      id="output"
+      rows="6"
+      readonly
+      placeholder="Result appears here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+    ></textarea>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Morse code usage</h2>
+    <p class="mt-2 text-slate-600">Where Morse code is most commonly used today.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Amateur radio</span><span class="text-slate-400">40% of usage</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Aviation</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Emergency</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Education</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Puzzles / media</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:10%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Kenji Tanaka</h3>
+      <p class="mt-1 text-sm text-slate-600">Ham radio operator who uses Morse code for long-distance communication when voice signals are weak and to participate in international contests.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2708;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Amelia Wright</h3>
+      <p class="mt-1 text-sm text-slate-600">Aviation enthusiast who decodes Morse identifiers from VOR beacons and NDB stations to practice navigation skills.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Jack Morrison</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepper who learns Morse code as an emergency communication skill that works when cell towers and internet are unavailable.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sophie Lambert</h3>
+      <p class="mt-1 text-sm text-slate-600">Student who uses the converter to practice encoding and decoding as part of a history project on 19th-century communication technology.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Letter</th><th class="p-3">Morse</th><th class="p-3">Letter</th><th class="p-3">Morse</th><th class="p-3">Digit</th><th class="p-3">Morse</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700 font-mono text-xs">
+        <tr><td class="p-3">A</td><td class="p-3">.-</td><td class="p-3">N</td><td class="p-3">-.</td><td class="p-3">0</td><td class="p-3">-----</td></tr>
+        <tr><td class="p-3">B</td><td class="p-3">-...</td><td class="p-3">O</td><td class="p-3">---</td><td class="p-3">1</td><td class="p-3">.----</td></tr>
+        <tr><td class="p-3">C</td><td class="p-3">-.-.</td><td class="p-3">P</td><td class="p-3">.--.</td><td class="p-3">2</td><td class="p-3">..---</td></tr>
+        <tr><td class="p-3">D</td><td class="p-3">-..</td><td class="p-3">Q</td><td class="p-3">--.-</td><td class="p-3">3</td><td class="p-3">...--</td></tr>
+        <tr><td class="p-3">E</td><td class="p-3">.</td><td class="p-3">R</td><td class="p-3">.-.</td><td class="p-3">4</td><td class="p-3">....-</td></tr>
+        <tr><td class="p-3">F</td><td class="p-3">..-.</td><td class="p-3">S</td><td class="p-3">...</td><td class="p-3">5</td><td class="p-3">.....</td></tr>
+        <tr><td class="p-3">G</td><td class="p-3">--.</td><td class="p-3">T</td><td class="p-3">-</td><td class="p-3">6</td><td class="p-3">-....</td></tr>
+        <tr><td class="p-3">H</td><td class="p-3">....</td><td class="p-3">U</td><td class="p-3">..-</td><td class="p-3">7</td><td class="p-3">--...</td></tr>
+        <tr><td class="p-3">I</td><td class="p-3">..</td><td class="p-3">V</td><td class="p-3">...-</td><td class="p-3">8</td><td class="p-3">---..</td></tr>
+        <tr><td class="p-3">J</td><td class="p-3">.---</td><td class="p-3">W</td><td class="p-3">.--</td><td class="p-3">9</td><td class="p-3">----.</td></tr>
+        <tr><td class="p-3">K</td><td class="p-3">-.-</td><td class="p-3">X</td><td class="p-3">-..-</td><td class="p-3"></td><td class="p-3"></td></tr>
+        <tr><td class="p-3">L</td><td class="p-3">.-..</td><td class="p-3">Y</td><td class="p-3">-.--</td><td class="p-3"></td><td class="p-3"></td></tr>
+        <tr><td class="p-3">M</td><td class="p-3">--</td><td class="p-3">Z</td><td class="p-3">--..</td><td class="p-3"></td><td class="p-3"></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use Morse Code Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your text or code</h3>
+        <p class="mt-1 text-sm text-slate-600">Type normal text or paste Morse code using dots (.) and dashes (-) separated by spaces.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Convert or play</h3>
+        <p class="mt-1 text-sm text-slate-600">Click To Morse or To Text to convert. Use Play to hear the Morse code beeps with adjustable speed.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Listen and copy</h3>
+        <p class="mt-1 text-sm text-slate-600">Adjust the speed slider for comfortable listening. Copy the output for sharing or practice.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for Morse code</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Learn common letters first</h3>
+        <p class="mt-1 text-sm text-slate-600">Start with E (.), T (-), A (.-), N (-.), and S (...). These are the most frequent letters in English and form the foundation of many other patterns.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Practice with the audio player</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the Play button to hear the code at a comfortable speed. Start slow (speed 3-5) and gradually increase as you recognize patterns. Listening is the fastest way to learn.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use proper spacing</h3>
+        <p class="mt-1 text-sm text-slate-600">When decoding, ensure Morse symbols are separated by single spaces for letters and multiple spaces for word breaks. The converter handles this, but accurate input leads to accurate output.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">History of Morse code</h2>
+    <p class="mt-2 text-slate-600">Morse code was invented in 1836 by Samuel F.B. Morse, Alfred Vail, and Joseph Henry as the encoding system for the electric telegraph. The first public demonstration was in 1838, and the first telegraph line between Washington D.C. and Baltimore opened in 1844. The famous first message was "What hath God wrought." Morse code revolutionized long-distance communication and remained the primary method of electrical communication for over a century.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">How it works</h2>
+    <p class="mt-2 text-slate-600">Each letter, number, and punctuation mark is represented by a unique sequence of dots (short signals) and dashes (long signals). In International Morse code, a dot is one time unit long and a dash is three time units. The gap between parts of the same letter is one unit, between letters is three units, and between words is seven units. The most common letters in English were assigned the shortest codes for efficiency.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Timing rules</h2>
+    <p class="mt-2 text-slate-600">The timing of Morse code is strictly defined for consistent interpretation. A dit (dot) lasts one unit of time. A dah (dash) lasts three units. The space between elements of the same letter is one unit. Between letters within a word it is three units, and between words it is seven units. This precise timing is what distinguishes different letters — for example, E (.) and S (...) differ only by timing.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Modern uses</h2>
+    <p class="mt-2 text-slate-600">While no longer essential for commercial communication, Morse code thrives in amateur radio where it can be received through noise that would block voice. It is used in aviation for navigational aid identifiers, in assistive technology for people with disabilities, and remains a valuable emergency skill. The international distress signal SOS is universally recognized and can be sent by any means — sound, light, or vibration.</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const input = $('input'), output = $('output'), status = $('status');
+    const speedSlider = $('speed'), speedLabel = $('speed-label');
+
+    const morseMap = {
+      'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+      'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+      'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+      'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+      'Y': '-.--', 'Z': '--..',
+      '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+      '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+      '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.', '!': '-.-.--',
+      '/': '-..-.', '(': '-.--.', ')': '-.--.-', '&': '.-...', ':': '---...',
+      ';': '-.-.-.', '=': '-...-', '+': '.-.-.', '-': '-....-', '_': '..--.-',
+      '"': '.-..-.', '@': '.--.-.',
+    };
+
+    const textMap = {};
+    for (const [ch, code] of Object.entries(morseMap)) textMap[code] = ch;
+
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let timeoutIds = [];
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    speedSlider.addEventListener('input', () => {
+      speedLabel.textContent = speedSlider.value;
+    });
+
+    $('encode-btn').addEventListener('click', () => {
+      const val = input.value.toUpperCase();
+      if (!val) { show('Nothing to convert', false); return; }
+      const parts = [];
+      let valid = true;
+      for (const ch of val) {
+        if (ch === ' ') { parts.push('/'); continue; }
+        if (morseMap[ch]) { parts.push(morseMap[ch]); }
+        else if (ch !== '\n' && ch !== '\r') { valid = false; }
+      }
+      if (!valid) { show('Some characters could not be converted', false); }
+      output.value = parts.join(' ');
+      show('Converted to Morse code ✓', true);
+    });
+
+    $('decode-btn').addEventListener('click', () => {
+      const val = input.value.trim();
+      if (!val) { show('Nothing to decode', false); return; }
+      const words = val.split(/\s{3,}|\s+\/\s+/);
+      const result = [];
+      let unknown = false;
+      for (const word of words) {
+        const letters = word.trim().split(/\s+/);
+        for (const code of letters) {
+          if (code === '/') { continue; }
+          if (textMap[code]) { result.push(textMap[code]); }
+          else { result.push('?'); unknown = true; }
+        }
+        result.push(' ');
+      }
+      output.value = result.join('').trim();
+      show(unknown ? 'Decoded with some unknown patterns' : 'Decoded to text ✓', true);
+    });
+
+    function stopPlayback() {
+      timeoutIds.forEach(clearTimeout);
+      timeoutIds = [];
+      if (oscillator) { try { oscillator.stop(); } catch (e) {} oscillator = null; }
+      if (gainNode) { gainNode.disconnect(); gainNode = null; }
+    }
+
+    $('play-btn').addEventListener('click', () => {
+      const morse = output.value;
+      if (!morse) { show('Convert something first before playing', false); return; }
+      stopPlayback();
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.3;
+      gainNode.connect(audioCtx.destination);
+
+      const speed = parseInt(speedSlider.value);
+      const unit = 120 / speed;
+      let time = audioCtx.currentTime + 0.1;
+
+      const symbols = morse.split('');
+      for (const sym of symbols) {
+        if (sym === '.') {
+          oscillator = audioCtx.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 700;
+          oscillator.connect(gainNode);
+          oscillator.start(time);
+          oscillator.stop(time + unit);
+          time += unit;
+          time += unit;
+        } else if (sym === '-') {
+          oscillator = audioCtx.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 700;
+          oscillator.connect(gainNode);
+          oscillator.start(time);
+          oscillator.stop(time + unit * 3);
+          time += unit * 3;
+          time += unit;
+        } else if (sym === ' ') {
+          time += unit * 2;
+        } else if (sym === '/') {
+          time += unit * 4;
+        }
+      }
+      show('Playing Morse code', true);
+    });
+
+    $('stop-btn').addEventListener('click', stopPlayback);
+
+    $('clear-btn').addEventListener('click', () => {
+      input.value = ''; output.value = ''; status.classList.add('hidden'); stopPlayback(); input.focus();
+    });
+
+    $('copy-btn').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        const b = $('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+  </script>
+</ToolLayout>

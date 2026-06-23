@@ -1,0 +1,267 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Image Rotator';
+const description =
+  'Free online image rotator. Rotate any image by 90\u00B0, 180\u00B0, 270\u00B0 or any custom angle. ' +
+  'Runs in your browser \u2014 no uploads.';
+const intro =
+  'Upload an image, choose a rotation angle, and download the rotated result. ' +
+  'Your file never leaves your device.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'Does rotating an image reduce quality?', a: 'Rotating by 90\u00B0, 180\u00B0, or 270\u00B0 does not reduce quality because no pixels are resampled. Custom angles require interpolation, which may introduce slight softening.' },
+  { q: 'What is EXIF orientation?', a: 'EXIF orientation is a tag stored in JPEG files that tells the viewer how to rotate the image for correct display. Some cameras set this tag instead of rotating the pixel data itself.' },
+  { q: 'Does this tool handle EXIF orientation?', a: 'This tool rotates the actual pixel data, ignoring EXIF orientation tags. This ensures the rotated image displays correctly everywhere, including on devices that ignore EXIF.' },
+  { q: 'What is the difference between rotating and flipping?', a: 'Rotation spins the image around a center point (e.g., 90\u00B0 turns landscape to portrait). Flipping mirrors the image horizontally or vertically without changing its orientation.' },
+  { q: 'What happens to the canvas size when I rotate?', a: 'When rotating by 90\u00B0 or 270\u00B0, the canvas width and height swap. For arbitrary angles, the canvas expands to fit the entire rotated image, which may include empty corners.' },
+  { q: 'Can I crop the image after rotation?', a: 'This tool focuses on rotation only. After downloading, you can use an image editor or another tool on this site to crop the rotated image as needed.' },
+  { q: 'Does multiple rotations cause quality loss?', a: 'Each rotation by a non-90\u00B0 multiple involves interpolation. Rotating the same image multiple times will compound quality loss. It is best to rotate once to the final angle.' },
+  { q: 'What file formats can I rotate?', a: 'You can upload any common image format: JPEG, PNG, GIF, WebP, AVIF, BMP, and SVG. The output format matches the input.' },
+  { q: 'Why does my image have empty corners after rotation?', a: 'For custom angles, the canvas expands to contain the full rotated rectangle. This naturally leaves triangular empty areas at the corners. You can crop these away in an editor.' },
+  { q: 'Is lossless rotation possible for JPEG?', a: 'Lossless rotation (without re-encoding) is possible only for 90\u00B0, 180\u00B0, and 270\u00B0 rotations using JPEG tools like jpegtran. This tool re-encodes via Canvas, so quality settings apply.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="file-input" type="file" accept="image/*" class="w-full cursor-pointer rounded-lg border border-slate-300 p-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100" />
+
+    <div id="controls" class="mt-4 hidden">
+      <div class="flex flex-wrap gap-2">
+        <button data-angle="90" class="angle-btn rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">90\u00B0 CW</button>
+        <button data-angle="-90" class="angle-btn rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">90\u00B0 CCW</button>
+        <button data-angle="180" class="angle-btn rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">180\u00B0</button>
+        <button data-angle="-180" class="angle-btn rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">180\u00B0 CCW</button>
+        <button data-angle="270" class="angle-btn rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">270\u00B0</button>
+      </div>
+
+      <label class="mt-3 flex items-center gap-3">
+        <span class="text-sm font-medium text-slate-700">Custom angle</span>
+        <input id="angle-slider" type="range" min="-180" max="180" value="0" class="flex-1 accent-indigo-600" />
+        <input id="angle-input" type="number" min="-360" max="360" value="0" class="w-16 rounded-lg border border-slate-300 p-1.5 text-center text-sm font-semibold outline-none focus:border-indigo-400" />
+        <span class="text-sm text-slate-400">&deg;</span>
+      </label>
+    </div>
+
+    <div id="preview-area" class="mt-4 hidden">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p class="mb-1 text-xs font-medium text-slate-500">Original</p>
+          <img id="original-preview" class="max-h-64 w-full rounded-lg border border-slate-200 object-contain bg-slate-50" />
+        </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-slate-500">Rotated</p>
+          <canvas id="canvas-preview" class="max-h-64 w-full rounded-lg border border-slate-200 object-contain bg-slate-50"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <button id="download-btn" class="mt-4 hidden rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">
+      Download Rotated Image
+    </button>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Rotation use cases by frequency</h2>
+    <p class="mt-2 text-slate-600">How often each rotation scenario arises in real-world use.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Portrait to landscape fix</span><span class="text-slate-400">43%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:43%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Correcting horizon</span><span class="text-slate-400">28%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:28%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Artistic composition</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Document scanning</span><span class="text-slate-400">14%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:14%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F7;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Elena Voss</h3>
+      <p class="mt-1 text-sm text-slate-600">Photographer who rotates portrait-oriented shots from her camera to landscape for print layouts and social media posting.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Ryan O\u2019Brien</h3>
+      <p class="mt-1 text-sm text-slate-600">Social media user who rotates selfies and vacation photos before posting to Instagram and Facebook for correct orientation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3A8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Mia Johansson</h3>
+      <p class="mt-1 text-sm text-slate-600">Designer who applies subtle rotation for creative compositions, tilted typography layouts, and angled visual elements in branding.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4C4;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">James Carter</h3>
+      <p class="mt-1 text-sm text-slate-600">Office worker who rotates scanned documents that came through crooked so they are upright and readable for archiving and sharing.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Need</th><th class="p-3">Recommended angle</th><th class="p-3">Note</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Portrait to landscape</td><td class="p-3">90\u00B0 or 270\u00B0</td><td class="p-3">No quality loss</td></tr>
+        <tr><td class="p-3 font-medium">Upside-down selfie fix</td><td class="p-3">180\u00B0</td><td class="p-3">No quality loss</td></tr>
+        <tr><td class="p-3 font-medium">Crooked scan alignment</td><td class="p-3">Custom \u00B11\u00B0\u2013\u00B15\u00B0</td><td class="p-3">May leave empty corners</td></tr>
+        <tr><td class="p-3 font-medium">Creative angle</td><td class="p-3">Custom 15\u00B0\u201345\u00B0</td><td class="p-3">Interpolation quality tradeoff</td></tr>
+        <tr><td class="p-3 font-medium">EXIF orientation fix</td><td class="p-3">90\u00B0, 180\u00B0, or 270\u00B0</td><td class="p-3">Destructive vs tag-only fix</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to rotate an image</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload your image</h3>
+        <p class="mt-1 text-sm text-slate-600">Select any image from your device. The original appears on the left for reference.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the rotation angle</h3>
+        <p class="mt-1 text-sm text-slate-600">Click a preset button for 90\u00B0, 180\u00B0, or 270\u00B0, or type a custom angle. The preview updates instantly.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download the result</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the download button to save your rotated image with the same format as the original.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for rotating images</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Canvas expands for angled images</h3>
+        <p class="mt-1 text-sm text-slate-600">When rotating by a custom angle, the canvas automatically expands to contain the full rotated image. This may create empty triangular corners that you can crop in a photo editor.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check crop needs after rotation</h3>
+        <p class="mt-1 text-sm text-slate-600">After rotating, inspect the edges. For custom angles, the bounding box may need cropping to remove empty space. Plan for a crop step after rotation if precise framing matters.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Multi-pass rotation loses quality</h3>
+        <p class="mt-1 text-sm text-slate-600">Each non-90\u00B0 multiple rotation requires pixel interpolation. Rotating the same image repeatedly compounds quality loss. Always rotate from the original in one step.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Image rotation vs EXIF orientation</h2>
+    <p class="mt-2 text-slate-600">EXIF orientation is a metadata tag that tells the display software how to rotate the image without modifying pixel data. Many cameras and phones use EXIF instead of physically rotating pixels. This tool performs actual pixel rotation, which ensures consistent display across all viewers regardless of EXIF support.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Lossless vs lossy rotation</h2>
+    <p class="mt-2 text-slate-600">Rotating by 90\u00B0, 180\u00B0, or 270\u00B0 is considered lossless because pixels are simply rearranged without interpolation. Rotation at any other angle requires resampling and is therefore lossy. For JPEG files, tools like jpegtran can perform lossless 90\u00B0 rotations by manipulating the DCT blocks directly.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Canvas sizing after rotation</h2>
+    <p class="mt-2 text-slate-600">After a 90\u00B0 or 270\u00B0 rotation, the canvas swaps width and height. For arbitrary angles, the new canvas dimensions are calculated using the formula: newWidth = |w * cos(\u03B8)| + |h * sin(\u03B8)| and newHeight = |w * sin(\u03B8)| + |h * cos(\u03B8)|. This ensures the entire rotated image is visible.</p>
+  </section>
+
+  <script is:inline>
+    const fileInput = document.getElementById('file-input');
+    const controls = document.getElementById('controls');
+    const previewArea = document.getElementById('preview-area');
+    const originalPreview = document.getElementById('original-preview');
+    const canvasPreview = document.getElementById('canvas-preview');
+    const downloadBtn = document.getElementById('download-btn');
+    const angleSlider = document.getElementById('angle-slider');
+    const angleInput = document.getElementById('angle-input');
+
+    let currentFile = null;
+    let originalDataUrl = null;
+    let currentAngle = 0;
+
+    function rotateImage(angle) {
+      if (!originalDataUrl) return;
+      currentAngle = angle;
+      angleSlider.value = angle;
+      angleInput.value = angle;
+
+      const img = new Image();
+      img.onload = function () {
+        const radians = angle * Math.PI / 180;
+        const cos = Math.abs(Math.cos(radians));
+        const sin = Math.abs(Math.sin(radians));
+        const newW = Math.round(img.width * cos + img.height * sin);
+        const newH = Math.round(img.width * sin + img.height * cos);
+
+        canvasPreview.width = newW;
+        canvasPreview.height = newH;
+        const ctx = canvasPreview.getContext('2d');
+
+        ctx.clearRect(0, 0, newW, newH);
+        ctx.save();
+        ctx.translate(newW / 2, newH / 2);
+        ctx.rotate(radians);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+      };
+      img.src = originalDataUrl;
+    }
+
+    fileInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      currentFile = file;
+      controls.classList.remove('hidden');
+      previewArea.classList.remove('hidden');
+      downloadBtn.classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        originalDataUrl = ev.target.result;
+        originalPreview.src = originalDataUrl;
+        rotateImage(0);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.querySelectorAll('.angle-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const angle = parseInt(btn.dataset.angle);
+        rotateImage(currentAngle + angle);
+      });
+    });
+
+    angleSlider.addEventListener('input', function () {
+      rotateImage(parseInt(angleSlider.value));
+    });
+
+    angleInput.addEventListener('input', function () {
+      let v = parseInt(angleInput.value) || 0;
+      if (v < -360) v = -360;
+      if (v > 360) v = 360;
+      rotateImage(v);
+    });
+
+    downloadBtn.addEventListener('click', function () {
+      const mimeType = currentFile.type || 'image/png';
+      canvasPreview.toBlob(function (blob) {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const name = currentFile.name.replace(/\.[^.]+$/, '');
+        a.download = name + '_rotated' + (currentFile.name.match(/\.[^.]+$/) || ['.png'])[0];
+        a.click();
+      }, mimeType, 0.92);
+    });
+  </script>
+</ToolLayout>

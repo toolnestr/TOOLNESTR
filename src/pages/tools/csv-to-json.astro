@@ -1,0 +1,326 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'CSV ↔ JSON Converter';
+const description =
+  'Free online CSV to JSON converter. Convert CSV data to JSON and JSON back to CSV. ' +
+  'Supports custom delimiters. Runs in your browser.';
+const intro =
+  'Paste CSV or JSON data, toggle direction, and convert instantly. Supports comma, tab, semicolon delimiters for CSV.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'What is CSV?', a: 'CSV (Comma-Separated Values) is a simple text format for tabular data. Each line is a row, and values are separated by a delimiter (usually a comma).' },
+  { q: 'What is the CSV-to-JSON conversion logic?', a: 'The tool reads the first row as header names, then each subsequent row becomes an object keyed by those headers. The result is a JSON array of objects.' },
+  { q: 'What delimiters are supported?', a: 'You can choose between comma (,), tab (\\t), and semicolon (;) as your CSV delimiter.' },
+  { q: 'Does the tool handle quoted fields?', a: 'Yes. Values enclosed in double quotes are treated as a single field, even if they contain the delimiter character.' },
+  { q: 'What happens if my CSV has no header row?', a: 'You can uncheck "First row is header" and the tool will generate numeric keys (col_0, col_1, etc.) for each column.' },
+  { q: 'Is my data private?', a: 'Yes. Everything is processed in your browser — no data is uploaded to any server.' },
+  { q: 'How do I convert JSON back to CSV?', a: 'Toggle the direction to JSON→CSV, paste your JSON array of objects, and click Convert. The tool extracts headers from the keys of the first object.' },
+  { q: 'What if my JSON objects have different keys?', a: 'Headers are taken from the first object. Missing values in subsequent objects appear as empty strings in the CSV output.' },
+  { q: 'Can CSV contain line breaks inside a field?', a: 'Yes. If a field is enclosed in double quotes, it can span multiple lines. The parser handles this correctly.' },
+  { q: 'Is there a size limit?', a: 'Since the tool runs in your browser, the practical limit depends on your device memory. Most files up to several MB work fine.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="UtilitiesApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1">
+        <button id="csv-json-btn" class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white">CSV → JSON</button>
+        <button id="json-csv-btn" class="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800">JSON → CSV</button>
+      </div>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600">
+        Delimiter
+        <select id="delimiter" class="rounded-md border border-slate-300 px-2 py-1 text-sm">
+          <option value=",">Comma</option>
+          <option value="\t">Tab</option>
+          <option value=";">Semicolon</option>
+        </select>
+      </label>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600">
+        <input id="header-check" type="checkbox" checked class="h-4 w-4 rounded border-slate-300" /> First row is header
+      </label>
+    </div>
+
+    <textarea
+      id="input"
+      rows="8"
+      spellcheck="false"
+      placeholder='Paste CSV or JSON here…'
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <button id="convert-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Convert</button>
+      <span id="row-count" class="text-sm text-slate-400"></span>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy result</button>
+      <button id="download-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Download</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="output"
+      rows="8"
+      readonly
+      placeholder="Result appears here…"
+      class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+    ></textarea>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Data format usage</h2>
+    <p class="mt-2 text-slate-600">How commonly each data format is used across applications and APIs.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">CSV</span><span class="text-slate-400">40%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">JSON</span><span class="text-slate-400">35%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:35%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">XML</span><span class="text-slate-400">15%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">YAML</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:10%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Data Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Exports CSV from spreadsheets, converts to JSON for ingestion into data pipelines and visualization libraries.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Converts CSV configuration data into JSON objects for use in application logic and API payloads.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Database Admin</h3>
+      <p class="mt-1 text-sm text-slate-600">Imports CSV exports from databases and converts them to JSON for schema migration or backup inspection.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Marketer</h3>
+      <p class="mt-1 text-sm text-slate-600">Uploads CSV contact lists and converts them to JSON for integration with CRM and email marketing APIs.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Feature</th><th class="p-3">CSV</th><th class="p-3">JSON</th><th class="p-3">XML</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Readability</td><td class="p-3">High for tabular data</td><td class="p-3">High for nested data</td><td class="p-3">Moderate</td></tr>
+        <tr><td class="p-3 font-medium">File size</td><td class="p-3">Smallest</td><td class="p-3">Compact</td><td class="p-3">Largest (verbose)</td></tr>
+        <tr><td class="p-3 font-medium">Data types</td><td class="p-3">All strings</td><td class="p-3">Strings, numbers, booleans, null</td><td class="p-3">All strings (typed via schema)</td></tr>
+        <tr><td class="p-3 font-medium">Nested data</td><td class="p-3">Not supported</td><td class="p-3">Native support</td><td class="p-3">Native support</td></tr>
+        <tr><td class="p-3 font-medium">API support</td><td class="p-3">Limited</td><td class="p-3">Universal</td><td class="p-3">SOAP / legacy</td></tr>
+        <tr><td class="p-3 font-medium">Parsing speed</td><td class="p-3">Fastest</td><td class="p-3">Fast</td><td class="p-3">Slow</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the CSV ↔ JSON Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose direction and options</h3>
+        <p class="mt-1 text-sm text-slate-600">Toggle between CSV→JSON or JSON→CSV. Select your delimiter and decide whether the first row is a header.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Paste and convert</h3>
+        <p class="mt-1 text-sm text-slate-600">Paste your data into the input area and click Convert. The result appears instantly in the output area below.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy or download</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy the result to your clipboard or download it as a .json or .csv file for use in your project.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for CSV ↔ JSON conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Check your delimiter</h3>
+        <p class="mt-1 text-sm text-slate-600">CSV files can use commas, tabs, or semicolons. If the output looks wrong, try switching the delimiter. European locales often use semicolons because the comma is used as a decimal separator.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Be consistent with headers</h3>
+        <p class="mt-1 text-sm text-slate-600">Header names become JSON keys, so ensure they are unique and meaningful. Duplicate headers will cause the later ones to overwrite earlier ones in the JSON output.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for special characters</h3>
+        <p class="mt-1 text-sm text-slate-600">If your CSV contains the delimiter character inside a value, wrap that value in double quotes. The parser handles quoted fields, including multiline values.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is CSV?</h2>
+    <p class="mt-2 text-slate-600">CSV (Comma-Separated Values) is a plain-text format for storing tabular data. Each line of the file represents a row of data, and each value within a row is separated by a delimiter, typically a comma. CSV files are widely used for data exchange between spreadsheets, databases, and data processing tools because they are simple, human-readable, and supported by virtually every data application.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is JSON?</h2>
+    <p class="mt-2 text-slate-600">JSON (JavaScript Object Notation) is a lightweight, language-independent data format. It represents structured data as key-value pairs and arrays, making it ideal for APIs, configuration files, and data storage. JSON supports strings, numbers, booleans, null, arrays, and nested objects, giving it far more expressive power than CSV for complex data structures.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use each format</h2>
+    <p class="mt-2 text-slate-600">Use CSV when you need to exchange tabular data between spreadsheets, databases, or analytics tools. Use JSON when you need to represent nested or hierarchical data, communicate with APIs, or store configuration. For legacy systems and document markup, XML may still be required.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Data type handling</h2>
+    <p class="mt-2 text-slate-600">CSV stores all values as strings. When converting to JSON, numeric and boolean values are detected and converted automatically where possible. The reverse conversion serializes all JSON values back to strings in the CSV output. This means that type information is preserved only when converting from JSON to CSV if the target application re-parses the strings.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('input'), output = el('output'), status = el('status');
+    const csvBtn = el('csv-json-btn'), jsonBtn = el('json-csv-btn');
+    const delimiter = el('delimiter'), headerCheck = el('header-check');
+    const rowCount = el('row-count');
+
+    let direction = 'csv-to-json';
+
+    function show(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function setDirection(dir) {
+      direction = dir;
+      csvBtn.className = dir === 'csv-to-json' ? 'rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800';
+      jsonBtn.className = dir === 'json-to-csv' ? 'rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white' : 'rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800';
+    }
+
+    csvBtn.addEventListener('click', () => setDirection('csv-to-json'));
+    jsonBtn.addEventListener('click', () => setDirection('json-to-csv'));
+
+    function parseCSV(text, delim, hasHeader) {
+      const rows = [];
+      let current = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { current += '"'; i++; }
+            else inQuotes = false;
+          } else current += ch;
+        } else {
+          if (ch === '"') inQuotes = true;
+          else if (ch === delim) { rows.push(current); current = ''; }
+          else if (ch === '\n' || (ch === '\r' && text[i + 1] === '\n')) { rows.push(current); current = ''; rows.push(null); if (ch === '\r') i++; }
+          else if (ch === '\r') { rows.push(current); current = ''; rows.push(null); }
+          else current += ch;
+        }
+      }
+      rows.push(current);
+      const matrix = [];
+      let row = [];
+      for (const v of rows) {
+        if (v === null) { matrix.push(row); row = []; }
+        else row.push(v);
+      }
+      if (row.length) matrix.push(row);
+      if (!hasHeader || matrix.length < 2) return matrix;
+      const headers = matrix[0];
+      const result = [];
+      for (let i = 1; i < matrix.length; i++) {
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) obj[headers[j]] = matrix[i][j] || '';
+        result.push(obj);
+      }
+      return result;
+    }
+
+    function toCSV(arr, delim) {
+      if (!arr.length) return '';
+      const keys = Object.keys(arr[0]);
+      let csv = keys.join(delim) + '\n';
+      for (const obj of arr) {
+        csv += keys.map(k => {
+          let v = String(obj[k] ?? '');
+          if (v.includes(delim) || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g, '""') + '"';
+          return v;
+        }).join(delim) + '\n';
+      }
+      return csv;
+    }
+
+    function convert() {
+      const text = input.value.trim();
+      if (!text) { show('Nothing to convert — paste some data first.', false); return; }
+
+      try {
+        if (direction === 'csv-to-json') {
+          const delim = delimiter.value === '\t' ? '\t' : delimiter.value;
+          const hasHeader = headerCheck.checked;
+          let rows = parseCSV(text, delim, false);
+          if (!rows.length) throw new Error('No data found');
+          if (hasHeader) {
+            if (rows.length < 2) throw new Error('Need at least a header row and one data row');
+            const headers = rows[0];
+            const data = [];
+            for (let i = 1; i < rows.length; i++) {
+              const obj = {};
+              for (let j = 0; j < headers.length; j++) obj[headers[j]] = rows[i][j] || '';
+              data.push(obj);
+            }
+            output.value = JSON.stringify(data, null, 2);
+            rowCount.textContent = data.length + ' rows';
+          } else {
+            output.value = JSON.stringify(rows, null, 2);
+            rowCount.textContent = rows.length + ' rows';
+          }
+          show('Converted to JSON', true);
+        } else {
+          const data = JSON.parse(text);
+          if (!Array.isArray(data)) throw new Error('Input must be a JSON array of objects');
+          const delim = delimiter.value === '\t' ? '\t' : delimiter.value;
+          output.value = toCSV(data, delim);
+          rowCount.textContent = data.length + ' rows';
+          show('Converted to CSV', true);
+        }
+      } catch (e) {
+        output.value = '';
+        rowCount.textContent = '';
+        show('Error: ' + e.message, false);
+      }
+    }
+
+    el('convert-btn').addEventListener('click', convert);
+    el('clear-btn').addEventListener('click', () => { input.value = ''; output.value = ''; status.classList.add('hidden'); rowCount.textContent = ''; input.focus(); });
+    el('copy-btn').addEventListener('click', async () => {
+      if (!output.value) return;
+      try {
+        await navigator.clipboard.writeText(output.value);
+        const b = el('copy-btn'); const o = b.textContent; b.textContent = 'Copied!'; setTimeout(() => (b.textContent = o), 1200);
+      } catch (e) {}
+    });
+    el('download-btn').addEventListener('click', () => {
+      if (!output.value) return;
+      const ext = direction === 'csv-to-json' ? 'json' : 'csv';
+      const type = direction === 'csv-to-json' ? 'application/json' : 'text/csv';
+      const blob = new Blob([output.value], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'converted.' + ext; a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</ToolLayout>

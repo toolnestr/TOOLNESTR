@@ -1,0 +1,360 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Image Cropper';
+const description = 'Free online image cropper. Crop any image with a drag-select area or preset aspect ratios. Runs in your browser — no uploads.';
+const intro = 'Upload an image, drag to select your crop area or choose a preset aspect ratio, and download the cropped result.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'What is image cropping?', a: 'Cropping is the process of removing unwanted outer areas from an image. It changes the composition and aspect ratio without changing the overall scale of the image content.' },
+  { q: 'How do I use the crop overlay?', a: 'Drag the overlay to reposition it. Drag the corner handles to resize it. Choose a preset aspect ratio to lock the shape of the crop area.' },
+  { q: 'What aspect ratios are available?', a: 'Freeform (no constraint), 1:1 (square), 4:3 (standard), 16:9 (widescreen), 3:2 (photography), and 21:9 (cinematic).' },
+  { q: 'Does cropping reduce image quality?', a: 'No. Cropping removes pixels but does not alter the remaining pixels. The cropped area retains the same quality as the original.' },
+  { q: 'Can I crop to exact pixel dimensions?', a: 'Use freeform mode and drag the overlay to your desired area. The crop dimensions are displayed on the overlay for reference.' },
+  { q: 'What is the difference between crop and resize?', a: 'Cropping removes parts of the image to change composition. Resizing changes the overall dimensions of the whole image. Use both tools together for full control.' },
+  { q: 'What image formats are supported?', a: 'All browser-supported formats including JPEG, PNG, WebP, GIF, BMP, and AVIF.' },
+  { q: 'Is my image uploaded to a server?', a: 'No. All cropping happens in your browser using the Canvas API. Your file never leaves your device.' },
+  { q: 'What is the best aspect ratio for Instagram?', a: 'Square posts use 1:1. Portrait posts use 4:5. Stories use 9:16. This tool supports 1:1 natively.' },
+  { q: 'Can I crop and resize at the same time?', a: 'This tool crops only. To also change dimensions, download the cropped image and use the Image Resizer tool.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="fileInput" type="file" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100" />
+
+    <div id="previewArea" class="mt-4 hidden">
+      <div class="relative mx-auto overflow-hidden rounded-xl border border-slate-200 bg-slate-50" id="cropContainer">
+        <img id="cropImage" class="block max-h-[500px] w-full object-contain" alt="Image to crop" />
+        <div id="cropOverlay" class="absolute inset-0 cursor-move" style="display:none">
+          <div id="cropBox" class="absolute border-2 border-indigo-500 bg-indigo-500/10">
+            <div id="cropInfo" class="absolute -top-7 left-0 rounded bg-indigo-600 px-2 py-0.5 text-xs text-white whitespace-nowrap"></div>
+            <div class="absolute -top-1.5 -left-1.5 h-3 w-3 cursor-nw-resize rounded-full border-2 border-white bg-indigo-600"></div>
+            <div class="absolute -top-1.5 -right-1.5 h-3 w-3 cursor-ne-resize rounded-full border-2 border-white bg-indigo-600"></div>
+            <div class="absolute -bottom-1.5 -left-1.5 h-3 w-3 cursor-sw-resize rounded-full border-2 border-white bg-indigo-600"></div>
+            <div class="absolute -bottom-1.5 -right-1.5 h-3 w-3 cursor-se-resize rounded-full border-2 border-white bg-indigo-600"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap justify-center gap-2">
+        <button data-ratio="free" class="ratio-btn rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100">Free</button>
+        <button data-ratio="1:1" class="ratio-btn rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">1:1</button>
+        <button data-ratio="4:3" class="ratio-btn rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">4:3</button>
+        <button data-ratio="16:9" class="ratio-btn rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">16:9</button>
+        <button data-ratio="3:2" class="ratio-btn rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">3:2</button>
+        <button data-ratio="21:9" class="ratio-btn rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">21:9</button>
+      </div>
+
+      <button id="downloadBtn" class="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+        Download Cropped Image
+      </button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different aspect ratios mean</h2>
+    <p class="mt-2 text-slate-600">How aspect ratios are used across photography, video, and social media.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1:1 &mdash; Square</span><span class="text-slate-400">Profile pictures, Instagram grid</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:50%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">4:3 &mdash; Standard</span><span class="text-slate-400">Print, tablets, classic photography</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:75%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">16:9 &mdash; Widescreen</span><span class="text-slate-400">Video, wallpapers, monitors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">3:2 &mdash; Photography</span><span class="text-slate-400">DSLR cameras, fine art prints</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:66%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">21:9 &mdash; Cinematic</span><span class="text-slate-400">Movies, ultra-wide monitors</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:42%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Photographer</h3>
+      <p class="mt-1 text-sm text-slate-600">Reframes RAW exports and selects the perfect composition for prints, client proofs, and online galleries without uploading to third-party tools.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Social Media User</h3>
+      <p class="mt-1 text-sm text-slate-600">Crops photos to ideal aspect ratios for Instagram, TikTok, and YouTube thumbnails directly in the browser.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3A8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Graphic Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepares screenshots and design mockups to fit specific canvas sizes for client presentations and portfolio showcases.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Crops banner images and hero sections to match responsive breakpoints and design specifications without leaving the browser.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Aspect ratio</th><th class="p-3">Name</th><th class="p-3">Best for</th><th class="p-3">Common dimensions</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-mono text-xs">1:1</td><td class="p-3 font-medium">Square</td><td class="p-3">Profile pictures, Instagram, icons</td><td class="p-3 font-mono text-xs">1080&times;1080</td></tr>
+        <tr><td class="p-3 font-mono text-xs">4:3</td><td class="p-3 font-medium">Standard</td><td class="p-3">Print, tablets, monitors</td><td class="p-3 font-mono text-xs">1024&times;768</td></tr>
+        <tr><td class="p-3 font-mono text-xs">16:9</td><td class="p-3 font-medium">Widescreen</td><td class="p-3">Video, wallpapers, web</td><td class="p-3 font-mono text-xs">1920&times;1080</td></tr>
+        <tr><td class="p-3 font-mono text-xs">3:2</td><td class="p-3 font-medium">Photography</td><td class="p-3">DSLR, prints, photo books</td><td class="p-3 font-mono text-xs">2400&times;1600</td></tr>
+        <tr><td class="p-3 font-mono text-xs">21:9</td><td class="p-3 font-medium">Cinematic</td><td class="p-3">Movies, ultra-wide displays</td><td class="p-3 font-mono text-xs">2560&times;1080</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Image Cropper</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload an image</h3>
+        <p class="mt-1 text-sm text-slate-600">Select any image from your device. The crop overlay appears automatically over your image.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select crop area</h3>
+        <p class="mt-1 text-sm text-slate-600">Drag the overlay to reposition or drag corner handles to resize. Click a preset ratio to lock the crop shape.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download</h3>
+        <p class="mt-1 text-sm text-slate-600">Click download to save the cropped image. Only pixels within the crop area are kept.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for cropping images</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the rule of thirds</h3>
+        <p class="mt-1 text-sm text-slate-600">Place key subjects along imaginary grid lines that divide the image into thirds horizontally and vertically. This creates a more balanced, engaging composition.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Leave room for text overlays</h3>
+        <p class="mt-1 text-sm text-slate-600">If you plan to add text later, leave negative space (a clear area) in your crop. The center or one side works well — avoid cluttered areas.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check final dimensions</h3>
+        <p class="mt-1 text-sm text-slate-600">Always verify the cropped pixel dimensions match your target platform. Cropping to 16:9 gives the right shape, but the pixel count depends on source resolution.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 space-y-6">
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">What is aspect ratio?</h2>
+      <p class="mt-2 text-slate-600">Aspect ratio describes the width-to-height proportion of an image. A 16:9 image is always wider than tall, while a 1:1 image is perfectly square. Choosing the right aspect ratio ensures your image fits its intended display without letterboxing or cropping unexpectedly.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Composition techniques</h2>
+      <p class="mt-2 text-slate-600">Good cropping follows composition principles. The rule of thirds places subjects along grid intersections. Symmetry creates balanced, pleasing frames. Leading lines draw the eye toward the focal point. Cropping removes distracting elements at the edges to direct attention to the main subject.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Crop vs resize</h2>
+      <p class="mt-2 text-slate-600">Cropping removes outer pixels to change composition and aspect ratio. Resizing scales the entire image up or down without removing any content. Use cropping first to get the right composition, then resizing to match exact dimension requirements.</p>
+    </div>
+    <div>
+      <h2 class="text-xl font-bold text-slate-900">Print size considerations</h2>
+      <p class="mt-2 text-slate-600">When cropping for print, consider the required DPI and final print dimensions. An 8&times;10 print at 300 DPI needs 2400&times;3000 pixels. Avoid cropping so tightly that the remaining resolution is insufficient for a sharp print. Always start with the highest resolution source available.</p>
+    </div>
+  </section>
+
+  <script is:inline>
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+    const cropImage = document.getElementById('cropImage');
+    const cropOverlay = document.getElementById('cropOverlay');
+    const cropBox = document.getElementById('cropBox');
+    const cropInfo = document.getElementById('cropInfo');
+    const cropContainer = document.getElementById('cropContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let imgW = 0, imgH = 0;
+    let dispW = 0, dispH = 0;
+    let currentRatio = 'free';
+    let dragMode = null;
+    let startX = 0, startY = 0;
+    let startBox = {};
+    let originalFile = null;
+
+    function getRatio(r) {
+      if (r === 'free') return null;
+      const p = r.split(':').map(Number);
+      return p[0] / p[1];
+    }
+
+    function clampBox(box) {
+      const min = 20;
+      let { top, left, width, height } = box;
+      width = Math.max(min, width);
+      height = Math.max(min, height);
+      if (left < 0) left = 0;
+      if (top < 0) top = 0;
+      if (left + width > dispW) left = dispW - width;
+      if (top + height > dispH) top = dispH - height;
+      return { top, left, width, height };
+    }
+
+    function applyAspect(box, ratio) {
+      if (!ratio) return box;
+      let { top, left, width, height } = box;
+      const cx = left + width / 2;
+      const cy = top + height / 2;
+      if (width / height > ratio) {
+        width = height * ratio;
+      } else {
+        height = width / ratio;
+      }
+      left = cx - width / 2;
+      top = cy - height / 2;
+      return clampBox({ top, left, width, height });
+    }
+
+    function renderBox(box) {
+      box = clampBox(box);
+      cropBox.style.top = box.top + 'px';
+      cropBox.style.left = box.left + 'px';
+      cropBox.style.width = box.width + 'px';
+      cropBox.style.height = box.height + 'px';
+      const scaleX = imgW / dispW;
+      const scaleY = imgH / dispH;
+      cropInfo.textContent = `${Math.round(box.width * scaleX)} \u00D7 ${Math.round(box.height * scaleY)}`;
+    }
+
+    function setRatio(r) {
+      currentRatio = r;
+      document.querySelectorAll('.ratio-btn').forEach(b => {
+        const on = b.dataset.ratio === r;
+        b.className = `ratio-btn rounded-lg border px-3 py-1.5 text-xs font-medium transition ${on ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`;
+      });
+      const box = {
+        top: parseFloat(cropBox.style.top) || 0,
+        left: parseFloat(cropBox.style.left) || 0,
+        width: parseFloat(cropBox.style.width) || dispW,
+        height: parseFloat(cropBox.style.height) || dispH,
+      };
+      renderBox(applyAspect(box, getRatio(r)));
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      originalFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          imgW = img.naturalWidth;
+          imgH = img.naturalHeight;
+          cropImage.src = ev.target.result;
+          previewArea.classList.remove('hidden');
+          cropImage.onload = () => {
+            dispW = cropImage.offsetWidth;
+            dispH = cropImage.offsetHeight;
+            cropOverlay.style.display = 'block';
+            renderBox({ top: dispH * 0.1, left: dispW * 0.1, width: dispW * 0.8, height: dispH * 0.8 });
+            setRatio(currentRatio);
+          };
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.querySelectorAll('.ratio-btn').forEach(b => {
+      b.addEventListener('click', () => setRatio(b.dataset.ratio));
+    });
+
+    cropBox.addEventListener('mousedown', (e) => {
+      if (e.target !== cropBox) return;
+      dragMode = 'move';
+      startX = e.clientX;
+      startY = e.clientY;
+      startBox = {
+        top: parseFloat(cropBox.style.top),
+        left: parseFloat(cropBox.style.left),
+        width: parseFloat(cropBox.style.width),
+        height: parseFloat(cropBox.style.height),
+      };
+      e.preventDefault();
+    });
+
+    cropBox.querySelectorAll('div').forEach(h => {
+      h.addEventListener('mousedown', (e) => {
+        const cls = e.target.className;
+        if (cls.includes('nw-resize')) dragMode = 'nw';
+        else if (cls.includes('ne-resize')) dragMode = 'ne';
+        else if (cls.includes('sw-resize')) dragMode = 'sw';
+        else if (cls.includes('se-resize')) dragMode = 'se';
+        else return;
+        startX = e.clientX;
+        startY = e.clientY;
+        startBox = {
+          top: parseFloat(cropBox.style.top),
+          left: parseFloat(cropBox.style.left),
+          width: parseFloat(cropBox.style.width),
+          height: parseFloat(cropBox.style.height),
+        };
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragMode) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      let box = { ...startBox };
+      const ratio = getRatio(currentRatio);
+      if (dragMode === 'move') { box.left += dx; box.top += dy; }
+      else if (dragMode === 'se') { box.width += dx; box.height += dy; }
+      else if (dragMode === 'sw') { box.width -= dx; box.left += dx; box.height += dy; }
+      else if (dragMode === 'ne') { box.width += dx; box.height -= dy; box.top += dy; }
+      else if (dragMode === 'nw') { box.width -= dx; box.left += dx; box.height -= dy; box.top += dy; }
+      renderBox(ratio ? applyAspect(box, ratio) : box);
+    });
+
+    document.addEventListener('mouseup', () => { dragMode = null; });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!imgW || !dispW) return;
+      const box = {
+        top: parseFloat(cropBox.style.top),
+        left: parseFloat(cropBox.style.left),
+        width: parseFloat(cropBox.style.width),
+        height: parseFloat(cropBox.style.height),
+      };
+      const sx = Math.round(box.left * (imgW / dispW));
+      const sy = Math.round(box.top * (imgH / dispH));
+      const sw = Math.round(box.width * (imgW / dispW));
+      const sh = Math.round(box.height * (imgH / dispH));
+      const canvas = document.createElement('canvas');
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cropImage, sx, sy, sw, sh, 0, 0, sw, sh);
+      const fmt = originalFile ? originalFile.type : 'image/png';
+      canvas.toBlob((blob) => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `cropped.${fmt.split('/')[1] || 'png'}`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }, fmt);
+    });
+  </script>
+</ToolLayout>

@@ -1,0 +1,278 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Stopwatch';
+const description =
+  'Free online stopwatch. Precision stopwatch with lap time, split time and best/worst lap tracking. Runs entirely in your browser.';
+const intro =
+  'Start, stop and record lap times with precision. Track your best, worst and average laps.';
+const category = { id: 'time-date', name: 'Time & Date' };
+const faqs = [
+  { q: 'How precise is the stopwatch?', a: 'The display shows centiseconds (hundredths of a second). The underlying timing uses milliseconds via Date.now().' },
+  { q: 'What is the difference between lap and split?', a: 'Lap time measures the duration of a single lap (since the last lap button press). Split time is the total elapsed time since the stopwatch started.' },
+  { q: 'Can I record multiple laps?', a: 'Yes. Each time you press the Lap button, the current lap and total split time are recorded and displayed in a list.' },
+  { q: 'How are best and worst laps highlighted?', a: 'The fastest lap is highlighted in green and the slowest in red in the lap list. This makes it easy to spot your best and worst performance.' },
+  { q: 'Does it work on mobile?', a: 'Yes. The stopwatch is fully responsive and works on any device with a browser.' },
+  { q: 'Is the timing accurate?', a: 'The stopwatch uses Date.now() for millisecond precision and setInterval for display updates. For everyday use it is very accurate, though not certified for competitive timing.' },
+  { q: 'What happens if I switch tabs?', a: 'Some browsers throttle setInterval in background tabs. For best accuracy, keep the tab active while timing.' },
+  { q: 'Can I export or save lap times?', a: 'You can manually copy lap times from the list. Automatic export is not currently supported.' },
+  { q: 'Does the stopwatch work offline?', a: 'Yes. All timing is done locally in your browser with no network requests.' },
+  { q: 'What is the maximum time I can measure?', a: 'The stopwatch can run for hours, days or longer. The display handles overflow gracefully for extended timings.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="text-center">
+      <div id="display" class="font-mono text-4xl font-bold tracking-wider text-indigo-700 sm:text-5xl">00:00:00.00</div>
+    </div>
+
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      <button id="start-btn" class="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700">Start</button>
+      <button id="lap-btn" class="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50" disabled>Lap</button>
+      <button id="reset-btn" class="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50">Reset</button>
+    </div>
+
+    <div class="mt-6">
+      <h3 class="text-sm font-semibold text-slate-700">Lap times</h3>
+      <div id="lap-list" class="mt-2 space-y-1 max-h-64 overflow-y-auto"></div>
+      <p id="no-laps" class="mt-2 text-center text-sm text-slate-400">No laps recorded yet. Press Lap while running.</p>
+    </div>
+
+    <div id="lap-stats" class="mt-4 hidden grid grid-cols-3 gap-3 text-center text-sm">
+      <div class="rounded-lg bg-slate-50 p-2"><div id="best-lap" class="font-bold text-emerald-600">—</div><div class="text-xs text-slate-500">Best</div></div>
+      <div class="rounded-lg bg-slate-50 p-2"><div id="avg-lap" class="font-bold text-slate-800">—</div><div class="text-xs text-slate-500">Average</div></div>
+      <div class="rounded-lg bg-slate-50 p-2"><div id="worst-lap" class="font-bold text-red-600">—</div><div class="text-xs text-slate-500">Worst</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Lap time comparison</h2>
+    <p class="mt-2 text-slate-600">See how each lap compares to the others. Green is fastest, red is slowest.</p>
+    <div id="lap-chart" class="mt-5 space-y-3"></div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3C3;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Runner</h3>
+      <p class="mt-1 text-sm text-slate-600">Times sprint intervals, track workouts and long-distance runs. Lap tracking helps measure per-kilometer or per-mile pace.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F94A;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Athlete</h3>
+      <p class="mt-1 text-sm text-slate-600">Records training sets, rest intervals and circuit rounds. Best/worst lap highlights show consistency and improvement.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3CC;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Coach</h3>
+      <p class="mt-1 text-sm text-slate-600">Times multiple athletes during practice sessions. Lap statistics help identify performance trends and areas for improvement.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x23F1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Pomodoro Timer User</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses the stopwatch to track focused work sessions and breaks. Lap function records individual Pomodoro intervals.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Precision level</th><th class="p-3">Display format</th><th class="p-3">Typical use</th><th class="p-3">Accuracy</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Seconds</td><td class="p-3 font-mono text-xs">MM:SS</td><td class="p-3">Cooking, basic timing</td><td class="p-3">±1 second</td></tr>
+        <tr><td class="p-3 font-medium">Tenths</td><td class="p-3 font-mono text-xs">MM:SS.t</td><td class="p-3">Fitness reps, drills</td><td class="p-3">±0.1 second</td></tr>
+        <tr><td class="p-3 font-medium">Hundredths (centiseconds)</td><td class="p-3 font-mono text-xs">MM:SS.cc</td><td class="p-3">This stopwatch, track & field</td><td class="p-3">±0.01 second</td></tr>
+        <tr><td class="p-3 font-medium">Milliseconds</td><td class="p-3 font-mono text-xs">MM:SS.mmm</td><td class="p-3">Scientific, lab equipment</td><td class="p-3">±0.001 second</td></tr>
+        <tr><td class="p-3 font-medium">Microseconds</td><td class="p-3 font-mono text-xs">MM:SS.uuuuuu</td><td class="p-3">Electronic testing</td><td class="p-3">Requires hardware timer</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Stopwatch</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Start timing</h3>
+        <p class="mt-1 text-sm text-slate-600">Press Start to begin. The display updates every centisecond showing elapsed time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Record laps</h3>
+        <p class="mt-1 text-sm text-slate-600">Press Lap to mark a lap. Each press records the lap duration and total split time in the list.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review statistics</h3>
+        <p class="mt-1 text-sm text-slate-600">After recording laps, review best, average and worst lap times. Use Reset to clear and start fresh.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using a stopwatch</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use laps for interval training</h3>
+        <p class="mt-1 text-sm text-slate-600">For interval workouts (like 400m repeats), press Lap at the end of each interval. The lap time tells you your pace for that specific interval, while the split tracks total workout duration.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep the tab active for best accuracy</h3>
+        <p class="mt-1 text-sm text-slate-600">Browsers may throttle JavaScript in background tabs. Keep the stopwatch tab active during important timing sessions for the most consistent display updates.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Lap vs split — use both</h3>
+        <p class="mt-1 text-sm text-slate-600">The lap time shows how fast you completed that specific segment. The split time shows total elapsed time. Both are useful: lap for segment performance, split for overall pacing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How stopwatches work</h2>
+    <p class="mt-2 text-slate-600">A digital stopwatch records the time elapsed from a starting point. It works by storing the start timestamp (via Date.now()) and repeatedly calculating the difference between the current time and the start time. The result is formatted into hours, minutes, seconds and fractions of a second for display.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Lap vs split</h2>
+    <p class="mt-2 text-slate-600">A lap time measures the duration between consecutive Lap button presses — it tells you how long a single segment took. A split time is the total elapsed time from the start to the current Lap press — it tells you where you are overall. Both values are useful for analyzing performance.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Reaction time</h2>
+    <p class="mt-2 text-slate-600">Human reaction time when pressing the Lap or Stop button is typically 200–300 milliseconds. This means stopwatch lap times have a small human error margin. For precision timing, use automated sensors. For fitness and everyday use, manual stopwatches are perfectly adequate.</p>
+  </section>
+
+  <script is:inline>
+    const el = id => document.getElementById(id);
+    const display = el('display');
+    const startBtn = el('start-btn');
+    const lapBtn = el('lap-btn');
+    const resetBtn = el('reset-btn');
+    const lapList = el('lap-list');
+    const noLaps = el('no-laps');
+    const lapStats = el('lap-stats');
+
+    let running = false;
+    let startTime = 0;
+    let elapsed = 0;
+    let intervalId = null;
+    let laps = [];
+    let lastLapTime = 0;
+
+    function formatTime(ms) {
+      const totalMs = Math.floor(ms);
+      const h = Math.floor(totalMs / 3600000);
+      const m = Math.floor((totalMs % 3600000) / 60000);
+      const s = Math.floor((totalMs % 60000) / 1000);
+      const c = Math.floor((totalMs % 1000) / 10);
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(c).padStart(2, '0');
+    }
+
+    function formatShort(ms) {
+      const totalMs = Math.floor(ms);
+      const m = Math.floor(totalMs / 60000);
+      const s = Math.floor((totalMs % 60000) / 1000);
+      const c = Math.floor((totalMs % 1000) / 10);
+      return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(c).padStart(2, '0');
+    }
+
+    function updateDisplay() {
+      elapsed = Date.now() - startTime;
+      display.textContent = formatTime(elapsed);
+    }
+
+    function start() {
+      if (running) return;
+      running = true;
+      startTime = Date.now() - elapsed;
+      intervalId = setInterval(updateDisplay, 10);
+      startBtn.textContent = 'Stop';
+      lapBtn.disabled = false;
+    }
+
+    function stop() {
+      if (!running) return;
+      running = false;
+      clearInterval(intervalId);
+      intervalId = null;
+      elapsed = Date.now() - startTime;
+      display.textContent = formatTime(elapsed);
+      startBtn.textContent = 'Resume';
+      lapBtn.disabled = true;
+    }
+
+    function recordLap() {
+      if (!running) return;
+      const now = Date.now();
+      const totalElapsed = now - startTime;
+      const lapDuration = totalElapsed - lastLapTime;
+      laps.push({ lap: laps.length + 1, duration: lapDuration, split: totalElapsed });
+      lastLapTime = totalElapsed;
+      renderLaps();
+    }
+
+    function renderLaps() {
+      noLaps.classList.add('hidden');
+      lapStats.classList.remove('hidden');
+
+      const best = Math.min(...laps.map(l => l.duration));
+      const worst = Math.max(...laps.map(l => l.duration));
+      const avg = laps.reduce((s, l) => s + l.duration, 0) / laps.length;
+
+      el('best-lap').textContent = formatShort(best);
+      el('avg-lap').textContent = formatShort(avg);
+      el('worst-lap').textContent = formatShort(worst);
+
+      lapList.innerHTML = laps.map(l => {
+        let cls = 'flex items-center justify-between rounded-lg p-2 text-sm ';
+        if (l.duration === best) cls += 'bg-emerald-50 text-emerald-700';
+        else if (l.duration === worst) cls += 'bg-red-50 text-red-700';
+        else cls += 'bg-slate-50 text-slate-700';
+        return `<div class="${cls}"><span>Lap ${l.lap}</span><span class="font-mono font-medium">${formatShort(l.duration)}</span></div>`;
+      }).join('');
+
+      renderLapChart();
+    }
+
+    function renderLapChart() {
+      const chart = document.getElementById('lap-chart');
+      if (laps.length === 0) {
+        chart.innerHTML = '<p class="text-sm text-slate-400">No laps recorded yet.</p>';
+        return;
+      }
+      const maxDur = Math.max(...laps.map(l => l.duration), 1);
+      const best = Math.min(...laps.map(l => l.duration));
+      const worst = Math.max(...laps.map(l => l.duration));
+      chart.innerHTML = laps.map(l => {
+        const pct = (l.duration / maxDur) * 100;
+        let barColor = 'bg-indigo-500';
+        if (l.duration === best) barColor = 'bg-emerald-500';
+        else if (l.duration === worst) barColor = 'bg-red-500';
+        return `<div>
+          <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Lap ${l.lap}</span><span class="text-slate-400 font-mono">${formatShort(l.duration)}</span></div>
+          <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ${barColor}" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function reset() {
+      if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      running = false;
+      elapsed = 0;
+      lastLapTime = 0;
+      laps = [];
+      display.textContent = '00:00:00.00';
+      startBtn.textContent = 'Start';
+      lapBtn.disabled = true;
+      lapList.innerHTML = '';
+      noLaps.classList.remove('hidden');
+      lapStats.classList.add('hidden');
+      document.getElementById('lap-chart').innerHTML = '<p class="text-sm text-slate-400">No laps recorded yet.</p>';
+    }
+
+    startBtn.addEventListener('click', () => running ? stop() : start());
+    lapBtn.addEventListener('click', recordLap);
+    resetBtn.addEventListener('click', reset);
+    document.getElementById('lap-chart').innerHTML = '<p class="text-sm text-slate-400">No laps recorded yet.</p>';
+  </script>
+</ToolLayout>

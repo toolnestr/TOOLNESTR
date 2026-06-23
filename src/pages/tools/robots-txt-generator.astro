@@ -1,0 +1,317 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Robots.txt Generator';
+const description =
+  'Free online robots.txt generator. Create robots.txt files from simple settings — allow or disallow bots to specific paths. Runs in your browser.';
+const intro =
+  'Configure which search engine bots can access which parts of your site, then generate and download your robots.txt file.';
+const category = { id: 'seo', name: 'SEO Tools' };
+const faqs = [
+  { q: 'What is a robots.txt file?', a: 'Robots.txt is a text file placed at the root of a website that tells search engine crawlers which pages or sections they can or cannot access and index.' },
+  { q: 'Where should robots.txt be placed?', a: 'The file must be placed in the root directory of your domain, e.g. https://example.com/robots.txt. It is the first file crawlers check when visiting a site.' },
+  { q: 'What is a User-agent directive?', a: 'User-agent specifies which crawler the rules apply to. Use "*" to target all crawlers, or specific names like "Googlebot" or "Bingbot" for search-engine-specific rules.' },
+  { q: 'What does Disallow do?', a: 'Disallowing a path tells crawlers not to access it. A single slash "Disallow: /" blocks everything. An empty "Disallow:" allows everything for that user-agent.' },
+  { q: 'What does Allow do?', a: 'Allow overrides a Disallow rule for a specific path. It is used when you want to block a directory but allow a specific file or subdirectory within it.' },
+  { q: 'What is a Sitemap directive?', a: 'The Sitemap directive points crawlers to your XML sitemap location. Adding this helps search engines discover and index your pages more efficiently.' },
+  { q: 'What is Crawl-delay?', a: 'Crawl-delay tells crawlers how many seconds to wait between requests. It helps reduce server load but is not supported by all search engines (Googlebot ignores it).' },
+  { q: 'Can robots.txt block sensitive content?', a: 'No. Robots.txt is a voluntary protocol. It only prevents well-behaved crawlers from accessing pages. Malicious bots ignore it. Use authentication or noindex for truly sensitive content.' },
+  { q: 'Does robots.txt affect SEO?', a: 'Indirectly. Proper robots.txt ensures crawlers find your important pages. Blocking critical pages can prevent them from being indexed. Always test your robots.txt after making changes.' },
+  { q: 'How can I test my robots.txt?', a: 'Google Search Console has a robots.txt tester. You can also use the preview in this tool to verify your directives look correct before deploying.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div id="agents-container" class="space-y-4">
+      <div class="agent-group rounded-xl border border-slate-200 p-4" data-index="0">
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+            User-agent
+            <input type="text" class="user-agent-input w-48 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" value="*" placeholder="e.g. Googlebot" />
+          </label>
+          <button class="add-rule-btn rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50">+ Add rule</button>
+          <button class="remove-agent-btn rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50">Remove</button>
+        </div>
+        <div class="rules-container mt-3 space-y-2"></div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <button id="add-agent-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">+ Add user-agent</button>
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        Sitemap URL
+        <input id="sitemap-input" type="text" class="w-64 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="https://example.com/sitemap.xml" />
+      </label>
+      <button id="generate-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Generate</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Reset</button>
+    </div>
+
+    <div id="preview" class="mt-4 hidden">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-900">Generated robots.txt</h3>
+        <div class="flex gap-2">
+          <button id="copy-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+          <button id="download-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">Download</button>
+        </div>
+      </div>
+      <pre id="robots-output" class="max-h-64 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-xs leading-relaxed text-slate-700"></pre>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Robots.txt directives usage</h2>
+    <p class="mt-2 text-slate-600">How different directives are used across websites.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Disallow</span><span class="text-slate-400">55% of directives</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:55%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Sitemap</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Allow</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Crawl-delay</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:10%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Other</span><span class="text-slate-400">5%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-slate-400" style="width:5%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Web Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Configures crawl access during site builds. Blocks staging environments, admin panels and duplicate content paths from being indexed by search engines.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F50D;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">SEO Specialist</h3>
+      <p class="mt-1 text-sm text-slate-600">Audits robots.txt to ensure critical pages are crawlable. Manages crawl budget by disallowing low-value pages like tag archives and pagination filters.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3E0;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Site Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Runs a personal or small business site. Creates a simple robots.txt from scratch without needing to understand the syntax in detail.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2699;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">DevOps Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Manages robots.txt across multiple environments (dev, staging, production). Ensures crawlers only access public-facing environments and not internal systems.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common robots.txt directives</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-sm">
+        <thead><tr class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500"><th class="px-4 py-3">Directive</th><th class="px-4 py-3">Example</th><th class="px-4 py-3">Purpose</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr><td class="px-4 py-3 font-medium text-slate-900">User-agent</td><td class="px-4 py-3 font-mono text-xs">User-agent: Googlebot</td><td class="px-4 py-3 text-slate-500">Target a specific crawler</td></tr>
+          <tr><td class="px-4 py-3 font-medium text-slate-900">Disallow</td><td class="px-4 py-3 font-mono text-xs">Disallow: /admin/</td><td class="px-4 py-3 text-slate-500">Block a path from crawling</td></tr>
+          <tr><td class="px-4 py-3 font-medium text-slate-900">Allow</td><td class="px-4 py-3 font-mono text-xs">Allow: /public/</td><td class="px-4 py-3 text-slate-500">Override a disallow for a sub-path</td></tr>
+          <tr><td class="px-4 py-3 font-medium text-slate-900">Sitemap</td><td class="px-4 py-3 font-mono text-xs">Sitemap: https://example.com/sitemap.xml</td><td class="px-4 py-3 text-slate-500">Point to your XML sitemap</td></tr>
+          <tr><td class="px-4 py-3 font-medium text-slate-900">Crawl-delay</td><td class="px-4 py-3 font-mono text-xs">Crawl-delay: 10</td><td class="px-4 py-3 text-slate-500">Seconds between requests</td></tr>
+          <tr><td class="px-4 py-3 font-medium text-slate-900">Host</td><td class="px-4 py-3 font-mono text-xs">Host: https://example.com</td><td class="px-4 py-3 text-slate-500">Specify canonical host (Yandex)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Robots.txt Generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add user-agents</h3>
+        <p class="mt-1 text-sm text-slate-600">Start with "*" for all crawlers or specify a specific bot like Googlebot. Each user-agent can have its own set of rules.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add allow/disallow rules</h3>
+        <p class="mt-1 text-sm text-slate-600">For each user-agent, add paths to allow or disallow. Use the "Add rule" button and select the directive type and path.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and deploy</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Generate to preview the file. Copy the output or download it, then upload to the root of your website.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for robots.txt management</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Don't block CSS, JS or images</h3>
+        <p class="mt-1 text-sm text-slate-600">Blocking stylesheets, scripts or images prevents search engines from rendering your pages correctly. Google uses rendered content for ranking, so allow these resources.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use Allow to refine blocks</h3>
+        <p class="mt-1 text-sm text-slate-600">If you block an entire directory but need one sub-path accessible, use Allow first then Disallow. Order matters — the most specific rule wins.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Test before deploying</h3>
+        <p class="mt-1 text-sm text-slate-600">Use Google Search Console's robots.txt tester or check the generated output manually. A mistake could accidentally block your entire site from search engines.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is robots.txt?</h2>
+    <p class="mt-2 text-slate-600">Robots.txt is a plain text file that tells search engine crawlers which URLs they can and cannot request. It follows the Robots Exclusion Standard and is the first file crawlers look for when they visit a site. It is a voluntary protocol — well-behaved crawlers obey it, but malicious bots may ignore it.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How search engines use it</h2>
+    <p class="mt-2 text-slate-600">When a crawler like Googlebot arrives at a site, it fetches /robots.txt first. It reads the directives, identifies which paths are off-limits, and then crawls only the allowed pages. This helps manage crawl budget by directing bots to high-value pages.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common directives</h2>
+    <p class="mt-2 text-slate-600">The most common directives are User-agent (targets a crawler), Disallow (blocks paths), Allow (permits sub-paths), Sitemap (points to your XML sitemap) and Crawl-delay (rate limits requests). Each directive applies to the most recent User-agent declaration above it.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Testing your robots.txt</h2>
+    <p class="mt-2 text-slate-600">Always test your robots.txt after changes. Google Search Console provides a built-in tester. You can also check manually by visiting yourdomain.com/robots.txt in a browser. Common mistakes include syntax errors, missing newlines and accidentally blocking the root path.</p>
+  </section>
+
+  <script is:inline>
+    const agentsContainer = document.getElementById('agents-container');
+    const addAgentBtn = document.getElementById('add-agent-btn');
+    const generateBtn = document.getElementById('generate-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const preview = document.getElementById('preview');
+    const robotsOutput = document.getElementById('robots-output');
+    const copyBtn = document.getElementById('copy-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const sitemapInput = document.getElementById('sitemap-input');
+
+    let agentCount = 1;
+
+    function createRuleRow(type, path) {
+      const row = document.createElement('div');
+      row.className = 'rule-row flex items-center gap-2';
+      row.innerHTML =
+        '<select class="rule-type rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-indigo-400">' +
+          '<option value="Disallow"' + (type === 'Disallow' ? ' selected' : '') + '>Disallow</option>' +
+          '<option value="Allow"' + (type === 'Allow' ? ' selected' : '') + '>Allow</option>' +
+        '</select>' +
+        '<input type="text" class="rule-path w-64 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-indigo-400" value="' + (path || '/') + '" placeholder="/path" />' +
+        '<button class="remove-rule-btn rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50">X</button>';
+      row.querySelector('.remove-rule-btn').addEventListener('click', () => row.remove());
+      return row;
+    }
+
+    function createAgentGroup(index, userAgent, rules) {
+      const group = document.createElement('div');
+      group.className = 'agent-group rounded-xl border border-slate-200 p-4';
+      group.dataset.index = index;
+      group.innerHTML =
+        '<div class="flex flex-wrap items-center gap-3">' +
+          '<label class="flex items-center gap-2 text-sm font-medium text-slate-700">' +
+            'User-agent' +
+            '<input type="text" class="user-agent-input w-48 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" value="' + (userAgent || '*') + '" placeholder="e.g. Googlebot" />' +
+          '</label>' +
+          '<button class="add-rule-btn rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50">+ Add rule</button>' +
+          '<button class="remove-agent-btn rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50">Remove</button>' +
+        '</div>' +
+        '<div class="rules-container mt-3 space-y-2"></div>';
+
+      const rulesContainer = group.querySelector('.rules-container');
+      const ruleRows = rules && rules.length ? rules : [{ type: 'Disallow', path: '/' }];
+      ruleRows.forEach(r => rulesContainer.appendChild(createRuleRow(r.type, r.path)));
+
+      group.querySelector('.add-rule-btn').addEventListener('click', () => {
+        rulesContainer.appendChild(createRuleRow('Disallow', '/'));
+      });
+
+      group.querySelector('.remove-agent-btn').addEventListener('click', () => {
+        if (agentsContainer.querySelectorAll('.agent-group').length > 1) {
+          group.remove();
+        }
+      });
+
+      return group;
+    }
+
+    function buildRobotsTxt() {
+      const groups = agentsContainer.querySelectorAll('.agent-group');
+      const lines = [];
+
+      groups.forEach(group => {
+        const ua = group.querySelector('.user-agent-input').value.trim() || '*';
+        lines.push('User-agent: ' + ua);
+        const ruleRows = group.querySelectorAll('.rule-row');
+        ruleRows.forEach(row => {
+          const type = row.querySelector('.rule-type').value;
+          const path = row.querySelector('.rule-path').value.trim() || '/';
+          lines.push(type + ': ' + path);
+        });
+        lines.push('');
+      });
+
+      const sitemap = sitemapInput.value.trim();
+      if (sitemap) {
+        lines.push('Sitemap: ' + sitemap);
+      }
+
+      return lines.join('\n');
+    }
+
+    function generate() {
+      const text = buildRobotsTxt();
+      robotsOutput.textContent = text;
+      preview.classList.remove('hidden');
+    }
+
+    addAgentBtn.addEventListener('click', () => {
+      const idx = agentsContainer.querySelectorAll('.agent-group').length;
+      agentsContainer.appendChild(createAgentGroup(idx, '*', [{ type: 'Disallow', path: '/' }]));
+    });
+
+    generateBtn.addEventListener('click', generate);
+
+    clearBtn.addEventListener('click', () => {
+      agentsContainer.innerHTML = '';
+      agentsContainer.appendChild(createAgentGroup(0, '*', [{ type: 'Disallow', path: '/' }]));
+      sitemapInput.value = '';
+      preview.classList.add('hidden');
+      robotsOutput.textContent = '';
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const text = robotsOutput.textContent;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => copyBtn.textContent = orig, 1500);
+      } catch (e) {}
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const text = robotsOutput.textContent;
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'robots.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    agentsContainer.appendChild(createAgentGroup(0, '*', [{ type: 'Disallow', path: '/' }]));
+  </script>
+</ToolLayout>

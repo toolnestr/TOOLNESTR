@@ -1,0 +1,250 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Countdown Timer';
+const description =
+  'Free online countdown timer. Count down days, hours, minutes and seconds to any target date and time with live updates.';
+const intro =
+  'Set a target date and time and watch the countdown in real time — days, hours, minutes and seconds.';
+const category = { id: 'time-date', name: 'Time & Date' };
+const faqs = [
+  { q: 'What happens when the countdown reaches zero?', a: 'The timer stops and displays a "Past event" indicator. You can set a new date to start a fresh countdown.' },
+  { q: 'How accurate is the countdown?', a: 'The timer updates every second (1000 ms interval) using the system clock. It is accurate enough for general-purpose countdowns.' },
+  { q: 'Does it work offline?', a: 'Yes. Everything runs in your browser with no network requests. As long as the page is loaded, it works offline.' },
+  { q: 'Can I see the progress visually?', a: 'Yes. A progress bar shows how much time has elapsed relative to the total time between now and the target date.' },
+  { q: 'What is the maximum countdown period?', a: 'You can set any date up to year 9999. The countdown works for years-long periods down to seconds.' },
+  { q: 'Does it handle timezones?', a: 'The countdown uses your local timezone. You can adjust the target time to match the timezone you want to count down to.' },
+  { q: 'Can I name my countdown?', a: 'Yes. The event name input lets you label your countdown. The name is displayed above the timer.' },
+  { q: 'What are leap years and how do they affect countdowns?', a: 'Leap years add an extra day (February 29). The countdown handles this automatically since it works with the Date object.' },
+  { q: 'Does the timer account for DST changes?', a: 'Yes. The Date object automatically adjusts for DST transitions in your local timezone.' },
+  { q: 'Can I use this for project deadlines?', a: 'Absolutely. Enter your deadline date and event name to see a live countdown of time remaining until your project is due.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Event name</span>
+        <input id="event-name" type="text" placeholder="e.g. Birthday, Deadline, Launch" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <div></div>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Target date</span>
+        <input id="target-date" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Target time</span>
+        <input id="target-time" type="time" value="00:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+    <button id="start-btn" class="mt-4 w-full rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700">Start Countdown</button>
+
+    <div id="countdown-display" class="mt-6 hidden">
+      <div id="event-label" class="text-center text-sm font-medium text-slate-500"></div>
+      <div class="mt-2 grid grid-cols-4 gap-2 sm:gap-4">
+        <div class="rounded-xl bg-indigo-600 p-3 text-center text-white"><div id="days" class="text-2xl font-bold sm:text-3xl">00</div><div class="text-xs opacity-80">Days</div></div>
+        <div class="rounded-xl bg-indigo-600 p-3 text-center text-white"><div id="hours" class="text-2xl font-bold sm:text-3xl">00</div><div class="text-xs opacity-80">Hours</div></div>
+        <div class="rounded-xl bg-indigo-600 p-3 text-center text-white"><div id="minutes" class="text-2xl font-bold sm:text-3xl">00</div><div class="text-xs opacity-80">Minutes</div></div>
+        <div class="rounded-xl bg-indigo-600 p-3 text-center text-white"><div id="seconds" class="text-2xl font-bold sm:text-3xl">00</div><div class="text-xs opacity-80">Seconds</div></div>
+      </div>
+      <div class="mt-4">
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Progress</span><span id="progress-pct" class="text-slate-400">0%</span></div>
+        <div class="mt-1 h-4 w-full rounded-full bg-slate-100"><div id="progress-bar" class="h-4 rounded-full bg-indigo-500 transition-all duration-1000" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div id="past-event" class="mt-6 hidden rounded-xl bg-amber-50 p-4 text-center text-amber-700">
+      <span class="font-semibold">This event has passed.</span> Set a future date to start a new countdown.
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Time remaining breakdown</h2>
+    <p class="mt-2 text-slate-600">The visual breakdown of how the remaining time distributes across days, hours, minutes and seconds.</p>
+    <div id="breakdown-chart" class="mt-5 space-y-3"></div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F389;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Event Planner</h3>
+      <p class="mt-1 text-sm text-slate-600">Counts down to weddings, parties and product launches, coordinating final preparations and rehearsals against the deadline.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Project Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Tracks sprint deadlines, milestone deliveries and release dates with a clear visual indicator of remaining time.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Counts down to exam dates, assignment deadlines and graduation day to stay motivated and manage study schedules.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2708;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Traveler</h3>
+      <p class="mt-1 text-sm text-slate-600">Counts down to departure day, building anticipation and ensuring all trip preparations are completed on time.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Use case</th><th class="p-3">Typical duration</th><th class="p-3">Countdown style</th><th class="p-3">Notes</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Birthday</td><td class="p-3">365 days</td><td class="p-3">Days + celebration</td><td class="p-3">Annual event, often tracked from the previous birthday</td></tr>
+        <tr><td class="p-3 font-medium">Wedding</td><td class="p-3">6–24 months</td><td class="p-3">Months + days</td><td class="p-3">Engagement period, detailed planning phases</td></tr>
+        <tr><td class="p-3 font-medium">Project deadline</td><td class="p-3">1–12 weeks</td><td class="p-3">Days + hours</td><td class="p-3">Often tracked with milestones and deliverables</td></tr>
+        <tr><td class="p-3 font-medium">Product launch</td><td class="p-3">1–6 months</td><td class="p-3">Days + hours + minutes</td><td class="p-3">Marketing countdown creates urgency and buzz</td></tr>
+        <tr><td class="p-3 font-medium">Exam date</td><td class="p-3">30–180 days</td><td class="p-3">Days + hours</td><td class="p-3">Study plan milestone tracking</td></tr>
+        <tr><td class="p-3 font-medium">Holiday / vacation</td><td class="p-3">30–365 days</td><td class="p-3">Days</td><td class="p-3">Building anticipation, planning itinerary</td></tr>
+        <tr><td class="p-3 font-medium">Software release</td><td class="p-3">1–4 weeks</td><td class="p-3">Days + hours + minutes</td><td class="p-3">Sprint-based agile development cycle</td></tr>
+        <tr><td class="p-3 font-medium">Retirement</td><td class="p-3">5–40 years</td><td class="p-3">Years + months</td><td class="p-3">Long-term financial and lifestyle planning</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Countdown Timer</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set event details</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter an optional event name, then pick the target date and time for the countdown.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Start the countdown</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Start Countdown" to begin. The timer shows days, hours, minutes and seconds remaining.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Track progress</h3>
+        <p class="mt-1 text-sm text-slate-600">Watch the live countdown and progress bar update every second until the target is reached.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for countdown timers</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use meaningful event names</h3>
+        <p class="mt-1 text-sm text-slate-600">Naming your countdown makes it more personal and motivating. Seeing "45 days until Hawaii trip" is more engaging than a blank timer.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check your target timezone</h3>
+        <p class="mt-1 text-sm text-slate-600">If you are counting down to an event in a different timezone (like a live stream or flight), adjust the target time to match your local timezone for accurate results.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Break large periods into milestones</h3>
+        <p class="mt-1 text-sm text-slate-600">For long countdowns (months or years), set intermediate milestones. The progress bar helps visualize how far along you are to the final goal.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How countdowns work</h2>
+    <p class="mt-2 text-slate-600">A countdown timer calculates the difference between the current time and a target time. This difference is broken down into days, hours, minutes and seconds. The timer updates at regular intervals (typically every 1000 ms) to show the remaining time decreasing in real time.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Leap years</h2>
+    <p class="mt-2 text-slate-600">A leap year occurs every 4 years (except for years divisible by 100 but not by 400) and adds an extra day on February 29. Since countdowns calculate the raw millisecond difference between two dates, leap days are automatically accounted for without special logic.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Timezone considerations</h2>
+    <p class="mt-2 text-slate-600">Countdowns are affected by timezone differences and DST transitions. A countdown set for midnight in New York will end at a different moment than midnight in London if the user is in a different timezone. Always verify that the target time matches the intended timezone.</p>
+  </section>
+
+  <script is:inline>
+    const el = id => document.getElementById(id);
+    const targetDate = el('target-date');
+    const targetTime = el('target-time');
+    const eventName = el('event-name');
+    const startBtn = el('start-btn');
+    const countdownDisplay = el('countdown-display');
+    const pastEvent = el('past-event');
+    let intervalId = null;
+    let targetMoment = null;
+    let startTime = null;
+
+    targetDate.value = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    function updateBreakdownChart(days, hours, minutes, seconds) {
+      const chart = document.getElementById('breakdown-chart');
+      const total = days + hours + minutes + seconds || 1;
+      const items = [
+        { label: 'Days', value: days, color: 'bg-indigo-500' },
+        { label: 'Hours', value: hours, color: 'bg-emerald-500' },
+        { label: 'Minutes', value: minutes, color: 'bg-amber-500' },
+        { label: 'Seconds', value: seconds, color: 'bg-orange-500' },
+      ];
+      chart.innerHTML = items.map(i => {
+        const pct = (i.value / total) * 100;
+        return `<div>
+          <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">${i.label}</span><span class="text-slate-400">${i.value}</span></div>
+          <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ${i.color}" style="width:${Math.max(pct, 1)}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function update() {
+      const now = Date.now();
+      const diff = targetMoment - now;
+
+      if (diff <= 0) {
+        clearInterval(intervalId);
+        intervalId = null;
+        countdownDisplay.classList.add('hidden');
+        pastEvent.classList.remove('hidden');
+        return;
+      }
+
+      const totalDays = Math.floor(diff / 86400000);
+      const totalHours = Math.floor((diff % 86400000) / 3600000);
+      const totalMinutes = Math.floor((diff % 3600000) / 60000);
+      const totalSeconds = Math.floor((diff % 60000) / 1000);
+
+      el('days').textContent = String(totalDays).padStart(2, '0');
+      el('hours').textContent = String(totalHours).padStart(2, '0');
+      el('minutes').textContent = String(totalMinutes).padStart(2, '0');
+      el('seconds').textContent = String(totalSeconds).padStart(2, '0');
+
+      const elapsed = now - startTime;
+      const totalDuration = targetMoment - startTime;
+      const pct = Math.min((elapsed / totalDuration) * 100, 100);
+      el('progress-bar').style.width = pct + '%';
+      el('progress-pct').textContent = pct.toFixed(1) + '%';
+
+      updateBreakdownChart(totalDays, totalHours, totalMinutes, totalSeconds);
+    }
+
+    function start() {
+      if (intervalId) { clearInterval(intervalId); intervalId = null; }
+
+      const dtStr = targetDate.value;
+      const tmStr = targetTime.value || '00:00';
+      targetMoment = new Date(dtStr + 'T' + tmStr + ':00').getTime();
+      startTime = Date.now();
+
+      if (targetMoment <= startTime) {
+        pastEvent.classList.remove('hidden');
+        countdownDisplay.classList.add('hidden');
+        return;
+      }
+
+      pastEvent.classList.add('hidden');
+      countdownDisplay.classList.remove('hidden');
+      const name = eventName.value.trim() || 'Countdown';
+      el('event-label').textContent = 'Counting down to: ' + name;
+
+      update();
+      intervalId = setInterval(update, 1000);
+    }
+
+    startBtn.addEventListener('click', start);
+    updateBreakdownChart(0, 0, 0, 0);
+  </script>
+</ToolLayout>

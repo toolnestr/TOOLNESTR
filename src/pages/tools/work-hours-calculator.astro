@@ -1,0 +1,248 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Work Hours Calculator';
+const description = 'Free online work hours calculator. Calculate total hours, minutes and pay between start and end times with optional break deductions.';
+const intro = 'Enter your start time, end time and break duration to calculate total work hours, overtime and gross pay.';
+const category = { id: 'time-date', name: 'Time & Date' };
+const faqs = [
+  { q: 'How do I calculate work hours?', a: 'Subtract your start time from your end time, then subtract any unpaid break duration. The result is your total work hours for that shift.' },
+  { q: 'What is overtime?', a: 'Overtime is any time worked beyond the standard work threshold (typically 8 hours per day or 40 hours per week). It is often paid at a higher rate, commonly 1.5x the regular hourly rate.' },
+  { q: 'How is overtime calculated?', a: 'Overtime pay = overtime hours × overtime rate × regular hourly rate. For example, 2 overtime hours at 1.5x rate with $20/hr = 2 × 1.5 × $20 = $60.' },
+  { q: 'What is the standard work day?', a: 'The standard work day varies by country. In the US it is typically 8 hours, in many European countries it is 7-8 hours, and in some Asian countries it can be 8-9 hours.' },
+  { q: 'Are breaks paid or unpaid?', a: 'This depends on jurisdiction and employer policy. In the US, short breaks (under 20 minutes) are typically paid, while meal breaks (30+ minutes) are often unpaid. Always check local labor laws.' },
+  { q: 'What if I work past midnight?', a: 'If your shift crosses midnight (e.g., 11 PM to 7 AM), the calculator handles it automatically. Enter the times as they appear on a 24-hour clock.' },
+  { q: 'What time format should I use?', a: 'Use 12-hour or 24-hour format. The calculator accepts both. For 12-hour format, make sure to specify AM or PM correctly.' },
+  { q: 'Can I calculate weekly totals?', a: 'This calculator handles a single shift at a time. For weekly totals, add up the daily results or use a spreadsheet for multiple shifts.' },
+  { q: 'Is my data saved anywhere?', a: 'No. All calculations happen entirely in your browser. Nothing is sent to any server or stored.' },
+  { q: 'What is the minimum wage?', a: 'Minimum wage varies by country and region. This calculator does not enforce minimum wage — enter the rate agreed upon with your employer.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="wh-date">Date (optional)</label>
+        <input id="wh-date" type="date" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="wh-start">Start time</label>
+          <input id="wh-start" type="time" value="09:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="wh-end">End time</label>
+          <input id="wh-end" type="time" value="17:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="wh-break">Break (minutes)</label>
+          <input id="wh-break" type="number" value="30" min="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="wh-rate">Hourly rate ($)</label>
+          <input id="wh-rate" type="number" value="25" min="0" step="0.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700" for="wh-ot">Overtime threshold (h)</label>
+          <input id="wh-ot" type="number" value="8" min="0" step="0.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+    </div>
+    <div class="mt-4 text-sm text-slate-500">Time range: <span id="wh-range" class="font-medium text-slate-700">—</span></div>
+    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Total Hours</div><div id="wh-total-hours" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-emerald-600 p-4 text-center text-white"><div class="text-xs opacity-80">Total Minutes</div><div id="wh-total-minutes" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-violet-600 p-4 text-center text-white"><div class="text-xs opacity-80">Overtime Hours</div><div id="wh-ot-hours" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-amber-600 p-4 text-center text-white"><div class="text-xs opacity-80">Break Deduction</div><div id="wh-break-ded" class="mt-1 text-2xl font-bold">—</div></div>
+    </div>
+    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Regular Pay</div><div id="wh-reg-pay" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Overtime Pay</div><div id="wh-ot-pay" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Total Pay</div><div id="wh-total-pay" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Work hours distribution</h2>
+    <div class="mt-3">
+      <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Regular hours</span><span id="wh-reg-label" class="text-slate-400">0.0h</span></div>
+      <div class="mt-1 h-4 w-full rounded-full bg-slate-100"><div id="wh-reg-bar" class="h-4 rounded-full bg-indigo-500 transition-all" style="width:0%"></div></div>
+    </div>
+    <div class="mt-3">
+      <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Overtime hours</span><span id="wh-ot-label" class="text-slate-400">0.0h</span></div>
+      <div class="mt-1 h-4 w-full rounded-full bg-slate-100"><div id="wh-ot-bar" class="h-4 rounded-full bg-amber-500 transition-all" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧑‍💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Employee</h3>
+      <p class="mt-1 text-sm text-slate-600">Track your daily work hours and calculate gross pay including overtime. Verify your timesheet matches your expected earnings.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Freelancer</h3>
+      <p class="mt-1 text-sm text-slate-600">Bill clients accurately by calculating hours worked per project. Set your hourly rate and see earnings for each session.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏢</span>
+      <h3 class="mt-2 font-semibold text-slate-900">HR Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly verify employee timesheets and estimate labor costs. Useful for payroll preprocessing and overtime audit.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏪</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Small Business Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate employee hours and payroll costs for your team. Plan staffing budgets and understand labor expenses.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Standard work hours by country</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="border-b border-slate-200 text-slate-500"><th class="pb-2 pr-4 font-medium">Country</th><th class="pb-2 pr-4 font-medium">Standard Day</th><th class="pb-2 pr-4 font-medium">Standard Week</th><th class="pb-2 font-medium">Overtime Rate</th></tr></thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">United States</td><td class="py-2 pr-4">8 h</td><td class="py-2 pr-4">40 h</td><td class="py-2">1.5x (FLSA)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">United Kingdom</td><td class="py-2 pr-4">8 h</td><td class="py-2 pr-4">48 h max</td><td class="py-2">1.5x (varies)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">France</td><td class="py-2 pr-4">7 h</td><td class="py-2 pr-4">35 h</td><td class="py-2">1.25x - 1.5x</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Germany</td><td class="py-2 pr-4">8 h</td><td class="py-2 pr-4">48 h max</td><td class="py-2">1.5x (varies)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Japan</td><td class="py-2 pr-4">8 h</td><td class="py-2 pr-4">40 h</td><td class="py-2">1.25x - 1.5x</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Australia</td><td class="py-2 pr-4">7.6 h</td><td class="py-2 pr-4">38 h</td><td class="py-2">1.5x - 2x</td></tr>
+          <tr><td class="py-2 pr-4">India</td><td class="py-2 pr-4">9 h</td><td class="py-2 pr-4">48 h</td><td class="py-2">2x</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the work hours calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter shift details</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the date and enter your start and end times in any format.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set break and pay</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter break duration in minutes, your hourly rate, and overtime threshold.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review results</h3>
+        <p class="mt-1 text-sm text-slate-600">See total hours, overtime, break deduction, and calculated pay amounts instantly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Work hours tips</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always account for breaks</h3>
+        <p class="mt-1 text-sm text-slate-600">Unpaid meal breaks reduce your total paid hours. Forgetting to deduct breaks can lead to overestimating your pay by 30+ minutes per shift.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check overtime thresholds</h3>
+        <p class="mt-1 text-sm text-slate-600">Overtime rules vary by jurisdiction. Some places use 8 hours per day, others use 40 hours per week. Verify your local labor laws for accurate calculations.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Time rounding</h3>
+        <p class="mt-1 text-sm text-slate-600">Many employers round time to the nearest 15-minute increment. This calculator shows exact minutes, but your actual pay may use rounding rules.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Standard work hours</h2>
+    <p class="mt-2 text-slate-600">Standard work hours vary globally. The traditional 9-to-5, 8-hour workday originated from the labor movement in the late 19th century. Today, most developed countries have a standard work week of 35-40 hours, with overtime pay required for hours worked beyond the standard threshold.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Overtime rules</h2>
+    <p class="mt-2 text-slate-600">Overtime rules differ by country. In the US, the Fair Labor Standards Act (FLSA) requires overtime at 1.5x the regular rate for hours over 40 per week. In the EU, the Working Time Directive caps weekly work at 48 hours. Many countries have daily overtime thresholds in addition to weekly limits.</p>
+  </section>
+
+  <section class="mt-6">
+    <h2 class="text-xl font-bold text-slate-900">Break requirements by jurisdiction</h2>
+    <p class="mt-2 text-slate-600">Break requirements vary widely. In the US, federal law does not mandate meal breaks, but many states require a 30-minute meal break for shifts over 6 hours. The EU mandates a 20-minute break for shifts over 6 hours. Most countries distinguish between rest breaks (paid, short) and meal breaks (unpaid, longer).</p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+
+    function parseTime(val) {
+      if (!val) return null;
+      const [h, m] = val.split(':').map(Number);
+      return { h, m };
+    }
+
+    function formatCurrency(n) {
+      return '$' + n.toFixed(2);
+    }
+
+    function updateWorkHours() {
+      const start = parseTime($('wh-start').value);
+      const end = parseTime($('wh-end').value);
+      const breakMin = parseInt($('wh-break').value, 10) || 0;
+      const rate = parseFloat($('wh-rate').value) || 0;
+      const otThreshold = parseFloat($('wh-ot').value) || 0;
+
+      if (!start || !end) return;
+
+      let startMin = start.h * 60 + start.m;
+      let endMin = end.h * 60 + end.m;
+
+      if (endMin <= startMin) {
+        endMin += 1440;
+      }
+
+      const totalMin = endMin - startMin - breakMin;
+      const totalHours = Math.max(0, totalMin / 60);
+      const totalMinutes = Math.max(0, totalMin);
+
+      let regHours = Math.min(totalHours, otThreshold);
+      let otHours = Math.max(0, totalHours - otThreshold);
+
+      if (otThreshold === 0) {
+        regHours = totalHours;
+        otHours = 0;
+      }
+
+      const regPay = regHours * rate;
+      const otPay = otHours * rate * 1.5;
+      const totalPay = regPay + otPay;
+
+      const startD = new Date();
+      startD.setHours(start.h, start.m);
+      const endD = new Date();
+      endD.setHours(end.h, end.m);
+
+      const fmtTime = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      $('wh-range').textContent = fmtTime(startD) + ' — ' + fmtTime(endD);
+
+      $('wh-total-hours').textContent = totalHours.toFixed(2) + 'h';
+      $('wh-total-minutes').textContent = totalMinutes + ' min';
+      $('wh-ot-hours').textContent = otHours.toFixed(2) + 'h';
+      $('wh-break-ded').textContent = breakMin + ' min';
+      $('wh-reg-pay').textContent = formatCurrency(regPay);
+      $('wh-ot-pay').textContent = formatCurrency(otPay);
+      $('wh-total-pay').textContent = formatCurrency(totalPay);
+
+      const maxH = Math.max(totalHours, 1);
+      $('wh-reg-bar').style.width = (regHours / maxH * 100) + '%';
+      $('wh-reg-label').textContent = regHours.toFixed(1) + 'h';
+      $('wh-ot-bar').style.width = (otHours / maxH * 100) + '%';
+      $('wh-ot-label').textContent = otHours.toFixed(1) + 'h';
+    }
+
+    ['wh-date', 'wh-start', 'wh-end', 'wh-break', 'wh-rate', 'wh-ot'].forEach((id) => {
+      $(id).addEventListener('input', updateWorkHours);
+    });
+    updateWorkHours();
+  </script>
+</ToolLayout>

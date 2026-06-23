@@ -1,0 +1,313 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Pie Chart Generator';
+const description =
+  'Free online pie chart generator. Create pie charts with proportional slices, percentage labels ' +
+  'and custom colors. Runs in your browser.';
+const intro =
+  'Enter your data labels and values to generate a pie chart with percentage labels and color-coded slices.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  { q: 'How do I enter data for the pie chart?', a: 'Enter one label and value per line, separated by a comma. For example: "Sales,40" followed by "Marketing,25". The tool calculates percentages automatically.' },
+  { q: 'Can I customize slice colors?', a: 'Yes. Use the color picker to choose a starting hue and the tool generates a complementary palette. Each slice gets a distinct color from the palette.' },
+  { q: 'What if my values don\'t add up to 100?', a: 'The tool calculates each slice as a percentage of the total of all values. The chart always shows 100% regardless of what your numbers sum to.' },
+  { q: 'How do I download the pie chart?', a: 'Click "Download PNG" below the canvas. The chart is saved as a high-resolution PNG image ready for use in presentations and reports.' },
+  { q: 'What is the maximum number of slices?', a: 'For readability, the tool supports up to 12 slices. If you have more categories, consider grouping smaller ones into an "Other" category.' },
+  { q: 'Why are percentages shown on the chart?', a: 'Percentage labels make it easy to understand the proportion of each slice at a glance. The values are displayed beside each slice with a connecting line.' },
+  { q: 'Can I change the chart title?', a: 'Yes. Enter a title in the "Chart Title" input field. It is displayed centered above the pie chart.' },
+  { q: 'What happens if I enter only one value?', a: 'A single value creates a full circle at 100%. You need at least two data points to create a meaningful pie chart with multiple slices.' },
+  { q: 'Are the colors accessible for colorblind viewers?', a: 'The tool generates distinct hues that are generally distinguishable. For critical accessibility, add data labels or a legend to ensure the chart is readable in grayscale.' },
+  { q: 'Is my data stored or uploaded?', a: 'No. The pie chart is rendered entirely in your browser using the HTML5 Canvas API. Your data stays on your computer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6">
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Data (label,value per line)</span>
+        <textarea id="data" rows="8" class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Sales,40&#10;Marketing,25&#10;Operations,20&#10;R&D,15">Sales,40
+Marketing,25
+Operations,20
+R&D,15</textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Chart Title</span>
+        <input id="title" type="text" value="Budget Allocation" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Starting Color</span>
+        <input id="piecolor" type="color" value="#4f46e5" class="mt-1 h-10 w-full cursor-pointer rounded-xl border border-slate-300" />
+      </label>
+      <button id="generate" class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate Chart</button>
+      <p id="err" class="hidden text-sm text-red-600"></p>
+    </div>
+    <div class="flex flex-col items-center justify-center">
+      <div class="w-full overflow-hidden rounded-xl border border-slate-200">
+        <canvas id="canvas" class="w-full"></canvas>
+      </div>
+      <button id="download" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Download PNG</button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different chart types mean</h2>
+    <p class="mt-2 text-slate-600">Pie charts are part of a family of chart types, each serving a different purpose in data visualisation. Knowing the distinctions helps you pick the right format.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x25D0;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Pie Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Shows how a total is divided into parts using circular slices. Each slice represents a percentage of the whole. Best for simple part-to-whole relationships.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x25D5;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Donut Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Similar to a pie chart but with a hollow centre. The centre can display a total value or summary. Often considered more modern and easier to read.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl font-bold text-indigo-600">&#x2502;&#x2502;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bar Chart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compares quantities across categories using rectangular bars. More precise than pie charts because comparisons are based on bar height, not slice angles.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl text-indigo-600">&#x25CB;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Treemap</h3>
+        <p class="mt-1 text-sm text-slate-600">Displays hierarchical data as nested rectangles. Like a pie chart it shows proportions, but it can handle many more categories and sub-categories effectively.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4c8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Financial Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses pie charts to show budget allocation, expense categories, revenue composition, and investment portfolio distribution in reports.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4f1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Marketing Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Creates pie charts to display market share breakdowns, traffic source proportions, customer segment distribution, and channel performance.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4d6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Researcher</h3>
+      <p class="mt-1 text-sm text-slate-600">Generates pie charts for survey response distributions, demographic breakdowns, and categorical data summaries in academic publications.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3e2;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Project Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses pie charts to show resource allocation, task distribution by team, time spent on project phases, and budget utilisation rates.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Chart Type</th><th class="p-3">Best Used For</th><th class="p-3">Data Requirements</th><th class="p-3">Limitations</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Pie Chart</td><td class="p-3">Simple part-to-whole proportions</td><td class="p-3">Few categories summing to 100%</td><td class="p-3">Hard to compare similar-sized slices</td></tr>
+        <tr><td class="p-3 font-medium">Donut Chart</td><td class="p-3">Modern proportion display</td><td class="p-3">Same as pie, with centre space</td><td class="p-3">Same comparison issues as pie</td></tr>
+        <tr><td class="p-3 font-medium">Exploded Pie</td><td class="p-3">Highlighting one segment</td><td class="p-3">Pull one slice out for emphasis</td><td class="p-3">Distorts overall shape perception</td></tr>
+        <tr><td class="p-3 font-medium">Semi-circle Pie</td><td class="p-3">Progress or gauge displays</td><td class="p-3">Single metric with target value</td><td class="p-3">Limited to partial-whole comparisons</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to create a pie chart</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type each category label and its numeric value separated by a comma on its own line. The tool calculates the percentage each value contributes to the total.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Customise appearance</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter a chart title and choose a starting color. The tool generates a full color palette based on your chosen hue. Click "Generate Chart".</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download the PNG</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Download PNG" to save your pie chart as a high-resolution image. Use it in presentations, reports, dashboards, or on the web.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective pie charts</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Limit the number of slices</h3>
+        <p class="mt-1 text-sm text-slate-600">Keep your pie chart to 5-7 slices maximum. More slices become hard to distinguish and compare. Group tiny categories into an "Other" slice.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Order slices by size</h3>
+        <p class="mt-1 text-sm text-slate-600">Arrange slices from largest to smallest clockwise for easy scanning. The largest slice should start at the 12 o'clock position.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Add percentage labels</h3>
+        <p class="mt-1 text-sm text-slate-600">Always display percentage values on or near each slice. Without explicit labels, viewers must estimate angles, which the human eye does poorly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use contrasting colors</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose distinct, saturated colors for each slice. Avoid adjacent slices with similar hues. Test your chart in grayscale to ensure it remains readable.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use pie charts</h2>
+    <p class="mt-2 text-slate-600">Pie charts excel at showing simple part-to-whole relationships where the total is meaningful and each segment's contribution needs to be visualised. They work best with a small number of categories (5 or fewer) where the differences between slices are obvious. Common use cases include budget breakdowns, market share distribution, survey response proportions, and resource allocation. Avoid pie charts when you need precise comparisons — the human eye is better at comparing bar heights than slice angles.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Slice ordering</h2>
+    <p class="mt-2 text-slate-600">The order of slices significantly affects readability. The standard convention is to place the largest slice at the 12 o'clock position and arrange subsequent slices clockwise in descending order. This pattern matches how people scan information — from top to bottom and left to right. If a specific category needs emphasis, consider using an exploded pie chart that pulls that slice out slightly from the centre. This tool renders slices in the order you provide, so arrange your data from largest to smallest for best results.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Color coding</h2>
+    <p class="mt-2 text-slate-600">Color is the primary visual differentiator in pie charts. Each slice should have a distinct, easily distinguishable color. Use a systematic palette rather than random colors — for example, shades of a single hue for related categories or a qualitative palette for distinct groups. Consider that approximately 8% of men have some form of color blindness, so avoid relying solely on red-green distinctions. Adding texture patterns or labels directly on slices provides an additional layer of accessibility.</p>
+  </section>
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Percentage calculation</h2>
+    <p class="mt-2 text-slate-600">Each slice angle is calculated by dividing the individual value by the total of all values and multiplying by 360 degrees. For example, a value of 30 out of a total of 100 becomes 30% of the chart, or 108 degrees (0.3 x 360). The tool handles this calculation automatically and displays the percentage next to each slice label. Percentages are rounded to one decimal place for clarity. The sum of all percentages always equals 100%.</p>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data'), titleEl = $('title'), colorEl = $('piecolor');
+    const canvas = $('canvas'), err = $('err');
+
+    function parseData(text) {
+      const lines = text.trim().split('\n').filter(Boolean);
+      const items = [];
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length < 2) continue;
+        const label = parts[0].trim();
+        const val = parseFloat(parts[1].trim());
+        if (isNaN(val) || val <= 0) continue;
+        items.push({ label, value: val });
+      }
+      return items;
+    }
+
+    function hslToRgb(h, s, l) {
+      s /= 100;
+      l /= 100;
+      const c = (1 - Math.abs(2 * l - 1)) * s;
+      const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+      const m = l - c / 2;
+      let r, g, b;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+    }
+
+    function draw() {
+      const items = parseData(dataEl.value);
+      if (items.length < 2) {
+        err.textContent = 'Enter at least two valid data lines (label,value).';
+        err.classList.remove('hidden');
+        return;
+      }
+      err.classList.add('hidden');
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width || 600;
+      const h = 500;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      const total = items.reduce((s, i) => s + i.value, 0);
+      const cx = w * 0.38;
+      const cy = h * 0.42;
+      const radius = Math.min(cx, cy, w * 0.3) - 10;
+
+      const baseHex = colorEl.value;
+      const baseH = parseInt(baseHex.slice(1, 3), 16);
+      const baseS = parseInt(baseHex.slice(3, 5), 16);
+      const baseB = parseInt(baseHex.slice(5, 7), 16);
+      const hue = ((baseH * 36 + baseS * 6 + baseB) % 360);
+
+      let startAngle = -Math.PI / 2;
+
+      for (let i = 0; i < items.length; i++) {
+        const sliceAngle = (items[i].value / total) * 2 * Math.PI;
+        const midAngle = startAngle + sliceAngle / 2;
+
+        const sliceHue = (hue + (i * 360) / items.length) % 360;
+        ctx.fillStyle = hslToRgb(sliceHue, 65, 55);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        const labelR = radius + 20;
+        const lx = cx + Math.cos(midAngle) * labelR;
+        const ly = cy + Math.sin(midAngle) * labelR;
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = midAngle > Math.PI / 2 && midAngle < 3 * Math.PI / 2 ? 'right' : 'left';
+        const pct = ((items[i].value / total) * 100).toFixed(1);
+        ctx.fillText(`${items[i].label} (${pct}%)`, lx, ly + 4);
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(midAngle) * radius, cy + Math.sin(midAngle) * radius);
+        ctx.lineTo(lx, ly);
+        ctx.stroke();
+
+        startAngle += sliceAngle;
+      }
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(titleEl.value, w / 2, 24);
+
+      const legendY = h - 30;
+      const legendX = w / 2 - (items.length * 120) / 2;
+      ctx.font = '11px sans-serif';
+      for (let i = 0; i < items.length; i++) {
+        const lx2 = legendX + i * 120;
+        const sliceHue = (hue + (i * 360) / items.length) % 360;
+        ctx.fillStyle = hslToRgb(sliceHue, 65, 55);
+        ctx.fillRect(lx2, legendY - 6, 12, 12);
+        ctx.fillStyle = '#475569';
+        ctx.textAlign = 'left';
+        ctx.fillText(items[i].label, lx2 + 16, legendY + 4);
+      }
+    }
+
+    $('generate').addEventListener('click', draw);
+    $('download').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'pie-chart.png';
+      a.click();
+    });
+    draw();
+  </script>
+</ToolLayout>
