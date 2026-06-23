@@ -1,0 +1,163 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Battery Replacement Cost Calculator';
+const description = 'Free EV battery replacement cost calculator. Estimate when your EV battery may need replacement and the projected cost based on age, mileage and degradation.';
+const intro = 'Enter your vehicle details, current battery health and local labor rates to estimate the remaining battery life and replacement cost.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How long do EV batteries typically last?', a: 'Most EV batteries last 10-15 years or 100,000-200,000 miles before needing replacement. Modern thermal management and battery management systems help extend life significantly. Many EVs on the road today still have their original batteries after a decade.' },
+  { q: 'How much does it cost to replace an EV battery?', a: 'Costs vary widely by vehicle. A Tesla Model 3 battery costs $7,000-12,000, a Nissan Leaf $5,000-8,000, a Chevy Bolt $8,000-12,000, and an Audi e-Tron $15,000-22,000. Costs include the battery pack, labor, and taxes.' },
+  { q: 'Does EV battery replacement cost come down over time?', a: 'Yes. Battery costs have dropped from over $1,000/kWh in 2010 to about $100-130/kWh in 2025. Projections suggest $50-80/kWh by 2030-2035. This means a replacement battery purchased years from now will likely cost significantly less.' },
+  { q: 'What is covered under EV battery warranty?', a: 'In the US, all EVs have a federally mandated 8-year/100,000-mile warranty on the battery. Most manufacturers guarantee the battery will retain at least 70% capacity during this period. Some brands like Hyundai and Kia offer longer warranties.' },
+  { q: 'What causes EV battery degradation?', a: 'Degradation is caused by charge cycles, high temperatures, fast charging, deep discharges, and time. Calendar aging (chemical degradation over time) is as important as cycle aging. Storing at high state of charge accelerates degradation.' },
+  { q: 'Can I replace individual battery modules instead of the whole pack?', a: 'Some manufacturers design their battery packs with replaceable modules (e.g., Chevy Bolt, Nissan Leaf). Others like Tesla use structural packs where the entire assembly must be replaced. Module-level replacement is typically cheaper when available.' },
+  { q: 'What is the difference between NMC, LFP and LTO batteries?', a: 'NMC (Nickel Manganese Cobalt) offers high energy density but degrades faster. LFP (Lithium Iron Phosphate) is less energy dense but lasts much longer (2,000-5,000 cycles). LTO (Lithium Titanate) lasts very long but has low energy density and is rarely used in passenger EVs.' },
+  { q: 'Should I buy a remanufactured or new battery?', a: 'Remanufactured batteries cost 30-50% less and often come with a warranty. They use recycled cells from vehicles with other failed components. New batteries give full capacity and the longest life. Choose based on how long you plan to keep the vehicle.' },
+  { q: 'Can I replace an EV battery myself?', a: 'DIY battery replacement is extremely dangerous due to high voltage (300-800V DC) and the risk of electric shock or fire. It also voids warranties and may violate local regulations. Professional replacement is strongly recommended.' },
+  { q: 'Will my EV battery need replacement or just degrade gradually?', a: 'Batteries degrade gradually rather than failing suddenly. Most users will experience reduced range over time rather than a complete failure. Replacement is needed when range no longer meets your daily needs, typically at 70-80% of original capacity.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle age (years)</span>
+        <input id="age" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total miles driven</span>
+        <input id="miles" type="number" step="any" placeholder="60000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Original battery capacity (kWh)</span>
+        <input id="origCap" type="number" step="any" placeholder="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current capacity (kWh) or degradation %</span>
+        <input id="curCap" type="number" step="any" placeholder="68" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery chemistry</span>
+        <select id="chem" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="nmc">NMC (Nickel Manganese Cobalt)</option>
+          <option value="lfp" selected>LFP (Lithium Iron Phosphate)</option>
+          <option value="lto">LTO (Lithium Titanate)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Local labor rate ($/hr)</span>
+        <input id="labor" type="number" step="any" placeholder="150" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current battery cost ($/kWh)</span>
+        <input id="costKwh" type="number" step="any" placeholder="130" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Remaining life</div><div id="r-life" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Replace cost today</div><div id="r-today" class="mt-1 text-xl font-bold text-red-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Projected cost at replace</div><div id="r-proj" class="mt-1 text-xl font-bold text-amber-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Cost/month of ownership</div><div id="r-monthly" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different battery costs per kWh mean</h2>
+    <p class="mt-2 text-slate-600">The cost of lithium-ion battery packs has fallen dramatically over the last decade and is projected to continue declining as manufacturing scales and chemistry improves.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2010</span><span class="text-slate-400">$1,000+ / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2015</span><span class="text-slate-400">~$350 / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:35%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2020</span><span class="text-slate-400">~$140 / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:14%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2025</span><span class="text-slate-400">~$100 / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:10%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2030 (projected)</span><span class="text-slate-400">~$70 / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:7%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">2035 (projected)</span><span class="text-slate-400">~$50 / kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-green-600" style="width:5%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔍</span><h3 class="mt-2 font-semibold text-slate-900">Used EV buyer</h3><p class="mt-1 text-sm text-slate-600">Assess remaining battery life and potential replacement costs when shopping for a pre-owned EV to make an informed purchase decision.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏠</span><h3 class="mt-2 font-semibold text-slate-900">Long-term owner</h3><p class="mt-1 text-sm text-slate-600">Plan ahead for eventual battery replacement and budget accordingly. Understand how driving habits affect battery longevity.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🚛</span><h3 class="mt-2 font-semibold text-slate-900">Fleet operator</h3><p class="mt-1 text-sm text-slate-600">Model total cost of ownership including battery replacement for your EV fleet and optimise replacement timing across vehicles.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📋</span><h3 class="mt-2 font-semibold text-slate-900">Warranty manager</h3><p class="mt-1 text-sm text-slate-600">Evaluate whether vehicles are likely to need in-warranty battery replacement based on degradation rates and usage patterns.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Popular EV</th><th class="p-3">Battery size</th><th class="p-3">Replacement cost</th><th class="p-3">Cost per kWh</th><th class="p-3">Labor included</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Tesla Model 3</td><td class="p-3">60-82 kWh</td><td class="p-3">$7,000 – $12,000</td><td class="p-3">~$130/kWh</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Tesla Model Y</td><td class="p-3">75-82 kWh</td><td class="p-3">$8,000 – $13,000</td><td class="p-3">~$130/kWh</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Nissan Leaf</td><td class="p-3">40-62 kWh</td><td class="p-3">$5,000 – $8,000</td><td class="p-3">~$140/kWh</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Chevy Bolt</td><td class="p-3">65 kWh</td><td class="p-3">$8,000 – $12,000</td><td class="p-3">~$150/kWh</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Audi e-Tron</td><td class="p-3">95 kWh</td><td class="p-3">$15,000 – $22,000</td><td class="p-3">~$190/kWh</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Hyundai Ioniq 5</td><td class="p-3">58-77 kWh</td><td class="p-3">$8,000 – $14,000</td><td class="p-3">~$150/kWh</td><td class="p-3">Yes</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Battery Replacement Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter vehicle details</h3><p class="mt-1 text-sm text-slate-600">Input your EV's age, mileage, original and current battery capacity. Check your dashboard or infotainment screen for capacity data.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Assess degradation</h3><p class="mt-1 text-sm text-slate-600">Select your battery chemistry and enter the current degradation level. LFP batteries degrade more slowly than NMC but may need calibration.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Get replacement estimate</h3><p class="mt-1 text-sm text-slate-600">See remaining battery life, estimated replacement cost today, projected cost at replacement time, and monthly cost of ownership over the battery's life.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for EV battery management</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Batteries last longer than expected</h3><p class="mt-1 text-sm text-slate-600">Most modern EV batteries are outlasting initial projections. Data from fleet vehicles shows average degradation of only 1-2% per year. Many EVs will easily surpass 200,000 miles on their original battery.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Warranty covers 8 years / 100,000 miles</h3><p class="mt-1 text-sm text-slate-600">Federal law mandates 8-year/100k-mile battery warranty. Most manufacturers cover any failure or degradation below 70% capacity. Check your specific warranty terms as some brands offer longer coverage.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Consider remanufactured options</h3><p class="mt-1 text-sm text-slate-600">Remanufactured batteries cost 30-50% less than new ones and often come with a 1-2 year warranty. They are an excellent option for older EVs where a new battery would exceed the car's value.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Charge habits matter</h3><p class="mt-1 text-sm text-slate-600">Keeping the battery between 20-80% charge, minimising DC fast charging, and avoiding extreme temperatures can significantly slow degradation. LFP batteries benefit from occasional 100% charges to calibrate the BMS.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Battery lifespan</h2>
+    <p class="mt-2 text-slate-600">EV batteries degrade through two mechanisms: cycle aging (from charging and discharging) and calendar aging (chemical reactions over time). Cycle aging depends on usage patterns — frequent fast charging and deep discharges accelerate it. Calendar aging happens regardless of use and is accelerated by high temperatures and high state of charge. Modern battery management systems mitigate both through active thermal management and charge optimization.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Warranty coverage</h2>
+    <p class="mt-2 text-slate-600">All EVs sold in the US come with a federal minimum 8-year/100,000-mile battery warranty. This covers defects and capacity loss below 70% of original. Some manufacturers exceed this: Kia/Hyundai offer 10-year/100,000-mile, Tesla offers 8-year/100-150k miles depending on model. The warranty transfers to subsequent owners for most brands, which is an important consideration for used EV buyers.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Cost declining over time</h2>
+    <p class="mt-2 text-slate-600">Battery pack prices have fallen from over $1,000/kWh in 2010 to approximately $100/kWh in 2025, driven by manufacturing scale, improved chemistries, and better supply chains. Projections suggest $50-70/kWh by 2030-2035. This means a replacement battery for a current EV will likely cost 30-60% less when it is actually needed in 10-15 years.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Remanufactured vs new</h2>
+    <p class="mt-2 text-slate-600">New batteries offer full capacity, latest cell technology, and full manufacturer warranty. Remanufactured batteries reuse cells from vehicles retired for other reasons (accidents, etc.), tested and sorted to match capacity. They cost significantly less but may have 80-90% of new capacity. For older vehicles worth less than $15,000, remanufactured is often the economical choice.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">DIY vs professional replacement</h2>
+    <p class="mt-2 text-slate-600">EV battery replacement involves 300-800V DC systems capable of delivering lethal current. Professional replacement at a certified shop is strongly recommended. The process requires lifting equipment, high-voltage safety training, proper disposal of old batteries, and software recalibration. Cost typically includes 4-8 hours of labor plus the battery pack. DIY is only advisable for experienced EV technicians.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const age = parseFloat(el('age').value) || 0;
+      const miles = parseFloat(el('miles').value) || 0;
+      const origCap = parseFloat(el('origCap').value) || 0;
+      const curCap = parseFloat(el('curCap').value) || 0;
+      const chem = el('chem').value;
+      const labor = parseFloat(el('labor').value) || 0;
+      const costKwh = parseFloat(el('costKwh').value) || 0;
+
+      if (!age || !miles || !origCap || !curCap || !labor || !costKwh) {
+        el('r-life').textContent = '\u2014';
+        el('r-today').textContent = '\u2014';
+        el('r-proj').textContent = '\u2014';
+        el('r-monthly').textContent = '\u2014';
+        return;
+      }
+
+      const degradationPct = (origCap - curCap) / origCap;
+      const chemFactor = chem === 'lfp' ? 2000 : chem === 'lto' ? 5000 : 1000;
+      const annualDegRate = degradationPct / Math.max(age, 0.5);
+      const endOfLife = 0.3;
+      const yearsRemaining = (endOfLife - degradationPct) / Math.max(annualDegRate, 0.005);
+      const milesRemaining = yearsRemaining * (miles / age);
+      const replaceCostToday = curCap * costKwh + labor * 6;
+      const yearsToReplace = Math.max(0, yearsRemaining);
+      const projectedCostKwh = costKwh * Math.pow(0.85, Math.min(yearsToReplace, 10));
+      const projectedCost = curCap * projectedCostKwh + labor * 6;
+      const totalMonths = (age + yearsToReplace) * 12;
+      const monthlyCost = replaceCostToday / totalMonths;
+
+      el('r-life').textContent = yearsRemaining.toFixed(1) + ' yr';
+      el('r-today').textContent = '$' + replaceCostToday.toFixed(0);
+      el('r-proj').textContent = '$' + projectedCost.toFixed(0);
+      el('r-monthly').textContent = '$' + monthlyCost.toFixed(2) + '/mo';
+    }
+
+    ['age','miles','origCap','curCap','chem','labor','costKwh'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

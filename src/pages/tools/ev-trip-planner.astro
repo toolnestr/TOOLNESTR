@@ -1,0 +1,145 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Trip / Road Trip Planner';
+const description = 'Free EV road trip planner. Estimate number of charging stops, total charging time and charging cost for a long-distance journey.';
+const intro = 'Enter your route distance, vehicle efficiency, battery size, and charging speed to plan charging stops, time and cost for your road trip.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How many charging stops will I need?', a: 'The number of stops depends on your vehicle range, route distance, and charging strategy. Most EVs need to stop every 150-250 miles. For a 500-mile trip, expect 2-3 stops. Our calculator accounts for efficiency, battery size, and the 10-80% sweet spot for charging.' },
+  { q: 'What is the 10-80% charging rule?', a: 'Most EV batteries charge fastest between 10% and 80% state of charge. Beyond 80%, charging speed drops significantly to protect battery health. Planning stops around this window minimizes total charging time on road trips.' },
+  { q: 'How long does it take to charge on a road trip?', a: 'A typical DC fast charging session from 10% to 80% takes 20-40 minutes depending on the vehicle and charger speed. Newer 800V EVs like the Hyundai Ioniq 5 or Porsche Taycan can charge from 10-80% in as little as 18 minutes.' },
+  { q: 'Does weather affect range on road trips?', a: 'Yes, cold weather can reduce range by 20-40% due to increased air density, rolling resistance, and battery chemistry slowdowns. Hot weather with AC use reduces range by 10-20%. Rain and headwinds also decrease efficiency significantly.' },
+  { q: 'What is the best charging network for road trips?', a: 'Tesla Supercharger network offers the best coverage and reliability in North America and Europe. CCS networks like Electrify America, EVgo, and Ionity are expanding rapidly. For long-distance travel, having access to multiple networks provides the most flexibility.' },
+  { q: 'Should I charge to 100% for a road trip?', a: 'Only charge to 100% if you need the extra range immediately and are leaving right away. Charging above 80% takes much longer and the last 20% can take as long as the first 60%. It\'s often faster to charge to 80% and make an additional stop.' },
+  { q: 'How does driving speed affect range?', a: 'EV range drops significantly at highway speeds. At 75 mph, most EVs use 20-30% more energy than at 55 mph. Driving at 65 mph instead of 75 mph can extend your range by 30-50 miles and reduce the number of charging stops needed.' },
+  { q: 'What is preconditioning the battery?', a: 'Preconditioning warms the battery to optimal charging temperature before arriving at a fast charger. Many modern EVs do this automatically when you navigate to a charger. A preconditioned battery can charge 2-3x faster than a cold battery.' },
+  { q: 'How much does road trip charging cost?', a: 'DC fast charging typically costs $0.30-$0.60 per kWh, making a full charge cost $20-$50 depending on battery size. Tesla Supercharging costs about $0.25-$0.50 per kWh. Charging at home overnight costs much less at $0.10-$0.20 per kWh.' },
+  { q: 'Can I plan a road trip without a smartphone app?', a: 'Yes, but it\'s harder. Most EVs have built-in navigation that plans charging stops. Dedicated apps like A Better Routeplanner, PlugShare, and manufacturer apps provide real-time charger availability and route optimization.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total trip distance (miles)</span>
+        <input id="distance" type="number" step="any" placeholder="500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle efficiency (mi/kWh)</span>
+        <input id="efficiency" type="number" step="any" placeholder="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity (kWh)</span>
+        <input id="capacity" type="number" step="any" placeholder="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Starting charge (%)</span>
+        <input id="startPct" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Target arrival charge (%)</span>
+        <input id="targetPct" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Average charging power (kW)</span>
+        <input id="power" type="number" step="any" placeholder="150" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Charger cost per kWh ($)</span>
+        <input id="costPerKwh" type="number" step="any" placeholder="0.35" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-sm opacity-80">Total energy needed</div><div id="r-energy" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Charging stops</div><div id="r-stops" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Total charge time</div><div id="r-time" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Total charging cost</div><div id="r-cost" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different trip time breakdowns mean</h2>
+    <p class="mt-2 text-slate-600">Your total trip time consists of driving time plus charging time. The ratio changes based on distance and charging speed.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">100 mi trip</span><span class="text-slate-400">~2h drive, 0h charge</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">250 mi trip</span><span class="text-slate-400">~4h drive, 25m charge</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:85%"></div><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">500 mi trip</span><span class="text-slate-400">~8h drive, 50m charge</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:80%"></div><div class="h-3 rounded-full bg-amber-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">1000 mi trip</span><span class="text-slate-400">~16h drive, 2h charge</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:75%"></div><div class="h-3 rounded-full bg-amber-500" style="width:25%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDDFA\uFE0F</span><h3 class="mt-2 font-semibold text-slate-900">Road Trip Planner</h3><p class="mt-1 text-sm text-slate-600">Plan your next EV road trip with confidence, knowing exactly where and how long you need to stop for charging along your route.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDC69\u200D\uD83D\uDC68\u200D\uD83D\uDC67\u200D\uD83D\uDC66</span><h3 class="mt-2 font-semibold text-slate-900">Family Vacationer</h3><p class="mt-1 text-sm text-slate-600">Coordinate charging stops with meal breaks, bathroom breaks, and sightseeing to make the journey as enjoyable as the destination.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83C\uDF0D</span><h3 class="mt-2 font-semibold text-slate-900">Cross-country Driver</h3><p class="mt-1 text-sm text-slate-600">Tackle long-distance cross-country trips with optimized charging strategies that minimize delays and maximize time on the road.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDE82</span><h3 class="mt-2 font-semibold text-slate-900">Fleet Dispatcher</h3><p class="mt-1 text-sm text-slate-900">Optimize delivery and service routes for your EV fleet, balancing charging stops with operational schedules to maintain efficiency.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Charging network</th><th class="p-3">Connector type</th><th class="p-3">Typical power</th><th class="p-3">Coverage</th><th class="p-3">Cost / kWh</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Tesla Supercharger</td><td class="p-3">NACS</td><td class="p-3">150-250 kW</td><td class="p-3">Excellent (US/EU)</td><td class="p-3">$0.25-0.50</td></tr>
+        <tr><td class="p-3 font-medium">Electrify America</td><td class="p-3">CCS</td><td class="p-3">50-350 kW</td><td class="p-3">Good (US)</td><td class="p-3">$0.31-0.56</td></tr>
+        <tr><td class="p-3 font-medium">EVgo</td><td class="p-3">CCS / CHAdeMO</td><td class="p-3">50-350 kW</td><td class="p-3">Moderate (US)</td><td class="p-3">$0.29-0.49</td></tr>
+        <tr><td class="p-3 font-medium">Ionity</td><td class="p-3">CCS</td><td class="p-3">50-350 kW</td><td class="p-3">Good (EU)</td><td class="p-3">€0.35-0.79</td></tr>
+        <tr><td class="p-3 font-medium">ChargePoint</td><td class="p-3">CCS / NACS</td><td class="p-3">62.5-500 kW</td><td class="p-3">Moderate (Global)</td><td class="p-3">$0.25-0.49</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the EV Trip Planner</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter route + vehicle</h3><p class="mt-1 text-sm text-slate-600">Input the total trip distance, your vehicle's efficiency in mi/kWh, battery capacity, and starting charge percentage.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Get stop plan</h3><p class="mt-1 text-sm text-slate-600">The calculator determines how many charging stops you need, the energy required per segment, and the total energy needed for the trip.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Estimate time + cost</h3><p class="mt-1 text-sm text-slate-600">Review total charging time and total cost based on your average charging speed and local electricity or charger rates.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for a smooth EV road trip</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Plan stops at 10-80%</h3><p class="mt-1 text-sm text-slate-600">The fastest charging occurs between 10% and 80% state of charge. Plan your stops to arrive with low battery and leave around 80% to minimize total charging time. The charge curve drops sharply above 80%.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Precondition the battery</h3><p class="mt-1 text-sm text-slate-600">Use your EV's navigation system to route to the charger so the battery preconditioning activates. A warm battery charges significantly faster than a cold one, especially in winter when preconditioning can double charging speed.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Combine stops with meals</h3><p class="mt-1 text-sm text-slate-600">Choose chargers located near restaurants, restrooms, or attractions. A 30-40 minute charging session is the perfect time for a meal break. This turns charging downtime into a productive or enjoyable stop.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Use multiple route planners</h3><p class="mt-1 text-sm text-slate-600">Don\'t rely on a single app. Cross-reference A Better Routeplanner, PlugShare, and your car\'s built-in navigation. PlugShare user reviews are especially valuable for checking if a charger is actually working and reliable.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Route planning strategy</h2>
+    <p class="mt-2 text-slate-600">The key to efficient EV road trips is planning charging stops where charging speed is highest (10-80%) and combining them with natural breaks. Leave home with 100%, drive until you reach 10%, charge to 80%, repeat. For a 500-mile trip in a 300-mile rated EV, you\'ll typically need one intermediate stop. Use the calculator above to model your specific vehicle and route.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">The 10-80% rule</h2>
+    <p class="mt-2 text-slate-600">Almost all modern EVs have a charging curve that delivers maximum power between 10% and 80% state of charge. Below 10%, the battery management system limits power to protect the battery. Above 80%, charging speed gradually tapers to avoid overheating. For example, a 150 kW-rated charger may deliver 150 kW at 20%, 80 kW at 80%, and only 30 kW at 95%. This makes 10-80% the sweet spot for road trip charging.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Charging network comparison</h2>
+    <p class="mt-2 text-slate-600">Tesla\'s Supercharger network remains the gold standard with the most reliable and widespread coverage. CCS networks are rapidly catching up, with Electrify America and EVgo expanding in the US and Ionity and Fastned in Europe. CHAdeMO is being phased out. With Tesla opening its network to other brands via NACS, the charging landscape is converging toward a unified standard.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Seasonal impacts on range</h2>
+    <p class="mt-2 text-slate-600">Winter driving can reduce range by 20-40% due to cold battery chemistry, increased air density, and cabin heating demands. Summer AC use reduces range by 10-20%. Rain, snow, and strong headwinds further reduce efficiency. Always add a 20-30% buffer to your range estimates during adverse weather conditions and plan more frequent stops.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const distance = parseFloat(el('distance').value);
+      const efficiency = parseFloat(el('efficiency').value);
+      const capacity = parseFloat(el('capacity').value);
+      const startPct = parseFloat(el('startPct').value);
+      const targetPct = parseFloat(el('targetPct').value);
+      const power = parseFloat(el('power').value);
+      const costPerKwh = parseFloat(el('costPerKwh').value);
+
+      if (isNaN(distance) || isNaN(efficiency) || isNaN(capacity) || isNaN(startPct) || isNaN(targetPct) || isNaN(power) || isNaN(costPerKwh) || distance <= 0 || efficiency <= 0 || capacity <= 0 || power <= 0) {
+        ['r-energy','r-stops','r-time','r-cost'].forEach(id => el(id).textContent = '\u2014');
+        return;
+      }
+
+      const totalEnergyNeeded = distance / efficiency;
+      const usableRange = capacity * efficiency * ((startPct - targetPct) / 100);
+      const stops = Math.max(0, Math.ceil((distance - usableRange) / (capacity * 0.7 * efficiency)));
+      const energyToCharge = stops > 0 ? totalEnergyNeeded - (capacity * startPct / 100) + (capacity * targetPct / 100) : 0;
+      const chargeTimeH = energyToCharge > 0 ? energyToCharge / power : 0;
+      const chargeTimeM = chargeTimeH * 60;
+      const totalCost = energyToCharge * costPerKwh;
+
+      el('r-energy').textContent = totalEnergyNeeded.toFixed(1) + ' kWh';
+      el('r-stops').textContent = stops;
+      el('r-time').textContent = Math.round(chargeTimeM) + ' min';
+      el('r-cost').textContent = '$' + Math.max(0, totalCost).toFixed(2);
+    }
+
+    ['distance','efficiency','capacity','startPct','targetPct','power','costPerKwh'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

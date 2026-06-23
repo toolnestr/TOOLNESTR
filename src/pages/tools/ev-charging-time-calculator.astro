@@ -1,0 +1,247 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Charging Time Calculator';
+const description =
+  'Free EV charging time calculator. Estimate how long to charge your EV from any start % to ' +
+  'target % at Level 1, Level 2 or DC fast charging speeds.';
+const intro =
+  'Enter your battery size, current charge level, target charge level, and charger power to ' +
+  'get the estimated charging time.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How is EV charging time calculated?', a: 'Charging time is calculated as (battery capacity × (target% − start%) ÷ 100) ÷ charger power. However, real charging follows a curve — power tapers significantly above 80% SoC, so actual times are longer than the simple formula suggests.' },
+  { q: 'Why does charging slow down above 80%?', a: 'Lithium-ion batteries have a charging curve: they accept maximum power from 0–80%, then the Battery Management System (BMS) gradually reduces power to prevent overheating and cell damage. The 80–100% segment can take as long as the 0–80% segment, which is why most manufacturers recommend charging to 80% on road trips.' },
+  { q: 'What is the difference between L1, L2 and DC charging?', a: 'Level 1 uses a standard 120V household outlet (1.4–1.9 kW) and adds 3–5 miles of range per hour. Level 2 uses a 240V outlet or dedicated charger (3.3–19.2 kW) and adds 20–30+ miles per hour. DC fast charging (50–350 kW) can add 200+ miles in 20–30 minutes.' },
+  { q: 'How long does it take to charge an EV at home?', a: 'On a 7.2 kW Level 2 charger, a 75 kWh battery charges from 10% to 80% in about 7 hours — perfect for overnight. On a standard Level 1 outlet, the same charge takes 30–40 hours, so Level 2 is strongly recommended for home charging.' },
+  { q: 'Does battery size affect charging speed?', a: 'Yes, but not in the way you might think. Larger batteries can typically accept higher peak charging power because they have more cells in parallel. A 100 kWh pack might charge at 250 kW, while a 40 kWh pack maxes out at 100 kW on the same DC fast charger.' },
+  { q: 'What is the charging curve?', a: 'The charging curve describes how power delivery changes during a charging session. DC fast chargers deliver peak power from roughly 5–40% SoC, then gradually taper. By 80%, power may drop to 50% of peak. By 90%+, it drops to 20–30%. This is why charging from 10–80% is much faster than 80–100%.' },
+  { q: 'Should I charge to 100% every time?', a: 'For NMC batteries (most EVs): only charge to 100% for long trips. Daily charging to 80–90% prolongs battery life. For LFP batteries (Tesla RWD, some standard range models): you can charge to 100% regularly and the BMS recommends it for accurate range estimation.' },
+  { q: 'Does cold weather affect charging speed?', a: 'Yes. In cold temperatures, the battery management system limits charging power to protect the cells. At 0°C, DC fast charging can be 30–50% slower than at 25°C. Preconditioning the battery (warming it before charging) helps restore normal speeds.' },
+  { q: 'What is battery preconditioning?', a: 'Many modern EVs can warm their battery in anticipation of fast charging, either automatically when navigating to a charger or manually. Preconditioning brings the battery to optimal temperature (25–35°C), enabling faster charging speeds and protecting battery health.' },
+  { q: 'What connector types are there?', a: 'North America uses CCS (combined charging system) for most EVs and NACS (Tesla) which is being adopted industry-wide. Europe uses CCS Type 2. Japan uses CHAdeMO (mainly Nissan Leaf). All support AC and DC charging through different pins in the same connector.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity (kWh)</span>
+        <input id="bat" type="number" step="0.1" placeholder="75" value="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Start charge (%)</span>
+        <input id="start" type="number" step="1" placeholder="20" value="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Target charge (%)</span>
+        <input id="target" type="number" step="1" placeholder="80" value="80" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Charger type</span>
+        <select id="chg" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1.4">Level 1 (1.4 kW — 120V 12A)</option>
+          <option value="1.9">Level 1 (1.9 kW — 120V 16A)</option>
+          <option value="3.3">Level 2 (3.3 kW — 240V 16A)</option>
+          <option value="7.2" selected>Level 2 (7.2 kW — 240V 30A)</option>
+          <option value="11">Level 2 (11 kW — 240V 48A)</option>
+          <option value="19.2">Level 2 (19.2 kW — 240V 80A)</option>
+          <option value="50">DC Fast (50 kW)</option>
+          <option value="150">DC Fast (150 kW)</option>
+          <option value="350">DC Fast (350 kW)</option>
+        </select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Charging time</div><div id="r-time" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Energy delivered</div><div id="r-energy" class="mt-1 text-2xl font-bold text-indigo-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Range added (mi)</div><div id="r-range" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="curve-note" class="mt-3 text-center text-xs text-slate-400"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different charging speeds mean</h2>
+    <p class="mt-2 text-slate-600">The bars below compare the range added per hour of charging for the main charging levels on a typical EV.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 1 (1.4 kW)</span><span class="text-slate-400">3–5 mi/hr — Overnight top-up</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:5%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 (7.2 kW)</span><span class="text-slate-400">20–30 mi/hr — Home/work overnight</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:28%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 (19.2 kW)</span><span class="text-slate-400">55–70 mi/hr — High-power home/work</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:65%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">DC Fast (150 kW)</span><span class="text-slate-400">200+ mi/hr — Public stations</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:90%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">DC Fast (350 kW)</span><span class="text-slate-400">500+ mi/hr — Ultra-rapid charging</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">EV Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan your home charging schedule by knowing exactly how long it takes to charge from your typical daily discharge level to your desired target.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧭</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Road Trip Planner</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate charging stops along your route — factor in charging curves to know whether a 10–80% or 20–70% stop makes the most of your time.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚛</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fleet Operator</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate depot charging requirements — determine how many Level 2 chargers you need to return your fleet to full charge within your overnight window.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏢</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Apartment Dweller</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare Level 1 vs Level 2 charging times for your building so you can make an informed request to your landlord or strata for charger installation.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Battery</th><th class="p-3">L1 (1.4 kW)</th><th class="p-3">L2 (3.3 kW)</th><th class="p-3">L2 (7.2 kW)</th><th class="p-3">L2 (11 kW)</th><th class="p-3">DC 50 kW</th><th class="p-3">DC 150 kW</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">40 kWh (10–80%)</td><td class="p-3">20h 00m</td><td class="p-3">8h 29m</td><td class="p-3">3h 53m</td><td class="p-3">2h 33m</td><td class="p-3">34m</td><td class="p-3">14m</td></tr>
+        <tr><td class="p-3 font-medium">60 kWh (10–80%)</td><td class="p-3">30h 00m</td><td class="p-3">12h 44m</td><td class="p-3">5h 50m</td><td class="p-3">3h 49m</td><td class="p-3">51m</td><td class="p-3">20m</td></tr>
+        <tr><td class="p-3 font-medium">80 kWh (10–80%)</td><td class="p-3">40h 00m</td><td class="p-3">16h 58m</td><td class="p-3">7h 47m</td><td class="p-3">5h 05m</td><td class="p-3">1h 08m</td><td class="p-3">27m</td></tr>
+        <tr><td class="p-3 font-medium">100 kWh (10–80%)</td><td class="p-3">50h 00m</td><td class="p-3">21h 13m</td><td class="p-3">9h 43m</td><td class="p-3">6h 22m</td><td class="p-3">1h 24m</td><td class="p-3">34m</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the EV Charging Time Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter battery size</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your EV battery capacity in kWh. You can find this in your owner's manual or the manufacturer's website specification sheet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set charge levels + pick charger</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your starting charge percentage and target percentage, then select the charger type you plan to use from the dropdown.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See charging time</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator shows total time, energy delivered, and range added. A charging curve adjustment is applied for DC fast charging above 50 kW.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for faster and smarter charging</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Charging slows above 80%</h3>
+        <p class="mt-1 text-sm text-slate-600">On DC fast chargers, the 80–100% segment can take as long as 10–80%. For road trips, charge to 80% and move on — you'll get to your destination faster with multiple shorter stops.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Precondition your battery</h3>
+        <p class="mt-1 text-sm text-slate-600">When navigating to a DC fast charger, use your car's battery preconditioning feature (if available). This warms the battery to optimal temperature for faster charging, especially in cold weather.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand the charging curve</h3>
+        <p class="mt-1 text-sm text-slate-600">EVs don't charge at a constant rate. The charging curve means peak power only lasts from roughly 5–40% SoC. Plan your charging stops to arrive with low battery and leave around 80% for maximum speed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Level 1 (120V AC) charging explained</h2>
+    <p class="mt-2 text-slate-600">
+      Level 1 uses a standard household 120V outlet with the portable charger that comes with every EV.
+      It delivers 1.4–1.9 kW — enough to add about 3–5 miles of range per hour. This is the slowest
+      method but requires no installation cost. It is adequate for plug-in hybrids with small batteries
+      or EV owners who drive fewer than 40 miles per day.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Level 2 (240V AC) charging explained</h2>
+    <p class="mt-2 text-slate-600">
+      Level 2 uses a 240V circuit (like an electric dryer or oven outlet) or a dedicated EV charger.
+      Power ranges from 3.3 kW to 19.2 kW, adding 12–70 miles of range per hour. Most home chargers
+      are 7.2–11 kW. A typical overnight charge of 8 hours can replenish 150–250 miles — enough for
+      nearly any daily driving need.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DC fast charging (Level 3) explained</h2>
+    <p class="mt-2 text-slate-600">
+      DC fast charging converts AC to DC inside the charger station and feeds DC directly to the
+      battery, bypassing the car's onboard charger. Power levels range from 50 kW to 350 kW.
+      A 150 kW charger can add about 200 miles of range in 30 minutes. Modern 800V architecture
+      EVs can achieve peak charging speeds above 250 kW.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">AC vs DC charging</h2>
+    <p class="mt-2 text-slate-600">
+      AC charging (Level 1 and Level 2) uses the car's onboard charger to convert AC to DC before
+      storing it in the battery. This is slower but generates less heat and is better for long-term
+      battery health. DC charging converts the power in the station and feeds DC directly to the
+      battery — much faster but generates more heat. Daily use of DC fast charging can accelerate
+      battery degradation compared to AC charging.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Charging connector types</h2>
+    <p class="mt-2 text-slate-600">
+      The connector landscape varies by region. In North America, the CCS (Combined Charging System)
+      connector is used by most manufacturers, while Tesla uses its proprietary NACS connector. In
+      Europe, CCS Type 2 is standard. CHAdeMO is used by Nissan (Leaf) and some Mitsubishi models,
+      though it is being phased out. Many modern EVs now support the new NACS standard as North
+      America shifts toward a unified connector.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function fmtHms(hours) {
+      const h = Math.floor(hours);
+      const m = Math.round((hours - h) * 60);
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
+    }
+    function update() {
+      const bat = parseFloat(el('bat').value);
+      const start = parseFloat(el('start').value);
+      const target = parseFloat(el('target').value);
+      const chgKw = parseFloat(el('chg').value);
+      if (isNaN(bat) || isNaN(start) || isNaN(target) || isNaN(chgKw) || bat <= 0 || start < 0 || target > 100 || start >= target) {
+        ['r-time','r-energy','r-range'].forEach(id => el(id).textContent = '—');
+        el('curve-note').textContent = ''; return;
+      }
+      const pct = (target - start) / 100;
+      const energyNeeded = bat * pct;
+      let effKw = chgKw;
+      let curveNote = '';
+      if (chgKw >= 50 && target > 80) {
+        const normalTime = energyNeeded / chgKw;
+        const taperPenalty = (target - 80) / (target - start) * 0.6;
+        const curvedTime = normalTime * (1 + taperPenalty);
+        effKw = energyNeeded / curvedTime;
+        curveNote = '* DC fast charging curve applied: time includes taper above 80% SoC';
+      }
+      const timeH = energyNeeded / effKw;
+      const rangeAdded = energyNeeded * 3.5;
+      el('r-time').textContent = fmtHms(timeH);
+      el('r-energy').textContent = energyNeeded.toFixed(1) + ' kWh';
+      el('r-range').textContent = Math.round(rangeAdded) + ' mi';
+      el('curve-note').textContent = curveNote;
+    }
+    document.querySelectorAll('input,select').forEach(e => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

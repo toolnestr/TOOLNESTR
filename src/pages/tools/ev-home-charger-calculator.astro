@@ -1,0 +1,173 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Home Charger Install Calculator';
+const description = 'Free home EV charger calculator. Determine the correct breaker size, wire gauge and conduit size for Level 1 and Level 2 charger installation.';
+const intro = 'Enter your charger\'s power rating and distance from the panel to get recommended breaker size, minimum wire gauge, conduit size and estimated installation cost.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'Do I need a permit to install an EV charger?', a: 'Yes, most jurisdictions require an electrical permit for EV charger installation. A licensed electrician will handle permits and inspections. Permits typically cost $50-$200 and ensure the installation meets local building codes and safety standards.' },
+  { q: 'What size breaker do I need for Level 2 charging?', a: 'A 50-amp breaker is standard for 40-amp (9.6 kW) Level 2 chargers. The breaker must be sized at 125% of the continuous load per NEC. A 40-amp charger requires a 50-amp breaker (40 × 1.25 = 50). Always follow NEC guidelines.' },
+  { q: 'Can I plug my EV charger into a regular outlet?', a: 'Level 1 chargers plug into standard 120V outlets and provide 3-5 miles of range per hour. For faster Level 2 charging (10-60 miles/hour), you need a dedicated 240V circuit. Using a Level 2 charger on a regular outlet will trip the breaker.' },
+  { q: 'What wire gauge is needed for EV charger installation?', a: 'For a 50-amp circuit, 6 AWG copper wire is required. For a 40-amp circuit, 8 AWG is sufficient. For a 30-amp circuit, 10 AWG works. Longer runs may need thicker wire to prevent excessive voltage drop.' },
+  { q: 'How much does it cost to install an EV charger at home?', a: 'Installation costs typically range from $500-$2,500 depending on the distance from the panel, panel capacity, and local labor rates. A simple installation with the panel nearby costs $500-$1,000. Longer runs or panel upgrades can cost $1,500-$3,000.' },
+  { q: 'What is the 125% rule for breaker sizing?', a: 'The NEC requires that the breaker be sized at 125% of the continuous load. Since EV charging is considered a continuous load (lasting 3+ hours), a 40-amp charger needs a 50-amp breaker (40A × 1.25 = 50A). This prevents nuisance tripping.' },
+  { q: 'Do I need a load calculation for my panel?', a: 'Yes, your electrician must perform a load calculation to ensure your electrical panel can handle the additional load of the EV charger. An older 100-amp panel may need an upgrade to 200-amps to safely accommodate a Level 2 charger.' },
+  { q: 'What is the difference between hardwired and plug-in chargers?', a: 'Hardwired chargers are directly connected to the circuit, offering slightly higher reliability and weather resistance. Plug-in chargers use a NEMA 14-50 or 6-50 outlet, making it easy to disconnect and portable between homes.' },
+  { q: 'How far can the charger be from the electrical panel?', a: 'There is no maximum distance limit, but longer runs require thicker wire to minimize voltage drop. For runs over 100 feet, you may need to increase wire gauge by one or two sizes. Every 100 feet adds approximately $200-$400 in wiring costs.' },
+  { q: 'Can I install an EV charger outdoors?', a: 'Yes, outdoor-rated EV chargers with NEMA 3R or 4 ratings are designed for exterior installation. Ensure the charger is UL-listed for outdoor use and the receptacle (if plug-in) is weatherproof. Outdoor installations may require GFCI protection.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Charger power level</span>
+        <select id="powerLevel" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1.4">Level 1 – 1.4 kW (120V / 12A)</option>
+          <option value="1.9">Level 1 – 1.9 kW (120V / 16A)</option>
+          <option value="3.3">Level 2 – 3.3 kW (240V / 16A)</option>
+          <option value="7.2" selected>Level 2 – 7.2 kW (240V / 30A)</option>
+          <option value="11">Level 2 – 11 kW (240V / 48A)</option>
+          <option value="19.2">Level 2 – 19.2 kW (240V / 80A)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">System voltage (V)</span>
+        <select id="voltage" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="120">120V</option>
+          <option value="208">208V</option>
+          <option value="240" selected>240V</option>
+          <option value="277">277V</option>
+        </select></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Distance from panel (ft)</span>
+        <input id="distance" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-5">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-sm opacity-80">Breaker size</div><div id="r-breaker" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Min wire gauge</div><div id="r-wire" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Conduit size</div><div id="r-conduit" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Voltage drop</div><div id="r-vdrop" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Est. install cost</div><div id="r-cost" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different charger power levels mean</h2>
+    <p class="mt-2 text-slate-600">Charger power levels determine charging speed and the electrical infrastructure required for installation.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 1 – 1.4 kW</span><span class="text-slate-400">~4 mi/hr, install $150-300</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 1 – 1.9 kW</span><span class="text-slate-400">~5 mi/hr, install $150-300</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 – 3.3 kW</span><span class="text-slate-400">~12 mi/hr, install $400-800</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-blue-500" style="width:35%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 – 7.2 kW</span><span class="text-slate-400">~25 mi/hr, install $500-1200</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:60%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 – 11 kW</span><span class="text-slate-400">~38 mi/hr, install $800-2000</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:80%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Level 2 – 19.2 kW</span><span class="text-slate-400">~65 mi/hr, install $1500-3500</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83C\uDFE0</span><h3 class="mt-2 font-semibold text-slate-900">Homeowner</h3><p class="mt-1 text-sm text-slate-600">Plan your home EV charger installation with the right breaker, wire, and conduit specifications to ensure a safe and code-compliant setup.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDD27</span><h3 class="mt-2 font-semibold text-slate-900">Electrician</h3><p class="mt-1 text-sm text-slate-600">Quickly determine required breaker size, wire gauge, and conduit size for residential EV charger installations to prepare accurate quotes.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83C\uDFD7\uFE0F</span><h3 class="mt-2 font-semibold text-slate-900">Builder</h3><p class="mt-1 text-sm text-slate-900">Incorporate EV charging infrastructure into new construction projects with correctly sized circuits and future-proof conduit runs.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83C\uDFE2</span><h3 class="mt-2 font-semibold text-slate-900">Property Manager</h3><p class="mt-1 text-sm text-slate-600">Evaluate installation requirements and costs for adding EV charging to multi-unit residential or commercial properties for tenants and guests.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Charger power</th><th class="p-3">Current (A)</th><th class="p-3">Breaker size</th><th class="p-3">Min wire gauge</th><th class="p-3">Conduit size</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">1.4 kW (120V)</td><td class="p-3">12</td><td class="p-3">15 A</td><td class="p-3">14 AWG</td><td class="p-3">1/2 in</td></tr>
+        <tr><td class="p-3 font-medium">1.9 kW (120V)</td><td class="p-3">16</td><td class="p-3">20 A</td><td class="p-3">12 AWG</td><td class="p-3">1/2 in</td></tr>
+        <tr><td class="p-3 font-medium">3.3 kW (240V)</td><td class="p-3">16</td><td class="p-3">20 A</td><td class="p-3">12 AWG</td><td class="p-3">1/2 in</td></tr>
+        <tr><td class="p-3 font-medium">7.2 kW (240V)</td><td class="p-3">30</td><td class="p-3">40 A</td><td class="p-3">8 AWG</td><td class="p-3">3/4 in</td></tr>
+        <tr><td class="p-3 font-medium">11 kW (240V)</td><td class="p-3">48</td><td class="p-3">60 A</td><td class="p-3">6 AWG</td><td class="p-3">1 in</td></tr>
+        <tr><td class="p-3 font-medium">19.2 kW (240V)</td><td class="p-3">80</td><td class="p-3">100 A</td><td class="p-3">3 AWG</td><td class="p-3">1 1/4 in</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Home Charger Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Pick charger power</h3><p class="mt-1 text-sm text-slate-600">Select your charger\'s power level and your system voltage. Higher power means faster charging but requires more robust electrical infrastructure.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter distance</h3><p class="mt-1 text-sm text-slate-600">Measure the distance from your electrical panel to the charger location. Longer distances may require thicker wire to minimize voltage drop.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Get install specs</h3><p class="mt-1 text-sm text-slate-600">Review the recommended breaker size, minimum wire gauge, conduit size, voltage drop percentage, and estimated installation cost range.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for EV charger installation</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Always use a licensed electrician</h3><p class="mt-1 text-sm text-slate-600">EV charger installation involves high-current circuits, load calculations, and local code compliance. A licensed electrician ensures the work is safe, permitted, and inspected. DIY installation can void insurance and create fire hazards.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Future-proof with larger conduit</h3><p class="mt-1 text-sm text-slate-600">Install a conduit larger than you currently need. If you start with a 40-amp charger, use 1-inch conduit instead of 3/4-inch. This allows upgrading to a 60-amp or 100-amp charger later without breaking walls or trenches.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Consider load calculation</h3><p class="mt-1 text-sm text-slate-600">Before installation, have your electrician perform a full load calculation. An older 100-amp panel with AC, electric dryer, and oven may not have capacity for a Level 2 charger. A 200-amp upgrade adds $1,500-$3,000 but provides room for future loads.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Plan for charger location and cable management</h3><p class="mt-1 text-sm text-slate-600">Position the charger so the cable comfortably reaches your EV\'s charge port without stretching. Consider a pedestal mount if parking in a driveway. Cable management solutions like wall hooks or retractable reels keep the area tidy and prevent cable damage.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Level 1 vs Level 2 charging</h2>
+    <p class="mt-2 text-slate-600">Level 1 uses a standard 120V outlet and adds 3-5 miles of range per hour, sufficient for plug-in hybrids and low-mileage drivers. Level 2 uses a 240V circuit and adds 10-65 miles per hour, suitable for most EV owners. Level 2 installation costs $500-$2,500 but dramatically improves charging convenience and reduces charging anxiety.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">NEC requirements</h2>
+    <p class="mt-2 text-slate-600">The National Electrical Code requires EV charger circuits to be dedicated (no other loads on the same circuit), with a breaker sized at 125% of the continuous load. GFCI protection may be required for outdoor installations. The charger must be listed to UL 2594 or UL 2202 standards. Always consult your local code as requirements vary by jurisdiction.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Breaker sizing (125% rule)</h2>
+    <p class="mt-2 text-slate-600">Because EV charging is a continuous load (operating for 3+ hours), the NEC requires the breaker to be 125% of the charger\'s rated current. A 30A charger needs a 40A breaker (30 × 1.25 = 37.5, rounded up to 40). A 48A charger needs a 60A breaker (48 × 1.25 = 60). Never exceed 80% of the breaker rating for continuous loads.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Wire gauge selection</h2>
+    <p class="mt-2 text-slate-600">Wire gauge must be sized for both ampacity and voltage drop. For a 50A circuit, 6 AWG copper is standard. For a 40A circuit, 8 AWG suffices. For runs exceeding 100 feet, increase gauge by one size to maintain voltage drop under 3%. Use copper wire for best conductivity; aluminum requires special connectors and is typically only used for large feeders.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Panel capacity and permit requirements</h2>
+    <p class="mt-2 text-slate-600">Most residential panels have 200A service, but older homes may have 100A or 150A. Adding a 50A EV charger to a 100A panel with existing loads may exceed capacity. A load calculation is required to determine if an upgrade is needed. Permits typically cost $50-$200 and include an inspection to verify code compliance.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const wireData = {
+      '12': { awg: '14', conduit: '1/2 in', ohms: 2.525 },
+      '16': { awg: '12', conduit: '1/2 in', ohms: 1.588 },
+      '20': { awg: '12', conduit: '1/2 in', ohms: 1.588 },
+      '30': { awg: '8', conduit: '3/4 in', ohms: 0.628 },
+      '40': { awg: '8', conduit: '3/4 in', ohms: 0.628 },
+      '48': { awg: '6', conduit: '1 in', ohms: 0.395 },
+      '60': { awg: '6', conduit: '1 in', ohms: 0.395 },
+      '80': { awg: '3', conduit: '1 1/4 in', ohms: 0.197 },
+      '100': { awg: '3', conduit: '1 1/4 in', ohms: 0.197 },
+    };
+
+    function update() {
+      const kw = parseFloat(el('powerLevel').value);
+      const volts = parseFloat(el('voltage').value);
+      const dist = parseFloat(el('distance').value);
+
+      if (isNaN(kw) || isNaN(volts) || isNaN(dist) || kw <= 0 || volts <= 0 || dist <= 0) {
+        ['r-breaker','r-wire','r-conduit','r-vdrop','r-cost'].forEach(id => el(id).textContent = '\u2014');
+        return;
+      }
+
+      const current = (kw * 1000) / volts;
+      const breakerA = Math.ceil(current * 1.25 / 5) * 5;
+      const nearest = Object.keys(wireData).map(Number).sort((a, b) => a - b).find(k => k >= breakerA) || '100';
+      const wd = wireData[nearest];
+      const roundTripFeet = dist * 2;
+      const rPer1000 = wd.ohms;
+      const totalR = rPer1000 * roundTripFeet / 1000;
+      const vDrop = current * totalR;
+      const vDropPct = vDrop / volts * 100;
+
+      let baseCost = 400;
+      let perFootCost = 6 + (parseInt(wd.awg) < 10 ? 4 : 2);
+      let totalCost = baseCost + dist * perFootCost;
+      if (breakerA > 60) totalCost += 500;
+
+      el('r-breaker').textContent = breakerA + ' A';
+      el('r-wire').textContent = wd.awg + ' AWG';
+      el('r-conduit').textContent = wd.conduit;
+      el('r-vdrop').textContent = vDropPct.toFixed(2) + '%';
+      el('r-cost').textContent = '$' + Math.round(totalCost);
+    }
+
+    ['powerLevel','voltage','distance'].forEach(id => el(id).addEventListener('input', update));
+    ['powerLevel','voltage'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

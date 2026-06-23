@@ -1,0 +1,227 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Efficiency / Mileage Calculator';
+const description =
+  'Free EV efficiency calculator. Convert between mi/kWh, Wh/mi, km/kWh, kWh/100km from ' +
+  'distance driven and energy consumed.';
+const intro =
+  'Enter the distance you drove and the energy consumed (from your EV\'s trip meter) to ' +
+  'calculate your efficiency in any unit.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'What is mi/kWh?', a: 'Miles per kilowatt-hour (mi/kWh) is the EV equivalent of MPG. It measures how many miles you can travel on 1 kWh of battery energy. Most EVs achieve 3–4 mi/kWh in mixed driving. Higher is better — 4 mi/kWh means you use less energy per mile than 3 mi/kWh.' },
+  { q: 'How does mi/kWh compare to MPG?', a: '1 mi/kWh is roughly equivalent to 33.7 MPGe (miles per gallon equivalent). A modern EV getting 3.5 mi/kWh achieves about 118 MPGe — far better than even the most efficient gas car. The EPA uses MPGe to help consumers compare across fuel types.' },
+  { q: 'What is a good EV efficiency number?', a: 'For a modern EV: 4.0+ mi/kWh (6.4+ km/kWh) is excellent, 3.5–4.0 mi/kWh (5.6–6.4 km/kWh) is good, 3.0–3.5 mi/kWh (4.8–5.6 km/kWh) is average for an SUV or crossover, and below 3.0 mi/kWh (4.8 km/kWh) is poor — often seen in cold weather or high-speed driving.' },
+  { q: 'How do I calculate my EV efficiency?', a: 'Reset your trip odometer at a full charge, drive normally, then note the miles driven and kWh consumed from your EV\'s trip meter or energy display. Divide miles by kWh (mi/kWh) or divide kWh by miles × 1000 (Wh/mi). This calculator does it instantly.' },
+  { q: 'Why does my efficiency vary so much?', a: 'EV efficiency is highly sensitive to driving conditions. Speed (aerodynamic drag increases with velocity squared), temperature (battery chemistry + HVAC), terrain (hills cost energy), driving style (aggressive vs smooth), tire pressure, and even wind all cause significant variation day to day.' },
+  { q: 'Does regenerative braking improve efficiency?', a: 'Yes. One-pedal driving with strong regen captures energy that would otherwise be lost as heat in friction brakes. Regen can recover 15–25% of the energy used during acceleration, especially in city driving with frequent stops. Highway driving sees less benefit from regen.' },
+  { q: 'How does winter affect EV efficiency?', a: 'Winter is the biggest efficiency killer. Cold batteries have higher internal resistance, and cabin heating draws 3–5 kW. Expect a 15–30% drop in mi/kWh in winter vs spring/fall. Preconditioning while plugged in and using seat heaters instead of cabin air can reduce the impact.' },
+  { q: 'How do I see my real-time efficiency?', a: 'Most EVs display current efficiency on the instrument cluster or energy app. Some show a live bar chart or numeric readout. Use the "since last charge" or "trip" display to get an average over a longer distance rather than the instantaneous reading.' },
+  { q: 'What is Wh/mi?', a: 'Watt-hours per mile (Wh/mi) is the inverse of mi/kWh — it measures energy consumed per mile. Lower is better. A typical EV uses 250–300 Wh/mi in mixed driving. Multiply by 1,000 to convert kWh consumed: 275 Wh/mi means 0.275 kWh per mile or 3.64 mi/kWh.' },
+  { q: 'Can I use efficiency numbers to compare EVs?', a: 'Yes, but compare numbers measured under the same conditions. EPA ratings are standardized. Real-world efficiency varies, so use EPA numbers for model-to-model comparisons and real-world numbers to track how your driving habits affect your specific car.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Distance</span>
+        <div class="mt-1 flex gap-2"><input id="dist" type="number" step="0.1" placeholder="100" value="100" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="du" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="mi">mi</option><option value="km">km</option></select></div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Energy consumed (kWh)</span>
+        <input id="kwh" type="number" step="0.01" placeholder="28.6" value="28.6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity (kWh)</span>
+        <input id="bat" type="number" step="0.1" placeholder="75" value="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Elec. rate ($/kWh)</span>
+        <input id="er" type="number" step="0.001" placeholder="0.14" value="0.14" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">mi/kWh</div><div id="r-mikwh" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Wh/mi</div><div id="r-whmi" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">km/kWh</div><div id="r-kmkwh" class="mt-1 text-xl font-bold text-indigo-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">kWh/100km</div><div id="r-kwh100" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">$/mi</div><div id="r-pmi" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <div class="mt-4 text-center text-sm text-slate-500">
+      Full battery range: <span id="r-range" class="font-bold text-indigo-600">—</span>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Efficiency comparison across EV classes</h2>
+    <p class="mt-2 text-slate-600">The bars below show the typical efficiency range for different EV classes under mixed conditions.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Compact EV</span><span class="text-slate-400">4.0+ mi/kWh — 170+ MPGe</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Sedan</span><span class="text-slate-400">3.5–4.0 mi/kWh — 118–135 MPGe</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">SUV / Crossover</span><span class="text-slate-400">3.0–3.5 mi/kWh — 101–118 MPGe</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:66%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Pickup Truck</span><span class="text-slate-400">2.0–2.5 mi/kWh — 67–84 MPGe</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:48%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">EV Owner Tracking Efficiency</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitor your efficiency over time to understand how driving habits, seasonal changes, and tire pressure affect your car's real-world energy consumption.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚛</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fleet Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Track efficiency metrics across your EV fleet to identify which drivers and routes achieve the best energy economy and where coaching can improve results.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Buyer Comparing Models</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare EPA efficiency ratings of different EV models side by side to find the vehicle that delivers the lowest energy cost per mile for your driving patterns.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎯</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Driving Coach</h3>
+      <p class="mt-1 text-sm text-slate-600">Use efficiency data to help EV owners improve their driving technique — smoother acceleration, earlier regen, and optimal speed for maximum range.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Model</th><th class="p-3">EPA mi/kWh</th><th class="p-3">EPA Wh/mi</th><th class="p-3">EPA MPGe</th><th class="p-3">Battery (kWh)</th><th class="p-3">EPA range (mi)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Hyundai Ioniq 6 RWD</td><td class="p-3">4.7</td><td class="p-3">213</td><td class="p-3">158</td><td class="p-3">77</td><td class="p-3">361</td></tr>
+        <tr><td class="p-3 font-medium">Tesla Model 3 RWD</td><td class="p-3">4.5</td><td class="p-3">222</td><td class="p-3">152</td><td class="p-3">60</td><td class="p-3">272</td></tr>
+        <tr><td class="p-3 font-medium">Tesla Model Y AWD</td><td class="p-3">3.8</td><td class="p-3">263</td><td class="p-3">128</td><td class="p-3">81</td><td class="p-3">330</td></tr>
+        <tr><td class="p-3 font-medium">Chevrolet Bolt EV</td><td class="p-3">4.0</td><td class="p-3">250</td><td class="p-3">135</td><td class="p-3">65</td><td class="p-3">259</td></tr>
+        <tr><td class="p-3 font-medium">Kia EV6 RWD</td><td class="p-3">4.0</td><td class="p-3">250</td><td class="p-3">135</td><td class="p-3">77</td><td class="p-3">310</td></tr>
+        <tr><td class="p-3 font-medium">Ford Mustang Mach-E AWD</td><td class="p-3">3.2</td><td class="p-3">313</td><td class="p-3">108</td><td class="p-3">91</td><td class="p-3">270</td></tr>
+        <tr><td class="p-3 font-medium">Volkswagen ID.4 Pro</td><td class="p-3">3.4</td><td class="p-3">294</td><td class="p-3">114</td><td class="p-3">82</td><td class="p-3">275</td></tr>
+        <tr><td class="p-3 font-medium">BMW i4 eDrive40</td><td class="p-3">3.8</td><td class="p-3">263</td><td class="p-3">128</td><td class="p-3">83</td><td class="p-3">301</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the EV Efficiency Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Record trip distance</h3>
+        <p class="mt-1 text-sm text-slate-600">Use your EV's trip odometer to record the distance driven since your last charge or over a specific trip. Enter it in miles or kilometres.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Note energy used</h3>
+        <p class="mt-1 text-sm text-slate-600">Check your EV's energy display or trip computer for the kWh consumed during the same trip. Input this along with your battery capacity for range estimation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Get efficiency metrics</h3>
+        <p class="mt-1 text-sm text-slate-600">See your efficiency in mi/kWh, Wh/mi, km/kWh, kWh/100km, plus your cost per mile and estimated full-battery range.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for improving EV efficiency</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Efficiency drops at high speed</h3>
+        <p class="mt-1 text-sm text-slate-600">Aerodynamic drag increases with the square of speed. Driving at 120 km/h (75 mph) uses about 20–30% more energy than driving at 90 km/h (56 mph). On highways, set cruise control to the speed limit and avoid unnecessary acceleration.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Climate control impact</h3>
+        <p class="mt-1 text-sm text-slate-600">Heating the cabin in winter draws 3–5 kW — equivalent to adding a 10–20% load. Air conditioning in summer draws 1–2 kW. Precondition while plugged in, use seat heaters (far more efficient), and set the cabin temp to 20°C (68°F) rather than 25°C (77°F).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Regen driving helps</h3>
+        <p class="mt-1 text-sm text-slate-600">Maximise regenerative braking by using one-pedal driving mode and anticipating stops. Smooth deceleration captures more energy than hard braking. In city driving, good regen technique can recover 15–25% of acceleration energy, boosting overall efficiency by 10–15%.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is mi/kWh?</h2>
+    <p class="mt-2 text-slate-600">
+      Miles per kilowatt-hour (mi/kWh) is the primary efficiency metric for EVs. It tells you how
+      far you can travel on one kilowatt-hour of battery energy. Most modern EVs achieve between
+      3.0 and 4.5 mi/kWh under normal conditions. To put it in perspective: at 4.0 mi/kWh, a 75 kWh
+      battery delivers 300 miles of range. At 3.0 mi/kWh, the same battery gives only 225 miles —
+      a 25% difference purely from efficiency.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How mi/kWh compares to MPG</h2>
+    <p class="mt-2 text-slate-600">
+      The EPA created MPGe (miles per gallon equivalent) to help consumers compare EVs to gas cars.
+      One gallon of gasoline contains about 33.7 kWh of energy. So an EV that achieves 3.5 mi/kWh
+      is equivalent to a gas car getting 118 MPG (33.7 × 3.5). Even the most efficient gas
+      hybrids struggle to reach 50–60 MPG, meaning EVs are typically 2–3x more energy efficient
+      than their gasoline counterparts.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Factors affecting EV efficiency</h2>
+    <p class="mt-2 text-slate-600">
+      Speed is the biggest factor — every 10 km/h above 90 km/h reduces efficiency by 5–8%.
+      Temperature is second: batteries are less efficient in cold and heat. Driving style matters
+      significantly: smooth driving with anticipation can improve efficiency by 15–20% compared to
+      aggressive driving. Tire condition (pressure, tread, rolling resistance), payload weight,
+      and wind direction all play measurable roles in efficiency variation.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Seasonal variation in EV efficiency</h2>
+    <p class="mt-2 text-slate-600">
+      Spring and fall offer the best efficiency (often exceeding EPA ratings by 5–10%) because
+      moderate temperatures eliminate the need for cabin HVAC and the battery operates at its
+      ideal temperature. Summer sees a 5–10% drop from AC usage. Winter is the worst season with
+      15–30% drops from battery cold inertia and cabin heating. Altitude also plays a role: EVs
+      are slightly more efficient at sea level than at high altitudes due to thinner air reducing
+      drag.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n, d) => n.toFixed(d);
+    function update() {
+      const dist = parseFloat(el('dist').value);
+      const du = el('du').value;
+      const kwh = parseFloat(el('kwh').value);
+      const bat = parseFloat(el('bat').value);
+      const er = parseFloat(el('er').value);
+      if (isNaN(dist) || isNaN(kwh) || isNaN(bat) || isNaN(er) || dist <= 0 || kwh <= 0 || bat <= 0) {
+        ['r-mikwh','r-whmi','r-kmkwh','r-kwh100','r-pmi','r-range'].forEach(id => el(id).textContent = '—'); return;
+      }
+      let mi = du === 'km' ? dist * 0.621371 : dist;
+      let km = du === 'mi' ? dist * 1.60934 : dist;
+      const mikwh = mi / kwh;
+      const whmi = (kwh / mi) * 1000;
+      const kmkwh = km / kwh;
+      const kwh100 = (kwh / km) * 100;
+      const pmi = (kwh / mi) * er;
+      const range = mikwh * bat;
+      el('r-mikwh').textContent = fmt(mikwh, 2);
+      el('r-whmi').textContent = fmt(whmi, 0);
+      el('r-kmkwh').textContent = fmt(kmkwh, 2);
+      el('r-kwh100').textContent = fmt(kwh100, 1);
+      el('r-pmi').textContent = '$' + fmt(pmi, 3);
+      el('r-range').textContent = fmt(range, 0) + ' mi / ' + fmt(range * 1.60934, 0) + ' km';
+    }
+    document.querySelectorAll('input,select').forEach(e => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

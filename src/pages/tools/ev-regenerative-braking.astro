@@ -1,0 +1,154 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Regenerative Braking Calculator';
+const description = 'Free regenerative braking energy calculator. Estimate how much energy is recovered during braking based on vehicle weight, speed and regen efficiency.';
+const intro = 'Enter vehicle weight, speed before braking, and regen system efficiency to calculate the energy recovered and equivalent range added.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How does regenerative braking work?', a: 'Regenerative braking uses the electric motor as a generator during deceleration. The motor\'s resistance turns kinetic energy into electrical energy, which is stored in the battery. Instead of wasting energy as heat like friction brakes, regen captures up to 70% of the braking energy that would otherwise be lost.' },
+  { q: 'How much energy can regenerative braking recover?', a: 'Typically 50-70% of the kinetic energy can be recovered, depending on the system. The exact amount depends on vehicle weight, speed, deceleration rate, battery state of charge, and the efficiency of the motor/generator and power electronics.' },
+  { q: 'Does regenerative braking work at all speeds?', a: 'Yes, but effectiveness varies. At high speeds (above 50 mph), more kinetic energy is available to recover. At very low speeds (below 5 mph), regen is less effective and friction brakes may take over. Some systems blend regen and friction braking seamlessly across all speeds.' },
+  { q: 'Can regenerative braking fully replace friction brakes?', a: 'No, friction brakes are still needed for emergency stops, low-speed maneuvering, and when the battery is fully charged. However, regen can handle 80-90% of everyday braking needs, which is why EV brake pads often last 100,000+ miles.' },
+  { q: 'What is one-pedal driving?', a: 'One-pedal driving allows you to accelerate and decelerate using only the accelerator pedal. When you lift off the accelerator, the car applies regenerative braking strongly enough to bring the car to a complete stop. It maximizes energy recovery and reduces brake wear.' },
+  { q: 'Does regenerative braking work when the battery is full?', a: 'When the battery is at 100% charge, regenerative braking is reduced or disabled because there is nowhere to store the recovered energy. The car relies on friction brakes instead. This is why it is recommended not to charge to 100% before a long downhill descent.' },
+  { q: 'What is blended braking?', a: 'Blended braking systems seamlessly combine regenerative and friction braking. When you press the brake pedal, the system first applies regen, then adds friction braking as needed. The transition is designed to be imperceptible to the driver while maximizing energy recovery.' },
+  { q: 'How does regen efficiency vary between EV models?', a: 'Tesla vehicles achieve approximately 70% regen efficiency, Nissan e-Pedal about 75%, Hyundai/Kia around 65%, and Porsche Taycan about 68%. Efficiency depends on motor design, inverter technology, battery voltage, and the sophistication of the regen control algorithm.' },
+  { q: 'Does temperature affect regenerative braking?', a: 'Yes, cold temperatures reduce regen efficiency temporarily. When the battery is cold, the BMS limits regen power to protect the battery. Many EVs gradually increase regen availability as the battery warms up. Preconditioning the battery helps restore full regen capability.' },
+  { q: 'How much range does regenerative braking add in city driving?', a: 'In city driving with frequent stop-and-go traffic, regenerative braking can recover 15-25% of the energy used, effectively extending range by 15-25%. On highway trips with minimal braking, the benefit drops to 2-5%. The EPA city cycle assumes about 22% energy recovery from regen.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle weight</span>
+        <div class="mt-1 flex gap-2"><input id="weight" type="number" step="any" placeholder="2000" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <select id="weightUnit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="kg">kg</option><option value="lb">lb</option></select></div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Speed before braking</span>
+        <div class="mt-1 flex gap-2"><input id="speed" type="number" step="any" placeholder="60" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <select id="speedUnit" class="rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="kmh">km/h</option><option value="mph">mph</option></select></div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Regen system efficiency (%)</span>
+        <input id="efficiency" type="number" step="any" placeholder="70" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Braking events per day</span>
+        <input id="events" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Electricity cost per kWh ($)</span>
+        <input id="costKwh" type="number" step="any" placeholder="0.14" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle efficiency (mi/kWh)</span>
+        <input id="mileage" type="number" step="any" placeholder="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-sm opacity-80">Energy per stop</div><div id="r-perStop" class="mt-1 text-xl font-bold">--</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Daily recovered energy</div><div id="r-daily" class="mt-1 text-xl font-bold text-emerald-600">--</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Range added per day</div><div id="r-range" class="mt-1 text-xl font-bold text-slate-800">--</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Monthly savings</div><div id="r-savings" class="mt-1 text-xl font-bold text-slate-800">--</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different energy recovery levels mean</h2>
+    <p class="mt-2 text-slate-600">The amount of energy recovered per braking event depends strongly on your speed. Higher speeds mean more kinetic energy to capture.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">20 km/h (12 mph)</span><span class="text-slate-400">~8 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:10%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">40 km/h (25 mph)</span><span class="text-slate-400">~32 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">60 km/h (37 mph)</span><span class="text-slate-400">~72 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:40%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">80 km/h (50 mph)</span><span class="text-slate-400">~128 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:60%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">100 km/h (62 mph)</span><span class="text-slate-400">~200 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:80%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">120 km/h (75 mph)</span><span class="text-slate-400">~288 Wh recovered</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-600" style="width:100%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\u26A1</span><h3 class="mt-2 font-semibold text-slate-900">EV Driver</h3><p class="mt-1 text-sm text-slate-600">Understand how much energy your regenerative braking system captures in daily driving and how to maximize efficiency behind the wheel.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83C\uDFCE\uFE0F</span><h3 class="mt-2 font-semibold text-slate-900">Driving Instructor</h3><p class="mt-1 text-sm text-slate-600">Teach students how regenerative braking works and demonstrate the energy savings of smooth deceleration and anticipation-based driving techniques.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDE9A</span><h3 class="mt-2 font-semibold text-slate-900">Fleet Manager</h3><p class="mt-1 text-sm text-slate-600">Quantify energy recovery across your fleet to train drivers in eco-driving techniques and reduce overall energy costs through optimized driving patterns.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDD2C</span><h3 class="mt-2 font-semibold text-slate-900">Engineering Student</h3><p class="mt-1 text-sm text-slate-600">Study the physics of kinetic energy recovery by modeling how vehicle mass, speed, and system efficiency interact in real-world braking scenarios.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Vehicle / System</th><th class="p-3">Regen efficiency</th><th class="p-3">Max regen power</th><th class="p-3">One-pedal driving</th><th class="p-3">Blended braking</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Tesla Model 3/Y</td><td class="p-3">~70%</td><td class="p-3">75 kW</td><td class="p-3">Yes (adjustable)</td><td class="p-3">No</td></tr>
+        <tr><td class="p-3 font-medium">Nissan Leaf (e-Pedal)</td><td class="p-3">~75%</td><td class="p-3">50 kW</td><td class="p-3">Yes (on/off)</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Hyundai Ioniq 5/Kia EV6</td><td class="p-3">~65%</td><td class="p-3">70 kW</td><td class="p-3">Yes (i-Pedal)</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Porsche Taycan</td><td class="p-3">~68%</td><td class="p-3">90 kW</td><td class="p-3">No</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Ford Mustang Mach-E</td><td class="p-3">~62%</td><td class="p-3">60 kW</td><td class="p-3">Yes</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Chevy Bolt</td><td class="p-3">~60%</td><td class="p-3">55 kW</td><td class="p-3">Yes (one-pedal)</td><td class="p-3">Yes</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Regenerative Braking Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter vehicle specs</h3><p class="mt-1 text-sm text-slate-600">Input your vehicle's weight, the typical speed before braking, and the estimated efficiency of your regenerative braking system.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Set driving pattern</h3><p class="mt-1 text-sm text-slate-600">Enter the number of braking events per day, your electricity cost, and vehicle efficiency to calculate the real-world impact of regen on your daily commute.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">See recovered energy</h3><p class="mt-1 text-sm text-slate-600">Review the energy recovered per stop, daily total, equivalent range added, and monthly monetary savings from regenerative braking.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing regenerative braking</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Maximize regen with one-pedal driving</h3><p class="mt-1 text-sm text-slate-600">One-pedal driving mode applies maximum regen when you lift off the accelerator, capturing the most energy possible. In many EVs, one-pedal mode can recover 15-25% more energy than standard regen because it eliminates the dead zone between accelerator lift and regen activation.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Anticipate stops for maximum recovery</h3><p class="mt-1 text-sm text-slate-600">Smooth, gradual deceleration allows the regen system to capture more energy than hard, sudden braking. When you brake suddenly, the friction brakes may engage to assist, wasting energy as heat. Look ahead and coast or lightly regen-brake to maximize energy capture.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Coast vs brake: know when to do each</h3><p class="mt-1 text-sm text-slate-600">Coasting (no regen, no friction) is more efficient than regen when you know you will not need to stop. Regen always has some losses (about 20-30%). If you are approaching a downhill section, coasting to maintain speed is better than regen-braking then accelerating again. Use regen when you actually need to slow down.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Understand your regen indicator</h3><p class="mt-1 text-sm text-slate-600">Most EVs display a regen power meter that shows how much energy is being recovered. Learn to read this indicator and adjust your driving to keep it in the sweet spot. A dotted line or reduced regen icon typically means the battery is cold or full and regen is limited — plan your braking accordingly.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How regenerative braking works</h2>
+    <p class="mt-2 text-slate-600">Regenerative braking reverses the electric motor\'s operation. During acceleration, the motor converts electrical energy from the battery into mechanical energy to turn the wheels. During braking, the motor becomes a generator — the wheels turn the motor, which converts kinetic energy into electrical energy that is sent back to the battery. This process is governed by Faraday\'s law of electromagnetic induction and is typically 60-75% efficient in modern EVs.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Conservation of energy</h2>
+    <p class="mt-2 text-slate-600">The kinetic energy of a moving vehicle is KE = 1/2 mv\u00b2, where m is mass and v is velocity. Since energy scales with the square of velocity, braking from 100 km/h recovers four times the energy of braking from 50 km/h. This is why regen is especially effective on highways and high-speed roads. A 2,000 kg EV braking from 100 km/h has approximately 772 kJ of kinetic energy — equivalent to about 214 Wh of recoverable energy at 100% efficiency.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Regen vs friction braking</h2>
+    <p class="mt-2 text-slate-600">Friction brakes convert kinetic energy into heat, which is wasted. Regen converts it into electricity, which is stored and reused. The trade-off is that regen provides less braking force than friction brakes, especially at low speeds. Modern EVs blend both systems seamlessly: regen handles 80-90% of braking needs, while friction brakes provide the extra stopping power when needed. EV brake pads typically last 100,000-150,000 miles because of this reduced usage.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Blended braking systems</h2>
+    <p class="mt-2 text-slate-600">Blended braking systems use sensors and control algorithms to coordinate regen and friction braking. When you press the brake pedal, the system calculates how much regen force to apply and only engages friction brakes when additional stopping power is needed. The transition is seamless to the driver. Sophisticated systems like those in the Porsche Taycan can provide up to 0.3g of deceleration from regen alone before engaging friction brakes.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">One-pedal driving</h2>
+    <p class="mt-2 text-slate-600">One-pedal driving takes regen to its maximum by allowing the driver to accelerate, decelerate, and stop using only the accelerator pedal. Lifting off completely applies maximum regen, often bringing the car to a complete stop. This mode maximizes energy recovery, reduces brake wear, and simplifies driving in stop-and-go traffic. The Nissan Leaf e-Pedal and Tesla's regenerative braking are pioneering examples of this technology.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const weight = parseFloat(el('weight').value);
+      const weightUnit = el('weightUnit').value;
+      const speed = parseFloat(el('speed').value);
+      const speedUnit = el('speedUnit').value;
+      const efficiency = parseFloat(el('efficiency').value);
+      const events = parseFloat(el('events').value);
+      const costKwh = parseFloat(el('costKwh').value);
+      const mileage = parseFloat(el('mileage').value);
+
+      if (isNaN(weight) || isNaN(speed) || isNaN(efficiency) || isNaN(events) || isNaN(costKwh) || isNaN(mileage) || weight <= 0 || speed <= 0 || efficiency <= 0 || events <= 0 || costKwh < 0 || mileage <= 0) {
+        ['r-perStop','r-daily','r-range','r-savings'].forEach(id => el(id).textContent = '\u2014');
+        return;
+      }
+
+      let massKg = weightUnit === 'lb' ? weight * 0.453592 : weight;
+      let speedMs = speedUnit === 'mph' ? speed * 0.44704 : speed / 3.6;
+      let kineticEnergyJ = 0.5 * massKg * speedMs * speedMs;
+      let whPerStop = (kineticEnergyJ / 3600) * (efficiency / 100);
+      let dailyWh = whPerStop * events;
+      let dailyKwh = dailyWh / 1000;
+      let rangeAdded = dailyKwh * mileage;
+      let monthlySavings = dailyKwh * 30 * costKwh;
+
+      el('r-perStop').textContent = whPerStop.toFixed(0) + ' Wh';
+      el('r-daily').textContent = dailyKwh.toFixed(2) + ' kWh';
+      el('r-range').textContent = rangeAdded.toFixed(1) + ' mi';
+      el('r-savings').textContent = '$' + monthlySavings.toFixed(2) + '/mo';
+    }
+
+    ['weight','weightUnit','speed','speedUnit','efficiency','events','costKwh','mileage'].forEach(id => el(id).addEventListener('input', update));
+    ['weightUnit','speedUnit'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

@@ -1,0 +1,159 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Towing Range Calculator';
+const description = 'Free EV towing range calculator. Estimate the real-world range reduction when towing a trailer, camper or heavy load with your EV.';
+const intro = 'Enter your EV\'s normal range, the trailer weight, and driving conditions to estimate your range when towing.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How much range do I lose when towing with an EV?', a: 'Range loss varies from 15-50% depending on trailer type, weight, speed and terrain. A small utility trailer might reduce range by 15-20%, while a large travel trailer or boat can cut range by 40-50%.' },
+  { q: 'Why does towing reduce EV range so much?', a: 'Towing increases aerodynamic drag (especially with boxy trailers), adds rolling resistance from extra weight, and requires more energy for acceleration and hill climbing. EVs are already very efficient, so the added load has a proportionally larger impact than on gas vehicles.' },
+  { q: 'Does speed affect towing range more in an EV?', a: 'Yes. Aerodynamic drag increases with the square of speed, and towing adds a large drag multiplier. Towing at 55 mph vs 65 mph can reduce range loss by 10-15 percentage points. Slowing down is the single most effective way to preserve range.' },
+  { q: 'What trailer type causes the least range loss?', a: 'Small, lightweight, aerodynamic trailers cause the least range loss. Teardrop campers (~15-25% loss) and small utility trailers (~15-20% loss) are the most EV-friendly. Large boxy travel trailers and enclosed cargo trailers cause the most loss.' },
+  { q: 'How much does trailer weight vs aerodynamics matter?', a: 'Both matter, but aerodynamics often matter more at highway speeds. A heavy but aerodynamic trailer may cause less range loss than a lightweight boxy one. Below 45 mph, weight has a bigger impact; above 45 mph, aerodynamics dominate.' },
+  { q: 'Can I improve towing range by driving differently?', a: 'Yes. Reduce speed, use regenerative braking actively, accelerate gently, maintain steady speeds, reduce HVAC usage, and plan routes with fewer hills. Using Tow Mode optimises battery thermal management for sustained loads.' },
+  { q: 'How many extra charging stops does towing require?', a: 'Towing can double or triple the number of charging stops needed. A 250-mile trip that normally requires one stop might need 2-3 stops when towing. Plan routes carefully and use apps that show charger locations along your route.' },
+  { q: 'Do EV trucks have better towing range than cars?', a: 'EV trucks like the F-150 Lightning, Rivian R1T and Cybertruck have larger batteries (100-200 kWh) specifically designed for towing, but they still lose 25-50% of range when towing at capacity. Their advantage is longer baseline range, not better towing efficiency.' },
+  { q: 'How does terrain affect EV towing range?', a: 'Hilly terrain amplifies range loss from towing. Climbing hills requires significant energy, and while regenerative braking recovers some energy on descents, it does not fully compensate. Mountain driving while towing can reduce range by 50-60%.' },
+  { q: 'Is it better to tow a trailer or carry cargo in the vehicle?', a: 'Carrying cargo inside the vehicle (up to the payload limit) causes less range loss than towing because aerodynamic drag is not affected. Use a roof box only when necessary as it also hurts aerodynamics. For heavy loads, towing is often the only option.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">EV normal range (mi)</span>
+        <input id="normRange" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity (kWh)</span>
+        <input id="batteryKwh" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Efficiency without trailer (mi/kWh)</span>
+        <input id="baseEff" type="number" step="any" placeholder="3.0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Trailer weight (lb)</span>
+        <input id="trailerWt" type="number" step="any" placeholder="3000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle weight (lb)</span>
+        <input id="vehicleWt" type="number" step="any" placeholder="6000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Speed (mph)</span>
+        <input id="speed" type="number" step="any" placeholder="60" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Terrain</span>
+        <select id="terrain" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1">Flat</option>
+          <option value="1.1">Rolling hills</option>
+          <option value="1.25" selected>Hilly</option>
+          <option value="1.4">Mountainous</option>
+        </select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Towing range</div><div id="r-towRange" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Range reduction</div><div id="r-reduction" class="mt-1 text-xl font-bold text-red-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Eff. eff. (mi/kWh)</div><div id="r-effEff" class="mt-1 text-xl font-bold text-amber-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Extra stops /500mi</div><div id="r-stops" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different trailer types mean for range</h2>
+    <p class="mt-2 text-slate-600">The type of trailer you tow dramatically affects range loss. These typical reductions show the impact of different trailer categories.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Small utility trailer</span><span class="text-slate-400">~15% loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Teardrop camper</span><span class="text-slate-400">~25% loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:25%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Boat on trailer</span><span class="text-slate-400">~35% loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:35%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Travel trailer</span><span class="text-slate-400">~40% loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:40%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Large RV / 5th wheel</span><span class="text-slate-400">~50% loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:50%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🛻</span><h3 class="mt-2 font-semibold text-slate-900">EV truck owner</h3><p class="mt-1 text-sm text-slate-600">Plan trips with your travel trailer or boat knowing exactly how far you can go between charges and where to stop.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏕️</span><h3 class="mt-2 font-semibold text-slate-900">Camper/RVer</h3><p class="mt-1 text-sm text-slate-600">Estimate real-world range with your camper so you can choose campsites and charging stops with confidence.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">⛵</span><h3 class="mt-2 font-semibold text-slate-900">Boat owner</h3><p class="mt-1 text-sm text-slate-600">Know how far you can tow your boat to the launch ramp and whether you have enough range for the return trip.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🚛</span><h3 class="mt-2 font-semibold text-slate-900">Fleet operator</h3><p class="mt-1 text-sm text-slate-600">Evaluate whether EV trucks can handle your towing routes and plan charging infrastructure accordingly.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">EV Model</th><th class="p-3">Battery</th><th class="p-3">Towing capacity</th><th class="p-3">Range (no tow)</th><th class="p-3">Range with max tow</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">F-150 Lightning</td><td class="p-3">131 kWh</td><td class="p-3">10,000 lb</td><td class="p-3">320 mi</td><td class="p-3">~160-190 mi</td></tr>
+        <tr><td class="p-3 font-medium">Rivian R1T</td><td class="p-3">135 kWh</td><td class="p-3">11,000 lb</td><td class="p-3">328 mi</td><td class="p-3">~150-180 mi</td></tr>
+        <tr><td class="p-3 font-medium">Cybertruck</td><td class="p-3">123 kWh</td><td class="p-3">11,000 lb</td><td class="p-3">340 mi</td><td class="p-3">~160-200 mi</td></tr>
+        <tr><td class="p-3 font-medium">Hummer EV</td><td class="p-3">205 kWh</td><td class="p-3">8,500 lb</td><td class="p-3">329 mi</td><td class="p-3">~180-210 mi</td></tr>
+        <tr><td class="p-3 font-medium">Silverado EV</td><td class="p-3">200 kWh</td><td class="p-3">10,000 lb</td><td class="p-3">400 mi</td><td class="p-3">~210-250 mi</td></tr>
+        <tr><td class="p-3 font-medium">Kia EV9</td><td class="p-3">99.8 kWh</td><td class="p-3">5,000 lb</td><td class="p-3">280 mi</td><td class="p-3">~160-180 mi</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Towing Range Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter EV specs</h3><p class="mt-1 text-sm text-slate-600">Input your EV's normal range, battery capacity and base efficiency. These are usually available from the manufacturer or your dashboard.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter trailer details</h3><p class="mt-1 text-sm text-slate-600">Provide the trailer weight, your vehicle weight, speed and terrain. More detailed inputs give more accurate range estimates.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Get towing range</h3><p class="mt-1 text-sm text-slate-600">See your estimated towing range, percentage reduction, effective efficiency and how many extra charging stops to plan for.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing towing range</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Reduce speed to mitigate range loss</h3><p class="mt-1 text-sm text-slate-600">Towing at 55 mph instead of 65 mph can reduce range loss by 10-15 percentage points. Aerodynamic drag increases with speed squared, so slower speeds save disproportionate energy.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Choose an aerodynamic trailer</h3><p class="mt-1 text-sm text-slate-600">Teardrop and aerodynamic travel trailers cause significantly less range loss than boxy ones. Rounded fronts, tapered rears and smooth undersides all help reduce drag while towing.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Plan more stops, not fewer</h3><p class="mt-1 text-sm text-slate-600">Expect 2-3 times the usual number of charging stops. Use EV trip planners and filter for chargers that can accommodate trailers. Consider charging to 80% to minimize stop duration.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Use Tow Mode and regenerative braking</h3><p class="mt-1 text-sm text-slate-600">Tow Mode optimises battery cooling and stability systems. Maximise regenerative braking in hilly terrain to recover energy on descents. Pre-condition the battery before fast charging.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why towing kills EV range</h2>
+    <p class="mt-2 text-slate-600">Towing impacts EV range through two main mechanisms: aerodynamics and weight. At highway speeds, a boxy trailer can double your effective frontal area, dramatically increasing drag. Weight adds rolling resistance and requires more energy for acceleration and climbing. Because EVs recover energy through regenerative braking, the net penalty is partially offset in stop-and-go driving, but on sustained highway trips, the aerodynamic penalty dominates.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Physics of towing</h2>
+    <p class="mt-2 text-slate-600">The energy required to tow is proportional to total weight (vehicle + trailer) for acceleration and climbing, and proportional to frontal area × drag coefficient × speed² for aerodynamic drag. Towing adds 1,000-8,000+ lb of weight and 2-4x the aerodynamic drag area. This can increase energy consumption per mile by 30-100%, directly reducing range proportionally.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Speed impact on towing range</h2>
+    <p class="mt-2 text-slate-600">Speed has a nonlinear effect on range when towing. At 55 mph, aerodynamic drag is manageable; at 75 mph, drag is nearly double. EV range at 55 mph with a moderate trailer might be 180 miles, while the same setup at 75 mph might only achieve 120 miles. Reducing speed is always the most effective way to extend towing range.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Trailer type matters</h2>
+    <p class="mt-2 text-slate-600">A small utility trailer with mesh sides causes ~15% range loss. A teardrop camper (~25% loss) is aerodynamic but heavy. A full-height travel trailer (~40% loss) combines large frontal area with significant weight. A large fifth-wheel RV (~50% loss) is the worst case. Choose the most aerodynamic trailer that meets your needs if EV range is a concern.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const normRange = parseFloat(el('normRange').value) || 0;
+      const batteryKwh = parseFloat(el('batteryKwh').value) || 0;
+      const baseEff = parseFloat(el('baseEff').value) || 0;
+      const trailerWt = parseFloat(el('trailerWt').value) || 0;
+      const vehicleWt = parseFloat(el('vehicleWt').value) || 0;
+      const speed = parseFloat(el('speed').value) || 0;
+      const terrain = parseFloat(el('terrain').value);
+
+      if (!normRange || !batteryKwh || !baseEff || !trailerWt || !vehicleWt || !speed) {
+        el('r-towRange').textContent = '\u2014';
+        el('r-reduction').textContent = '\u2014';
+        el('r-effEff').textContent = '\u2014';
+        el('r-stops').textContent = '\u2014';
+        return;
+      }
+
+      const totalWt = vehicleWt + trailerWt;
+      const wtRatio = totalWt / vehicleWt;
+      const speedFactor = 1 + 0.0003 * (speed - 55) * (speed - 55);
+      const aeroPenalty = 1 + (trailerWt / vehicleWt) * 0.3;
+      const totalPenalty = wtRatio * speedFactor * aeroPenalty * terrain;
+      const towEff = baseEff / totalPenalty;
+      const towRange = (batteryKwh * towEff);
+      const reduction = ((normRange - towRange) / normRange) * 100;
+      const normalStops500 = Math.ceil(500 / normRange);
+      const towStops500 = Math.ceil(500 / towRange);
+      const extraStops = towStops500 - normalStops500;
+
+      el('r-towRange').textContent = towRange.toFixed(0) + ' mi';
+      el('r-reduction').textContent = reduction.toFixed(1) + '%';
+      el('r-effEff').textContent = towEff.toFixed(2) + ' mi/kWh';
+      el('r-stops').textContent = '+' + extraStops;
+    }
+
+    ['normRange','batteryKwh','baseEff','trailerWt','vehicleWt','speed','terrain'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

@@ -1,0 +1,155 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV CO₂ / Carbon Savings Calculator';
+const description = 'Free EV carbon savings calculator. Compare well-to-wheel CO₂ emissions between an electric vehicle and a gasoline vehicle based on your local grid mix.';
+const intro = 'Enter your annual miles, EV efficiency, gas car MPG and select your grid carbon intensity to compare total CO₂ emissions and see your annual savings.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How much CO₂ does an EV save per year?', a: 'The average EV saves 1.5–2.5 tons of CO₂ per year compared to a gasoline car, depending on grid mix and driving distance. On a coal-heavy grid, savings are lower (~1 ton); on a renewable grid, savings can exceed 3 tons per year.' },
+  { q: 'What is well-to-wheel vs tailpipe emissions?', a: 'Tailpipe emissions are the CO₂ released from burning fuel in the vehicle. Well-to-wheel includes all emissions from fuel production, transportation, and combustion. For EVs, well-to-wheel accounts for power plant emissions; for gasoline cars, it includes oil extraction, refining, and combustion.' },
+  { q: 'Do EVs really produce less CO₂ than gas cars?', a: 'Yes, in virtually all scenarios. Even on coal-heavy grids, EVs are typically 30-40% cleaner than gas cars due to the higher efficiency of large power plants vs small internal combustion engines. As grids get cleaner, EVs become dramatically cleaner.' },
+  { q: 'How does grid carbon intensity affect EV savings?', a: 'Grid carbon intensity is the amount of CO₂ emitted per kWh of electricity generated. A coal-heavy grid (800+ gCO₂/kWh) reduces EV savings significantly, while a hydro/nuclear grid (50-100 gCO₂/kWh) makes EVs nearly zero-carbon.' },
+  { q: 'What are the emissions from battery manufacturing?', a: 'Battery manufacturing adds 5-15 tons of CO₂ upfront, depending on factory energy source and battery size. This is typically offset within 6-18 months of driving compared to a gasoline car, after which the EV is cleaner for its remaining life.' },
+  { q: 'How many miles do I need to drive to offset battery production?', a: 'On a typical grid (300-500 gCO₂/kWh), an EV with a 60 kWh battery offsets its manufacturing emissions in about 10,000-20,000 miles compared to a 30 MPG gas car. On a clean grid, the payback is even faster.' },
+  { q: 'Does charging during off-peak hours reduce emissions?', a: 'Yes, in many regions. Off-peak hours often have a higher share of renewable or nuclear generation, and lower reliance on natural gas peaker plants. Many utilities offer time-of-use rates that align with cleaner grid periods.' },
+  { q: 'How does EV efficiency affect CO₂ savings?', a: 'A more efficient EV (e.g., 4 mi/kWh vs 2.5 mi/kWh) uses less electricity per mile, reducing well-to-wheel emissions proportionally. Efficiency is affected by driving style, temperature, speed, and vehicle design.' },
+  { q: 'Are EVs zero-emission vehicles?', a: 'EVs have zero tailpipe emissions, but their well-to-wheel emissions depend on the electricity source. Running an EV on 100% renewable energy makes it truly zero-emission; on a fossil-heavy grid it still produces significantly less CO₂ than a gas car.' },
+  { q: 'Will my EV get cleaner over time?', a: 'Yes. As utilities add more renewable energy to the grid, the same EV becomes progressively cleaner each year. Over a 15-year lifespan, an EV\'s lifetime emissions can drop by 50% or more as the grid decarbonizes.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual miles driven</span>
+        <input id="miles" type="number" step="any" placeholder="12000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">EV efficiency (mi/kWh)</span>
+        <input id="evEff" type="number" step="any" placeholder="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gas car MPG</span>
+        <input id="mpg" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Grid carbon intensity</span>
+        <select id="grid" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="50">Hydro-heavy (50 gCO₂/kWh)</option>
+          <option value="100">Nuclear-heavy (100 gCO₂/kWh)</option>
+          <option value="300" selected>Mixed grid (300 gCO₂/kWh)</option>
+          <option value="500">Gas-heavy (500 gCO₂/kWh)</option>
+          <option value="800">Coal-heavy (800 gCO₂/kWh)</option>
+        </select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">EV CO₂ / yr</div><div id="r-evCO2" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Gas CO₂ / yr</div><div id="r-gasCO2" class="mt-1 text-2xl font-bold text-red-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Annual savings</div><div id="r-savings" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-emerald-50 p-4 text-center"><div class="text-sm text-emerald-700">Trees equivalent</div><div id="r-trees" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">5-year total savings</div><div id="r-5yr" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different grid carbon intensities mean</h2>
+    <p class="mt-2 text-slate-600">Grid carbon intensity varies dramatically by region. The bars below show how much CO₂ is emitted per kWh of electricity and what it means for EV savings.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Hydro-heavy</span><span class="text-slate-400">50 gCO₂/kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:6%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Nuclear-heavy</span><span class="text-slate-400">100 gCO₂/kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:13%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Mixed grid</span><span class="text-slate-400">300 gCO₂/kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:38%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Gas-heavy</span><span class="text-slate-400">500 gCO₂/kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:63%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Coal-heavy</span><span class="text-slate-400">800+ gCO₂/kWh</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:100%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🌿</span><h3 class="mt-2 font-semibold text-slate-900">Eco-conscious driver</h3><p class="mt-1 text-sm text-slate-600">Quantify your personal carbon footprint reduction from switching to an EV and track how much CO₂ you save each year.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏢</span><h3 class="mt-2 font-semibold text-slate-900">Corporate sustainability</h3><p class="mt-1 text-sm text-slate-600">Calculate fleet-wide CO₂ savings from transitioning company vehicles to electric and report progress toward net-zero targets.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📊</span><h3 class="mt-2 font-semibold text-slate-900">Policy analyst</h3><p class="mt-1 text-sm text-slate-600">Model the carbon impact of EV adoption in your region and evaluate the effectiveness of grid decarbonisation policies.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">⚡</span><h3 class="mt-2 font-semibold text-slate-900">EV advocate</h3><p class="mt-1 text-sm text-slate-600">Provide data-driven evidence for EV environmental benefits when discussing electrification with peers and decision-makers.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Country/Region</th><th class="p-3">Grid intensity (gCO₂/kWh)</th><th class="p-3">EV CO₂ (g/mi)</th><th class="p-3">Annual savings vs 30 MPG</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Norway (hydro)</td><td class="p-3">~30</td><td class="p-3">~9</td><td class="p-3">~3.2 tons</td></tr>
+        <tr><td class="p-3 font-medium">France (nuclear)</td><td class="p-3">~60</td><td class="p-3">~17</td><td class="p-3">~3.1 tons</td></tr>
+        <tr><td class="p-3 font-medium">UK (mixed)</td><td class="p-3">~250</td><td class="p-3">~71</td><td class="p-3">~2.1 tons</td></tr>
+        <tr><td class="p-3 font-medium">USA average</td><td class="p-3">~380</td><td class="p-3">~109</td><td class="p-3">~1.7 tons</td></tr>
+        <tr><td class="p-3 font-medium">China (coal-heavy)</td><td class="p-3">~600</td><td class="p-3">~171</td><td class="p-3">~0.9 tons</td></tr>
+        <tr><td class="p-3 font-medium">Australia (coal)</td><td class="p-3">~800</td><td class="p-3">~229</td><td class="p-3">~0.5 tons</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the CO₂ Savings Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter driving habits</h3><p class="mt-1 text-sm text-slate-600">Input your annual miles, EV efficiency and gas car MPG. Use your actual driving data for the most accurate comparison.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Select region</h3><p class="mt-1 text-sm text-slate-600">Choose your grid carbon intensity from the presets. Pick the region closest to your local electricity generation mix.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">See carbon savings</h3><p class="mt-1 text-sm text-slate-600">Compare EV vs gas CO₂ emissions instantly. View annual and 5-year savings plus trees-equivalent for easy understanding.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing EV carbon savings</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">EVs are cleaner even on coal grids</h3><p class="mt-1 text-sm text-slate-600">Even on a coal-heavy grid (800 gCO₂/kWh), an EV produces about 30-40% less CO₂ per mile than a 30 MPG gas car. Large power plants are more efficient than small engines.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Charge during renewable-heavy hours</h3><p class="mt-1 text-sm text-slate-600">Many grids have excess wind or solar generation at certain times. Charging then reduces your effective grid intensity. Use smart chargers or schedule charging apps.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Pair with home solar for near-zero emissions</h3><p class="mt-1 text-sm text-slate-600">Charging your EV from rooftop solar panels reduces well-to-wheel emissions to nearly zero. Solar + EV is the most impactful climate action a household can take.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Drive efficiently to maximize savings</h3><p class="mt-1 text-sm text-slate-600">Smooth acceleration, regenerative braking, and maintaining moderate speeds improve EV efficiency by 15-30%, reducing both your electricity cost and carbon footprint.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Well-to-wheel vs tailpipe emissions</h2>
+    <p class="mt-2 text-slate-600">Tailpipe emissions only measure CO₂ released at the vehicle. Well-to-wheel (WTW) is a complete lifecycle view that includes every step from energy source to wheels. For gasoline cars, WTW adds emissions from oil extraction, transport, refining, and distribution — roughly 20-30% above tailpipe. For EVs, WTW accounts for power plant emissions, transmission losses (~5-7%), and charging efficiency (~90%). This calculator uses well-to-wheel methodology for a fair comparison.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Grid carbon intensity explained</h2>
+    <p class="mt-2 text-slate-600">Carbon intensity measures how many grams of CO₂ are emitted per kilowatt-hour of electricity generated. It varies by energy mix: hydro and nuclear are near-zero; natural gas is ~400-500 gCO₂/kWh; coal is ~800-1000 gCO₂/kWh. The global average is about 475 gCO₂/kWh. As renewables expand, average grid intensity is falling 2-5% per year in most developed countries.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Battery manufacturing emissions</h2>
+    <p class="mt-2 text-slate-600">Producing an EV battery is energy-intensive. A 60 kWh battery generates roughly 5-10 tons of CO₂ during manufacturing, depending on the factory's energy source. This upfront carbon debt is typically repaid within 6,000-15,000 miles of driving compared to a gasoline car. Lithium iron phosphate (LFP) batteries have lower manufacturing emissions than nickel-rich chemistries.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Lifetime carbon analysis</h2>
+    <p class="mt-2 text-slate-600">Over a 15-year, 180,000-mile lifespan, an EV on a typical grid produces 40-60% less CO₂ than a comparable gasoline car. On a clean grid, lifetime savings exceed 80%. Factoring in battery replacement — which happens rarely — the EV still comes out significantly ahead. As grids continue to decarbonize, the lifetime carbon advantage of EVs grows every year.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How the grid is getting cleaner</h2>
+    <p class="mt-2 text-slate-600">Global electricity generation is transitioning from fossil fuels to renewables. Solar and wind capacity have grown 10x in the last decade. Many countries have committed to net-zero grids by 2050 or earlier. This means an EV bought today will run on a progressively cleaner grid over its lifetime, making it an investment in lower-carbon transportation that compounds over time.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const miles = parseFloat(el('miles').value) || 0;
+      const evEff = parseFloat(el('evEff').value) || 0;
+      const mpg = parseFloat(el('mpg').value) || 0;
+      const grid = parseFloat(el('grid').value);
+
+      if (!miles || !evEff || !mpg) {
+        el('r-evCO2').textContent = '\u2014';
+        el('r-gasCO2').textContent = '\u2014';
+        el('r-savings').textContent = '\u2014';
+        el('r-trees').textContent = '\u2014';
+        el('r-5yr').textContent = '\u2014';
+        return;
+      }
+
+      const kWhPerYear = miles / evEff;
+      const evCO2kg = (kWhPerYear * grid) / 1000;
+      const gallonsPerYear = miles / mpg;
+      const gasCO2kg = gallonsPerYear * 8.887;
+      const savings = gasCO2kg - evCO2kg;
+      const trees = savings / 0.022;
+      const fiveYear = savings * 5;
+
+      el('r-evCO2').textContent = evCO2kg.toFixed(1) + ' kg';
+      el('r-gasCO2').textContent = gasCO2kg.toFixed(1) + ' kg';
+      el('r-savings').textContent = (savings / 1000).toFixed(2) + ' tons';
+      el('r-trees').textContent = trees.toFixed(0) + ' trees';
+      el('r-5yr').textContent = (fiveYear / 1000).toFixed(2) + ' tons';
+    }
+
+    ['miles','evEff','mpg','grid'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

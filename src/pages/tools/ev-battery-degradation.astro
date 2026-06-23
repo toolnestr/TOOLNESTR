@@ -1,0 +1,154 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Battery Degradation Calculator';
+const description = 'Free EV battery degradation calculator. Estimate battery capacity loss and range fade over years and miles based on usage patterns and climate.';
+const intro = 'Enter your vehicle details, age, mileage and typical charging habits to estimate current battery capacity and remaining range.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How much battery degradation is normal for an EV?', a: 'Most EV batteries degrade about 1-2% per year or 10-15% over 100,000 miles. NMC batteries typically retain 90% after 100k miles, while LFP batteries may retain 85% but last longer in cycle life.' },
+  { q: 'Does DC fast charging degrade the battery faster?', a: 'Yes, frequent DC fast charging accelerates degradation, especially in hot climates. The heat generated during fast charging stresses the battery chemistry. Using DC fast charging for more than 50% of charges can increase degradation by 2-3% over the same period.' },
+  { q: 'What is the difference between NMC and LFP batteries?', a: 'NMC (Nickel Manganese Cobalt) batteries have higher energy density and better cold performance but degrade faster. LFP (Lithium Iron Phosphate) batteries are safer, last more cycles, but have lower energy density and are more affected by cold.' },
+  { q: 'How does climate affect battery degradation?', a: 'Extreme heat is the biggest enemy of battery life. Batteries in hot climates (above 30°C average) degrade 2x faster than in moderate climates. Cold reduces range temporarily but doesn\'t cause permanent damage as quickly as heat.' },
+  { q: 'What is calendar aging vs cycle aging?', a: 'Calendar aging is capacity loss that occurs over time regardless of use, driven by chemical reactions inside the battery. Cycle aging is loss from charge/discharge cycles. Calendar aging accounts for about 50-70% of total degradation in typical EV use.' },
+  { q: 'How long do EV batteries typically last?', a: 'Most EV batteries are warrantied for 8 years or 100,000 miles. In practice, they often last 10-15 years or 150,000-200,000 miles before dropping below 70% capacity. Many EVs on the road today have over 200,000 miles with original batteries.' },
+  { q: 'What is the best charging practice for battery health?', a: 'Keep the battery between 20% and 80% for daily use. Avoid letting it sit at 100% or below 10% for extended periods. Use Level 2 charging for regular charging and save DC fast charging for road trips.' },
+  { q: 'Does LFP battery need different charging habits?', a: 'Yes, LFP batteries benefit from occasional full charges to 100% (at least once a week) to recalibrate the BMS. Unlike NMC, LFP has a very flat voltage curve, making state-of-charge estimation more challenging without periodic full charges.' },
+  { q: 'Can battery degradation be reversed?', a: 'No, battery degradation is permanent and irreversible. However, some range loss may appear to recover temporarily in warmer weather because chemical reactions slow in cold. Proper care can slow but not reverse degradation.' },
+  { q: 'How does driving style affect degradation?', a: 'Aggressive driving with rapid acceleration and high speeds generates more heat and stresses the battery more than gentle driving. Frequent hard acceleration can increase degradation rates by 5-10% compared to smooth driving.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial battery capacity (kWh)</span>
+        <input id="initCap" type="number" step="any" placeholder="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle age (years)</span>
+        <input id="age" type="number" step="any" placeholder="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total miles driven</span>
+        <input id="miles" type="number" step="any" placeholder="30000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Average climate temperature</span>
+        <select id="climate" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="moderate">Moderate (10-25°C)</option><option value="hot">Hot (>25°C)</option><option value="cold">Cold (<10°C)</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Charging habits</span>
+        <select id="charging" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="l2">Mostly Level 2</option><option value="mix">Mix of L2 and DC fast</option><option value="dc">Mostly DC fast</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery chemistry</span>
+        <select id="chem" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="nmc">NMC (Nickel Manganese Cobalt)</option><option value="lfp">LFP (Lithium Iron Phosphate)</option></select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-sm opacity-80">Current capacity</div><div id="r-currentCap" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Capacity loss</div><div id="r-lossPct" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Remaining range</div><div id="r-range" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Capacity @ 10yr</div><div id="r-proj10" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different capacity retention levels mean</h2>
+    <p class="mt-2 text-slate-600">NMC and LFP batteries degrade differently over time. The bars below show typical retention by year for each chemistry.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Year 1 – 100%</span><span class="text-slate-400">Like new</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:100%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Year 3 – 95% (NMC) / 96% (LFP)</span><span class="text-slate-400">Minimal loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:95%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Year 6 – 90% (NMC) / 92% (LFP)</span><span class="text-slate-400">Normal aging</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:90%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Year 10 – 82% (NMC) / 87% (LFP)</span><span class="text-slate-400">Significant loss</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:82%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Year 15 – 72% (NMC) / 80% (LFP)</span><span class="text-slate-400">End of life approaching</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:72%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDD0D</span><h3 class="mt-2 font-semibold text-slate-900">Used EV Buyer</h3><p class="mt-1 text-sm text-slate-600">Assess battery health before purchasing a used EV. Compare estimated degradation against the asking price to make an informed decision.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDC69\u200D\uD83D\uDCBB</span><h3 class="mt-2 font-semibold text-slate-900">Long-term Owner</h3><p class="mt-1 text-sm text-slate-600">Track your battery's health over years of ownership and adjust charging habits to maximize lifespan and resale value.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDE9A</span><h3 class="mt-2 font-semibold text-slate-900">Fleet Operator</h3><p class="mt-1 text-sm text-slate-600">Model battery degradation across your EV fleet to plan replacement cycles, budget for refurbishment, and optimize charging infrastructure.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">\uD83D\uDCCB</span><h3 class="mt-2 font-semibold text-slate-900">Lease Return Manager</h3><p class="mt-1 text-sm text-slate-600">Evaluate end-of-lease battery condition against manufacturer warranty terms to identify vehicles that may need replacement before remarketing.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Chemistry</th><th class="p-3">Degradation @ 50k mi</th><th class="p-3">Degradation @ 100k mi</th><th class="p-3">Degradation @ 150k mi</th><th class="p-3">Cycle life</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">NMC</td><td class="p-3">~5%</td><td class="p-3">~10%</td><td class="p-3">~18%</td><td class="p-3">1000-2000 cycles</td></tr>
+        <tr><td class="p-3 font-medium">LFP</td><td class="p-3">~7%</td><td class="p-3">~15%</td><td class="p-3">~22%</td><td class="p-3">3000-5000 cycles</td></tr>
+        <tr><td class="p-3 font-medium">LTO</td><td class="p-3">~2%</td><td class="p-3">~5%</td><td class="p-3">~8%</td><td class="p-3">10000-20000 cycles</td></tr>
+        <tr><td class="p-3 font-medium">NiMH (older)</td><td class="p-3">~10%</td><td class="p-3">~20%</td><td class="p-3">~30%</td><td class="p-3">500-1000 cycles</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Battery Degradation Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter vehicle details</h3><p class="mt-1 text-sm text-slate-600">Provide the initial battery capacity, vehicle age, and total miles driven. Check your owner's manual or vehicle settings for battery specs.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Set usage profile</h3><p class="mt-1 text-sm text-slate-600">Select your climate, charging habits, and battery chemistry. These factors significantly influence how quickly your battery degrades.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Get degradation estimate</h3><p class="mt-1 text-sm text-slate-600">Review current capacity, remaining range, and projected capacity at 10 years. Use this data to plan ownership or purchase decisions.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing battery life</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Avoid frequent DC fast charging</h3><p class="mt-1 text-sm text-slate-600">The heat generated during DC fast charging stresses battery chemistry. Use Level 2 charging for daily needs and reserve DC fast for road trips. Keeping DC fast charging below 30% of total charges can reduce degradation by 2-3%.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Keep charge between 20-80%</h3><p class="mt-1 text-sm text-slate-600">Operating at extreme states of charge accelerates degradation. For daily driving, keep your battery between 20% and 80%. Only charge to 100% when you need the full range for a long trip and time the charge to finish just before departure.</p></div>
+      <div><h3 class="font-semibold text-slate-900">LFP likes regular full charges</h3><p class="mt-1 text-sm text-slate-600">LFP batteries benefit from an occasional full charge to 100% at least once a week. This allows the BMS to properly calibrate state of charge. Unlike NMC, LFP is more tolerant of full charges and can handle them without significant degradation.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Avoid extreme temperatures</h3><p class="mt-1 text-sm text-slate-600">Park in the shade or a garage during hot weather. In winter, precondition the battery while plugged in before driving. Thermal management systems help, but avoiding prolonged exposure to extreme temperatures extends battery life.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Battery chemistry types</h2>
+    <p class="mt-2 text-slate-600">Modern EVs primarily use two battery chemistries. NMC (Nickel Manganese Cobalt) offers high energy density and better cold weather performance but degrades faster. LFP (Lithium Iron Phosphate) is safer, more durable, and lasts more cycles but has lower energy density and is more affected by cold. Newer chemistries like LMFP and solid-state batteries are emerging with promise of combining the best of both worlds.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Factors affecting degradation</h2>
+    <p class="mt-2 text-slate-600">Heat is the primary driver of battery degradation. High ambient temperatures accelerate chemical reactions inside the battery, breaking down the electrolyte and damaging the cathode structure. High charge rates amplify this effect. Depth of discharge also matters — cycling between 80% and 20% causes less stress than cycling between 100% and 0%.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Calendar vs cycle aging</h2>
+    <p class="mt-2 text-slate-600">Calendar aging occurs regardless of use, caused by side reactions that consume lithium ions over time. It is accelerated by high temperature and high state of charge. Cycle aging is the wear from each charge and discharge cycle. For most EV owners, calendar aging accounts for 50-70% of total degradation. Storing the battery at 50% charge in a cool environment minimizes calendar aging.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Warranty coverage</h2>
+    <p class="mt-2 text-slate-600">Most EV manufacturers warranty the battery for 8 years or 100,000 miles, guaranteeing at least 70% capacity retention. Some brands like Tesla and Hyundai offer longer warranties. If your battery degrades below the warranty threshold, the manufacturer will repair or replace it at no cost. Always check the specific warranty terms for your vehicle.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to maximize battery life</h2>
+    <p class="mt-2 text-slate-600">Use scheduled charging to delay charging until just before departure, keeping the battery at a low state of charge overnight. In hot climates, plug in whenever parked so the thermal management system can use grid power instead of battery power. Follow the manufacturer's recommended charging limits — typically 80% for daily use for NMC, and 100% for LFP with occasional full cycles.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const initCap = parseFloat(el('initCap').value);
+      const age = parseFloat(el('age').value);
+      const miles = parseFloat(el('miles').value);
+      const climate = el('climate').value;
+      const charging = el('charging').value;
+      const chem = el('chem').value;
+
+      if (isNaN(initCap) || isNaN(age) || isNaN(miles) || initCap <= 0 || age < 0 || miles < 0) {
+        ['r-currentCap','r-lossPct','r-range','r-proj10'].forEach(id => el(id).textContent = '\u2014');
+        return;
+      }
+
+      const chemFactor = chem === 'nmc' ? 1.0 : 0.85;
+      const climateFactor = climate === 'hot' ? 1.8 : climate === 'cold' ? 1.3 : 1.0;
+      const chargeFactor = charging === 'dc' ? 1.4 : charging === 'mix' ? 1.15 : 1.0;
+      const annualRate = 0.015 * chemFactor * climateFactor * chargeFactor;
+      const mileRate = 0.0001 * chemFactor * climateFactor * chargeFactor;
+
+      let calendarLoss = annualRate * age;
+      let cycleLoss = mileRate * miles;
+      let totalLoss = Math.min(calendarLoss + cycleLoss, 0.8);
+      let currentCap = initCap * (1 - totalLoss);
+      let lossPct = totalLoss * 100;
+
+      const rangePerKwh = 3.5;
+      let remainingRange = currentCap * rangePerKwh;
+      let projAt10 = initCap * (1 - Math.min(annualRate * 10 + mileRate * (miles / age * 10), 0.8));
+
+      el('r-currentCap').textContent = currentCap.toFixed(1) + ' kWh';
+      el('r-lossPct').textContent = lossPct.toFixed(1) + '%';
+      el('r-range').textContent = remainingRange.toFixed(0) + ' mi';
+      el('r-proj10').textContent = projAt10.toFixed(1) + ' kWh';
+    }
+
+    ['initCap','age','miles','climate','charging','chem'].forEach(id => el(id).addEventListener('input', update));
+    ['climate','charging','chem'].forEach(id => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

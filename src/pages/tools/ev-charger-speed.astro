@@ -1,0 +1,156 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Charger Speed / Power Calculator';
+const description = 'Free EV charger power calculator. Calculate actual charging power from voltage, current, phases and connector type, plus the charge rate in miles per hour.';
+const intro = 'Enter your charger\'s voltage, current and phase configuration to calculate the maximum power delivery and charge speed in miles or kilometres per hour.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How is EV charging power calculated?', a: 'For single-phase AC: Power (kW) = Volts × Amps / 1000. For three-phase AC: Power (kW) = Volts × Amps × √3 × Power Factor / 1000. DC fast charging power is calculated as Voltage × Current / 1000, limited by both the charger and the vehicle\'s acceptance rate.' },
+  { q: 'What is the difference between Level 1, Level 2 and DC fast charging?', a: 'Level 1 uses 120V (1.2-1.8 kW, adds ~3-5 mi/hr). Level 2 uses 208-240V (3-19 kW, adds ~12-70 mi/hr). DC Fast Charging uses 400-800V (50-350 kW, adds 150-1000+ mi/hr). Higher power means faster charging but requires compatible hardware.' },
+  { q: 'Why is the practical charging speed lower than theoretical?', a: 'Continuous loads must be derated to 80% of circuit rating by code (e.g., 40A on a 50A breaker). Voltage drop in wiring reduces actual voltage at the charger. The car\'s onboard charger may limit AC acceptance to a lower power than the EVSE can deliver.' },
+  { q: 'What size breaker do I need for EV charging?', a: 'A 16A charger needs a 20A breaker, 32A needs 40A, 40A needs 50A, 48A needs 60A. The breaker must be sized at 125% of the continuous load. Always consult a licensed electrician for installation.' },
+  { q: 'What is the difference between single-phase and three-phase charging?', a: 'Single-phase is common in residential US (240V split phase) and can deliver up to ~19 kW. Three-phase is common in commercial/European settings and can deliver much higher power from the same amperage — e.g., 32A three-phase at 400V delivers ~22 kW vs ~7.7 kW single-phase.' },
+  { q: 'What connector types exist for EV charging?', a: 'J1772 (Level 1 & 2 AC, North America), NACS/Tesla (AC & DC, North America), CCS (DC fast charging, North America & Europe), CHAdeMO (DC fast charging, Japan & some US), Type 2/Mennekes (Europe AC). NACS is becoming the standard in North America.' },
+  { q: 'How fast can I charge at home?', a: 'A typical home Level 2 charger on a 40A circuit at 240V delivers 9.6 kW, adding about 30-40 miles of range per hour depending on your EV\'s efficiency. A full charge for a 75 kWh battery takes about 8 hours — perfect for overnight charging.' },
+  { q: 'Does charging speed slow down as the battery fills?', a: 'Yes. EVs have a charging curve — power delivery is fastest at low state of charge (typically 10-30%) and tapers off significantly above 80% to protect the battery. DC fast charging from 10-80% is usually much faster than 80-100%.' },
+  { q: 'Can I use a 120V outlet to charge my EV?', a: 'Yes, but it is very slow. A standard 120V/15A outlet delivers about 1.4 kW, adding only 3-5 miles of range per hour. For a 75 kWh battery, a full charge would take 50-60 hours. Level 2 charging is strongly recommended for daily use.' },
+  { q: 'What is power factor in EV charging?', a: 'Power factor (PF) is the ratio of real power to apparent power in AC circuits. EV chargers typically have PF of 0.95-0.99 (near unity) due to built-in power factor correction. PF only matters for three-phase AC charging calculations.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Voltage (V)</span>
+        <select id="voltage" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="120">120 V (Level 1)</option>
+          <option value="208">208 V (Commercial)</option>
+          <option value="240" selected>240 V (Level 2)</option>
+          <option value="277">277 V (Commercial)</option>
+          <option value="480">480 V (Commercial)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current (amps)</span>
+        <input id="current" type="number" step="any" placeholder="32" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Phases</span>
+        <select id="phases" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1">Single-phase (1)</option>
+          <option value="3">Three-phase (3)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Power factor (three-phase only)</span>
+        <input id="pf" type="number" step="any" placeholder="0.96" value="0.96" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle efficiency (mi/kWh)</span>
+        <input id="eff" type="number" step="any" placeholder="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Power (kW)</div><div id="r-power" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Charge rate (mi/hr)</div><div id="r-mph" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Breaker size needed</div><div id="r-breaker" class="mt-1 text-xl font-bold text-amber-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Circuit type</div><div id="r-circuit" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different charging speeds mean</h2>
+    <p class="mt-2 text-slate-600">Charging speed varies enormously by configuration. The bars below compare how many miles of range each setup adds per hour of charging.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">L1 12A (1.4 kW)</span><span class="text-slate-400">~5 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-slate-400" style="width:2%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">L2 16A (3.8 kW)</span><span class="text-slate-400">~13 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:5%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">L2 32A (7.7 kW)</span><span class="text-slate-400">~27 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:10%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">L2 48A (11.5 kW)</span><span class="text-slate-400">~40 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:15%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">DC 50 kW</span><span class="text-slate-400">~175 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:25%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">DC 150 kW</span><span class="text-slate-400">~525 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:50%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">DC 350 kW</span><span class="text-slate-400">~1,225 mi/hr</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-purple-600" style="width:100%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏠</span><h3 class="mt-2 font-semibold text-slate-900">EV owner installing charger</h3><p class="mt-1 text-sm text-slate-600">Determine the best charger configuration for your home based on your panel capacity, daily driving needs, and budget.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🏗️</span><h3 class="mt-2 font-semibold text-slate-900">Builder</h3><p class="mt-1 text-sm text-slate-600">Design EV-ready homes and multi-unit buildings with appropriate electrical infrastructure for current and future charging needs.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">⚡</span><h3 class="mt-2 font-semibold text-slate-900">Electrician</h3><p class="mt-1 text-sm text-slate-600">Size breakers, specify wire gauges and verify circuit capacity for EV charger installations quickly and accurately.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🚛</span><h3 class="mt-2 font-semibold text-slate-900">Fleet manager</h3><p class="mt-1 text-sm text-slate-600">Plan depot charging infrastructure by calculating required power, charge times and circuit configurations for multiple EVs charging simultaneously.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Configuration</th><th class="p-3">Voltage</th><th class="p-3">Current</th><th class="p-3">Power</th><th class="p-3">Breaker</th><th class="p-3">Charge rate</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Level 1</td><td class="p-3">120V</td><td class="p-3">12A</td><td class="p-3">1.4 kW</td><td class="p-3">15A</td><td class="p-3">~5 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">Level 1</td><td class="p-3">120V</td><td class="p-3">15A</td><td class="p-3">1.8 kW</td><td class="p-3">20A</td><td class="p-3">~6 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">Level 2</td><td class="p-3">240V</td><td class="p-3">16A</td><td class="p-3">3.8 kW</td><td class="p-3">20A</td><td class="p-3">~13 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">Level 2</td><td class="p-3">240V</td><td class="p-3">32A</td><td class="p-3">7.7 kW</td><td class="p-3">40A</td><td class="p-3">~27 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">Level 2</td><td class="p-3">240V</td><td class="p-3">48A</td><td class="p-3">11.5 kW</td><td class="p-3">60A</td><td class="p-3">~40 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">Level 2</td><td class="p-3">240V</td><td class="p-3">80A</td><td class="p-3">19.2 kW</td><td class="p-3">100A</td><td class="p-3">~67 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">DC Fast</td><td class="p-3">400V</td><td class="p-3">125A</td><td class="p-3">50 kW</td><td class="p-3">N/A</td><td class="p-3">~175 mi/hr</td></tr>
+        <tr><td class="p-3 font-medium">DC Fast</td><td class="p-3">800V</td><td class="p-3">375A</td><td class="p-3">350 kW</td><td class="p-3">N/A</td><td class="p-3">~1,225 mi/hr</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Charger Speed Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter electrical specs</h3><p class="mt-1 text-sm text-slate-600">Select your voltage, enter the charger current rating, and choose single or three-phase configuration based on your electrical service.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Enter vehicle efficiency</h3><p class="mt-1 text-sm text-slate-600">Input your EV's efficiency in mi/kWh to see how the charge power translates into real-world miles or kilometers of range per hour.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Get charge speed</h3><p class="mt-1 text-sm text-slate-600">See the calculated power in kW, miles per hour of charging, required breaker size, and recommended wiring for your configuration.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for EV charger installation</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Derate breaker at 80% for continuous load</h3><p class="mt-1 text-sm text-slate-600">EV charging is a continuous load (runs for 3+ hours). The breaker must be sized at 125% of the charger current. A 32A charger needs a 40A breaker; a 48A charger needs a 60A breaker.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Voltage drop affects power</h3><p class="mt-1 text-sm text-slate-600">Long cable runs reduce voltage at the charger, lowering actual charge speed. For runs over 50 feet, size up your wire to reduce voltage drop. Voltage drop of 3% or less is recommended for EV charging circuits.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Know your panel capacity</h3><p class="mt-1 text-sm text-slate-900">Before installing a Level 2 charger, have an electrician verify your service panel has enough capacity. A typical 32A charger adds about 8 kW of load — significant for a 100A or 200A service with other loads.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Consider future-proofing</h3><p class="mt-1 text-sm text-slate-600">Install conduit and wiring rated for higher current than your immediate needs. A 60A circuit (48A charging) is a good sweet spot. Running heavier gauge wire now saves expensive rework when you upgrade your charger later.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Power formula: P = V × I × √3 × PF</h2>
+    <p class="mt-2 text-slate-600">The fundamental formula for AC power is P = V × I × √3 × PF for three-phase, or P = V × I × PF for single-phase. The √3 (1.732) accounts for the phase-to-phase voltage relationship in three-phase systems. Power factor (PF) represents how effectively the current is converted into useful work. EV chargers typically have a PF of 0.95-0.99.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Continuous load derating (80% rule)</h2>
+    <p class="mt-2 text-slate-600">The National Electrical Code (NEC) requires that continuous loads — any load expected to operate for 3 hours or more — must not exceed 80% of the circuit's rated capacity. This is why a 50A breaker can only supply 40A of continuous charging. This rule ensures wiring and breakers have adequate thermal margin for sustained operation.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Single-phase vs three-phase charging</h2>
+    <p class="mt-2 text-slate-600">Single-phase power is common in residential settings, typically delivering 120V or 240V. Three-phase power is used in commercial and industrial settings, delivering 208V, 480V, or higher. Three-phase can deliver more power at the same amperage — e.g., 32A at 240V single-phase = 7.7 kW; 32A at 400V three-phase = 22 kW. Most EVs support both configurations.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Connector standards</h2>
+    <p class="mt-2 text-slate-600">J1772 is the North American standard for Level 1 & 2 AC charging. NACS (Tesla's connector, now adopted as SAE J3400) supports both AC and DC. CCS (Combined Charging System) adds DC pins to J1772 for fast charging. CHAdeMO is a Japanese DC standard found on some older EVs. Type 2 (Mennekes) is the European AC standard. Connector choice affects maximum power delivery and charger compatibility.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const voltage = parseFloat(el('voltage').value);
+      const current = parseFloat(el('current').value) || 0;
+      const phases = parseFloat(el('phases').value);
+      const pf = parseFloat(el('pf').value) || 1;
+      const eff = parseFloat(el('eff').value) || 0;
+
+      if (!current || current <= 0) {
+        el('r-power').textContent = '\u2014';
+        el('r-mph').textContent = '\u2014';
+        el('r-breaker').textContent = '\u2014';
+        el('r-circuit').textContent = '\u2014';
+        return;
+      }
+
+      const powerKw = phases === 3
+        ? (voltage * current * 1.732 * pf) / 1000
+        : (voltage * current) / 1000;
+      const chargeMph = eff > 0 ? powerKw * eff : 0;
+      const breakerAmp = Math.ceil(current * 1.25 / 5) * 5;
+      const circuitLabel = current <= 12 ? '15A GFCI' : breakerAmp + 'A ' + (phases === 3 ? '3-pole' : '2-pole');
+
+      el('r-power').textContent = powerKw.toFixed(2) + ' kW';
+      el('r-mph').textContent = chargeMph.toFixed(1) + ' mi/hr';
+      el('r-breaker').textContent = breakerAmp + 'A';
+      el('r-circuit').textContent = circuitLabel;
+    }
+
+    ['voltage','current','phases','pf','eff'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

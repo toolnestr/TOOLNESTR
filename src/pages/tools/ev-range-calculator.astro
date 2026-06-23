@@ -1,0 +1,239 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Range Calculator';
+const description =
+  'Free EV range calculator. Estimate real-world driving range from battery capacity, vehicle ' +
+  'efficiency, speed, temperature and driving conditions.';
+const intro =
+  'Enter your battery size, efficiency, and select driving conditions to estimate your ' +
+  'real-world range in miles or kilometres.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How is EV range calculated?', a: 'EV range is estimated using battery capacity (kWh) divided by energy consumption (kWh per mile or km). Real-world range also depends on speed, temperature, terrain, driving style, and use of climate control. This calculator applies correction factors for each condition.' },
+  { q: 'Why is real-world range lower than EPA range?', a: 'EPA tests are conducted in controlled laboratory conditions with optimal temperatures and moderate speeds. Real-world driving involves temperature extremes, hills, highway speeds, HVAC use, and stop-and-go traffic — all of which increase energy consumption and reduce range.' },
+  { q: 'How much does cold weather affect EV range?', a: 'Cold weather can reduce EV range by 20–40%. At 0°C (32°F) you may see about 20% loss; at -10°C (14°F) the loss can be 30–40%. The battery is less efficient when cold, and cabin heating draws significant power.' },
+  { q: 'Does speed really affect EV range that much?', a: 'Yes. EVs are most efficient at city speeds (30–50 km/h or 20–30 mph). At highway speeds around 120 km/h (75 mph), aerodynamic drag increases dramatically, reducing range by approximately 15–25% compared to 90 km/h (56 mph).' },
+  { q: 'What is the difference between EPA, WLTP, and NEDC range?', a: 'EPA (USA) is the strictest, reporting range closest to real-world results. WLTP (Europe) is more optimistic than EPA by about 10–20%. NEDC (older standard) is the most optimistic — often 25–30% higher than real-world. Use EPA or WLTP minus 15% as a rough real-world guide.' },
+  { q: 'Does terrain really matter for EV range?', a: 'Yes. Hilly terrain increases energy consumption because climbing requires extra power. While some energy is recovered during downhill regen, net losses are typically 10–20% in hilly areas and 20–30%+ in mountainous terrain compared to flat driving.' },
+  { q: 'How does climate control affect range?', a: 'Heating the cabin in winter can consume 3–5 kW of battery power, reducing range by 10–30% depending on outside temperature. Air conditioning in summer uses less — about 1–2 kW — but still impacts range by 5–15%. Preconditioning while plugged in helps.' },
+  { q: 'Do driving modes affect range?', a: 'Yes. Eco mode limits acceleration, reduces HVAC power, and can extend range by 5–10% versus normal mode. Sport mode provides maximum performance but consumes more energy, reducing range by 10–15% compared to normal.' },
+  { q: 'What is the real-world range of a typical EV?', a: 'Modern EVs with 60–80 kWh batteries typically achieve 320–480 km (200–300 mi) under mixed conditions. Smaller EVs with 40–50 kWh batteries get 200–320 km (125–200 mi). Luxury EVs with 100+ kWh packs can exceed 600 km (375 mi) under ideal conditions.' },
+  { q: 'Does tire pressure affect EV range?', a: 'Yes. Under-inflated tires increase rolling resistance. Keeping tires at the recommended pressure can improve range by 3–7%. Cold weather also lowers tire pressure, compounding range loss in winter.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery capacity (kWh)</span>
+        <input id="bat" type="number" step="0.1" placeholder="75" value="75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Efficiency (mi/kWh)</span>
+        <input id="eff" type="number" step="0.1" placeholder="3.5" value="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Speed (km/h)</span>
+        <input id="spd" type="number" step="1" placeholder="90" value="90" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Temperature (°C)</span>
+        <input id="tmp" type="number" step="1" placeholder="20" value="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Climate use</span>
+        <select id="hvac" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="off">Off</option><option value="mild">Mild AC/heat</option><option value="high">Full heat/AC</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Terrain</span>
+        <select id="ter" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="flat">Flat</option><option value="hilly">Hilly</option><option value="mountain">Mountainous</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Driving mode</span>
+        <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="eco">Eco</option><option value="normal">Normal</option><option value="sport">Sport</option></select></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Estimated range (mi)</div><div id="r-mi" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Estimated range (km)</div><div id="r-km" class="mt-1 text-2xl font-bold text-indigo-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Consumption</div><div id="r-cons" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different driving conditions mean for range</h2>
+    <p class="mt-2 text-slate-600">The bars below compare typical range under various driving conditions for a 75 kWh EV with 3.5 mi/kWh base efficiency.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">EPA rated</span><span class="text-slate-400">~263 mi / 423 km</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:78%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Mixed city/highway</span><span class="text-slate-400">~250 mi / 402 km</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:74%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Highway (120 km/h)</span><span class="text-slate-400">~210 mi / 338 km</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:62%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Cold weather (0°C)</span><span class="text-slate-400">~185 mi / 298 km</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:55%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Towing</span><span class="text-slate-400">~130 mi / 209 km</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:39%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔌</span>
+      <h3 class="mt-2 font-semibold text-slate-900">EV Shopper</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare range across EV models for each trim and battery size to find the vehicle that matches your daily commute and road trip needs.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚗</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Daily Commuter</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate your real-world range with your local temperature and route conditions to see if an EV fits your daily driving without mid-week charging.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🛣️</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Road Tripper</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan long journeys by estimating range at highway speeds in cold or hot weather, so you know exactly where and when to stop for charging.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fleet Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Evaluate which EVs can handle your fleet routes year-round, factoring in weather, terrain, and payload so drivers never get stranded.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Model</th><th class="p-3">Battery (kWh)</th><th class="p-3">EPA range (mi)</th><th class="p-3">WLTP range (km)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Tesla Model 3 RWD</td><td class="p-3">60</td><td class="p-3">272</td><td class="p-3">513</td></tr>
+        <tr><td class="p-3 font-medium">Tesla Model Y Long Range</td><td class="p-3">81</td><td class="p-3">330</td><td class="p-3">533</td></tr>
+        <tr><td class="p-3 font-medium">Hyundai Ioniq 6 RWD</td><td class="p-3">77</td><td class="p-3">361</td><td class="p-3">614</td></tr>
+        <tr><td class="p-3 font-medium">Kia EV6 Long Range</td><td class="p-3">77</td><td class="p-3">310</td><td class="p-3">528</td></tr>
+        <tr><td class="p-3 font-medium">Ford Mustang Mach-E AWD</td><td class="p-3">91</td><td class="p-3">270</td><td class="p-3">490</td></tr>
+        <tr><td class="p-3 font-medium">Chevrolet Bolt EV</td><td class="p-3">65</td><td class="p-3">259</td><td class="p-3">417</td></tr>
+        <tr><td class="p-3 font-medium">BMW i4 eDrive40</td><td class="p-3">83</td><td class="p-3">301</td><td class="p-3">510</td></tr>
+        <tr><td class="p-3 font-medium">Volkswagen ID.4 Pro</td><td class="p-3">82</td><td class="p-3">275</td><td class="p-3">517</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the EV Range Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter battery + efficiency</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your battery capacity in kWh and your vehicle efficiency in mi/kWh. These are the base numbers for all range calculations.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Adjust conditions</h3>
+        <p class="mt-1 text-sm text-slate-600">Set your average speed, outside temperature, climate use, terrain type, and driving mode to match your expected driving environment.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read range estimate</h3>
+        <p class="mt-1 text-sm text-slate-600">Your estimated range appears instantly in both miles and kilometres, along with your adjusted energy consumption per mile.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing EV range</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Cold weather reduces range 20–40%</h3>
+        <p class="mt-1 text-sm text-slate-600">Battery chemistry slows down in cold temperatures, and cabin heating draws significant power. Precondition your battery while plugged in and use seat heaters instead of cabin heat when possible.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Highway driving uses more energy</h3>
+        <p class="mt-1 text-sm text-slate-600">At 120 km/h (75 mph), aerodynamic drag cuts range by 20–30% compared to 90 km/h (56 mph). On long trips, slowing down by 10–15 km/h can make a meaningful difference.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Tire pressure matters</h3>
+        <p class="mt-1 text-sm text-slate-600">Under-inflated tires increase rolling resistance. Check tire pressure monthly and keep them at the recommended PSI. Proper inflation can improve efficiency by 3–7%.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What affects EV range</h2>
+    <p class="mt-2 text-slate-600">
+      EV range depends on far more than just battery size. The same 75 kWh pack can deliver 330 miles in
+      perfect conditions or barely 200 miles in winter with a headwind. The largest factors are
+      temperature (battery chemistry slows in the cold), speed (air resistance grows with the square of
+      velocity), terrain (climbing uses extra energy even with regen), and auxiliary loads (heating,
+      cooling, heated seats all pull from the battery).
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">EPA vs WLTP vs real-world range</h2>
+    <p class="mt-2 text-slate-600">
+      The EPA (US Environmental Protection Agency) test is the most conservative of the major rating
+      systems. It includes highway driving at higher average speeds, cold temperature operation, and
+      uses the air conditioner. WLTP (Worldwide Harmonised Light Vehicle Test Procedure) used in Europe
+      tends to report figures 15–25% higher than EPA because it tests at lower speeds and moderate
+      temperatures. Real-world range typically falls between the two — closer to EPA in extreme
+      weather and closer to WLTP in mild conditions.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Battery chemistry impact</h2>
+    <p class="mt-2 text-slate-600">
+      Lithium-ion batteries lose capacity and efficiency in cold weather. NMC (nickel manganese cobalt)
+      cells — common in most EVs — are less affected by cold than LFP (lithium iron phosphate) cells,
+      which are cheaper but more sensitive to temperature. LFP batteries also prefer to be charged to
+      100% regularly, while NMC batteries last longest when charged to 80–90% for daily use.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Temperature effects on EV range</h2>
+    <p class="mt-2 text-slate-600">
+      At 20°C (68°F), an EV performs at its peak. At 0°C (32°F), expect range loss of roughly 20%.
+      At -10°C (14°F), losses can reach 35–40%. Heat also has an impact: at 35°C (95°F) with the air
+      conditioning running, range drops approximately 10–15%. The sweet spot is spring and autumn
+      temperatures, where minimal HVAC is needed and battery chemistry is most efficient.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to maximize EV range</h2>
+    <p class="mt-2 text-slate-600">
+      Drive smoothly — aggressive acceleration and hard braking waste energy even with regenerative
+      braking. Precondition your cabin while still plugged in on extreme temperature days. Use Eco
+      mode for daily driving. Keep tires properly inflated. Remove roof racks when not in use to
+      reduce drag. In winter, use seat and steering wheel heaters instead of cabin heat — they use
+      far less power.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const bat = parseFloat(el('bat').value);
+      const eff = parseFloat(el('eff').value);
+      const spd = parseFloat(el('spd').value);
+      const tmp = parseFloat(el('tmp').value);
+      const hvac = el('hvac').value;
+      const ter = el('ter').value;
+      const mode = el('mode').value;
+      if (isNaN(bat) || isNaN(eff) || isNaN(spd) || isNaN(tmp) || bat <= 0 || eff <= 0 || spd <= 0) {
+        ['r-mi','r-km','r-cons'].forEach(id => el(id).textContent = '—'); return;
+      }
+      let adjust = 1;
+      adjust *= Math.max(0.65, Math.min(1.1, 1 - (spd - 50) * 0.002));
+      if (tmp < 0) adjust *= 0.65; else if (tmp < 10) adjust *= 0.80; else if (tmp < 20) adjust *= 0.92; else if (tmp > 35) adjust *= 0.85; else if (tmp > 30) adjust *= 0.92;
+      if (hvac === 'mild') adjust *= 0.92; else if (hvac === 'high') adjust *= 0.80;
+      if (ter === 'hilly') adjust *= 0.85; else if (ter === 'mountain') adjust *= 0.70;
+      if (mode === 'eco') adjust *= 1.08; else if (mode === 'sport') adjust *= 0.85;
+      const effAdj = eff * adjust;
+      const rangeMi = bat * effAdj;
+      const rangeKm = rangeMi * 1.60934;
+      el('r-mi').textContent = Math.round(rangeMi) + ' mi';
+      el('r-km').textContent = Math.round(rangeKm) + ' km';
+      el('r-cons').textContent = (1 / effAdj).toFixed(1) + ' kWh/mi';
+    }
+    document.querySelectorAll('input,select').forEach(e => e.addEventListener('input', update));
+  </script>
+</ToolLayout>

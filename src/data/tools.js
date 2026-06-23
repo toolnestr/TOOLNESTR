@@ -18,6 +18,7 @@ export const categories = [
   { id: 'creators', name: 'Creators', emoji: '🎨' },
   { id: 'developers', name: 'Developers', emoji: '💻' },
   { id: 'engineering', name: 'Electrical Engineering', emoji: '⚡' },
+  { id: 'automotive', name: 'Automotive', emoji: '🚗' },
 ];
 
 export const tools = [
@@ -116,6 +117,23 @@ export const tools = [
   { slug: 'conduit-fill-calculator', title: 'Conduit Fill Calculator', short: 'Calculate conduit fill percentage per NEC guidelines.', category: 'engineering', emoji: '📦', enabled: true, status: 'live' },
   { slug: 'smd-resistor-code-calculator', title: 'SMD Resistor Code Calculator', short: 'Decode 3 and 4 digit SMD resistor codes to ohms.', category: 'engineering', emoji: '🔬', enabled: true, status: 'live' },
   { slug: 'motor-hp-kw-converter', title: 'Motor HP / kW Converter', short: 'Convert between horsepower, kilowatts and amps for motors.', category: 'engineering', emoji: '⚙️', enabled: true, status: 'live' },
+
+  // ── Automotive (EV) ──
+  { slug: 'ev-range-calculator', title: 'EV Range Calculator', short: 'Estimate real-world driving range from battery & efficiency.', category: 'automotive', emoji: '📏', enabled: true, status: 'live' },
+  { slug: 'ev-charging-time-calculator', title: 'EV Charging Time Calculator', short: 'Charge time from any % to any % at Level 1/2/DC speeds.', category: 'automotive', emoji: '⏱️', enabled: true, status: 'live' },
+  { slug: 'ev-charging-cost-calculator', title: 'EV Charging Cost Calculator', short: 'Cost to charge at home vs public stations.', category: 'automotive', emoji: '💰', enabled: true, status: 'live' },
+  { slug: 'ev-vs-gas-savings', title: 'EV vs Gas Savings Calculator', short: 'Total cost comparison over years of ownership.', category: 'automotive', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'ev-efficiency-calculator', title: 'EV Efficiency / Mileage Calculator', short: 'mi/kWh, Wh/mi, km/kWh from distance & energy used.', category: 'automotive', emoji: '📉', enabled: true, status: 'live' },
+  { slug: 'ev-battery-degradation', title: 'EV Battery Degradation Calculator', short: 'Estimate capacity loss and range fade over time.', category: 'automotive', emoji: '🔋', enabled: true, status: 'live' },
+  { slug: 'ev-trip-planner', title: 'EV Trip / Road Trip Planner', short: 'Charge stops, time & cost for long-distance drives.', category: 'automotive', emoji: '🗺️', enabled: true, status: 'live' },
+  { slug: 'ev-home-charger-calculator', title: 'Home Charger Install Calculator', short: 'Breaker size, wire gauge & panel load for L1/L2 chargers.', category: 'automotive', emoji: '🔌', enabled: true, status: 'live' },
+  { slug: 'ev-payback-calculator', title: 'EV Payback / Break-even Calculator', short: 'Years to recoup the EV price premium from savings.', category: 'automotive', emoji: '🎯', enabled: true, status: 'live' },
+  { slug: 'ev-regenerative-braking', title: 'Regenerative Braking Calculator', short: 'Energy recovered from braking based on speed & weight.', category: 'automotive', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'ev-co2-savings', title: 'EV CO₂ / Carbon Savings Calculator', short: 'Emissions comparison between EV and gas vehicle.', category: 'automotive', emoji: '🌿', enabled: true, status: 'live' },
+  { slug: 'ev-towing-range', title: 'EV Towing Range Calculator', short: 'Range reduction when towing a trailer or load.', category: 'automotive', emoji: '🚛', enabled: true, status: 'live' },
+  { slug: 'ev-battery-replacement', title: 'EV Battery Replacement Cost Calculator', short: 'Estimate when to replace battery and projected cost.', category: 'automotive', emoji: '🪫', enabled: true, status: 'live' },
+  { slug: 'ev-charger-speed', title: 'EV Charger Speed / Power Calculator', short: 'kW delivered, voltage, amps & charge rate for any EVSE.', category: 'automotive', emoji: '⚡', enabled: true, status: 'live' },
+  { slug: 'ev-weight-payload', title: 'EV Weight / Payload Calculator', short: 'Curb weight, GVWR, payload & battery weight impact.', category: 'automotive', emoji: '⚖️', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

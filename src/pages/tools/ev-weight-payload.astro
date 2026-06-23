@@ -1,0 +1,153 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'EV Weight / Payload Calculator';
+const description = 'Free EV weight calculator. Calculate curb weight, GVWR, payload capacity and the impact of battery weight on vehicle dynamics.';
+const intro = 'Enter your EV\'s curb weight, GVWR and battery weight to calculate payload capacity, weight distribution and power-to-weight ratio.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'Why are EVs heavier than gas cars?', a: 'EVs are heavier primarily because of their battery packs. A typical 75-100 kWh battery weighs 450-700 kg (1,000-1,500 lb). This adds 20-30% to the vehicle weight compared to a similar gas car. Electric motors are lighter than engines, but the battery more than compensates.' },
+  { q: 'How does EV weight affect range?', a: 'Weight directly affects energy consumption. Heavier vehicles need more energy to accelerate and climb hills. However, EVs use regenerative braking to recover energy on deceleration, and weight matters less for steady-speed highway driving where aerodynamics dominate.' },
+  { q: 'What is payload capacity and why does it matter for EVs?', a: 'Payload is the maximum weight a vehicle can carry including passengers, cargo and any accessories. It equals GVWR minus curb weight. Many EVs have lower payload than gas equivalents because the heavy battery consumes part of the GVWR budget.' },
+  { q: 'How does battery weight distribution affect handling?', a: 'EVs benefit from a low center of gravity because the heavy battery pack is mounted in the floor between the axles. This improves stability and reduces body roll compared to gas cars, often resulting in better handling despite higher overall weight.' },
+  { q: 'Do EV trucks have less payload than gas trucks?', a: 'Yes, generally. An EV truck with a 1,500 lb battery pack has that weight subtracted from available payload. For example, the F-150 Lightning has ~1,600-1,800 lb payload vs up to 3,000 lb for the gas F-150. Check payload ratings carefully before buying an EV truck for heavy work.' },
+  { q: 'What is a good power-to-weight ratio for an EV?', a: 'Power-to-weight ratio is measured in kW per ton. Compact EVs like the Model 3 (~180 kW/ton) feel responsive. Performance EVs like the Model S Plaid (~400 kW/ton) are supercar-level. A typical family EV (150-200 kW/ton) provides adequate acceleration.' },
+  { q: 'How much does the battery weigh in different chemistries?', a: 'NMC batteries weigh about 5-6 kg/kWh, LFP weigh about 6-8 kg/kWh, and LTO weigh about 8-10 kg/kWh. LFP batteries are heavier for the same capacity but last longer. A 75 kWh NMC pack weighs about 400-450 kg (880-990 lb).' },
+  { q: 'Does GVWR include the battery weight?', a: 'Yes, GVWR (Gross Vehicle Weight Rating) is the maximum total weight of the vehicle — including the battery, all fluids, passengers, cargo, hitch weight, and any accessories. The battery is part of the curb weight, not part of the payload.' },
+  { q: 'How does payload affect the vehicle warranty?', a: 'Exceeding GVWR or payload capacity can void your warranty and is unsafe. It puts excessive stress on suspension, brakes, tires and frame. For EVs, it also affects the battery thermal management system\u2019s ability to handle extra load.' },
+  { q: 'Do heavier EVs wear out tires faster?', a: 'Yes. The additional weight of EVs causes 20-30% more tire wear compared to equivalent gas vehicles. EV-specific tires with stiffer sidewalls and higher load ratings are now available to address this. Regular tire rotation is especially important for EVs.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Curb weight (lb)</span>
+        <input id="curbWt" type="number" step="any" placeholder="6000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">GVWR (lb)</span>
+        <input id="gvwr" type="number" step="any" placeholder="7500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Battery weight (lb)</span>
+        <input id="batWt" type="number" step="any" placeholder="1200" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Passenger + cargo weight (lb)</span>
+        <input id="load" type="number" step="any" placeholder="600" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Power output (kW)</span>
+        <input id="powerKw" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Front weight distribution (%)</span>
+        <input id="frontDist" type="number" step="any" placeholder="48" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Payload remaining</div><div id="r-payload" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Battery % of curb wt</div><div id="r-batPct" class="mt-1 text-xl font-bold text-emerald-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Power-to-weight</div><div id="r-ptw" class="mt-1 text-xl font-bold text-amber-600">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Weight dist. impact</div><div id="r-dist" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What different battery weight percentages mean</h2>
+    <p class="mt-2 text-slate-600">The battery pack accounts for a significant portion of an EV's total weight. This ratio varies by vehicle class and affects payload, handling, and efficiency.</p>
+    <div class="mt-5 space-y-3">
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Compact EV (Leaf, Mini EV)</span><span class="text-slate-400">~20%</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:20%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Midsize sedan (Model 3, Ioniq 6)</span><span class="text-slate-400">~22%</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:22%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">SUV (Model Y, EV9, Q6 e-tron)</span><span class="text-slate-400">~25%</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:25%"></div></div></div>
+      <div><div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Truck (Lightning, R1T, Cybertruck)</span><span class="text-slate-400">~28%</span></div><div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:28%"></div></div></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🛒</span><h3 class="mt-2 font-semibold text-slate-900">EV shopper</h3><p class="mt-1 text-sm text-slate-600">Compare the real-world payload and weight characteristics of different EV models before making your purchase decision.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🛻</span><h3 class="mt-2 font-semibold text-slate-900">Truck buyer</h3><p class="mt-1 text-sm text-slate-600">Understand the payload capacity of EV trucks vs gas equivalents to determine if an electric truck can handle your work requirements.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📝</span><h3 class="mt-2 font-semibold text-slate-900">Auto journalist</h3><p class="mt-1 text-sm text-slate-600">Include weight, payload and power-to-weight ratio data in your EV reviews to provide meaningful technical comparisons for readers.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🚛</span><h3 class="mt-2 font-semibold text-slate-900">Fleet manager</h3><p class="mt-1 text-sm text-slate-600">Ensure EV fleet vehicles can carry required loads safely and stay within payload limits when assigning vehicles to different routes.</p></div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Vehicle</th><th class="p-3">Curb weight</th><th class="p-3">Battery</th><th class="p-3">Battery %</th><th class="p-3">Payload</th><th class="p-3">Power/weight</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Tesla Model 3</td><td class="p-3">4,050 lb</td><td class="p-3">~880 lb</td><td class="p-3">22%</td><td class="p-3">~950 lb</td><td class="p-3">~180 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Tesla Model Y</td><td class="p-3">4,400 lb</td><td class="p-3">~970 lb</td><td class="p-3">22%</td><td class="p-3">~1,100 lb</td><td class="p-3">~160 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Kia EV6</td><td class="p-3">4,500 lb</td><td class="p-3">~1,000 lb</td><td class="p-3">22%</td><td class="p-3">~900 lb</td><td class="p-3">~150 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Chevy Blazer EV</td><td class="p-3">5,100 lb</td><td class="p-3">~1,200 lb</td><td class="p-3">24%</td><td class="p-3">~1,000 lb</td><td class="p-3">~130 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">F-150 Lightning</td><td class="p-3">6,200 lb</td><td class="p-3">~1,650 lb</td><td class="p-3">27%</td><td class="p-3">~1,800 lb</td><td class="p-3">~90 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Rivian R1T</td><td class="p-3">7,100 lb</td><td class="p-3">~1,800 lb</td><td class="p-3">25%</td><td class="p-3">~1,700 lb</td><td class="p-3">~110 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Hummer EV</td><td class="p-3">9,000+ lb</td><td class="p-3">~2,800 lb</td><td class="p-3">31%</td><td class="p-3">~1,200 lb</td><td class="p-3">~120 kW/ton</td></tr>
+        <tr><td class="p-3 font-medium">Gas F-150 (comparison)</td><td class="p-3">4,700 lb</td><td class="p-3">N/A</td><td class="p-3">0%</td><td class="p-3">~3,000 lb</td><td class="p-3">~90 kW/ton</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Weight / Payload Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter vehicle specs</h3><p class="mt-1 text-sm text-slate-600">Input curb weight, GVWR and battery weight from manufacturer specs or owner's manual. These are typically listed on a sticker inside the driver's door.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Add load details</h3><p class="mt-1 text-sm text-slate-600">Enter the total weight of passengers, cargo, and any accessories. Include hitch weight for trailers and roof rack loads for a complete picture.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Check payload + dynamics</h3><p class="mt-1 text-sm text-slate-600">See remaining payload, battery weight percentage, power-to-weight ratio, and understand how weight distribution affects handling.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for understanding EV weight</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">EVs are heavier than gas equivalents</h3><p class="mt-1 text-sm text-slate-600">A typical EV weighs 20-50% more than its gas counterpart. The Ford F-150 Lightning is about 6,200 lb vs 4,700 lb for a gas F-150. This extra weight affects payload, tire wear, braking distances and energy consumption.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Check payload before buying</h3><p class="mt-1 text-sm text-slate-600">Payload is GVWR minus curb weight. A heavy battery reduces available payload. Some EV trucks have surprisingly low payload (1,200-1,800 lb) considering their size. Always verify payload meets your needs before purchasing.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Battery placement affects handling positively</h3><p class="mt-1 text-sm text-slate-600">The battery pack is mounted in the floor, creating a low center of gravity. This reduces body roll, improves cornering stability, and often makes EVs handle better than their weight would suggest. Weight distribution is typically close to 50:50.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Factor weight into range expectations</h3><p class="mt-1 text-sm text-slate-600">More weight means more energy needed for acceleration and hill climbing. However, at steady highway speeds, aerodynamic drag matters more than weight. City driving efficiency is more affected by weight than highway efficiency.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why EVs are heavy</h2>
+    <p class="mt-2 text-slate-600">The primary reason EVs are heavy is the battery pack. A modern 75-100 kWh battery weighs 1,000-1,800 lb and comprises 20-30% of the vehicle's total mass. Electric motors are lighter than internal combustion engines, and EVs lack heavy components like exhaust systems, transmissions, and fuel tanks. However, the battery's weight more than offsets these savings. Additional structure is also needed to protect the battery in crashes.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Battery weight by chemistry</h2>
+    <p class="mt-2 text-slate-600">Different battery chemistries have different energy densities and thus different weights for the same capacity. NMC (nickel manganese cobalt) packs weigh about 5-6 kg per kWh. LFP (lithium iron phosphate) packs weigh about 6-8 kg per kWh — heavier but longer lasting and safer. LTO (lithium titanate) packs weigh 8-10 kg/kWh. Sodium-ion batteries, an emerging technology, are even heavier but use abundant materials.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">GVWR explained</h2>
+    <p class="mt-2 text-slate-600">Gross Vehicle Weight Rating (GVWR) is the maximum allowable total weight of a fully loaded vehicle, including the vehicle itself, passengers, cargo, fluids, and any accessories. It is set by the manufacturer and printed on a sticker inside the driver's door frame. Exceeding GVWR is illegal and dangerous — it overloads tires, suspension, brakes, and can cause handling instability. Payload = GVWR − curb weight.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Payload importance for trucks</h2>
+    <p class="mt-2 text-slate-600">For EV trucks, payload is especially critical because the battery consumes a large portion of the GVWR budget. The Ford F-150 Lightning has about 1,800 lb payload vs up to 3,000 lb for a gas F-150. This means 4 passengers (600 lb) plus a camper shell (200 lb) plus tools (500 lb) may leave only 500 lb for cargo in the bed. Truck buyers must carefully evaluate whether an EV's payload meets their needs.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Weight distribution and handling</h2>
+    <p class="mt-2 text-slate-600">EVs typically achieve near 50:50 front-to-rear weight distribution because the battery pack is mounted low and centered between the axles. This low center of gravity reduces body roll and improves stability compared to gas cars with heavy engines over the front axle. The result is that many EVs handle better than their weight suggests, with more predictable cornering and better traction in slippery conditions.</p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    function update() {
+      const curbWt = parseFloat(el('curbWt').value) || 0;
+      const gvwr = parseFloat(el('gvwr').value) || 0;
+      const batWt = parseFloat(el('batWt').value) || 0;
+      const load = parseFloat(el('load').value) || 0;
+      const powerKw = parseFloat(el('powerKw').value) || 0;
+      const frontDist = parseFloat(el('frontDist').value) || 50;
+
+      if (!curbWt || !gvwr) {
+        el('r-payload').textContent = '\u2014';
+        el('r-batPct').textContent = '\u2014';
+        el('r-ptw').textContent = '\u2014';
+        el('r-dist').textContent = '\u2014';
+        return;
+      }
+
+      const payloadRemaining = gvwr - curbWt - load;
+      const batPct = (batWt / curbWt) * 100;
+      const totalWeightTon = (curbWt + load) / 2204.62;
+      const ptw = powerKw / totalWeightTon;
+      const frontWt = curbWt * (frontDist / 100);
+      const rearWt = curbWt * ((100 - frontDist) / 100);
+      const loadedFrontPct = ((frontWt) / (curbWt + load)) * 100;
+      const loadedRearPct = ((rearWt + load) / (curbWt + load)) * 100;
+      const distImpact = Math.abs(loadedFrontPct - loadedRearPct).toFixed(1);
+
+      el('r-payload').textContent = payloadRemaining.toFixed(0) + ' lb';
+      el('r-batPct').textContent = batPct.toFixed(1) + '%';
+      el('r-ptw').textContent = ptw.toFixed(0) + ' kW/ton';
+      el('r-dist').textContent = distImpact + '% split diff';
+    }
+
+    ['curbWt','gvwr','batWt','load','powerKw','frontDist'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
