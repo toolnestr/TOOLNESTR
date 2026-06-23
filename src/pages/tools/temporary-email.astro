@@ -1,0 +1,344 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Temporary Email';
+const description =
+  'Free temporary email inbox. Generate a disposable email address instantly, receive ' +
+  'messages in real time, and keep your real inbox spam-free. No signup needed.';
+const intro =
+  'Generate a temporary email address, share it anywhere, and read incoming messages right here. Your inbox expires automatically.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'How does temporary email work?', a: 'We use the Mail.tm API to create a disposable inbox for you. When messages arrive, they are fetched and displayed in your browser. No signup or personal data needed.' },
+  { q: 'How long does the inbox last?', a: 'Inboxes remain active for roughly 30 minutes after creation. After that the account expires and messages are deleted automatically.' },
+  { q: 'Can I send emails from this address?', a: 'No — this is a receive-only inbox. You can use it to receive verification emails, signup confirmations, and other incoming messages.' },
+  { q: 'Is my data private?', a: 'Yes. The inbox is temporary and self-destructs. We do not store or log your messages on our server — they live only on the Mail.tm API and are deleted when the inbox expires.' },
+  { q: 'Can I create multiple inboxes?', a: 'Yes — click "New inbox" to generate a fresh address at any time. The old one will stop working.' },
+  { q: 'Why am I not receiving emails?', a: 'Some services block temporary email domains. Try generating a new inbox — you may get a different domain that is not blocked. Also check that you waited a few seconds for the message to arrive.' },
+  { q: 'How often does the inbox refresh?', a: 'The tool polls for new messages every 5 seconds automatically. You can also click the refresh button to check immediately.' },
+  { q: 'Can I see the full email content?', a: 'Yes — click any message in the list to read its full body. The sender, subject, and date are shown in the summary.' },
+  { q: 'What happens if I close the page?', a: 'Your inbox token is stored only in memory. If you close or refresh the page, the inbox is lost and you will need to generate a new one.' },
+  { q: 'Is this free?', a: 'Yes — completely free. The underlying Mail.tm API is free with no paid tiers. There is no limit on how many inboxes you can create.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div id="state-empty">
+      <button id="generate-btn" class="w-full rounded-xl bg-indigo-600 px-6 py-3 text-base font-medium text-white transition hover:bg-indigo-700">Generate inbox</button>
+      <p class="mt-3 text-center text-sm text-slate-400">Click to create a random temporary email address.</p>
+    </div>
+
+    <div id="state-ready" class="hidden">
+      <div class="flex items-center gap-3 rounded-xl bg-indigo-50 p-4">
+        <span class="text-2xl">📧</span>
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-medium uppercase tracking-wide text-indigo-500">Your temp inbox</div>
+          <div id="email-display" class="truncate text-lg font-bold text-indigo-700"></div>
+        </div>
+        <button id="copy-btn" class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700">Copy</button>
+      </div>
+
+      <div class="mt-3 flex items-center justify-between">
+        <button id="refresh-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Refresh</button>
+        <button id="new-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">New inbox</button>
+        <span id="poll-status" class="text-xs text-slate-400">Watching for messages...</span>
+      </div>
+
+      <div id="messages" class="mt-3 space-y-2">
+        <p class="py-6 text-center text-sm text-slate-400">No messages yet. Send an email to your temp address — it will appear here within seconds.</p>
+      </div>
+    </div>
+
+    <div id="state-loading" class="hidden py-8 text-center">
+      <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600"></div>
+      <p class="mt-3 text-sm text-slate-500">Creating inbox...</p>
+    </div>
+
+    <div id="state-error" class="hidden rounded-xl bg-red-50 p-4 text-center">
+      <p id="error-text" class="text-sm text-red-700"></p>
+      <button id="retry-btn" class="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700">Try again</button>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use a temporary email</h2>
+    <p class="mt-2 text-slate-600">Disposable email addresses help you stay in control of your inbox across many common situations.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Signup verification</span><span class="text-slate-400">Most common use</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:90%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Avoiding spam</span><span class="text-slate-400">Keep your real inbox clean</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Testing / QA</span><span class="text-slate-400">Automated email verification</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:70%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Newsletter trials</span><span class="text-slate-400">Test before committing</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:55%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">One-time offers</span><span class="text-slate-400">Coupons & free trials</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:45%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Developers</h3>
+      <p class="mt-1 text-sm text-slate-600">Test email verification flows in your app without polluting your personal inbox. Generate addresses on the fly during development and QA.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Privacy-Conscious Users</h3>
+      <p class="mt-1 text-sm text-slate-600">Sign up for services, downloads, and forums without revealing your real email address. Keep marketing spam out of your primary inbox.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Students</h3>
+      <p class="mt-1 text-sm text-slate-600">Sign up for student discounts, free trials, and educational resources without using your university or personal email for every service.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">QA Engineers</h3>
+      <p class="mt-1 text-sm text-slate-600">Automate email-inbox creation in test suites. Verify that your application sends the right confirmation, password-reset, or notification emails.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Feature</th><th class="p-3">Temporary Email</th><th class="p-3">Regular Email</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Setup time</td><td class="p-3">Instant (one click)</td><td class="p-3">Minutes to days</td></tr>
+        <tr><td class="p-3 font-medium">Lifespan</td><td class="p-3">~30 minutes</td><td class="p-3">Permanent</td></tr>
+        <tr><td class="p-3 font-medium">Spam protection</td><td class="p-3">Automatic (self-destructs)</td><td class="p-3">Requires filters</td></tr>
+        <tr><td class="p-3 font-medium">Personal info required</td><td class="p-3">None</td><td class="p-3">Name, phone, etc.</td></tr>
+        <tr><td class="p-3 font-medium">Send emails</td><td class="p-3">No</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Password recovery</td><td class="p-3">Not possible (expired)</td><td class="p-3">Yes</td></tr>
+        <tr><td class="p-3 font-medium">Cost</td><td class="p-3">Free</td><td class="p-3">Free or paid</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the temporary email tool</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate an inbox</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Generate inbox" to create a random temporary email address. No signup or personal info required.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy and use it</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Copy" to copy the address, then paste it wherever you need to receive email — signups, verifications, downloads.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read messages</h3>
+        <p class="mt-1 text-sm text-slate-600">Incoming messages appear automatically. Click any message to read its full content. No refresh needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using temporary email</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep the tab open</h3>
+        <p class="mt-1 text-sm text-slate-600">Your inbox lives in the browser tab. If you close or refresh the page, the address is lost. Keep it open while waiting for messages.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Some sites block temp domains</h3>
+        <p class="mt-1 text-sm text-slate-600">Certain services block known temporary email domains. If a signup fails, generate a new inbox — you may get a different domain that works.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check the spam folder</h3>
+        <p class="mt-1 text-sm text-slate-600">Most messages arrive within seconds. If you are waiting longer than a minute, some providers may have delivery delays. Try generating a fresh inbox.</p>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    const BASE = 'https://api.mail.tm';
+
+    const $ = (id) => document.getElementById(id);
+    const stateEmpty = $('state-empty');
+    const stateReady = $('state-ready');
+    const stateLoading = $('state-loading');
+    const stateError = $('state-error');
+    const errorText = $('error-text');
+    const emailDisplay = $('email-display');
+    const messagesEl = $('messages');
+    const pollStatus = $('poll-status');
+
+    let token = null;
+    let accountId = null;
+    let pollTimer = null;
+
+    function show(s) {
+      [stateEmpty, stateReady, stateLoading, stateError].forEach((el) => el.classList.add('hidden'));
+      s.classList.remove('hidden');
+    }
+
+    function setError(msg) {
+      errorText.textContent = msg;
+      show(stateError);
+    }
+
+    async function generate() {
+      show(stateLoading);
+      try {
+        const domRes = await fetch(BASE + '/domains');
+        const domData = await domRes.json();
+        const domain = domData['hydra:member'][0].domain;
+        const local = Math.random().toString(36).substring(2, 10);
+        const address = local + '@' + domain;
+        const password = Math.random().toString(36).substring(2, 15);
+
+        const accRes = await fetch(BASE + '/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, password }),
+        });
+        if (!accRes.ok) throw new Error('Could not create inbox');
+        const accData = await accRes.json();
+
+        const tokRes = await fetch(BASE + '/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, password }),
+        });
+        if (!tokRes.ok) throw new Error('Could not authenticate');
+        const tokData = await tokRes.json();
+
+        token = tokData.token;
+        accountId = accData['@id'];
+        emailDisplay.textContent = address;
+        messagesEl.innerHTML =
+          '<p class="py-6 text-center text-sm text-slate-400">No messages yet. Send an email to your temp address — it will appear here within seconds.</p>';
+        show(stateReady);
+        startPolling();
+      } catch (e) {
+        setError(e.message || 'Failed to create inbox. Please try again.');
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    function startPolling() {
+      stopPolling();
+      pollStatus.textContent = 'Watching for messages...';
+      pollTimer = setInterval(fetchMessages, 5000);
+      fetchMessages();
+    }
+
+    async function fetchMessages() {
+      if (!token) return;
+      try {
+        const res = await fetch(BASE + '/messages', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await res.json();
+        renderMessages(data['hydra:member'] || []);
+      } catch (e) {
+        pollStatus.textContent = 'Polling paused';
+      }
+    }
+
+    let expandedIds = new Set();
+    let bodyCache = {};
+
+    function renderMessages(msgs) {
+      if (!msgs.length) {
+        messagesEl.innerHTML =
+          '<p class="py-6 text-center text-sm text-slate-400">No messages yet. Send an email to your temp address — it will appear here within seconds.</p>';
+        expandedIds.clear();
+        return;
+      }
+      pollStatus.textContent = msgs.length + ' message' + (msgs.length > 1 ? 's' : '');
+      messagesEl.innerHTML = '';
+      msgs.forEach((msg) => {
+        const msgId = msg['@id'];
+        const div = document.createElement('div');
+        div.className = 'msg-item cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm';
+        const date = new Date(msg.createdAt);
+        const wasExpanded = expandedIds.has(msgId);
+        div.innerHTML =
+          `<div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-semibold text-slate-900">${escapeHtml(msg.subject || '(no subject)')}</div>
+              <div class="truncate text-xs text-slate-500">${escapeHtml(msg.from || msg.sender?.address || 'Unknown')}</div>
+            </div>
+            <span class="shrink-0 text-xs text-slate-400">${date.toLocaleTimeString()}</span>
+          </div>
+          <div class="msg-body mt-2 text-sm text-slate-600 ${wasExpanded ? '' : 'hidden'}">${wasExpanded ? escapeHtml(bodyCache[msgId] || 'Loading...') : ''}</div>`;
+        if (wasExpanded && bodyCache[msgId]) {
+          const bodyEl = div.querySelector('.msg-body');
+          bodyEl.textContent = bodyCache[msgId];
+        }
+        div.addEventListener('click', async () => {
+          const bodyEl = div.querySelector('.msg-body');
+          if (bodyEl.classList.contains('hidden')) {
+            bodyEl.classList.remove('hidden');
+            expandedIds.add(msgId);
+            if (!bodyCache[msgId]) {
+              bodyEl.textContent = 'Loading...';
+              try {
+                const res = await fetch(BASE + msgId, {
+                  headers: { Authorization: 'Bearer ' + token },
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                bodyCache[msgId] = data.text || data.html || '(empty)';
+                bodyEl.textContent = bodyCache[msgId];
+              } catch (e) {
+                bodyEl.textContent = 'Could not load message content.';
+              }
+            } else {
+              bodyEl.textContent = bodyCache[msgId];
+            }
+          } else {
+            bodyEl.classList.add('hidden');
+            expandedIds.delete(msgId);
+          }
+        });
+        messagesEl.appendChild(div);
+      });
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    $('generate-btn').addEventListener('click', generate);
+    $('retry-btn').addEventListener('click', generate);
+    $('new-btn').addEventListener('click', () => { stopPolling(); token = null; show(stateEmpty); });
+
+    $('refresh-btn').addEventListener('click', fetchMessages);
+
+    $('copy-btn').addEventListener('click', async () => {
+      const addr = emailDisplay.textContent;
+      if (!addr) return;
+      try {
+        await navigator.clipboard.writeText(addr);
+        const btn = $('copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => (btn.textContent = 'Copy'), 1500);
+      } catch (e) {}
+    });
+
+    show(stateEmpty);
+  </script>
+</ToolLayout>
