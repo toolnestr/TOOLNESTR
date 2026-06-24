@@ -546,26 +546,53 @@ async function handleUptimeCheck(url) {
 }
 
 // ── SSL Certificate Check Handler ──
+// crt.sh (certificate-transparency log search) was the original plan, but its
+// free community-run Postgres backend is frequently overloaded and returns
+// 502 even for plain, uninvolved requests — confirmed unreliable in testing,
+// not a Cloudflare-egress-blocking issue this time, just a flaky dependency.
+// Qualys SSL Labs' public API is far more reliably operated; query its cache
+// first (instant for any previously-scanned domain) and only fall back to
+// kicking off a fresh scan — which takes 60-90s — when nothing is cached yet.
 async function handleSslCheck(url) {
   const domain = url.searchParams.get('domain') || '';
   if (!domain) return jsonResponse({ error: 'Missing domain parameter' }, 400);
   try {
-    const res = await fetch('https://crt.sh/?q=' + encodeURIComponent(domain) + '&output=json', { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return jsonResponse({ error: 'Certificate lookup failed (crt.sh returned ' + res.status + ')' }, 502);
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return jsonResponse({ error: 'No certificates found for ' + domain }, 404);
-    const latest = data.sort(function (a, b) { return new Date(b.not_before) - new Date(a.not_before); })[0];
-    return jsonResponse({
-      domain: domain,
-      issuer: latest.issuer_name || 'Unknown',
-      notBefore: latest.not_before || '',
-      notAfter: latest.not_after || '',
-      daysUntilExpiry: latest.not_after ? Math.ceil((new Date(latest.not_after) - Date.now()) / 86400000) : 0,
-      serialNumber: latest.serial_number || '',
-    });
+    const cached = await fetchSslLabs(domain, true);
+    if (cached && cached.status === 'READY') return jsonResponse(formatSslResult(domain, cached));
+    if (cached && (cached.status === 'IN_PROGRESS' || cached.status === 'DNS')) {
+      return jsonResponse({ scanning: true, message: 'No cached result yet — a fresh scan has started. This takes 60-90 seconds; please try again shortly.' }, 202);
+    }
+    // Nothing cached and no scan running yet — kick one off.
+    await fetchSslLabs(domain, false);
+    return jsonResponse({ scanning: true, message: 'Scan started for this domain. This takes 60-90 seconds on a first check; please try again shortly.' }, 202);
   } catch (e) {
     return jsonResponse({ error: 'Certificate lookup failed: ' + e.message }, 502);
   }
+}
+
+async function fetchSslLabs(domain, fromCache) {
+  const qs = fromCache ? '&fromCache=on&maxAge=24' : '';
+  const res = await fetch('https://api.ssllabs.com/api/v3/analyze?host=' + encodeURIComponent(domain) + qs + '&all=done', { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+function formatSslResult(domain, data) {
+  const endpoint = (data.endpoints || [])[0] || {};
+  const cert = (data.certs || [])[0] || {};
+  const notAfter = cert.notAfter ? new Date(cert.notAfter).toISOString() : '';
+  return {
+    domain: domain,
+    grade: endpoint.grade || 'Unknown',
+    issuer: cert.issuerSubject || 'Unknown',
+    subject: cert.subject || '',
+    notBefore: cert.notBefore ? new Date(cert.notBefore).toISOString() : '',
+    notAfter: notAfter,
+    daysUntilExpiry: cert.notAfter ? Math.ceil((cert.notAfter - Date.now()) / 86400000) : 0,
+    keyAlg: cert.keyAlg || '',
+    keySize: cert.keySize || 0,
+    serialNumber: cert.serialNumber || '',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
