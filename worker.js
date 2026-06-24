@@ -89,6 +89,13 @@ export default {
       }
 
       finalUrl = currentUrl;
+
+      // Read security headers BEFORE consuming the response body (headers must be accessed before text())
+      var hsts = response ? response.headers.get('Strict-Transport-Security') : null;
+      var xFrame = response ? response.headers.get('X-Frame-Options') : null;
+      var csp = response ? response.headers.get('Content-Security-Policy') : null;
+      securityHeaders = { hsts: hsts !== null, xFrame: xFrame !== null, csp: csp !== null };
+
       html = response ? await response.text() : '';
 
       if (html) {
@@ -106,7 +113,6 @@ export default {
         const schemaResult = analyzeSchema(html);
         schema = { typesFound: schemaResult.types || [], isValid: (schemaResult.errors || []).length === 0, errors: schemaResult.errors || [] };
         canonical = { url: extractCanonical(html), isValid: extractCanonical(html) ? extractCanonical(html).replace(/\/$/, '') === finalUrl.replace(/\/$/, '') : false };
-        securityHeaders = { hsts: false, xFrame: false, csp: false };
 
         const imgResult = analyzeImages(html);
         images = { total: imgResult.total || 0, missingAlt: imgResult.missingAlt || 0, outdatedFormats: imgResult.outdatedFormats || 0, notLazyLoaded: imgResult.notLazyLoaded || 0 };
