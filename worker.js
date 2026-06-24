@@ -283,12 +283,24 @@ function countSyllables(word) {
 function calculateEEAT(html, cleaned) {
   if (!html) return 0;
   var score = 0;
-  if (/rel=["']author["']/i.test(html) || /<meta\s+[^>]*name=["']author["'][^>]*>/i.test(html) || /by\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:\s*<\/|,\s|<)/.test(cleaned)) score += 20;
-  if (/datePublished|article:published_time/i.test(html)) score += 15;
+  var hasSchemaAuthor = /"@type"\s*:\s*"Person"[\s\S]*?"name"\s*:\s*"/i.test(html);
+  var hasMetaAuthor = /<meta\s+[^>]*name=["']author["'][^>]*>/i.test(html);
+  var hasByline = /by\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:\s*<\/|,\s|<)/.test(cleaned);
+  if (hasSchemaAuthor || hasMetaAuthor || hasByline) score += 20;
+  if (/datePublished|article:published_time|<time\s+datetime=/i.test(html)) score += 15;
   if (/dateModified|article:modified_time/i.test(html)) score += 10;
   if (/about/i.test(html)) score += 10;
   var citationDomains = html.match(/https?:\/\/(?:www\.)?([^\/"'\s]+)/gi) || [];
-  var authoritative = citationDomains.filter(function (d) { return /\.(gov|edu|org|wikipedia|who\.int|nih\.gov|webmd|mayoclinic)\./i.test(d); });
+  var nofollowDomains = html.match(/<a[^>]*rel=["']nofollow["'][^>]*href=["'](https?:\/\/(?:www\.)?[^\/"'\s]+)/gi) || [];
+  var nofollowSet = {};
+  nofollowDomains.forEach(function(m) {
+    var d = m.replace(/.*href=["']https?:\/\/(?:www\.)?([^\/"'\s]+).*/i, '$1').toLowerCase();
+    nofollowSet[d] = true;
+  });
+  var authoritative = citationDomains.filter(function (d) {
+    var domain = d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
+    return /\.(gov|edu|org|wikipedia|who\.int|nih\.gov|webmd|mayoclinic)\.[a-z]{2,}$/i.test(domain) && !nofollowSet[domain];
+  });
   if (authoritative.length > 0) score += Math.min(15, authoritative.length * 5);
   if (/author-bio|about-the-author|writer\s*bio/i.test(html)) score += 10;
   var words = cleaned.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
@@ -305,7 +317,7 @@ function calculateFreshness(html, headers) {
   var yearRegex = new RegExp('\\b(' + currentYear + '|' + lastYear + ')\\b', 'g');
   var yearMatches = html.match(yearRegex);
   if (yearMatches) score += Math.min(30, yearMatches.length * 5);
-  if (/dateModified|article:modified_time/i.test(html)) score += 20;
+  if (/dateModified|article:modified_time|<time\s+datetime=/i.test(html)) score += 20;
   if (/\b(20\d{2})\/(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\b/.test(html)) score += 10;
   return Math.min(100, score);
 }
@@ -580,7 +592,7 @@ function generateRecommendationsRaw(wordCount, textRatio, isThin, headings, read
   if (!schema.typesFound || schema.typesFound.length === 0) critical.push({ issue: 'No Schema Markup Found', impact: 'Pages without schema markup miss out on rich snippets in search results, which can improve CTR by up to 30%.', solution: 'Add JSON-LD structured data appropriate for your content type (Article, Product, LocalBusiness, etc.).', codeExample: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Article",\n  "headline": "Page Title",\n  "author": { "@type": "Person", "name": "Author Name" },\n  "datePublished": "2025-01-01"\n}\n</script>', timeToFix: '15 minutes', estimatedImpact: '+25% CTR potential' });
 
   if (wordCount < 600) high.push({ issue: 'Low Word Count', impact: 'Pages with fewer than 600 words often lack the depth needed to rank competitively for most queries.', solution: 'Expand your content to 600-1500 words. Cover the topic comprehensively with subheadings, examples, and supporting data.', codeExample: 'Aim for:\n- Introduction: 50-100 words\n- 3-5 sections: 100-200 words each\n- Conclusion: 50-100 words', timeToFix: '20-40 minutes', estimatedImpact: '+20% ranking potential' });
-  if (eeaScore < 30) high.push({ issue: 'Weak E-E-A-T Signals', impact: 'Google prioritizes content that demonstrates Experience, Expertise, Authoritativeness, and Trustworthiness. Low E-E-A-T signals can hurt rankings, especially for YMYL topics.', solution: 'Add author bylines, publication dates, author bios, and citations from authoritative sources (.gov, .edu, .org).', codeExample: '<meta name="author" content="Dr. Jane Smith">\n<time datetime="2025-01-15">January 15, 2025</time>\n<a href="https://example.edu/research" rel="nofollow">Source: University Research</a>', timeToFix: '30 minutes', estimatedImpact: '+15% ranking potential' });
+  if (eeaScore < 30) high.push({ issue: 'Weak E-E-A-T Signals', impact: 'Google prioritizes content that demonstrates Experience, Expertise, Authoritativeness, and Trustworthiness. Low E-E-A-T signals can hurt rankings, especially for YMYL topics.', solution: 'Add structured author data with schema.org JSON-LD, visible publication dates, semantic HTML5 time tags, author bios, and citations from authoritative sources (.gov, .edu, .org). Avoid nofollow on citations to preserve authority flow.', codeExample: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Article",\n  "headline": "Page Title",\n  "author": {\n    "@type": "Person",\n    "name": "Dr. Jane Smith",\n    "url": "https://example.com/authors/jane-smith"\n  },\n  "datePublished": "2025-01-15",\n  "dateModified": "2025-06-01"\n}\n</script>\n<article>\n  <p>By <a href="/authors/jane-smith">Dr. Jane Smith</a> | <time datetime="2025-01-15">January 15, 2025</time></p>\n  <p>According to <a href="https://example.edu/research">University Research</a>, the findings confirm...</p>\n</article>', timeToFix: '30 minutes', estimatedImpact: '+15% ranking potential' });
   if (images.missingAlt > 0) high.push({ issue: 'Images Missing Alt Text', impact: 'Screen readers cannot describe images without alt text, hurting accessibility. Google also uses alt text to understand image content.', solution: 'Add descriptive alt text to every image that conveys information. Use empty alt="" for decorative images.', codeExample: '<img src="chart.png" alt="Bar chart showing 40% revenue growth in Q3 2025">\n<img src="decoration.png" alt="">', timeToFix: '10 minutes', estimatedImpact: '+5% image search visibility' });
   if (social.missing && social.missing.length > 0) high.push({ issue: 'Missing Social Media Meta Tags', impact: 'Without Open Graph and Twitter Card tags, your page will not render properly when shared on social media platforms.', solution: 'Add og:title, og:description, og:image, and twitter:card meta tags to the page head.', codeExample: '<meta property="og:title" content="Your Page Title">\n<meta property="og:description" content="Compelling description">\n<meta property="og:image" content="https://example.com/image.jpg">\n<meta name="twitter:card" content="summary_large_image">', timeToFix: '10 minutes', estimatedImpact: '+12% social engagement' });
   if (perf.renderBlocking > 0) high.push({ issue: 'Render-Blocking Resources Detected', impact: 'Scripts and stylesheets in the <head> without async/defer delay page rendering, increasing Largest Contentful Paint (LCP) time.', solution: 'Add async or defer attributes to non-critical scripts. Move non-critical CSS to load after the initial render.', codeExample: '<script src="analytics.js" defer></script>\n<script src="widget.js" async></script>\n<link rel="preload" href="critical.css" as="style" onload="this.onload=null;this.rel=\'stylesheet\'">', timeToFix: '15 minutes', estimatedImpact: '+8% LCP improvement' });
