@@ -1,0 +1,260 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IP to Binary / Hex / Decimal Converter';
+const description =
+  'Convert IP addresses between decimal dotted notation, binary, and hexadecimal ' +
+  'formats. Live conversion updates as you type in any format.';
+const intro =
+  'Type an IP address in any format — dotted decimal, binary, or hex — and see ' +
+  'the equivalent values in all other formats update live. Perfect for learning ' +
+  'how IP addressing works at the bit level.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'Why would I need to convert an IP to binary?', a: 'Understanding binary representation is essential for subnetting, route aggregation, and network troubleshooting. Subnet masks, network addresses, and broadcast addresses are all computed using bitwise operations on the binary form of IP addresses. Binary conversion helps you verify these calculations manually.' },
+  { q: 'What does an IP look like in binary?', a: 'Each octet of an IPv4 address is 8 bits. For example, 192.168.1.1 in binary is 11000000.10101000.00000001.00000001. The dots separate each 8-bit octet for readability. The full 32-bit binary string is what the network stack actually processes.' },
+  { q: 'How do I convert an IP to hex?', a: 'Each octet converts to two hex digits. For example, 192 = 0xC0, 168 = 0xA8, 1 = 0x01, so 192.168.1.1 becomes C0.A8.01.01. The hex form is sometimes used in network configuration files and firewall rules.' },
+  { q: 'What is the decimal value of an IP address?', a: 'The decimal value treats the 32-bit IP as a single unsigned integer. For 192.168.1.1: (192 x 256^3) + (168 x 256^2) + (1 x 256) + 1 = 3,232,235,777. This form is used in some programming APIs and databases.' },
+  { q: 'What is the fastest way to convert IP to binary manually?', a: 'Memorize the powers of 2 for each bit position (128, 64, 32, 16, 8, 4, 2, 1). For each octet, subtract the largest power of 2 that fits and mark that bit as 1, then continue with the remainder. With practice, you can convert any octet in seconds.' },
+  { q: 'Why are IP addresses written in decimal and not binary?', a: 'Dotted decimal notation was chosen because 32-bit binary strings are too long for humans to read and remember. Each octet ranges from 0 to 255, which is easily memorable. The dotted format (RFC 791) balances human readability with machine efficiency.' },
+  { q: 'How do I convert a binary IP back to decimal?', a: 'Split the binary string into 4 groups of 8 bits. For each group, multiply each 1-bit by its position value (128, 64, 32, 16, 8, 4, 2, 1) and add the results. For example, 11000000 = 128 + 64 = 192. Then join the four decimal numbers with dots.' },
+  { q: 'What is the maximum IP address in decimal?', a: 'The maximum possible IPv4 address is 255.255.255.255, which as a single decimal integer is 4,294,967,295 (FFFF.FFFF.FFFF.FFFF in hex). This address is reserved as the limited broadcast address.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Convert between formats</h2>
+    <p class="mt-1 text-xs text-slate-500">Type into any field — the others update live.</p>
+    <div class="mt-3 space-y-3">
+      <div>
+        <span class="text-xs font-medium text-slate-500">Dotted Decimal</span>
+        <input id="in-decimal" type="text" placeholder="192.168.1.1" class="mt-0.5 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      </div>
+      <div>
+        <span class="text-xs font-medium text-slate-500">Binary (32 bits, dots optional)</span>
+        <input id="in-binary" type="text" placeholder="11000000.10101000.00000001.00000001" class="mt-0.5 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      </div>
+      <div>
+        <span class="text-xs font-medium text-slate-500">Hexadecimal</span>
+        <input id="in-hex" type="text" placeholder="C0.A8.01.01" class="mt-0.5 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      </div>
+    </div>
+    <div id="convert-output" class="mt-4 hidden grid gap-2 sm:grid-cols-2">
+      <div class="rounded-lg bg-indigo-50 p-3">
+        <span class="text-xs font-medium text-indigo-600">Integer (32-bit)</span>
+        <p id="out-int" class="mt-0.5 font-mono text-sm font-semibold text-indigo-700">—</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">IP Class</span>
+        <p id="out-class" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Octet Hex Values</span>
+        <p id="out-octet-hex" class="mt-0.5 font-mono text-xs text-slate-700">—</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Full Binary String</span>
+        <p id="out-full-binary" class="mt-0.5 break-all font-mono text-xs text-slate-700">—</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding IP representations</h2>
+    <p class="mt-2 text-slate-600">
+      An IPv4 address is fundamentally a 32-bit unsigned integer. The familiar dotted decimal notation — 192.168.1.1 — is simply a human-friendly representation of this binary number. Each of the four octets represents 8 bits, ranging from 0 to 255. The entire 32-bit value ranges from 0 to 4,294,967,295. Understanding how to convert between these representations is essential for subnetting, network programming, and troubleshooting.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The binary representation is where the real action happens. The first octet's most significant bit (bit 31) tells you the IP class in classful addressing: 0 = Class A, 10 = Class B, 110 = Class C, 1110 = Class D (multicast), 1111 = Class E (reserved). While classful addressing has been superseded by CIDR, knowing how to read the first few bits of an IP address still helps you understand address ranges and allocation patterns at a glance.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Hexadecimal representation is commonly used in network configuration files, MAC addresses, and some firewall rule syntaxes. Each octet converts to exactly two hexadecimal digits because 8 bits = 16^2 = 256 possible values. The hex form is more compact than binary but less intuitive than decimal. Network professionals working with packet captures in Wireshark or tcpdump frequently encounter hex-encoded IP addresses in raw packet data.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180" width="800" height="180" role="img" aria-labelledby="ipconv-title ipconv-desc">
+      <title id="ipconv-title">IP Address Representation Reference</title>
+      <desc id="ipconv-desc">Chart showing the same IP address 192.168.1.1 in decimal, binary, and hexadecimal notations</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">IP Address Representations — 192.168.1.1</text>
+      <rect x="40" y="40" width="170" height="40" rx="4" fill="#6366f1" />
+      <text x="125" y="65" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Decimal</text>
+      <rect x="40" y="82" width="170" height="36" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1" />
+      <text x="125" y="105" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">192.168.1.1</text>
+      <rect x="315" y="40" width="170" height="40" rx="4" fill="#818cf8" />
+      <text x="400" y="65" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Binary</text>
+      <rect x="315" y="82" width="170" height="36" rx="4" fill="#eef2ff" stroke="#818cf8" stroke-width="1" />
+      <text x="400" y="98" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="700">11000000.10101000.00000001.00000001</text>
+      <rect x="590" y="40" width="170" height="40" rx="4" fill="#6366f1" />
+      <text x="675" y="65" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Hexadecimal</text>
+      <rect x="590" y="82" width="170" height="36" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1" />
+      <text x="675" y="105" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">C0.A8.01.01</text>
+      <line x1="210" y1="60" x2="315" y2="60" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,3" />
+      <line x1="485" y1="60" x2="590" y2="60" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,3" />
+      <text x="400" y="150" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">All three represent the same 32-bit number: 3232235777</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The same IPv4 address expressed in dotted decimal, binary, and hexadecimal notations</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to convert between formats manually</h2>
+    <p class="mt-2 text-slate-600">
+      Converting between IP representations is a fundamental skill for network engineers. The easiest place to start is converting decimal to binary. For each octet, write down the eight bit positions (128, 64, 32, 16, 8, 4, 2, 1). If the octet value is greater than or equal to the bit position, subtract it and write 1; otherwise write 0. For example, for the octet 192: 192 &gt;= 128 subtract (remainder 64) = 1; 64 &gt;= 64 subtract (remainder 0) = 1; 64 &lt; 32 = 0; 0 &lt; 16 = 0; 0 &lt; 8 = 0; 0 &lt; 4 = 0; 0 &lt; 2 = 0; 0 &lt; 1 = 0. Result: 11000000.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To convert binary to decimal, reverse the process. For each bit position that is 1, add its value. Binary 11000000 = 128 + 64 = 192. Binary 10101000 = 128 + 0 + 32 + 0 + 8 + 0 + 0 + 0 = 168. Binary 00000001 = 1. This addition method works for any binary number and is the foundation of all IP math.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Hexadecimal conversion is the simplest. Group each 8-bit octet into two 4-bit nibbles. The high nibble (bits 7-4) and low nibble (bits 3-0) each convert to a single hex digit (0-9, A-F). For 192: binary 1100 = hex C, binary 0000 = hex 0, so 192 = 0xC0. For 168: binary 1010 = hex A, binary 1000 = hex 8, so 168 = 0xA8. Putting it all together, 192.168.1.1 = C0.A8.01.01 in hex.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Quick conversion reference</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 font-medium">Decimal</th>
+            <th class="pb-2 font-medium">Binary</th>
+            <th class="pb-2 font-medium">Hex</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">0</td><td class="py-1 font-mono">00000000</td><td class="py-1 font-mono">00</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">1</td><td class="py-1 font-mono">00000001</td><td class="py-1 font-mono">01</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">10</td><td class="py-1 font-mono">00001010</td><td class="py-1 font-mono">0A</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">100</td><td class="py-1 font-mono">01100100</td><td class="py-1 font-mono">64</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">128</td><td class="py-1 font-mono">10000000</td><td class="py-1 font-mono">80</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">192</td><td class="py-1 font-mono">11000000</td><td class="py-1 font-mono">C0</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">224</td><td class="py-1 font-mono">11100000</td><td class="py-1 font-mono">E0</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">240</td><td class="py-1 font-mono">11110000</td><td class="py-1 font-mono">F0</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">248</td><td class="py-1 font-mono">11111000</td><td class="py-1 font-mono">F8</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">252</td><td class="py-1 font-mono">11111100</td><td class="py-1 font-mono">FC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1 font-mono">254</td><td class="py-1 font-mono">11111110</td><td class="py-1 font-mono">FE</td></tr>
+          <tr><td class="py-1 font-mono">255</td><td class="py-1 font-mono">11111111</td><td class="py-1 font-mono">FF</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Practical applications</h2>
+    <p class="mt-2 text-slate-600">
+      IP conversion skills are essential in several network engineering tasks. Subnetting requires converting between decimal and binary to find network and broadcast addresses. When writing firewall rules, source and destination addresses can be expressed in decimal, binary, or hex depending on the platform. Network automation scripts often need to convert IP addresses between formats for API calls and database storage.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For CompTIA Network+ and Cisco CCNA certification exams, you are expected to convert between decimal and binary quickly. Exam questions often ask for the network address, broadcast address, or valid host range for a given IP and subnet mask, and these calculations require binary conversion. Practicing with this converter builds speed and confidence for these timed exams.
+    </p>
+    <p class="mt-3 text-slate-600">
+      In programming, IP addresses are frequently stored as 32-bit integers for efficient comparison and sorting. Functions like <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">inet_pton()</code> and <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">inet_ntop()</code> convert between presentation format (dotted decimal) and network byte order integers. Understanding the underlying integer representation helps when debugging network code, parsing binary packet captures, or implementing custom networking protocols.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This converter handles standard IPv4 dotted decimal notation and its binary and hex equivalents. It does not handle IPv6 addresses, CIDR notation (prefix lengths), or subnet masks. For IPv6 support, use the IPv4 to IPv6 converter tool. For subnet calculations involving CIDR prefixes, use the Subnet Calculator or CIDR Calculator tools. The converter performs validation on input and gracefully handles common formatting variations including missing dots in binary input and case-insensitive hex digits.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const decInput = el('in-decimal');
+    const binInput = el('in-binary');
+    const hexInput = el('in-hex');
+
+    function parseDecimal(str) {
+      const p = str.trim().split('.');
+      if (p.length !== 4) return null;
+      const o = p.map(Number);
+      if (o.some((v) => isNaN(v) || v < 0 || v > 255)) return null;
+      return o;
+    }
+
+    function parseBinary(str) {
+      let s = str.trim().replace(/\s/g, '');
+      s = s.replace(/\./g, '');
+      if (!/^[01]{32}$/.test(s)) return null;
+      const o = [];
+      for (let i = 0; i < 4; i++) o.push(parseInt(s.slice(i * 8, i * 8 + 8), 2));
+      return o;
+    }
+
+    function parseHex(str) {
+      let s = str.trim().replace(/\s/g, '');
+      s = s.replace(/\./g, '');
+      s = s.replace(/^0x/i, '');
+      if (s.length !== 8) return null;
+      if (!/^[0-9a-fA-F]{8}$/.test(s)) return null;
+      const o = [];
+      for (let i = 0; i < 4; i++) o.push(parseInt(s.slice(i * 2, i * 2 + 2), 16));
+      return o;
+    }
+
+    function ipClass(octets) {
+      const first = octets[0];
+      if (first < 128) return 'A (0.0.0.0 – 127.255.255.255)';
+      if (first < 192) return 'B (128.0.0.0 – 191.255.255.255)';
+      if (first < 224) return 'C (192.0.0.0 – 223.255.255.255)';
+      if (first < 240) return 'D (224.0.0.0 – 239.255.255.255, multicast)';
+      return 'E (240.0.0.0 – 255.255.255.255, reserved)';
+    }
+
+    function octetHex(octets) {
+      return octets.map((o) => '0x' + o.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    }
+
+    function fullBinary(octets) {
+      return octets.map((o) => o.toString(2).padStart(8, '0')).join('');
+    }
+
+    let updating = false;
+
+    function updateFrom(octets) {
+      if (!octets || updating) return;
+      updating = true;
+      const dec = octets.join('.');
+      const bin = octets.map((o) => o.toString(2).padStart(8, '0')).join('.');
+      const hex = octets.map((o) => o.toString(16).toUpperCase().padStart(2, '0')).join('.');
+      const intVal = ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+
+      decInput.value = dec;
+      binInput.value = bin;
+      hexInput.value = hex;
+
+      el('convert-output').classList.remove('hidden');
+      el('out-int').textContent = intVal.toLocaleString();
+      el('out-class').textContent = ipClass(octets);
+      el('out-octet-hex').textContent = octetHex(octets);
+      el('out-full-binary').textContent = fullBinary(octets);
+      updating = false;
+    }
+
+    function onDecInput() {
+      if (updating) return;
+      const o = parseDecimal(decInput.value);
+      if (o) updateFrom(o);
+      else el('convert-output').classList.add('hidden');
+    }
+
+    function onBinInput() {
+      if (updating) return;
+      const o = parseBinary(binInput.value);
+      if (o) updateFrom(o);
+      else el('convert-output').classList.add('hidden');
+    }
+
+    function onHexInput() {
+      if (updating) return;
+      const o = parseHex(hexInput.value);
+      if (o) updateFrom(o);
+      else el('convert-output').classList.add('hidden');
+    }
+
+    decInput.addEventListener('input', onDecInput);
+    binInput.addEventListener('input', onBinInput);
+    hexInput.addEventListener('input', onHexInput);
+  </script>
+</ToolLayout>

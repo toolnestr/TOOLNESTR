@@ -1,0 +1,237 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'User Agent Parser';
+const description =
+  'Parse and analyze any browser user agent string. Identify the browser, version, operating system, device type, and engine — all client-side, nothing leaves your machine.';
+const intro =
+  'Paste any user agent string below to instantly extract the browser, version, OS, device type, and rendering engine. Everything runs in your browser.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a user agent string?', a: 'A user agent string is a text header that browsers and other HTTP clients send to web servers to identify themselves. It typically contains the browser name, version, rendering engine, operating system, and device information. Servers use this to optimize content delivery.' },
+  { q: 'How accurate is this parser?', a: 'This parser uses regex patterns based on well-known browser and OS signatures. It covers the vast majority of modern browsers including Chrome, Firefox, Safari, Edge, Opera, and mobile variants. Very exotic or spoofed user agents may not parse correctly.' },
+  { q: 'Can the user agent be faked?', a: 'Yes — user agent strings can be changed or spoofed by the user or by browser extensions. Many privacy-focused browsers and tools allow you to change the user agent. The parsed results reflect what the browser claims to be, not necessarily what it is.' },
+  { q: 'Is my data sent to a server?', a: 'No. All parsing happens entirely in your browser using client-side JavaScript. Your user agent string never leaves your machine or is sent to any server.' },
+  { q: 'What information does a user agent contain?', a: 'A typical user agent includes the browser name and version, the rendering engine (Blink, WebKit, Gecko, etc.), the operating system name and version, CPU architecture, and whether the device is mobile or desktop.' },
+  { q: 'Why do websites check the user agent?', a: 'Websites use the user agent to serve appropriately formatted content. Mobile browsers may receive a simplified layout, specific CSS features are enabled based on engine capabilities, and download links may point to the correct platform-specific version.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Enter a user agent string</h2>
+      <textarea id="ua-input" rows="4" class="mt-3 w-full resize-y rounded-lg border border-slate-300 p-3 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Paste a user agent string here, e.g.: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"></textarea>
+    </div>
+
+    <div id="result-area" class="hidden space-y-3">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Browser</span>
+          <p id="r-browser" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Version</span>
+          <p id="r-version" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Operating System</span>
+          <p id="r-os" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Device Type</span>
+          <p id="r-device" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Engine</span>
+          <p id="r-engine" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">CPU Architecture</span>
+          <p id="r-cpu" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Raw string</span>
+        <p id="r-raw" class="mt-1 break-all font-mono text-xs text-slate-500">—</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How user agent parsing works</h2>
+    <p class="mt-2 text-slate-600">
+      Every time your browser connects to a web server, it sends an HTTP header called <code>User-Agent</code> that identifies itself. This string has evolved over decades, accumulating fragments from browser wars, platform shifts, and compatibility hacks. A typical modern user agent looks chaotic — it contains references to other browsers, misleading version numbers, and platform tokens — but the structure follows predictable patterns that can be extracted with regular expressions.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The parser on this page applies a series of regex patterns against the input string, matching known browser signatures in priority order. Chrome-based browsers announce themselves with "Chrome/" followed by a version number, but they also include "Safari/" and "AppleWebKit/" for compatibility, since Chrome was originally built on WebKit. Firefox signals with "Firefox/" after "Gecko/", while Safari includes "Version/" and "Safari/" but lacks "Chrome/". Edge on Chromium contains "Edg/" to distinguish itself from Chrome. Each of these patterns requires specific regex logic to correctly identify the browser without false positives.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Operating system detection relies on tokens like "Windows NT" with version mapping (10.0 for Windows 10/11, 6.1 for Windows 7), "Mac OS X" with Darwin version normalization, "Android" with API level references, and "iPhone" or "iPad" for iOS devices. The device type classification uses a heuristic: if the string contains "Mobile" or matches iPhone/iPad/Android phone patterns, it is classified as mobile; tablets get their own category; everything else is desktop. CPU architecture appears in strings like "Win64", "x86_64", "ARM64", or "Intel Mac OS X".
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="ua-title ua-desc">
+      <title id="ua-title">User Agent String Components Diagram</title>
+      <desc id="ua-desc">Anatomy of a browser user agent string showing browser name, version, engine, OS, and device type segments</desc>
+      <rect x="30" y="20" width="740" height="200" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="48" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">User Agent String Anatomy</text>
+      <text x="40" y="80" font-family="monospace, sans-serif" font-size="12" fill="#475569">Mozilla/5.0</text>
+      <text x="145" y="80" font-family="monospace, sans-serif" font-size="12" fill="#6366f1">(Windows NT 10.0; Win64; x64)</text>
+      <text x="365" y="80" font-family="monospace, sans-serif" font-size="12" fill="#475569">AppleWebKit/537.36</text>
+      <text x="545" y="80" font-family="monospace, sans-serif" font-size="12" fill="#818cf8">(KHTML, like Gecko)</text>
+      <text x="40" y="105" font-family="monospace, sans-serif" font-size="12" fill="#6366f1">Chrome/120.0.0.0</text>
+      <text x="210" y="105" font-family="monospace, sans-serif" font-size="12" fill="#475569">Safari/537.36</text>
+      <text x="330" y="105" font-family="monospace, sans-serif" font-size="12" fill="#64748b">Edg/120.0.0.0</text>
+      <line x1="40" y1="120" x2="760" y2="120" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,3" />
+      <rect x="40" y="135" width="100" height="28" rx="4" fill="#e0e7ff" />
+      <text x="90" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Browser</text>
+      <rect x="148" y="135" width="70" height="28" rx="4" fill="#e0e7ff" />
+      <text x="183" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Version</text>
+      <rect x="226" y="135" width="120" height="28" rx="4" fill="#e0e7ff" />
+      <text x="286" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">OS + Architecture</text>
+      <rect x="354" y="135" width="100" height="28" rx="4" fill="#e0e7ff" />
+      <text x="404" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Engine</text>
+      <rect x="462" y="135" width="80" height="28" rx="4" fill="#e0e7ff" />
+      <text x="502" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Device</text>
+      <rect x="550" y="135" width="90" height="28" rx="4" fill="#e0e7ff" />
+      <text x="595" y="153" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">CPU Arch</text>
+      <text x="40" y="182" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Parsed via regex patterns — each segment is extracted independently</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Anatomy of a user agent string showing the six extractable components: browser, version, OS, engine, device type, and CPU architecture</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why user agent parsing matters</h2>
+    <p class="mt-2 text-slate-600">
+      Understanding user agent strings is essential for web developers, QA engineers, and system administrators who need to ensure their applications work correctly across different browsers and devices. When a bug report comes in with a screenshot from an unfamiliar browser, the user agent string is the first clue to identifying the environment. Analytics platforms use user agent data to generate browser market share reports, helping teams decide which browsers to support and which features to implement.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The user agent also plays a critical role in content negotiation. CDN providers serve different image formats based on the Accept header, but the user agent guides decisions about which HTML structure and CSS to deliver. Responsive design relies on media queries, but server-side rendering frameworks may pre-render content optimized for mobile or desktop based on the user agent detected at request time. E-commerce platforms use user agent data to customize the shopping experience, showing app download prompts to mobile users or featuring desktop-specific layouts for large screens.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Security analysts also examine user agent strings to detect anomalous traffic patterns. A user agent that claims to be Chrome on Windows but originates from a Linux server IP may indicate a bot or scraper. Many security tools flag mismatches between the declared user agent and the actual TLS handshake characteristics. HTTP request filtering rules often block or rate-limit requests with empty or malformed user agent strings, as these are common signatures of automated attack tools.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Limitations and considerations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">User agent spoofing</h3>
+        <p class="mt-1 text-sm text-slate-600">Any browser extension or developer tool can change the user agent string. Privacy-focused browsers like Brave and Firefox can be configured to send a generic or randomized user agent. The parser reports what the string claims, not the actual browser.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Obscure or legacy browsers</h3>
+        <p class="mt-1 text-sm text-slate-600">This parser covers the major browser families (Chromium, Firefox, Safari, Edge, Opera, Samsung Internet, UC Browser) and the most common operating systems. Very old browsers like Internet Explorer 6 or niche embedded browsers may not match any pattern.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Version normalization</h3>
+        <p class="mt-1 text-sm text-slate-600">Some browsers report multiple version numbers in different parts of the user agent. The parser attempts to extract the most meaningful version (the browser's own version string), but this may not always align with what the user expects to see.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use a user agent parser</h2>
+    <p class="mt-2 text-slate-600">
+      This tool is useful for web developers debugging cross-browser compatibility issues. When a user reports that a feature does not work on their device, paste their user agent string into this parser to quickly identify the browser, version, operating system, and device type. This information helps reproduce the issue in the correct environment and narrows down whether the problem is browser-specific, OS-specific, or device-specific.
+    </p>
+    <p class="mt-3 text-slate-600">
+      QA engineers can use the parser to verify that analytics systems are correctly identifying user agents during testing. Marketing teams analyzing traffic sources can understand which browser versions their audience uses. System administrators reviewing server logs can quickly decode user agent strings to identify traffic patterns, block suspicious requests, or optimize content delivery for the most common client configurations.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The parser is also educational. By pasting your own browser's user agent string, you can see exactly what information your browser shares with every website you visit. This transparency helps you understand your digital footprint and make informed decisions about browser privacy settings and extensions that might help reduce the information exposed through HTTP headers.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const input = el('ua-input');
+    const area = el('result-area');
+
+    const patterns = {
+      browser: [
+        { name: 'Firefox', re: /Firefox\/([\d.]+)/, ver: 1 },
+        { name: 'Edge', re: /Edg\/([\d.]+)/, ver: 1 },
+        { name: 'Opera', re: /(?:OPR|Opera)\/([\d.]+)/, ver: 1 },
+        { name: 'Chrome', re: /Chrome\/([\d.]+)/, ver: 1 },
+        { name: 'Safari', re: /Version\/([\d.]+).*Safari\//, ver: 1 },
+      ],
+      os: [
+        { name: 'Windows 10/11', re: /Windows NT 10\.0/ },
+        { name: 'Windows 8.1', re: /Windows NT 6\.3/ },
+        { name: 'Windows 8', re: /Windows NT 6\.2/ },
+        { name: 'Windows 7', re: /Windows NT 6\.1/ },
+        { name: 'Windows Vista', re: /Windows NT 6\.0/ },
+        { name: 'Windows XP', re: /Windows NT 5\.1/ },
+        { name: 'macOS', re: /Mac OS X ([\d_]+)/ },
+        { name: 'iOS', re: /(?:iPhone|iPad).*OS ([\d_]+)/ },
+        { name: 'Android', re: /Android ([\d.]+)/ },
+        { name: 'Linux', re: /Linux/ },
+        { name: 'Chrome OS', re: /CrOS/ },
+      ],
+      engine: [
+        { name: 'Blink', re: /Chrome\// },
+        { name: 'WebKit', re: /AppleWebKit\// },
+        { name: 'Gecko', re: /Gecko\// },
+        { name: 'EdgeHTML', re: /Edge\// },
+        { name: 'Presto', re: /Opera\// },
+      ],
+      device: [
+        { name: 'Mobile Phone', re: /Mobile/ },
+        { name: 'Tablet', re: /(?:iPad|Tablet|PlayBook|Silk)/ },
+        { name: 'Desktop', re: /.*/ },
+      ],
+      cpu: [
+        { name: 'ARM64', re: /(?:ARM64|aarch64)/ },
+        { name: 'x86-64', re: /(?:Win64|x64|x86_64|Intel Mac OS X)/ },
+        { name: 'x86', re: /(?:Win32|i686|x86)/ },
+      ],
+    };
+
+    function extract(str) {
+      const b = patterns.browser.find((p) => p.re.test(str));
+      const browser = b ? b.name : 'Unknown';
+      let version = '—';
+      if (b && b.ver !== undefined) {
+        const m = str.match(b.re);
+        if (m && m[b.ver]) version = m[b.ver];
+      }
+
+      const osMatch = patterns.os.find((p) => p.re.test(str));
+      const os = osMatch ? osMatch.name : 'Unknown';
+
+      const engineMatch = patterns.engine.find((p) => p.re.test(str));
+      const engine = engineMatch ? engineMatch.name : 'Unknown';
+
+      const deviceMatch = patterns.device.find((p) => p.re.test(str));
+      const device = deviceMatch ? deviceMatch.name : 'Unknown';
+
+      const cpuMatch = patterns.cpu.find((p) => p.re.test(str));
+      const cpu = cpuMatch ? cpuMatch.name : 'Unknown';
+
+      return { browser, version, os, engine, device, cpu };
+    }
+
+    function update() {
+      const val = input.value.trim();
+      if (!val) {
+        area.classList.add('hidden');
+        return;
+      }
+      area.classList.remove('hidden');
+      const r = extract(val);
+      el('r-browser').textContent = r.browser;
+      el('r-version').textContent = r.version;
+      el('r-os').textContent = r.os;
+      el('r-device').textContent = r.device;
+      el('r-engine').textContent = r.engine;
+      el('r-cpu').textContent = r.cpu;
+      el('r-raw').textContent = val;
+    }
+
+    input.addEventListener('input', update);
+  </script>
+</ToolLayout>

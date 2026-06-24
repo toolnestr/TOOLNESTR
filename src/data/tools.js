@@ -10,6 +10,7 @@
 // ───────────────────────────────────────────────────────────────
 
 export const categories = [
+  { id: 'networking', name: 'Networking & IP Tools', emoji: '🌐' },
   { id: 'everyday', name: 'Everyday', emoji: '🧮' },
   { id: 'health', name: 'Health & Fitness', emoji: '💪' },
   { id: 'finance', name: 'Finance', emoji: '💰' },
@@ -71,6 +72,28 @@ export const tools = [
   { slug: 'roas-calculator', title: 'ROAS Calculator', short: 'Return on ad spend and ACoS for campaigns.', category: 'finance', emoji: '📣', enabled: true, status: 'live' },
   { slug: 'break-even', title: 'Break-even Calculator', short: 'Units & revenue needed to break even.', category: 'finance', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: false, status: 'soon' },
+
+  // ── Networking & IP Tools ──
+  { slug: 'ip-tracker', title: 'IP Address Tracker', short: 'Trace any IP address — location, ISP, ASN and timezone.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'what-is-my-ip', title: 'What Is My IP Address', short: 'See your public IP, location, ISP and browser info instantly.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'subnet-calculator', title: 'IPv4 Subnet Calculator', short: 'Calculate subnet masks, network ranges and host counts.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'cidr-calculator', title: 'CIDR / IP Range Calculator', short: 'Calculate CIDR notation, IP ranges and prefix lengths.', category: 'networking', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'ipv4-to-ipv6-converter', title: 'IPv4 to IPv6 Converter', short: 'Convert IPv4 addresses to IPv6 mapped equivalents.', category: 'networking', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'ip-binary-hex-converter', title: 'IP to Binary/Hex/Decimal Converter', short: 'Convert IP addresses between decimal, binary and hex formats.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'private-public-ip-checker', title: 'Private vs Public IP Checker', short: 'Check if an IP is private (RFC 1918) or public.', category: 'networking', emoji: '🔒', enabled: true, status: 'live' },
+  { slug: 'mac-address-lookup', title: 'MAC Address Lookup (OUI/Vendor)', short: 'Identify the manufacturer of any MAC address.', category: 'networking', emoji: '🏭', enabled: true, status: 'live' },
+  { slug: 'dns-lookup', title: 'DNS Lookup Tool', short: 'Look up A, AAAA, MX, TXT, NS and CNAME records.', category: 'networking', emoji: '🔍', enabled: true, status: 'live' },
+  { slug: 'reverse-dns-lookup', title: 'Reverse DNS Lookup', short: 'Find the domain name associated with an IP address.', category: 'networking', emoji: '🔎', enabled: true, status: 'live' },
+  { slug: 'whois-lookup', title: 'WHOIS Lookup', short: 'Look up domain registration and IP ownership data.', category: 'networking', emoji: '📋', enabled: true, status: 'live' },
+  { slug: 'dns-propagation-checker', title: 'DNS Propagation Checker', short: 'Check DNS record propagation across global resolvers.', category: 'networking', emoji: '🌍', enabled: true, status: 'live' },
+  { slug: 'blacklist-checker', title: 'Blacklist / DNSBL Checker', short: 'Check if an IP is blacklisted on public RBL zones.', category: 'networking', emoji: '🚫', enabled: true, status: 'live' },
+  { slug: 'http-headers-checker', title: 'HTTP Headers Checker', short: 'Inspect HTTP response headers of any URL.', category: 'networking', emoji: '📑', enabled: true, status: 'live' },
+  { slug: 'user-agent-parser', title: 'User Agent Parser', short: 'Parse and analyze browser user agent strings.', category: 'networking', emoji: '🖥️', enabled: true, status: 'live' },
+  { slug: 'asn-lookup', title: 'ASN Lookup', short: 'Find the ASN and network owner for any IP address.', category: 'networking', emoji: '🏢', enabled: true, status: 'live' },
+  { slug: 'ping-latency-test', title: 'HTTP Latency / Ping Test', short: 'Test HTTP round-trip latency to multiple endpoints.', category: 'networking', emoji: '📡', enabled: true, status: 'live' },
+  { slug: 'port-checker', title: 'Port Checker', short: 'Check reachability of common ports on any host.', category: 'networking', emoji: '🔌', enabled: true, status: 'live' },
+  { slug: 'email-header-analyzer', title: 'Email Header Analyzer', short: 'Parse email headers to trace route and delays.', category: 'networking', emoji: '📧', enabled: true, status: 'live' },
+  { slug: 'ip-distance-calculator', title: 'IP Geolocation Distance Calculator', short: 'Calculate the distance between two IP locations.', category: 'networking', emoji: '📏', enabled: true, status: 'live' },
 
   // ── Math ──
   { slug: 'scientific-calculator', title: 'Scientific Calculator', short: 'Full calculator with trig, log, powers & more.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },

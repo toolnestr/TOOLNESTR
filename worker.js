@@ -1,194 +1,465 @@
 // ─────────────────────────────────────────────────────────────
-//  Unified SEO Analyzer — Cloudflare Worker
-//  Single endpoint:  GET /api/full-audit?url=https://example.com
+//  Unified ToolNestr Worker — SEO Analyzer + Networking Tools
 //  ES Modules format — No external dependencies
 // ─────────────────────────────────────────────────────────────
 
-export default {
-  async fetch(request) {
-    // CORS preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        },
-      });
-    }
-
-    try {
-      const url = new URL(request.url);
-      if (url.pathname.replace(/\/+$/, '') !== '/api/full-audit' || request.method !== 'GET') {
-        return new Response('Not Found', {
-          status: 404,
-          headers: { 'Access-Control-Allow-Origin': '*' },
-        });
-      }
-
-      let targetUrl = url.searchParams.get('url');
-      if (!targetUrl) {
-        return jsonResponse({ error: 'Missing URL parameter' }, 400);
-      }
-
-      targetUrl = targetUrl.trim();
-      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-      }
-
-      try {
-        new URL(targetUrl);
-      } catch (e) {
-        return jsonResponse({ error: 'Invalid URL: ' + targetUrl }, 400);
-      }
-
-      // CRITICAL: Initialize ALL variables at the start
-      let html = '';
-      let finalUrl = targetUrl;
-      let wordCount = 0;
-      let textRatio = 0;
-      let isThin = false;
-      const redirectChain = [];
-      const keywords = [];
-      const entities = [];
-      const recommendations = { critical: [], high: [], medium: [], low: [] };
-      let scores = { overall: 0, content: 0, technical: 0, performance: 0, accessibility: 0 };
-      let headings = { h1: 0, h2: 0, h3: 0, h4: 0, h5: 0, h6: 0 };
-      let readability = { fleschKincaid: 0, gunningFog: 0, gradeLevel: 'Unknown' };
-      let eeat = { score: 0, hasAuthor: false, hasDate: false, hasCitations: false };
-      let snippets = { score: 0, hasLists: false, hasFAQ: false };
-      let schema = { typesFound: [], isValid: false, errors: [] };
-      let canonical = { url: '', isValid: false };
-      let securityHeaders = { hsts: false, xFrame: false, csp: false };
-      let perf = { renderBlocking: 0, domSize: 0, imagesWithoutDimensions: 0, cwvRisks: [] };
-      let images = { total: 0, missingAlt: 0, outdatedFormats: 0, notLazyLoaded: 0 };
-      let links = { internal: 0, external: 0, poorAnchorText: [] };
-      let social = { ogTitle: '', ogImage: '', missing: [] };
-
-      // Fetch with redirect tracking
-      let currentUrl = finalUrl;
-      let response;
-      for (let i = 0; i < 10; i++) {
-        response = await fetch(currentUrl, {
-          method: 'GET',
-          redirect: 'manual',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; SEOAnalyzer/1.0; +https://toolnestr.com)',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-          },
-        });
-        const status = response.status;
-        const location = response.headers.get('Location');
-        redirectChain.push({ url: currentUrl, status });
-        if (status >= 300 && status < 400 && location) {
-          currentUrl = new URL(location, currentUrl).href;
-          continue;
-        }
-        break;
-      }
-
-      finalUrl = currentUrl;
-
-      // Read security headers BEFORE consuming the response body (headers must be accessed before text())
-      var hsts = response ? response.headers.get('Strict-Transport-Security') : null;
-      var xFrame = response ? response.headers.get('X-Frame-Options') : null;
-      var csp = response ? response.headers.get('Content-Security-Policy') : null;
-      securityHeaders = { hsts: hsts !== null, xFrame: xFrame !== null, csp: csp !== null };
-
-      html = response ? await response.text() : '';
-
-      if (html) {
-        // Run analysis
-        wordCount = countWords(extractText(stripNoise(html)));
-        textRatio = html.length > 0 ? Math.round((extractText(stripNoise(html)).length / html.length) * 100) : 0;
-        isThin = wordCount < 300 && textRatio < 15;
-        headings = extractHeadings(html);
-        readability = calculateReadability(extractText(stripNoise(html)));
-        readability.gradeLevel = getGradeLevel(readability.fleschKincaid);
-        snippets = { score: calculateSnippetScore(html), hasLists: (html.match(/<(ol|ul)[^>]*>[\s\S]*?<\/(ol|ul)>/gi) || []).length > 0, hasFAQ: /faqpage/i.test(html) };
-        const eeaScore = calculateEEAT(html, stripNoise(html));
-        eeat = { score: eeaScore, hasAuthor: eeaScore >= 20, hasDate: calculateFreshness(html, {}) >= 15, hasCitations: false };
-
-        const schemaResult = analyzeSchema(html);
-        schema = { typesFound: schemaResult.types || [], isValid: (schemaResult.errors || []).length === 0, errors: schemaResult.errors || [] };
-        canonical = { url: extractCanonical(html), isValid: extractCanonical(html) ? extractCanonical(html).replace(/\/$/, '') === finalUrl.replace(/\/$/, '') : false };
-
-        const imgResult = analyzeImages(html);
-        images = { total: imgResult.total || 0, missingAlt: imgResult.missingAlt || 0, outdatedFormats: imgResult.outdatedFormats || 0, notLazyLoaded: imgResult.notLazyLoaded || 0 };
-
-        const linkResult = analyzeLinks(html, finalUrl);
-        links = { internal: linkResult.internal || 0, external: linkResult.external || 0, poorAnchorText: (linkResult.anchorTextDistribution || []).filter(function (a) { return /click\s*here|read\s*more|learn\s*more/i.test(a.text); }).map(function (a) { return a.text; }) };
-
-        const perfResult = analyzePerformance(html);
-        perf = { renderBlocking: perfResult.renderBlockingResources || 0, domSize: perfResult.totalDOMElements || 0, imagesWithoutDimensions: imgResult.missingDimensions || 0, cwvRisks: perfResult.predictedCWVIssues || [] };
-
-        social = { ogTitle: extractOG(html, 'og:title'), ogImage: extractOG(html, 'og:image'), missing: getMissingOG(html) };
-
-        const kwResult = analyzeKeywords(html);
-        keywords.push.apply(keywords, (kwResult || []).slice(0, 15));
-
-        const entityResult = analyzeEntities(html);
-        entities.push.apply(entities, (entityResult || []).map(function (e) { return e.name; }).slice(0, 10));
-
-        scores = calculateScoresRaw(wordCount, textRatio, isThin, headings, readability.fleschKincaid, eeaScore, snippets.score, schema, canonical, securityHeaders, perf, images, html);
-        const recs = generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippets.score, images, links, social, perf, schema, canonical, securityHeaders);
-        recommendations.critical = recs.critical || [];
-        recommendations.high = recs.high || [];
-        recommendations.medium = recs.medium || [];
-        recommendations.low = recs.low || [];
-      }
-
-      return jsonResponse({
-        url: finalUrl,
-        redirectChain: redirectChain,
-        scores: scores,
-        content: {
-          wordCount: wordCount,
-          textRatio: textRatio,
-          isThin: isThin,
-          headings: headings,
-          readability: readability,
-          eeat: eeat,
-          snippets: snippets,
-          entities: entities,
-        },
-        technical: {
-          schema: schema,
-          canonical: canonical,
-          securityHeaders: securityHeaders,
-        },
-        performance: perf,
-        images: images,
-        links: links,
-        social: social,
-        keywords: keywords,
-        recommendations: recommendations,
-      });
-
-    } catch (error) {
-      console.error('Worker error:', error.message);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        },
-      });
-    }
-  },
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
 
 function jsonResponse(data, status) {
   return new Response(JSON.stringify(data), {
     status: status || 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Content-Type': 'application/json',
+    headers: Object.assign({}, corsHeaders, { 'Content-Type': 'application/json' }),
+  });
+}
+
+// ── IP validation — block SSRF, only accept clean IPv4/IPv6 ──
+const IP_V4_REGEX = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+const IP_V6_REGEX = /^[0-9a-fA-F:]+$/;
+
+function isValidPublicIp(str) {
+  if (IP_V4_REGEX.test(str)) {
+    const octets = str.split('.').map(Number);
+    if (octets.some(function (o) { return o > 255; })) return false;
+    // Reject private/reserved ranges
+    if (octets[0] === 10) return false;
+    if (octets[0] === 127) return false;
+    if (octets[0] === 169 && octets[1] === 254) return false;
+    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return false;
+    if (octets[0] === 192 && octets[1] === 168) return false;
+    if (octets[0] === 0) return false;
+    if (octets[0] >= 224) return false;
+    return true;
+  }
+  if (IP_V6_REGEX.test(str)) {
+    if (str === '::1' || str.toLowerCase() === '::ffff:127.0.0.1') return false;
+    return str.length >= 2 && str.length <= 39;
+  }
+  return false;
+}
+
+// ── DoH (DNS-over-HTTPS) helpers ──
+async function dohQuery(domain, type, resolver) {
+  const endpoints = {
+    cloudflare: 'https://1.1.1.1/dns-query?name=' + encodeURIComponent(domain) + '&type=' + type,
+    google: 'https://dns.google/resolve?name=' + encodeURIComponent(domain) + '&type=' + type,
+    quad9: 'https://dns9.quad9.net:5053/dns-query?name=' + encodeURIComponent(domain) + '&type=' + type,
+  };
+  const url = endpoints[resolver] || endpoints.cloudflare;
+  const res = await fetch(url, { headers: { 'Accept': 'application/dns-json' } });
+  return res.json();
+}
+
+function reverseIp(ip) {
+  if (IP_V4_REGEX.test(ip)) {
+    return ip.split('.').reverse().join('.') + '.in-addr.arpa';
+  }
+  // IPv6 reverse (simplified for common cases)
+  const expanded = ip.replace(/(^|:)0+/g, '$1').replace(/::/, ':' + '0:'.repeat(8 - ip.split(':').length));
+  return expanded.replace(/:/g, '').split('').reverse().join('.') + '.ip6.arpa';
+}
+
+export default {
+  async fetch(request) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname.replace(/\/+$/, '');
+      const method = request.method;
+
+      // ── Route: SEO Analyzer (existing) ──
+      if (path === '/api/full-audit' && method === 'GET') {
+        return handleSeoAudit(url);
+      }
+
+      // ── Route: IP Lookup ──
+      if (path === '/api/ip-lookup' && method === 'GET') {
+        return handleIpLookup(request, url);
+      }
+
+      // ── Route: DNS Lookup ──
+      if (path === '/api/dns-lookup' && method === 'GET') {
+        return handleDnsLookup(url);
+      }
+
+      // ── Route: Reverse DNS ──
+      if (path === '/api/reverse-dns' && method === 'GET') {
+        return handleReverseDns(url);
+      }
+
+      // ── Route: DNS Propagation ──
+      if (path === '/api/dns-propagation' && method === 'GET') {
+        return handleDnsPropagation(url);
+      }
+
+      // ── Route: Blacklist Check ──
+      if (path === '/api/blacklist-check' && method === 'GET') {
+        return handleBlacklistCheck(url);
+      }
+
+      // ── Route: WHOIS Lookup ──
+      if (path === '/api/whois' && method === 'GET') {
+        return handleWhois(url);
+      }
+
+      // ── Route: HTTP Headers ──
+      if (path === '/api/headers' && method === 'GET') {
+        return handleHttpHeaders(request);
+      }
+
+      // ── Route: ASN Lookup ──
+      if (path === '/api/asn-lookup' && method === 'GET') {
+        return handleAsnLookup(request, url);
+      }
+
+      return new Response('Not Found', { status: 404, headers: corsHeaders });
+
+    } catch (error) {
+      console.error('Worker error:', error.message);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: Object.assign({}, corsHeaders, { 'Content-Type': 'application/json' }),
+      });
+    }
+  },
+};
+
+// ── IP Lookup Handler ──
+async function handleIpLookup(request, url) {
+  const targetIp = url.searchParams.get('ip') || url.searchParams.get('q') || '';
+  if (!targetIp) {
+    // Self-lookup from Cloudflare cf properties
+    const cf = request.cf || {};
+    return jsonResponse({
+      ip: request.headers.get('CF-Connecting-IP') || '',
+      country: cf.country || '',
+      countryCode: cf.countryCode || '',
+      region: cf.region || '',
+      regionCode: cf.regionCode || '',
+      city: cf.city || '',
+      postalCode: cf.postalCode || '',
+      latitude: cf.latitude || 0,
+      longitude: cf.longitude || 0,
+      timezone: cf.timezone || '',
+      isp: cf.asOrganization || '',
+      asn: cf.asn || 0,
+      org: cf.asOrganization || '',
+      currency: '',
+      isSelf: true,
+    });
+  }
+  if (!isValidPublicIp(targetIp)) {
+    return jsonResponse({ error: 'Invalid IP address' }, 400);
+  }
+  const res = await fetch('https://ipwho.is/' + encodeURIComponent(targetIp));
+  if (!res.ok) return jsonResponse({ error: 'Lookup failed' }, 502);
+  const data = await res.json();
+  if (!data.success) return jsonResponse({ error: 'Lookup failed: ' + (data.message || 'unknown') }, 502);
+  return jsonResponse({
+    ip: data.ip || targetIp,
+    country: data.country || '',
+    countryCode: data.country_code || '',
+    region: data.region || '',
+    city: data.city || '',
+    postalCode: data.postal || '',
+    latitude: data.latitude || 0,
+    longitude: data.longitude || 0,
+    timezone: (data.timezone && data.timezone.id) || '',
+    isp: (data.connection && data.connection.isp) || '',
+    asn: (data.connection && data.connection.asn) || 0,
+    org: (data.connection && data.connection.org) || '',
+    currency: (data.currency && data.currency.code) || '',
+    isSelf: false,
+  });
+}
+
+// ── DNS Lookup Handler ──
+async function handleDnsLookup(url) {
+  const domain = url.searchParams.get('domain') || '';
+  const type = (url.searchParams.get('type') || 'A').toUpperCase();
+  const validTypes = ['A', 'AAAA', 'MX', 'TXT', 'NS', 'CNAME', 'SOA', 'PTR'];
+  if (!domain) return jsonResponse({ error: 'Missing domain parameter' }, 400);
+  if (validTypes.indexOf(type) === -1) return jsonResponse({ error: 'Invalid DNS record type' }, 400);
+  const data = await dohQuery(domain, type, 'cloudflare');
+  return jsonResponse({
+    domain: domain,
+    type: type,
+    answers: (data.Answer || []).map(function (a) {
+      return { name: a.name, type: a.type, ttl: a.TTL, data: a.data };
+    }),
+    authority: (data.Authority || []).map(function (a) {
+      return { name: a.name, type: a.type, ttl: a.TTL, data: a.data };
+    }),
+    status: data.Status || 0,
+    rd: data.RD || false,
+  });
+}
+
+// ── Reverse DNS Handler ──
+async function handleReverseDns(url) {
+  const ip = url.searchParams.get('ip') || '';
+  if (!ip) return jsonResponse({ error: 'Missing ip parameter' }, 400);
+  const ptr = reverseIp(ip);
+  const data = await dohQuery(ptr, 'PTR', 'cloudflare');
+  return jsonResponse({
+    ip: ip,
+    ptr: ptr,
+    answers: (data.Answer || []).map(function (a) { return { name: a.name, type: a.type, ttl: a.TTL, data: a.data }; }),
+    status: data.Status || 0,
+  });
+}
+
+// ── DNS Propagation Handler ──
+async function handleDnsPropagation(url) {
+  const domain = url.searchParams.get('domain') || '';
+  const type = (url.searchParams.get('type') || 'A').toUpperCase();
+  if (!domain) return jsonResponse({ error: 'Missing domain parameter' }, 400);
+  const [cf, google, quad9] = await Promise.all([
+    dohQuery(domain, type, 'cloudflare').then(function (d) { return d; }).catch(function () { return { error: 'Cloudflare resolver failed' }; }),
+    dohQuery(domain, type, 'google').then(function (d) { return d; }).catch(function () { return { error: 'Google resolver failed' }; }),
+    dohQuery(domain, type, 'quad9').then(function (d) { return d; }).catch(function () { return { error: 'Quad9 resolver failed' }; }),
+  ]);
+  return jsonResponse({
+    domain: domain,
+    type: type,
+    results: {
+      cloudflare: (cf.Answer || []).map(function (a) { return a.data; }),
+      google: (google.Answer || []).map(function (a) { return a.data; }),
+      quad9: (quad9.Answer || []).map(function (a) { return a.data; }),
+    },
+    resolved: {
+      cloudflare: !cf.error && cf.Status === 0,
+      google: !google.error && google.Status === 0,
+      quad9: !quad9.error && quad9.Status === 0,
     },
   });
+}
+
+// ── Blacklist Check Handler ──
+async function handleBlacklistCheck(url) {
+  const ip = url.searchParams.get('ip') || '';
+  if (!ip) return jsonResponse({ error: 'Missing ip parameter' }, 400);
+  if (!isValidPublicIp(ip)) return jsonResponse({ error: 'Invalid IP address' }, 400);
+  const reversed = ip.split('.').reverse().join('.');
+  const rblZones = [
+    { name: 'Spamhaus ZEN', zone: 'zen.spamhaus.org' },
+    { name: 'Spamcop', zone: 'bl.spamcop.net' },
+    { name: 'Barracuda BRBL', zone: 'b.barracudacentral.org' },
+  ];
+  const results = [];
+  for (const rbl of rblZones) {
+    try {
+      const query = reversed + '.' + rbl.zone;
+      const data = await dohQuery(query, 'A', 'cloudflare');
+      const listed = data.Answer && data.Answer.length > 0;
+      results.push({
+        name: rbl.name,
+        listed: listed,
+        returnCode: listed ? (data.Answer[0].data || '127.0.0.2') : null,
+      });
+    } catch (e) {
+      results.push({ name: rbl.name, listed: false, error: 'Query failed' });
+    }
+  }
+  return jsonResponse({
+    ip: ip,
+    blacklisted: results.some(function (r) { return r.listed; }),
+    results: results,
+  });
+}
+
+// ── WHOIS Lookup Handler ──
+async function handleWhois(url) {
+  const query = url.searchParams.get('query') || '';
+  if (!query) return jsonResponse({ error: 'Missing query parameter' }, 400);
+  let endpoint;
+  if (IP_V4_REGEX.test(query) || IP_V6_REGEX.test(query)) {
+    endpoint = 'https://rdap.org/ip/' + encodeURIComponent(query);
+  } else {
+    endpoint = 'https://rdap.org/domain/' + encodeURIComponent(query);
+  }
+  const res = await fetch(endpoint);
+  if (!res.ok) {
+    if (res.status === 404) return jsonResponse({ error: 'Not found in RDAP registry' }, 404);
+    return jsonResponse({ error: 'WHOIS query failed: ' + res.status }, 502);
+  }
+  const data = await res.json();
+  const events = data.events || [];
+  return jsonResponse({
+    query: query,
+    handle: data.handle || '',
+    name: data.name || data.ldhName || '',
+    entities: (data.entities || []).map(function (e) {
+      return {
+        handle: e.handle || '',
+        role: (e.roles || []).join(', '),
+        name: (e.vcardArray && e.vcardArray[1] && e.vcardArray[1][0] && e.vcardArray[1][0][3]) || '',
+      };
+    }),
+    nameservers: (data.nameservers || []).map(function (n) { return n.ldhName || n.name; }),
+    events: events.map(function (e) { return { action: e.eventAction, date: e.eventDate }; }),
+    creationDate: (events.filter(function (e) { return e.eventAction === 'registration'; })[0] || {}).eventDate || '',
+    expiryDate: (events.filter(function (e) { return e.eventAction === 'expiration'; })[0] || {}).eventDate || '',
+    lastChangedDate: (events.filter(function (e) { return e.eventAction === 'last changed'; })[0] || {}).eventDate || '',
+  });
+}
+
+// ── HTTP Headers Handler ──
+async function handleHttpHeaders(request) {
+  const headers = {};
+  for (const [key, value] of request.headers) {
+    headers[key] = value;
+  }
+  return jsonResponse({ headers: headers });
+}
+
+// ── ASN Lookup Handler ──
+async function handleAsnLookup(request, url) {
+  const targetIp = url.searchParams.get('ip') || '';
+  if (!targetIp) {
+    const cf = request.cf || {};
+    return jsonResponse({
+      ip: request.headers.get('CF-Connecting-IP') || '',
+      asn: cf.asn || 0,
+      org: cf.asOrganization || '',
+      isSelf: true,
+    });
+  }
+  if (!isValidPublicIp(targetIp)) return jsonResponse({ error: 'Invalid IP address' }, 400);
+  const res = await fetch('https://ipwho.is/' + encodeURIComponent(targetIp));
+  if (!res.ok) return jsonResponse({ error: 'Lookup failed' }, 502);
+  const data = await res.json();
+  if (!data.success) return jsonResponse({ error: 'Lookup failed' }, 502);
+  return jsonResponse({
+    ip: targetIp,
+    asn: (data.connection && data.connection.asn) || 0,
+    org: (data.connection && data.connection.org) || '',
+    isSelf: false,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Legacy SEO Analyzer Handler (unchanged)
+// ─────────────────────────────────────────────────────────────
+
+async function handleSeoAudit(url) {
+  try {
+    let targetUrl = url.searchParams.get('url');
+    if (!targetUrl) return jsonResponse({ error: 'Missing URL parameter' }, 400);
+
+    targetUrl = targetUrl.trim();
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) targetUrl = 'https://' + targetUrl;
+
+    try { new URL(targetUrl); } catch (e) {
+      return jsonResponse({ error: 'Invalid URL: ' + targetUrl }, 400);
+    }
+
+    let html = '';
+    let finalUrl = targetUrl;
+    let wordCount = 0;
+    let textRatio = 0;
+    let isThin = false;
+    const redirectChain = [];
+    const keywords = [];
+    const entities = [];
+    const recommendations = { critical: [], high: [], medium: [], low: [] };
+    let scores = { overall: 0, content: 0, technical: 0, performance: 0, accessibility: 0 };
+    let headings = { h1: 0, h2: 0, h3: 0, h4: 0, h5: 0, h6: 0 };
+    let readability = { fleschKincaid: 0, gunningFog: 0, gradeLevel: 'Unknown' };
+    let eeat = { score: 0, hasAuthor: false, hasDate: false, hasCitations: false };
+    let snippets = { score: 0, hasLists: false, hasFAQ: false };
+    let schema = { typesFound: [], isValid: false, errors: [] };
+    let canonical = { url: '', isValid: false };
+    let securityHeaders = { hsts: false, xFrame: false, csp: false };
+    let perf = { renderBlocking: 0, domSize: 0, imagesWithoutDimensions: 0, cwvRisks: [] };
+    let images = { total: 0, missingAlt: 0, outdatedFormats: 0, notLazyLoaded: 0 };
+    let links = { internal: 0, external: 0, poorAnchorText: [] };
+    let social = { ogTitle: '', ogImage: '', missing: [] };
+
+    let currentUrl = finalUrl;
+    let response;
+    for (let i = 0; i < 10; i++) {
+      response = await fetch(currentUrl, {
+        method: 'GET', redirect: 'manual',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; SEOAnalyzer/1.0; +https://toolnestr.com)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+        },
+      });
+      const status = response.status;
+      const location = response.headers.get('Location');
+      redirectChain.push({ url: currentUrl, status });
+      if (status >= 300 && status < 400 && location) {
+        currentUrl = new URL(location, currentUrl).href;
+        continue;
+      }
+      break;
+    }
+    finalUrl = currentUrl;
+
+    var hsts = response ? response.headers.get('Strict-Transport-Security') : null;
+    var xFrame = response ? response.headers.get('X-Frame-Options') : null;
+    var csp = response ? response.headers.get('Content-Security-Policy') : null;
+    securityHeaders = { hsts: hsts !== null, xFrame: xFrame !== null, csp: csp !== null };
+
+    html = response ? await response.text() : '';
+
+    if (html) {
+      wordCount = countWords(extractText(stripNoise(html)));
+      textRatio = html.length > 0 ? Math.round((extractText(stripNoise(html)).length / html.length) * 100) : 0;
+      isThin = wordCount < 300 && textRatio < 15;
+      headings = extractHeadings(html);
+      readability = calculateReadability(extractText(stripNoise(html)));
+      readability.gradeLevel = getGradeLevel(readability.fleschKincaid);
+      snippets = { score: calculateSnippetScore(html), hasLists: (html.match(/<(ol|ul)[^>]*>[\s\S]*?<\/(ol|ul)>/gi) || []).length > 0, hasFAQ: /faqpage/i.test(html) };
+      const eeaScore = calculateEEAT(html, stripNoise(html));
+      eeat = { score: eeaScore, hasAuthor: eeaScore >= 20, hasDate: calculateFreshness(html, {}) >= 15, hasCitations: false };
+
+      const schemaResult = analyzeSchema(html);
+      schema = { typesFound: schemaResult.types || [], isValid: (schemaResult.errors || []).length === 0, errors: schemaResult.errors || [] };
+      canonical = { url: extractCanonical(html), isValid: extractCanonical(html) ? extractCanonical(html).replace(/\/$/, '') === finalUrl.replace(/\/$/, '') : false };
+
+      const imgResult = analyzeImages(html);
+      images = { total: imgResult.total || 0, missingAlt: imgResult.missingAlt || 0, outdatedFormats: imgResult.outdatedFormats || 0, notLazyLoaded: imgResult.notLazyLoaded || 0 };
+
+      const linkResult = analyzeLinks(html, finalUrl);
+      links = { internal: linkResult.internal || 0, external: linkResult.external || 0, poorAnchorText: (linkResult.anchorTextDistribution || []).filter(function (a) { return /click\s*here|read\s*more|learn\s*more/i.test(a.text); }).map(function (a) { return a.text; }) };
+
+      const perfResult = analyzePerformance(html);
+      perf = { renderBlocking: perfResult.renderBlockingResources || 0, domSize: perfResult.totalDOMElements || 0, imagesWithoutDimensions: imgResult.missingDimensions || 0, cwvRisks: perfResult.predictedCWVIssues || [] };
+
+      social = { ogTitle: extractOG(html, 'og:title'), ogImage: extractOG(html, 'og:image'), missing: getMissingOG(html) };
+
+      const kwResult = analyzeKeywords(html);
+      keywords.push.apply(keywords, (kwResult || []).slice(0, 15));
+
+      const entityResult = analyzeEntities(html);
+      entities.push.apply(entities, (entityResult || []).map(function (e) { return e.name; }).slice(0, 10));
+
+      scores = calculateScoresRaw(wordCount, textRatio, isThin, headings, readability.fleschKincaid, eeaScore, snippets.score, schema, canonical, securityHeaders, perf, images, html);
+      const recs = generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippets.score, images, links, social, perf, schema, canonical, securityHeaders);
+      recommendations.critical = recs.critical || [];
+      recommendations.high = recs.high || [];
+      recommendations.medium = recs.medium || [];
+      recommendations.low = recs.low || [];
+    }
+
+    return jsonResponse({
+      url: finalUrl, redirectChain: redirectChain, scores: scores,
+      content: { wordCount, textRatio, isThin, headings, readability, eeat, snippets, entities },
+      technical: { schema, canonical, securityHeaders },
+      performance: perf, images, links, social, keywords, recommendations,
+    });
+  } catch (error) {
+    return jsonResponse({ error: error.message }, 500);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────

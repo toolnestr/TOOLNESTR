@@ -1,0 +1,212 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'WHOIS Lookup';
+const description =
+  'Look up domain registration and IP ownership data — registrar, creation and expiry dates, ' +
+  'nameservers, and registrant contact information. Free WHOIS lookup tool.';
+const intro =
+  'Enter a domain name or IP address to retrieve registration and ownership information from WHOIS databases.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is WHOIS?', a: 'WHOIS is a query and response protocol used to look up domain registration and IP address ownership information. It returns details such as the registrar, registration dates, nameservers, and contact info for the registrant.' },
+  { q: 'Is WHOIS information public?', a: 'WHOIS data has traditionally been public, but GDPR and other privacy regulations have changed this. Many registrars now offer WHOIS privacy/redaction services that hide personal contact details from public queries while still providing technical information.' },
+  { q: 'What is the difference between WHOIS and RDAP?', a: 'RDAP (Registration Data Access Protocol) is the modern replacement for WHOIS. It uses structured JSON responses, supports internationalised registrations, and provides access control. Both protocols return similar registration data.' },
+  { q: 'What information does a domain WHOIS show?', a: 'A domain WHOIS lookup typically shows: the registrar name and URL, creation and expiry dates, the registrant and administrative contact, the nameservers, and the domain status codes (e.g., clientTransferProhibited, serverHold).' },
+  { q: 'Why would an IP WHOIS differ from a domain WHOIS?', a: 'IP WHOIS lookups query Regional Internet Registries (RIRs) like ARIN, RIPE, APNIC, LACNIC, and AFRINIC rather than domain registrars. They show IP range ownership, the organisation the range is assigned to, and contact information for abuse reporting.' },
+  { q: 'What are domain status codes?', a: 'Domain status codes (also called Extended Status Codes or EPP codes) indicate the current state of a domain. Key codes include: clientTransferProhibited (domain locked from transfer), serverHold (domain suspended), autoRenewPeriod (domain auto-renewed by registrar), and redemptionPeriod (domain in the grace period after expiration).' },
+  { q: 'What is WHOIS privacy?', a: "WHOIS privacy, also called domain privacy or private registration, replaces the registrant's personal contact information with anonymised or proxy details in WHOIS queries. This protects the domain owner's privacy while still providing technical and administrative contact routes." },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">WHOIS Lookup</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="query"
+          type="text"
+          placeholder="example.com or 8.8.8.8"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="lookupBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Lookup
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Querying WHOIS databases...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden space-y-3">
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Registrar</div>
+          <div id="registrar" class="mt-1 text-sm font-semibold text-slate-900"></div>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</div>
+            <div id="created" class="mt-1 text-sm text-slate-700"></div>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Expiry</div>
+            <div id="expiry" class="mt-1 text-sm text-slate-700"></div>
+          </div>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Nameservers</div>
+          <div id="nameservers" class="mt-1 text-sm text-slate-700"></div>
+        </div>
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Registrant</div>
+          <div id="registrant" class="mt-1 text-sm text-slate-700"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How WHOIS works</h2>
+    <p class="mt-2 text-slate-600">
+      WHOIS is a TCP-based query and response protocol defined in RFC 3912, originally developed in the 1980s to track network resource assignments. When you query a domain name, the WHOIS system determines the appropriate registry based on the TLD (top-level domain). Each TLD, such as .com, .org, or .io, has a designated registry operator that maintains the authoritative WHOIS database for all domains within that TLD. The registrar through which the domain was registered submits the domain's registration details to the registry, making them available via WHOIS queries.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For IP address lookups, WHOIS queries are routed to the appropriate Regional Internet Registry (RIR). The world is divided into five RIRs: ARIN (North America), RIPE NCC (Europe, Middle East, parts of Central Asia), APNIC (Asia Pacific), LACNIC (Latin America and Caribbean), and AFRINIC (Africa). Each RIR maintains WHOIS data for the IP address ranges it allocates. The query returns information about the IP block owner, the organisation to which the IP is assigned, and contact details for network abuse reporting.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The data returned by a WHOIS query has evolved significantly over time. Historically, WHOIS included full personal contact information for the domain owner, including name, address, phone number, and email. With the introduction of GDPR in Europe and similar privacy regulations in other jurisdictions, most registrars now offer WHOIS privacy services that redact or anonymise personal data. The ICANN Registration Data Access Protocol (RDAP) is gradually replacing WHOIS as the standard protocol, offering structured JSON responses, standardised error handling, and differentiated access for various levels of data sensitivity.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-labelledby="whois-title whois-desc">
+      <title id="whois-title">WHOIS / RDAP Data Hierarchy Diagram</title>
+      <desc id="whois-desc">A hierarchical diagram showing the WHOIS query path: user queries tool, tool routes to registry WHOIS or RIR, which returns data from registrar or IP allocation records</desc>
+      <defs>
+        <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="50" y="10" width="140" height="46" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="120" y="36" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">User Query</text>
+      <line x1="190" y1="33" x2="240" y2="33" stroke="#6366f1" stroke-width="1.5" marker-end="url(#aw)" />
+      <text x="215" y="25" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">domain</text>
+      <rect x="245" y="10" width="160" height="46" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="325" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="700">WHOIS Tool</text>
+      <text x="325" y="44" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Route by TLD or RIR</text>
+      <line x1="325" y1="56" x2="325" y2="85" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="215" y1="85" x2="435" y2="85" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="215" y1="56" x2="215" y2="85" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#aw)" />
+      <text x="215" y="78" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">IP</text>
+      <rect x="445" y="10" width="160" height="46" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="525" y="28" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="600">RIR WHOIS</text>
+      <text x="525" y="44" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">ARIN / RIPE / APNIC</text>
+      <line x1="445" y1="85" x2="525" y2="85" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="245" y1="56" x2="245" y2="140" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#aw)" />
+      <rect x="195" y="145" width="100" height="40" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="245" y="162" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Registry</text>
+      <text x="245" y="176" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Verisign / PIR</text>
+      <line x1="295" y1="165" x2="350" y2="165" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#aw)" />
+      <text x="322" y="157" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">refers</text>
+      <rect x="355" y="145" width="100" height="40" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="405" y="162" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Registrar</text>
+      <text x="405" y="176" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">GoDaddy / Namecheap</text>
+      <rect x="195" y="205" width="100" height="40" rx="6" fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="245" y="222" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">RDAP (JSON)</text>
+      <text x="245" y="236" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Modern replacement</text>
+      <line x1="195" y1="185" x2="245" y2="205" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2" />
+      <line x1="525" y1="56" x2="525" y2="130" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#aw)" />
+      <rect x="475" y="135" width="100" height="40" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="525" y="152" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">IP Block Owner</text>
+      <text x="525" y="166" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">ISP / Hosting Co.</text>
+      <line x1="525" y1="175" x2="525" y2="205" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#aw)" />
+      <rect x="475" y="210" width="100" height="40" rx="6" fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="525" y="227" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Abuse Contact</text>
+      <text x="525" y="241" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">abuse@provider</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">WHOIS and RDAP data hierarchy showing how queries are routed to the appropriate registry, RIR, or registrar depending on the TLD or IP range</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use WHOIS lookups</h2>
+    <p class="mt-2 text-slate-600">
+      WHOIS lookups serve several practical purposes across different fields. Security professionals use WHOIS to investigate suspicious domains during threat hunts, checking when a domain was registered, who registered it, and whether those details match known threat actor patterns. Domain investors use WHOIS to research domain registration dates, expiry dates, and registrar information when evaluating potential acquisitions. Website owners check their own WHOIS records to ensure contact details are current and to confirm nameserver delegation before DNS changes propagate.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For intellectual property protection, trademark holders monitor WHOIS records for domains that infringe on their trademarks. Abuse teams use WHOIS contact information to report phishing, malware, and spam domains to the appropriate registrar. Network engineers use IP WHOIS lookups to identify the owner of IP ranges for troubleshooting network issues, planning BGP peering, and reporting network abuse.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations and privacy considerations</h2>
+    <p class="mt-2 text-slate-600">
+      The accuracy and completeness of WHOIS data have declined in recent years due to privacy regulations. With GDPR, the California Consumer Privacy Act (CCPA), and similar laws, many registrars now redact personal contact information by default. This means you may see "REDACTED FOR PRIVACY" or similar placeholders instead of actual names and addresses. ICANN's Temp Specification and the subsequent Registration Data Policy formalised this shift, allowing registrars to provide tiered access to registration data.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Some domains use proxy registration services that list the proxy company's information instead of the real registrant. While this protects privacy, it can make it harder to contact domain owners for legitimate purposes. Additionally, domain front-running and WHOIS privacy concerns have led to the development of RDAP, which offers authenticated access to privacy-protected data for verified requesters.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc3912" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 3912 — WHOIS Protocol Specification</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7480" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7480 — Registration Data Access Protocol (RDAP) HTTP Usage</a></li>
+      <li><a href="https://www.icann.org/resources/pages/whois-2018-01-09-en" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">ICANN WHOIS Information</a></li>
+      <li><a href="https://www.arin.net/resources/registry/whois/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">ARIN WHOIS Guide</a></li>
+      <li><a href="https://www.cloudflare.com/learning/dns/glossary/whois-lookup/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Cloudflare — What is WHOIS?</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const q = document.getElementById('query');
+    const btn = document.getElementById('lookupBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/whois';
+
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val || 'N/A';
+    };
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    async function lookup() {
+      const query = q.value.trim();
+      if (!query) { errEl.textContent = 'Please enter a domain name or IP address.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?query=' + encodeURIComponent(query));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        setText('registrar', d.registrar || d.Registrar || 'N/A');
+        setText('created', d.creation_date || d.creationDate || d.created || d.Created || 'N/A');
+        setText('expiry', d.expiration_date || d.expiryDate || d.expiry || d.Expiry || 'N/A');
+        const ns = d.name_servers || d.nameservers || d.NameServers || d.ns || [];
+        setText('nameservers', Array.isArray(ns) ? ns.join(', ') : (ns || 'N/A'));
+        setText('registrant', d.registrant_name || d.registrant || d.Registrant || d.RegistrantName || 'N/A');
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', lookup);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+  </script>
+</ToolLayout>

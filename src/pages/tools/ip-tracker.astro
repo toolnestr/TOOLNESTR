@@ -1,0 +1,591 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'IP Address Tracker – Geolocation, ISP, ASN & Map';
+const description =
+  'Free IP geolocation tool. Look up any IP address — see location, ISP, ASN, timezone, currency and an interactive Leaflet map. Trace your own IP or any IPv4/IPv6 address instantly.';
+const faqs = [
+  { q: 'How does IP geolocation work?', a: 'IP geolocation works by querying large databases that map IP address ranges to geographic locations. These databases are maintained by organisations that collect data from ISPs, WHOIS records, network routing data, and user-contributed corrections. When you enter an IP address, the system looks up the range in the database and returns the associated location, ISP, and other metadata. The accuracy varies from city-level to country-level depending on the IP and database quality.' },
+  { q: 'How accurate is IP geolocation?', a: 'IP geolocation is generally accurate at the city or regional level for most IP addresses, but it is NOT GPS-precise. In densely populated urban areas, accuracy can be within a few kilometres. In rural areas or for mobile IPs, the margin of error can be tens or even hundreds of kilometres. Geolocation databases can only approximate the physical location of an IP because they rely on ISP registration data, not device GPS. It is common to see your IP located in a different city than your actual physical address, especially if you use a mobile network or a VPN.' },
+  { q: 'What is the difference between public and private IP addresses?', a: 'A public IP address is assigned by your ISP and is globally unique on the internet. It allows your device to communicate with other devices across the world. A private IP address is used within a local network (like your home Wi-Fi) and is not routable on the public internet. Private IP ranges are defined by RFC 1918: 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16. This tool only tracks public IP addresses.' },
+  { q: 'Can I track any IP address?', a: 'Yes, you can enter any valid public IP address (IPv4 or IPv6) into the search bar and click "Track IP". The tool will look up that address in the geolocation database and display its approximate location, ISP, ASN, timezone, and other metadata. You can also look up your own IP address by leaving the field blank or clicking the auto-detect option on page load.' },
+  { q: 'Does this tool store my IP address?', a: 'No. All IP lookups are performed in real time and no IP addresses are logged or stored on our servers. The lookup is processed ephemerally through our API endpoint and the results are displayed only to you in your browser. For privacy, this tool uses a secure worker endpoint and does not share your IP with third parties beyond the geolocation database provider.' },
+  { q: 'What is an ASN?', a: 'An Autonomous System Number (ASN) is a unique identifier assigned to a network or group of networks under a single administrative control. ISPs, cloud providers, and large organisations each have one or more ASNs. The ASN is used in BGP (Border Gateway Protocol) routing to exchange routing information between networks. Knowing the ASN can help identify which organisation owns the IP block.' },
+  { q: 'What is the difference between IPv4 and IPv6?', a: 'IPv4 (Internet Protocol version 4) uses 32-bit addresses, allowing approximately 4.3 billion unique addresses. Due to the explosive growth of the internet, IPv4 addresses have been exhausted. IPv6 (version 6) uses 128-bit addresses, providing approximately 340 undecillion addresses — enough for every device on the planet many times over. IPv6 adoption continues to grow, and this tool supports lookups for both protocols.' },
+  { q: 'Why does my IP location look wrong?', a: 'There are several reasons your IP location might appear incorrect: you are using a VPN or proxy that routes traffic through another city; your ISP aggregates customers under a single regional IP pool; or the geolocation database has outdated registration data. ISPs sometimes register IP blocks at their headquarters rather than distributing them locally. If the location is consistently wrong, you can usually contact the geolocation database provider to submit a correction.' },
+];
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+const toolSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'IP Address Tracker',
+  applicationCategory: 'UtilityApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript',
+  description:
+    'Free IP geolocation tool. Look up any IP address — see location, ISP, ASN, timezone, currency and an interactive Leaflet map.',
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqSchema, toolSchema]}>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style is:inline>
+    :root {
+      --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981;
+      --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+      --bg-light: #f8fafc; --bg-dark: #0f172a; --card-bg: #ffffff;
+      --text-main: #1e293b; --text-muted: #64748b;
+      --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      --border: #e2e8f0;
+    }
+    .dark body { --bg-light: #0f172a; --card-bg: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border: #334155; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-light); color: var(--text-main); margin: 0; overflow-x: hidden; }
+
+    /* ── Hero ── */
+    .it-hero { background: var(--bg-dark); padding: 32px 20px 40px; text-align: center; }
+    .it-hero h1 { font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700; color: #fff; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .it-hero p { font-size: clamp(0.85rem, 2vw, 1rem); color: #94a3b8; margin: 0 0 24px; }
+    .it-search { display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin: 0 auto; }
+    @media (min-width: 500px) { .it-search { flex-direction: row; } }
+    .it-search input {
+      flex: 1; padding: 12px 16px; border-radius: 10px; border: 1px solid #334155; background: #1e293b;
+      color: #fff; font-size: 0.95rem; outline: none; width: 100%; -webkit-appearance: none;
+    }
+    .it-search input::placeholder { color: #64748b; }
+    .it-search input:focus { border-color: var(--primary); }
+    .it-search button {
+      padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 0.95rem; border: none;
+      cursor: pointer; background: var(--primary); color: #fff; display: inline-flex; align-items: center;
+      justify-content: center; gap: 6px; transition: opacity 0.2s; width: 100%; -webkit-appearance: none;
+    }
+    @media (min-width: 500px) { .it-search button { width: auto; min-width: 140px; } }
+    .it-search button:hover { opacity: 0.9; }
+    .it-search button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Cards ── */
+    .it-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: clamp(14px, 2.5vw, 20px); }
+
+    /* ── Container ── */
+    .it-container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    @media (min-width: 768px) { .it-container { padding: 24px; } }
+
+    /* ── Dashboard ── */
+    .it-dashboard { display: flex; flex-direction: column; gap: 16px; }
+    @media (min-width: 768px) { .it-dashboard { flex-direction: row; } }
+    .it-dashboard-left { flex: 1; min-width: 0; }
+    .it-dashboard-right { flex: 1.2; min-width: 0; }
+    #ipMap { width: 100%; height: 360px; border-radius: 12px; z-index: 1; }
+    @media (min-width: 768px) { #ipMap { height: 420px; } }
+
+    /* ── Info fields ── */
+    .it-field { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: clamp(0.85rem, 2vw, 0.95rem); }
+    .it-field:last-child { border-bottom: none; }
+    .it-field-label { color: var(--text-muted); font-weight: 500; }
+    .it-field-value { font-weight: 600; text-align: right; word-break: break-word; max-width: 55%; }
+    .it-flag { font-size: 1.5rem; margin-right: 6px; vertical-align: middle; }
+
+    /* ── IP header row ── */
+    .it-ip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .it-ip-display { font-size: clamp(1rem, 3vw, 1.25rem); font-weight: 700; color: var(--primary); word-break: break-all; }
+    .it-copy-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px;
+      cursor: pointer; font-size: 0.85rem; color: var(--text-muted); transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .it-copy-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .it-copy-btn.copied { background: var(--success); color: #fff; border-color: var(--success); }
+
+    /* ── Privacy note ── */
+    .it-privacy { font-size: 0.78rem; color: var(--text-muted); margin-top: 10px; text-align: center; }
+
+    /* ── Loading ── */
+    .it-loading { text-align: center; padding: 40px 16px; }
+    .it-spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: it-spin 0.7s linear infinite; margin: 0 auto; }
+    @keyframes it-spin { to { transform: rotate(360deg); } }
+    .it-loading h3 { font-size: 1rem; font-weight: 600; margin: 12px 0 4px; }
+    .it-loading p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+
+    /* ── Error ── */
+    .it-error { background: #fef2f2; color: var(--error); padding: 14px; border-radius: 10px; text-align: center; font-size: 0.9rem; }
+    .dark .it-error { background: #451a1a; }
+
+    /* ── Btn ── */
+    .it-btn { padding: 10px 20px; border-radius: 10px; font-weight: 500; font-size: 0.9rem; border: none; cursor: pointer; transition: opacity 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .it-btn:hover { opacity: 0.85; }
+    .it-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .it-btn-primary { background: var(--primary); color: #fff; }
+
+    /* ── Utility ── */
+    .it-hidden { display: none !important; }
+    .it-mt { margin-top: 12px; }
+    .it-mb { margin-bottom: 12px; }
+    .it-section-title { font-size: clamp(0.85rem, 2.2vw, 1rem); font-weight: 600; color: var(--text-main); margin: 0 0 10px; }
+    .it-text-muted { color: var(--text-muted); }
+  </style>
+
+  <div class="it-hero">
+    <h1><i class="fas fa-location-dot" style="color:var(--primary);margin-right:6px;"></i>IP Address Tracker</h1>
+    <p>Look up any IP address — location, ISP, ASN, timezone and an interactive map</p>
+    <div class="it-search">
+      <input type="text" id="ipInput" placeholder="Enter an IP address (or leave blank for your own IP)">
+      <button id="trackBtn">
+        <i class="fas fa-search"></i> Track IP
+      </button>
+    </div>
+  </div>
+
+  <div class="it-container">
+    <div id="loadingContainer" class="it-loading">
+      <div class="it-spinner"></div>
+      <h3>Looking up IP address...</h3>
+      <p>Querying geolocation database</p>
+    </div>
+
+    <div id="errorContainer" class="it-hidden">
+      <div id="errorMsg" class="it-error"></div>
+    </div>
+
+    <div id="dashboardContainer" class="it-hidden">
+      <div class="it-dashboard">
+        <div class="it-dashboard-left">
+          <div class="it-card" style="height:100%;">
+            <div class="it-ip-header">
+              <span class="it-ip-display" id="ipDisplay"></span>
+              <button class="it-copy-btn" id="copyBtn" title="Copy IP to clipboard">
+                <i class="fas fa-copy"></i> Copy
+              </button>
+            </div>
+            <div id="infoFields">
+              <div class="it-field"><span class="it-field-label">Country</span><span class="it-field-value" id="fieldCountry"></span></div>
+              <div class="it-field"><span class="it-field-label">City / Region</span><span class="it-field-value" id="fieldCity"></span></div>
+              <div class="it-field"><span class="it-field-label">ISP</span><span class="it-field-value" id="fieldIsp"></span></div>
+              <div class="it-field"><span class="it-field-label">ASN</span><span class="it-field-value" id="fieldAsn"></span></div>
+              <div class="it-field"><span class="it-field-label">Timezone</span><span class="it-field-value" id="fieldTz"></span></div>
+              <div class="it-field"><span class="it-field-label">Currency</span><span class="it-field-value" id="fieldCurrency"></span></div>
+            </div>
+            <div class="it-privacy">
+              <i class="fas fa-shield-halved"></i> This is your approximate ISP-level location, not your exact address
+            </div>
+          </div>
+        </div>
+        <div class="it-dashboard-right">
+          <div class="it-card" style="padding:0;overflow:hidden;">
+            <div id="ipMap"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Inline SVG Diagram ── -->
+  <div class="mx-auto max-w-6xl px-4">
+    <figure class="my-10 flex flex-col items-center">
+      <svg width="640" height="340" viewBox="0 0 640 340" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svg-title svg-desc" style="max-width:100%;height:auto;">
+        <title id="svg-title">IP geolocation lookup flow diagram showing a globe with a location pin and data path</title>
+        <desc id="svg-desc">Simplified world map illustration showing how an IP address is resolved to a geographic location. A globe with latitude and longitude grid lines is connected by a dashed path to a location pin marker, with labels for the steps involved.</desc>
+        <!-- Globe -->
+        <circle cx="240" cy="170" r="100" stroke="#6366f1" stroke-width="2.5" fill="rgba(99,102,241,0.08)" />
+        <ellipse cx="240" cy="170" rx="80" ry="100" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" fill="none" />
+        <ellipse cx="240" cy="170" rx="100" ry="40" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" fill="none" />
+        <ellipse cx="240" cy="170" rx="100" ry="15" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" fill="none" />
+        <line x1="140" y1="170" x2="340" y2="170" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" />
+        <line x1="240" y1="70" x2="240" y2="270" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" />
+        <!-- Continents hint -->
+        <path d="M190 140 Q210 130 225 140 Q235 145 240 155 Q230 160 215 155 Q200 150 190 140Z" fill="#6366f1" opacity="0.25" />
+        <path d="M270 120 Q290 115 300 125 Q310 135 305 150 Q295 155 280 150 Q270 140 270 120Z" fill="#6366f1" opacity="0.25" />
+        <path d="M180 180 Q200 175 215 185 Q220 195 210 205 Q195 210 180 200 Q175 190 180 180Z" fill="#6366f1" opacity="0.2" />
+        <!-- Dashed path from globe to pin -->
+        <path d="M340 170 Q400 130 440 110 L500 80" stroke="#475569" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrowhead)" />
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
+          </marker>
+        </defs>
+        <!-- Location pin -->
+        <g transform="translate(500,60)">
+          <ellipse cx="0" cy="32" rx="8" ry="3" fill="#475569" opacity="0.3" />
+          <path d="M0 -30 C-18 -10 -18 10 0 25 C18 10 18 -10 0 -30Z" fill="#6366f1" />
+          <circle cx="0" cy="-5" r="6" fill="#fff" />
+          <circle cx="0" cy="-5" r="3" fill="#4f46e5" />
+        </g>
+        <!-- Labels -->
+        <text x="240" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="12" font-weight="600" fill="#6366f1">IP Geolocation Lookup Flow</text>
+        <text x="240" y="295" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="11" fill="#64748b">1. Enter an IP address</text>
+        <text x="380" y="120" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#475569">Database query</text>
+        <text x="530" y="58" text-anchor="start" font-family="Inter,system-ui,sans-serif" font-size="11" fill="#475569">3. Location &amp; ISP data</text>
+        <!-- Step 2 -->
+        <rect x="320" y="210" rx="8" width="140" height="32" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1" />
+        <text x="390" y="230" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#475569">2. Geolocation API</text>
+        <path d="M240 270 L390 242" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 3" fill="none" />
+        <path d="M460 226 L500 88" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 3" fill="none" />
+      </svg>
+      <figcaption class="mt-3 text-center text-sm text-slate-500">
+        How IP geolocation works: an IP address is sent to a geolocation database, which returns the approximate geographic location, ISP, and other metadata associated with that address.
+      </figcaption>
+    </figure>
+  </div>
+
+  <!-- ── Educational Content ── -->
+  <div class="mx-auto max-w-6xl px-4 pb-10">
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">What is IP Geolocation and How Does It Work?</h2>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        IP geolocation is the process of determining the approximate geographic location of a device based on its
+        Internet Protocol (IP) address. When you connect to the internet, your ISP assigns your connection a public
+        IP address from a block of addresses registered to them. Geolocation databases maintain mappings between
+        these IP blocks and physical locations — typically at the city or regional level.
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        The lookup process works by taking an IP address, determining which range it falls into, and returning the
+        associated metadata: country, region, city, postal code, latitude and longitude, ISP (Internet Service
+        Provider), ASN (Autonomous System Number), timezone, and sometimes currency. These databases are compiled
+        from multiple sources including WHOIS registration records, ISP data contributions, BGP routing tables,
+        network probing measurements, and user-submitted corrections. The largest commercial providers update their
+        datasets daily or weekly to maintain accuracy as IP allocations change.
+      </p>
+    </section>
+
+    <!-- SVG Diagram inserted here in markup above -->
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">IP Address Basics: IPv4 vs IPv6, Public vs Private, Static vs Dynamic</h2>
+
+      <h3 class="mt-5 font-semibold text-slate-900 dark:text-white">IPv4 vs IPv6</h3>
+      <p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        IPv4 addresses are 32-bit numbers written in dotted-decimal notation (e.g., <code>192.0.2.1</code>) and
+        support approximately 4.3 billion unique addresses. The internet has exhausted the pool of unallocated IPv4
+        addresses, which is why IPv6 was developed. IPv6 addresses are 128-bit numbers written in hexadecimal
+        colon-separated notation (e.g., <code>2001:db8::1</code>) and provide roughly 340 undecillion addresses —
+        enough to assign a unique address to every atom on the surface of the Earth many times over. This tool
+        supports lookups for both IPv4 and IPv6 addresses.
+      </p>
+
+      <h3 class="mt-5 font-semibold text-slate-900 dark:text-white">Public vs Private IP Addresses</h3>
+      <p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        A public IP address is globally unique and routable on the internet. It is how your devices communicate
+        with servers and services across the world. A private IP address is used within a local network and is
+        not reachable from the internet. Private ranges are defined in <a href="https://datatracker.ietf.org/doc/html/rfc1918" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">RFC 1918</a>:
+        10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16. Network Address Translation (NAT) allows multiple devices on
+        a private network to share a single public IP when accessing the internet. This tool returns information
+        only for public IP addresses; private and reserved addresses will not produce geolocation results.
+      </p>
+
+      <h3 class="mt-5 font-semibold text-slate-900 dark:text-white">Static vs Dynamic IP Addresses</h3>
+      <p class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        A static IP address is permanently assigned to a device and does not change over time. Static IPs are
+        typically used by servers, business internet connections, and networking equipment that needs a consistent
+        address. A dynamic IP address is assigned temporarily from a pool of available addresses using DHCP.
+        Most residential internet connections use dynamic IPs, which can change when the router restarts or at
+        the ISP's discretion. Dynamic IPs are more cost-effective for ISPs because they can serve more customers
+        than they have addresses. Neither type affects geolocation accuracy significantly, though dynamic IPs
+        may have less precise location data because they are rotated among users.
+      </p>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">How Accurate Is IP Geolocation?</h2>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        IP geolocation is <strong>not GPS-precise</strong>. The accuracy varies significantly depending on the IP
+        address and the quality of the geolocation database. In urban areas with dense ISP infrastructure, accuracy
+        can be within 1–5 kilometres. In rural areas or for IPs assigned to mobile carriers, the margin of error
+        can exceed 50 kilometres or even show a completely different city.
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        There are several reasons for this inherent imprecision. ISPs often register IP blocks at their corporate
+        headquarters or regional data centres rather than distributing them to local points of presence. Mobile
+        networks route traffic through central gateways that may be hundreds of kilometres from the user's actual
+        location. VPNs, proxies, and Tor exit nodes deliberately obscure the true origin of traffic. And geolocation
+        databases themselves have varying update frequencies and data quality — some rely on user-contributed
+        corrections, while others use active network probing to triangulate router locations.
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        The privacy note shown with each result reminds users: <em>"This is your approximate ISP-level location, not
+        your exact address."</em> You should never rely on IP geolocation for precise location-based decisions
+        such as dispatching emergency services. For most web applications — content localisation, fraud screening,
+        analytics — city-level or regional accuracy is sufficient.
+      </p>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Common Use Cases for IP Geolocation</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h3 class="font-semibold text-slate-900 dark:text-white">Fraud Detection &amp; Security</h3>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">E-commerce platforms and financial
+            institutions use IP geolocation to detect suspicious activity — such as a login attempt from
+            a different country minutes after a legitimate login. Mismatches between the IP location and
+            the user's billing or shipping address can trigger additional verification steps. This is one
+            of the most widespread security applications.</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h3 class="font-semibold text-slate-900 dark:text-white">CDN Routing &amp; Content Delivery</h3>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Content Delivery Networks (CDNs) like
+            Cloudflare, Akamai, and Fastly use IP geolocation to route users to the nearest edge server.
+            This reduces latency by minimising the physical distance between the user and the content
+            server. Without geolocation-based DNS resolution, users would be routed to arbitrary data
+            centres, resulting in slower page loads and video streams.</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h3 class="font-semibold text-slate-900 dark:text-white">Geo-Targeting &amp; Localisation</h3>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Websites and applications use IP
+            geolocation to serve region-specific content: showing prices in local currency, displaying
+            relevant language versions, redirecting to country-specific domains, or complying with
+            licensing restrictions (e.g., streaming services that offer different catalogues per country).
+            E-commerce stores also use it to pre-select shipping options and calculate taxes.</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h3 class="font-semibold text-slate-900 dark:text-white">Network Troubleshooting</h3>
+          <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Network engineers and system
+            administrators use IP geolocation to trace routing paths, identify the geographic origin of
+            traffic spikes or attacks, and diagnose latency issues. Knowing the ASN and ISP helps
+            determine whether a problem lies with a specific upstream provider, a regional exchange
+            point, or the end user's connection. Combined with traceroute and BGP data, geolocation
+            is a valuable diagnostic tool.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Privacy Considerations</h2>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        IP addresses are considered personally identifiable information (PII) in many jurisdictions, including
+        under the <a href="https://gdpr.eu/" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">GDPR</a>
+        in Europe and the <a href="https://oag.ca.gov/privacy/ccpa" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">CCPA</a>
+        in California. This is because an IP address can be combined with other data to identify a specific
+        individual or household. When you use this IP tracker, the lookup is performed through a secure API
+        endpoint and the results are displayed only in your browser session. No IP addresses are logged, stored,
+        or shared with third parties beyond the geolocation database provider necessary to perform the lookup.
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        If you are privacy-sensitive, you should be aware that visiting any website reveals your public IP
+        address to that site's server — this is inherent to how the internet works. Using a VPN or proxy
+        can mask your true IP address by routing traffic through an intermediary server. VPNs are widely used
+        for privacy, accessing geo-restricted content, and securing public Wi-Fi connections. However, the IP
+        address of the VPN server will appear in geolocation lookups instead of your actual location.
+      </p>
+      <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+        For further reading on IP addressing and internet governance, refer to
+        <a href="https://www.iana.org/" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">IANA (Internet Assigned Numbers Authority)</a>,
+        <a href="https://www.cloudflare.com/learning/network-layer/what-is-an-ip-address/" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">Cloudflare's IP address guide</a>,
+        <a href="https://datatracker.ietf.org/doc/html/rfc791" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">RFC 791 (Internet Protocol)</a>,
+        <a href="https://datatracker.ietf.org/doc/html/rfc2460" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">RFC 2460 (IPv6)</a>, and
+        <a href="https://datatracker.ietf.org/doc/html/rfc1918" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">RFC 1918 (Private Address Space)</a>.
+      </p>
+    </section>
+
+    <!-- FAQ -->
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h2>
+      <div class="mt-4 space-y-4">
+        {faqs.map((faq) => (
+          <details class="group rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+            <summary class="flex cursor-pointer items-center justify-between p-4 font-medium text-slate-900 dark:text-white">
+              {faq.q}
+              <span class="shrink-0 text-slate-400 transition group-open:rotate-180">
+                <i class="fas fa-chevron-down"></i>
+              </span>
+            </summary>
+            <div class="border-t border-slate-100 px-4 pb-4 pt-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
+              {faq.a}
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  </div>
+
+  <script is:inline type="module">
+    var WORKER_URL = 'https://toolnestr.toolnestr.workers.dev';
+
+    var app = {
+      data: null,
+      map: null,
+      marker: null,
+      WORKER_URL: WORKER_URL,
+
+      init: function () {
+        document.getElementById('trackBtn').addEventListener('click', function () { app.lookupIP(); });
+        document.getElementById('ipInput').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') app.lookupIP();
+        });
+        document.getElementById('copyBtn').addEventListener('click', function () { app.copyIP(); });
+        // Auto-lookup visitor's own IP on page load
+        app.lookupOwnIP();
+      },
+
+      lookupOwnIP: function () {
+        app.showLoading();
+        var url = this.WORKER_URL + '/api/ip-lookup';
+        fetch(url)
+          .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Server error (' + r.status + '): ' + t); }); return r.json(); })
+          .then(function (data) {
+            if (!data || data.error) throw new Error(data ? data.error : 'Received empty response from server');
+            app.data = data;
+            var ip = data.ip || data.query || '';
+            document.getElementById('ipInput').value = ip;
+            app.hideLoading();
+            app.renderDashboard(data);
+          })
+          .catch(function (err) { app.hideLoading(); app.showError('Failed to auto-detect your IP: ' + err.message); });
+      },
+
+      lookupIP: function () {
+        var ip = document.getElementById('ipInput').value.trim();
+        if (!ip) { app.lookupOwnIP(); return; }
+        app.showLoading();
+        var url = this.WORKER_URL + '/api/ip-lookup?ip=' + encodeURIComponent(ip);
+        fetch(url)
+          .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error('Server error (' + r.status + '): ' + t); }); return r.json(); })
+          .then(function (data) {
+            if (!data || data.error) throw new Error(data ? data.error : 'Received empty response from server');
+            app.data = data;
+            app.hideLoading();
+            app.renderDashboard(data);
+          })
+          .catch(function (err) { app.hideLoading(); app.showError('Failed to look up IP: ' + err.message); });
+      },
+
+      showLoading: function () {
+        document.getElementById('dashboardContainer').classList.add('it-hidden');
+        document.getElementById('errorContainer').classList.add('it-hidden');
+        document.getElementById('loadingContainer').classList.remove('it-hidden');
+      },
+
+      hideLoading: function () {
+        document.getElementById('loadingContainer').classList.add('it-hidden');
+      },
+
+      showError: function (msg) {
+        document.getElementById('errorMsg').textContent = msg;
+        document.getElementById('errorContainer').classList.remove('it-hidden');
+      },
+
+      getFlagEmoji: function (code) {
+        if (!code || code.length !== 2) return '';
+        var c = code.toUpperCase();
+        var cp1 = 0x1F1E6 + c.charCodeAt(0) - 65;
+        var cp2 = 0x1F1E6 + c.charCodeAt(1) - 65;
+        return String.fromCodePoint(cp1, cp2);
+      },
+
+      renderDashboard: function (d) {
+        document.getElementById('dashboardContainer').classList.remove('it-hidden');
+
+        var ip = d.ip || d.query || 'Unknown';
+        document.getElementById('ipDisplay').textContent = ip;
+
+        var flag = this.getFlagEmoji(d.countryCode || d.country_code || '');
+        document.getElementById('fieldCountry').innerHTML = flag ? '<span class="it-flag">' + flag + '</span> ' + app.escapeHtml(d.country || '') : app.escapeHtml(d.country || '-');
+
+        var city = d.city || '-';
+        var region = d.region || d.regionName || '';
+        document.getElementById('fieldCity').textContent = region ? city + ', ' + region : city;
+
+        document.getElementById('fieldIsp').textContent = app.escapeHtml(d.isp || d.org || '-');
+        document.getElementById('fieldAsn').textContent = app.escapeHtml(d.asn || d.as || '-');
+        document.getElementById('fieldTz').textContent = app.escapeHtml(d.timezone || d.timezone_name || '-');
+        document.getElementById('fieldCurrency').textContent = d.currency || '-';
+
+        // Render map
+        this.renderMap(d.lat || d.latitude, d.lon || d.longitude, ip);
+      },
+
+      renderMap: function (lat, lon, ip) {
+        if (typeof L === 'undefined') {
+          // Leaflet not loaded yet — retry after a short delay
+          var self = this;
+          setTimeout(function () { self.renderMap(lat, lon, ip); }, 300);
+          return;
+        }
+        var container = document.getElementById('ipMap');
+        if (!container) return;
+
+        if (this.map) {
+          this.map.remove();
+          this.map = null;
+        }
+
+        var latNum = parseFloat(lat) || 20;
+        var lonNum = parseFloat(lon) || 0;
+
+        this.map = L.map('ipMap', {
+          center: [latNum, lonNum],
+          zoom: 10,
+          scrollWheelZoom: true,
+          attributionControl: false,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          className: '',
+        }).addTo(this.map);
+
+        this.marker = L.marker([latNum, lonNum])
+          .addTo(this.map)
+          .bindPopup('<strong>' + app.escapeHtml(ip) + '</strong><br>Approximate location')
+          .openPopup();
+      },
+
+      copyIP: function () {
+        var ip = document.getElementById('ipDisplay').textContent;
+        if (!ip || ip === 'Unknown') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(ip).then(function () {
+            var btn = document.getElementById('copyBtn');
+            btn.classList.add('copied');
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+            setTimeout(function () {
+              btn.classList.remove('copied');
+              btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            }, 2000);
+          }).catch(function () {
+            app.fallbackCopy(ip);
+          });
+        } else {
+          app.fallbackCopy(ip);
+        }
+      },
+
+      fallbackCopy: function (text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          var btn = document.getElementById('copyBtn');
+          btn.classList.add('copied');
+          btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+          setTimeout(function () {
+            btn.classList.remove('copied');
+            btn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+          }, 2000);
+        } catch (e) {}
+        document.body.removeChild(ta);
+      },
+
+      escapeHtml: function (str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () { app.init(); });
+  </script>
+</BaseLayout>

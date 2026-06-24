@@ -1,0 +1,241 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'DNS Lookup Tool';
+const description =
+  'Query DNS records for any domain — A, AAAA, MX, TXT, NS, CNAME and SOA records. ' +
+  'Free DNS lookup tool with instant results.';
+const intro =
+  'Enter any domain name and select a record type to retrieve DNS records from the public DNS system.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a DNS A record?', a: 'An A (Address) record maps a domain name to an IPv4 address. It is the most fundamental DNS record type, telling browsers and other clients which server hosts the website.' },
+  { q: 'What is the difference between A and AAAA records?', a: 'A records map to IPv4 addresses (e.g., 192.0.2.1). AAAA (quad-A) records map to IPv6 addresses (e.g., 2001:db8::1). AAAA records are the IPv6 equivalent of A records.' },
+  { q: 'What are MX records used for?', a: 'MX (Mail Exchange) records specify the mail servers responsible for receiving email for a domain. Each MX record has a priority value — lower numbers are tried first.' },
+  { q: 'What is a TXT record?', a: 'TXT records store arbitrary text data. They are commonly used for SPF (email sender policy), DKIM (email signing), DMARC policies, and domain ownership verification.' },
+  { q: 'What are NS records?', a: 'NS (Name Server) records delegate a domain to authoritative name servers. They tell resolvers which servers hold the official DNS records for the zone.' },
+  { q: 'What is a CNAME record?', a: 'A CNAME (Canonical Name) record aliases one domain to another. For example, www.example.com may be a CNAME pointing to example.com so both serve the same content.' },
+  { q: 'What is a SOA record?', a: 'The SOA (Start of Authority) record contains administrative metadata about the zone — the primary name server, the responsible email, the serial number, and timing values for refresh, retry, expire and negative TTL.' },
+  { q: 'How does DNS caching affect results?', a: 'DNS resolvers cache results based on the TTL (Time to Live) value in each record. A cached result may be stale if the record was recently changed. Use the DNS Propagation Checker to see live results from multiple resolvers.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">DNS Record Lookup</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="domain"
+          type="text"
+          placeholder="example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <select
+          id="type"
+          class="rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="A">A (IPv4)</option>
+          <option value="AAAA">AAAA (IPv6)</option>
+          <option value="MX">MX (Mail Exchange)</option>
+          <option value="TXT">TXT (Text)</option>
+          <option value="NS">NS (Name Server)</option>
+          <option value="CNAME">CNAME (Canonical Name)</option>
+          <option value="SOA">SOA (Start of Authority)</option>
+        </select>
+        <button
+          id="lookupBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Lookup
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Querying DNS records...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+              <th class="pb-2 pr-3 font-semibold">TTL</th>
+              <th class="pb-2 pr-3 font-semibold">Type</th>
+              <th class="pb-2 font-semibold">Data</th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How DNS lookups work</h2>
+    <p class="mt-2 text-slate-600">
+      The Domain Name System (DNS) is the phonebook of the internet. When you type a domain name like example.com into your browser, DNS translates it into a machine-readable IP address so your device can connect to the correct server. This process, called DNS resolution, involves multiple servers working together in a hierarchical system.
+    </p>
+    <p class="mt-3 text-slate-600">
+      A DNS lookup begins at your device's stub resolver, which sends a query to a recursive resolver (typically operated by your ISP or a public provider like Cloudflare's 1.1.1.1 or Google's 8.8.8.8). The recursive resolver then navigates the DNS hierarchy: it first contacts a root name server, which directs it to the appropriate TLD (top-level domain) server, such as .com or .org. The TLD server then directs the resolver to the domain's authoritative name servers, which hold the actual DNS records. The authoritative server returns the requested records to the resolver, which caches the result and passes it back to your device.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Each type of DNS record serves a distinct purpose. A records map domain names to IPv4 addresses, while AAAA records do the same for IPv6 addresses. MX records specify mail servers for email delivery, and TXT records store arbitrary text data for verification and security policies. NS records identify the authoritative name servers for the zone, CNAME records create domain aliases, and SOA records contain administrative metadata about the entire zone. Understanding these record types is essential for troubleshooting DNS issues, configuring email delivery, setting up domain verification, and managing web infrastructure.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The TTL (Time to Live) value in each DNS record determines how long recursive resolvers cache the result. Shorter TTLs mean changes propagate faster but increase query load on authoritative servers. Longer TTLs reduce query volume but delay the visibility of record changes. When making DNS changes before a migration, administrators typically lower the TTL to 300 seconds (5 minutes) beforehand to speed up propagation, then raise it again after the change is complete.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" width="800" height="340" role="img" aria-labelledby="dns-flow-title dns-flow-desc">
+      <title id="dns-flow-title">DNS Resolution Flow Diagram</title>
+      <desc id="dns-flow-desc">A step-by-step diagram showing how a DNS query flows from browser to recursive resolver, then to root, TLD, and authoritative name servers, and back</desc>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="30" y="10" width="140" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="100" y="35" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Browser / Client</text>
+      <text x="100" y="52" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Stub resolver</text>
+      <line x1="170" y1="38" x2="220" y2="38" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="195" y="28" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">1</text>
+      <rect x="225" y="10" width="150" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="300" y="35" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Recursive Resolver</text>
+      <text x="300" y="52" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">ISP / Cloudflare / Google</text>
+      <line x1="375" y1="25" x2="420" y2="25" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="398" y="18" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">2</text>
+      <rect x="425" y="5" width="130" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="490" y="30" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Root Server</text>
+      <line x1="555" y1="25" x2="600" y2="25" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="578" y="18" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">3</text>
+      <rect x="605" y="5" width="130" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="670" y="30" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="600">TLD Server</text>
+      <line x1="670" y1="47" x2="670" y2="80" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="685" y="65" text-anchor="start" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">4</text>
+      <rect x="605" y="85" width="130" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="670" y="110" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Authoritative</text>
+      <text x="670" y="122" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11">Name Server</text>
+      <line x1="300" y1="66" x2="300" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="300" y1="100" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="100" y1="100" x2="100" y2="66" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="200" y="93" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">5 &amp; 6. Answer returned</text>
+      <rect x="425" y="85" width="130" height="42" rx="6" fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="490" y="100" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Cache</text>
+      <text x="490" y="115" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">(TTL-based)</text>
+      <line x1="490" y1="85" x2="375" y2="66" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2" />
+      <text x="200" y="140" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Client receives answer &amp; loads website</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Step-by-step DNS resolution process showing the query path through the DNS hierarchy</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common DNS record types explained</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">A and AAAA records</h3>
+        <p class="mt-1 text-sm text-slate-600">A records map a domain to an IPv4 address. AAAA records map to an IPv6 address. Most domains have at least one A record pointing to their web server. IPv6-only networks rely entirely on AAAA records.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">MX records</h3>
+        <p class="mt-1 text-sm text-slate-600">Mail Exchange records route email for the domain. Each MX record has a priority number — lower values are tried first. If the primary mail server is unreachable, the backup (higher priority) server handles delivery.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">TXT records</h3>
+        <p class="mt-1 text-sm text-slate-600">TXT records store human- or machine-readable text. Common uses include SPF records that list authorised mail senders, DKIM keys for email signing, DMARC policies for email authentication, and domain ownership verification strings.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">NS, CNAME and SOA</h3>
+        <p class="mt-1 text-sm text-slate-600">NS records delegate the zone to authoritative name servers. CNAME records alias one name to another. SOA records provide zone metadata including serial number, refresh interval, and the admin contact email.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why use this DNS lookup tool</h2>
+    <p class="mt-2 text-slate-600">
+      This tool lets you query any of the seven most common DNS record types directly from your browser. It is essential for system administrators checking whether DNS records have been updated correctly after a migration, web developers verifying that their domain points to the right server, email administrators confirming MX and SPF records are correct, and security professionals auditing DNS configurations.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Unlike command-line utilities such as dig or nslookup, this tool works on any device with a browser and requires no installation. It performs the lookup server-side and presents results in a clean, readable table. The results show the TTL, record type, and record data so you can verify both the content and the caching parameters of each record.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations and considerations</h2>
+    <p class="mt-2 text-slate-600">
+      This tool queries the DNS system from a single server-side resolver. The results you see may differ from what your local machine or users in other regions see due to DNS caching, anycast routing, and geographic load balancing. For a comprehensive view of DNS propagation across multiple global resolvers, use the DNS Propagation Checker tool on this site.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Some domains use DNS-based load balancing and return different records depending on the geographic location of the resolver. CDN providers like Cloudflare, Akamai, and Amazon CloudFront commonly do this. The results from this tool represent what one specific resolver sees and may not reflect the experience of users in other parts of the world.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Additionally, private DNS zones, split-horizon DNS configurations, and internal networks may use DNS servers that are not reachable from the public internet. This tool can only query records that are publicly visible in the global DNS system.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DNS best practices</h2>
+    <p class="mt-2 text-slate-600">
+      When managing DNS records, several best practices help ensure reliability and security. Always set appropriate TTL values: use short TTLs (300 seconds) before planned changes so updates propagate quickly, then increase TTLs (3600 seconds or more) for normal operation to improve performance and reduce resolver load. Configure SPF, DKIM, and DMARC TXT records to protect your domain from email spoofing, and verify them using this tool. Use CNAME records instead of A records for pointing services to third-party platforms so the target provider can change IPs without requiring you to update your DNS. Enable DNSSEC (DNS Security Extensions) on your domain if your registrar supports it, which cryptographically signs your DNS records to prevent cache poisoning and DNS spoofing attacks.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://www.iana.org/domains/root" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">IANA Root Zone Database</a> — official list of root zone servers</li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc1035" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 1035 — Domain Names &mdash; Implementation and Specification</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc2181" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 2181 — Clarifications to the DNS Specification</a></li>
+      <li><a href="https://developers.cloudflare.com/dns/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Cloudflare DNS Docs</a> — comprehensive guide to DNS record types</li>
+      <li><a href="https://www.icann.org/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">ICANN</a> — the organisation coordinating the DNS namespace</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const domain = document.getElementById('domain');
+    const type = document.getElementById('type');
+    const btn = document.getElementById('lookupBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const body = document.getElementById('recordsBody');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/dns-lookup';
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    async function lookup() {
+      const dom = domain.value.trim();
+      if (!dom) { errEl.textContent = 'Please enter a domain name.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?domain=' + encodeURIComponent(dom) + '&type=' + encodeURIComponent(type.value));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        if (!d.records || d.records.length === 0) throw new Error('No records found for ' + dom + ' (type ' + type.value + ').');
+        body.innerHTML = d.records.map((rec) =>
+          '<tr class="text-slate-700">' +
+            '<td class="py-2 pr-3">' + esc(rec.TTL || rec.ttl || '') + '</td>' +
+            '<td class="py-2 pr-3 font-mono">' + esc(rec.type || rec.Type || '') + '</td>' +
+            '<td class="py-2 font-mono text-xs break-all">' + esc(rec.data || rec.Data || rec.value || rec.Value || '') + '</td>' +
+          '</tr>'
+        ).join('');
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', lookup);
+    domain.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+  </script>
+</ToolLayout>

@@ -1,0 +1,217 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'CIDR / IP Range Calculator';
+const description =
+  'Calculate the full IP address range for any CIDR notation (e.g., 10.0.0.0/24). ' +
+  'Lists all addresses in small ranges or first/last 10 for large ranges.';
+const intro =
+  'Enter a CIDR block and instantly see the full range of IP addresses it covers. ' +
+  'For large ranges only the first and last 10 addresses are shown to keep the page responsive.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is CIDR notation?', a: 'CIDR (Classless Inter-Domain Routing) notation represents an IP address and its network prefix in the form A.B.C.D/N where N is the number of leading bits that identify the network. For example, 10.0.0.0/24 means the first 24 bits are the network portion and the remaining 8 bits identify hosts.' },
+  { q: 'How do I read CIDR notation?', a: 'The number after the slash is the prefix length. It tells you how many bits are fixed for the network. A shorter prefix means a larger range: /8 has 16 million addresses, /16 has 65,536, /24 has 256, and /32 is a single host.' },
+  { q: 'What is the difference between CIDR and subnet mask?', a: 'CIDR notation (e.g., /24) and subnet mask (e.g., 255.255.255.0) are two ways of expressing the same thing. The prefix length is simply the count of 1-bits in the subnet mask. /24 equals 24 bits set to 1, which is 255.255.255.0.' },
+  { q: 'How many IPs are in a /16?', a: 'A /16 prefix has 32 - 16 = 16 host bits, giving 2^16 = 65,536 total addresses. The first address is the network address and the last is the broadcast address, leaving 65,534 usable addresses.' },
+  { q: 'What is a /32 CIDR?', a: 'A /32 prefix means all 32 bits are fixed — it represents a single IP address with no network or broadcast address. It is commonly used for host routes in routing tables and for whitelisting specific IPs in firewall rules.' },
+  { q: 'Can CIDR ranges overlap?', a: 'Yes — overlapping CIDR ranges are a common source of routing problems. For example, 10.0.0.0/16 completely contains 10.0.1.0/24. IP address management (IPAM) systems are used to detect and prevent overlaps in production networks.' },
+  { q: 'What is the smallest possible CIDR range?', a: 'The smallest is /32, representing a single IP address. The largest is /0, representing all 4.3 billion IPv4 addresses. In practice, /0 is only used in default routes.' },
+  { q: 'What are first/last 10 addresses?', a: 'For large CIDR ranges (more than 20 addresses), showing every IP would overwhelm the page. Instead, the calculator shows the first 10 and last 10 addresses in the range with ellipsis between them, giving you a clear picture of the range boundaries.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Calculate CIDR range</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="cidr-input" type="text" placeholder="10.0.0.0/24" class="w-44 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <button id="cidr-calc-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">List Range</button>
+    </div>
+    <div id="cidr-output" class="mt-4 hidden">
+      <div class="grid gap-2 sm:grid-cols-3">
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Network</span><p id="cidr-network" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Broadcast</span><p id="cidr-broadcast" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Total IPs</span><p id="cidr-total" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+      </div>
+      <div class="mt-3 rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Addresses in Range</span>
+        <pre id="cidr-list" class="mt-1 max-h-64 overflow-y-auto font-mono text-xs text-slate-700">—</pre>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How CIDR calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      CIDR (Classless Inter-Domain Routing) was introduced in 1993 (RFC 1517–1520) to replace the rigid classful addressing scheme that was wasting IP address space. Under classful addressing, organizations were allocated entire Class A, B, or C networks regardless of their actual needs. CIDR allows any prefix length between /0 and /32, enabling ISPs to allocate exactly the right amount of address space and aggregate routes efficiently.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator parses the CIDR notation, extracts the IP address and prefix length, then computes the network address by zeroing out the host bits using a bitwise AND with the subnet mask. The broadcast address is computed by setting all host bits to 1. The complete range of addresses between (and including) the network and broadcast addresses is then generated. For large ranges (more than 20 addresses) the display is truncated to show only the first and last 10 addresses for readability.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The total number of addresses in any CIDR block is always a power of two: 2^(32 - prefix). This is because the prefix defines a fixed number of bits and the remaining bits enumerate all possible combinations. For example, /24 has 2^8 = 256 addresses, /20 has 2^12 = 4096 addresses, and /16 has 2^16 = 65,536 addresses. Understanding this exponential relationship is key to planning IP allocations.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="cidr-range-title cidr-range-desc">
+      <title id="cidr-range-title">CIDR IP Range Diagram</title>
+      <desc id="cidr-range-desc">Diagram showing how a CIDR prefix maps to a contiguous block of IP addresses</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">CIDR Block 10.0.0.0/24 — 256 IP Addresses</text>
+      <rect x="50" y="40" width="700" height="24" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="50" y="40" width="26" height="24" rx="4" fill="#6366f1" />
+      <rect x="724" y="40" width="26" height="24" rx="4" fill="#6366f1" />
+      <text x="63" y="56" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10">N</text>
+      <text x="737" y="56" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10">B</text>
+      <text x="400" y="76" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">N = Network (10.0.0.0) ... B = Broadcast (10.0.0.255)</text>
+      <rect x="50" y="95" width="175" height="40" rx="4" fill="#6366f1" />
+      <text x="137" y="119" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="13" font-weight="600">10.0.0.0 /24</text>
+      <line x1="225" y1="115" x2="280" y2="115" stroke="#6366f1" stroke-width="2" marker-end="url(#cidr-arrow)" />
+      <circle cx="295" cy="115" r="4" fill="#6366f1" />
+      <text x="295" y="154" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">Block</text>
+      <line x1="310" y1="115" x2="370" y2="115" stroke="#cbd5e1" stroke-width="1.5" />
+      <circle cx="385" cy="115" r="4" fill="#cbd5e1" />
+      <text x="385" y="154" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">254 usable</text>
+      <line x1="400" y1="115" x2="480" y2="115" stroke="#cbd5e1" stroke-width="1.5" />
+      <circle cx="495" cy="115" r="4" fill="#cbd5e1" />
+      <text x="495" y="154" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">hosts</text>
+      <line x1="510" y1="115" x2="570" y2="115" stroke="#6366f1" stroke-width="2" marker-end="url(#cidr-arrow)" />
+      <rect x="575" y="95" width="175" height="40" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="662" y="119" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">10.0.0.255</text>
+      <text x="662" y="154" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Broadcast</text>
+      <defs>
+        <marker id="cidr-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A /24 CIDR block spans 256 addresses from the network address to the broadcast address, with 254 usable host addresses in between</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why CIDR was a breakthrough</h2>
+    <p class="mt-2 text-slate-600">
+      Before CIDR, the internet routing table was growing exponentially and threatened to overwhelm the memory capacity of routers. Classful addressing meant that a /8 (Class A) announcement carried 16 million addresses, while a /24 (Class C) announced only 256 addresses. The routing table had to store every individual classful network, which by 1993 had grown to over 100,000 entries and was accelerating.
+    </p>
+    <p class="mt-3 text-slate-600">
+      CIDR solved this through route aggregation (also called supernetting or prefix summarization). Instead of announcing four separate /24 networks, an ISP could announce a single /22 that covered all of them. This collapsed multiple routing table entries into one. Today's global BGP routing table contains nearly 1 million IPv4 routes, but without CIDR it would be many times larger and would have exceeded router hardware capabilities decades ago.
+    </p>
+    <p class="mt-3 text-slate-600">
+      CIDR also enabled the creation of Classless Inter-Domain Routing zones, where IP allocation could be delegated hierarchically. IANA allocates large /8 blocks to Regional Internet Registries (RIRs), which allocate smaller blocks to ISPs, which allocate even smaller blocks to customers. This hierarchical structure mirrors the DNS system and makes the internet scalable and manageable.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">CIDR quick reference</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 font-medium">Prefix</th>
+            <th class="pb-2 font-medium">Subnet Mask</th>
+            <th class="pb-2 font-medium">Total IPs</th>
+            <th class="pb-2 font-medium">Usable Hosts</th>
+            <th class="pb-2 font-medium">Example Use</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/8</td><td class="py-1.5 font-mono">255.0.0.0</td><td class="py-1.5">16,777,216</td><td class="py-1.5">16,777,214</td><td class="py-1.5">Large ISP / enterprise</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/16</td><td class="py-1.5 font-mono">255.255.0.0</td><td class="py-1.5">65,536</td><td class="py-1.5">65,534</td><td class="py-1.5">University / large company</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/24</td><td class="py-1.5 font-mono">255.255.255.0</td><td class="py-1.5">256</td><td class="py-1.5">254</td><td class="py-1.5">Small office / VLAN</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/28</td><td class="py-1.5 font-mono">255.255.255.240</td><td class="py-1.5">16</td><td class="py-1.5">14</td><td class="py-1.5">Small subnet</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/30</td><td class="py-1.5 font-mono">255.255.255.252</td><td class="py-1.5">4</td><td class="py-1.5">2</td><td class="py-1.5">Point-to-point link</td></tr>
+          <tr><td class="py-1.5 font-mono">/32</td><td class="py-1.5 font-mono">255.255.255.255</td><td class="py-1.5">1</td><td class="py-1.5">0</td><td class="py-1.5">Single host route</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Using CIDR in practice</h2>
+    <p class="mt-2 text-slate-600">
+      Network engineers use CIDR notation daily for configuring routing protocols, firewall rules, and access control lists. In BGP, prefixes are advertised with their CIDR length to indicate the subnet size. In OSPF, network statements use wildcard masks (the inverse of subnet masks) to match interfaces. In firewall rules, source and destination addresses are often specified in CIDR notation to match entire subnets with a single rule.
+    </p>
+    <p class="mt-3 text-slate-600">
+      When troubleshooting routing issues, understanding CIDR is essential. A common problem is a more specific prefix (/24) being advertised alongside a less specific one (/16) from a different source. The router's longest-prefix-match algorithm always prefers the more specific route, which can cause traffic to be sent to unexpected destinations. This is why proper route filtering and prefix-list management are critical in production BGP deployments.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Cloud networking heavily uses CIDR. AWS VPCs are created with a CIDR block (e.g., 10.0.0.0/16), and subnets within that VPC use smaller CIDR blocks (e.g., 10.0.1.0/24). Azure virtual networks and Google Cloud VPCs follow the same pattern. Understanding how CIDR blocks nest and overlap is essential for designing cloud network architectures that scale without conflicts.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator handles standard IPv4 CIDR notation only. IPv6 CIDR notation uses a similar format (e.g., 2001:db8::/32) but with 128-bit addresses and hex representation. The calculator truncates the display for ranges larger than 20 addresses — for those cases, the full list is not shown to maintain browser performance. The displayed first/last 10 addresses are sufficient to understand the range boundaries.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Note that CIDR blocks must be aligned to bit boundaries. A /24 must start on an address where the last 8 bits are zero (e.g., 10.0.1.0/24, not 10.0.1.128/24). If you enter a misaligned CIDR, the calculator will still compute the math, but the resulting range will be the aligned block that contains the entered address. This is consistent with how routers interpret CIDR notation.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('cidr-input');
+    const btn = el('cidr-calc-btn');
+
+    function parseCidr(str) {
+      const parts = str.trim().split('/');
+      if (parts.length !== 2) return null;
+      const octets = parts[0].split('.').map(Number);
+      if (octets.length !== 4 || octets.some((o) => isNaN(o) || o < 0 || o > 255)) return null;
+      const prefix = parseInt(parts[1], 10);
+      if (isNaN(prefix) || prefix < 0 || prefix > 32) return null;
+      return { octets, prefix };
+    }
+
+    function ipToInt(octets) {
+      return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+    }
+
+    function intToIp(n) {
+      return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+    }
+
+    function calculate() {
+      const parsed = parseCidr(input.value);
+      const output = el('cidr-output');
+      if (!parsed) {
+        output.classList.add('hidden');
+        return;
+      }
+      output.classList.remove('hidden');
+
+      const { octets, prefix } = parsed;
+      const ipInt = ipToInt(octets);
+      const mask = (prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0);
+      const network = (ipInt & mask) >>> 0;
+      const broadcast = (network | (~mask >>> 0)) >>> 0;
+      const total = Math.pow(2, 32 - prefix);
+
+      el('cidr-network').textContent = intToIp(network);
+      el('cidr-broadcast').textContent = intToIp(broadcast);
+      el('cidr-total').textContent = total.toLocaleString();
+
+      const listEl = el('cidr-list');
+      if (total <= 20) {
+        const ips = [];
+        for (let i = 0; i < total; i++) {
+          ips.push(intToIp((network + i) >>> 0));
+        }
+        listEl.textContent = ips.join('\n');
+      } else {
+        const first10 = [];
+        const last10 = [];
+        for (let i = 0; i < 10; i++) {
+          first10.push(intToIp((network + i) >>> 0));
+          last10.push(intToIp((broadcast - 9 + i) >>> 0));
+        }
+        listEl.textContent = first10.join('\n') + '\n  ... (' + (total - 20).toLocaleString() + ' more addresses) ...\n' + last10.join('\n');
+      }
+    }
+
+    btn.addEventListener('click', calculate);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>

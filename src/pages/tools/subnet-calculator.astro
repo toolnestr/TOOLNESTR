@@ -1,0 +1,250 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IPv4 Subnet Calculator';
+const description =
+  'Calculate network address, broadcast address, usable host range, subnet mask, ' +
+  'wildcard mask, and number of hosts for any IPv4 CIDR prefix.';
+const intro =
+  'Enter an IP address and a CIDR prefix length (e.g., 192.168.1.0/24) to see ' +
+  'every detail about that subnet — including the formulas used to compute each value.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a subnet?', a: 'A subnet is a logical subdivision of an IP network. Subnetting divides a large network into smaller, manageable pieces to improve performance, security, and address utilization. Each subnet has its own network address, broadcast address, and range of usable host addresses.' },
+  { q: 'What is a subnet mask?', a: 'A subnet mask is a 32-bit number that separates the network portion of an IP address from the host portion. Bits set to 1 represent the network part, bits set to 0 represent the host part. For example, 255.255.255.0 (or /24) means 24 bits for the network and 8 bits for hosts.' },
+  { q: 'What is the network address?', a: 'The network address is the first address in a subnet range. It identifies the subnet itself and cannot be assigned to a host. It is calculated by performing a bitwise AND between the IP address and the subnet mask.' },
+  { q: 'What is the broadcast address?', a: 'The broadcast address is the last address in a subnet range. Packets sent to this address are received by all hosts on the subnet. It cannot be assigned to a host. It is calculated by performing a bitwise OR between the IP address and the inverted subnet mask.' },
+  { q: 'How many usable hosts are in a /24 subnet?', a: 'A /24 subnet has 256 total addresses. Subtracting the network address (first) and broadcast address (last) leaves 254 usable host addresses. The formula is 2^(32 - prefix) - 2.' },
+  { q: 'What does CIDR stand for?', a: 'CIDR stands for Classless Inter-Domain Routing, defined in RFC 4632. It replaced the older classful addressing system (Class A, B, C) and allows prefix lengths of any value from 0 to 32, enabling more flexible and efficient IP address allocation.' },
+  { q: 'What is the difference between /24 and /25?', a: 'A /24 subnet contains 256 total addresses with 254 usable hosts. A /25 subnet contains 128 total addresses with 126 usable hosts. Each bit change in the prefix length halves or doubles the subnet size.' },
+  { q: 'Why are the first and last addresses reserved?', a: 'The first address (all host bits zero) identifies the network itself. The last address (all host bits one) is used for broadcasting to all hosts on the subnet. Both are reserved by the IP protocol specification (RFC 1122) and cannot be assigned to interfaces.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Enter IP and CIDR prefix</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="ip-input" type="text" placeholder="192.168.1.0" class="w-36 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <span class="text-slate-400">/</span>
+      <input id="prefix-input" type="number" min="0" max="32" placeholder="24" class="w-20 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm" />
+      <button id="calc-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">Calculate</button>
+    </div>
+    <div id="subnet-output" class="mt-4 hidden space-y-2">
+      <div class="grid gap-2 sm:grid-cols-2">
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Network Address</span><p id="out-network" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Broadcast Address</span><p id="out-broadcast" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Usable Host Range</span><p id="out-range" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Number of Hosts</span><p id="out-hosts" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Subnet Mask</span><p id="out-mask" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Wildcard Mask</span><p id="out-wildcard" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Binary Representation</span>
+        <p id="out-binary" class="mt-0.5 font-mono text-xs text-slate-700 break-all">—</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How subnet calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      Every IPv4 address is 32 bits long. A subnet mask defines how many of those bits belong to the network portion and how many belong to the host portion. The CIDR notation — a forward slash followed by a number — tells you the prefix length, which is the number of leading bits that are fixed for the network. For example, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">192.168.1.0/24</code> means the first 24 bits identify the network and the remaining 8 bits are available for hosts.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The subnet calculator performs three fundamental operations. First, it computes the subnet mask by setting the first N bits to 1 and the remaining bits to 0. For a /24, the mask in binary is 24 ones followed by 8 zeros, which in decimal is 255.255.255.0. Second, it computes the network address by performing a bitwise AND between the IP address and the subnet mask. This zeros out all host bits, leaving only the network portion. Third, it computes the broadcast address by taking the network address and setting all host bits to 1.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The usable host range starts at network address plus 1 and ends at broadcast address minus 1. The total number of usable hosts is 2^(32 - prefix) - 2, because the network and broadcast addresses are reserved. For a /24, that is 2^8 - 2 = 254 usable addresses. The wildcard mask is the bitwise inverse of the subnet mask and is used in ACLs (access control lists) and routing protocols like OSPF.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="subnet-title subnet-desc">
+      <title id="subnet-title">Subnet Mask Bit Layout</title>
+      <desc id="subnet-desc">Diagram showing 32-bit IP address divided into network bits and host bits for a /24 subnet</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">32-bit IPv4 Address — /24 Subnet</text>
+      <rect x="30" y="40" width="555" height="50" rx="4" fill="#6366f1" />
+      <rect x="585" y="40" width="185" height="50" rx="4" fill="#cbd5e1" />
+      <text x="307" y="70" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="14" font-weight="700">24 Network Bits</text>
+      <text x="677" y="70" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="14" font-weight="700">8 Host Bits</text>
+      <line x1="30" y1="115" x2="770" y2="115" stroke="#cbd5e1" stroke-width="2" />
+      <text x="30" y="140" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Bit 31 (MSB)</text>
+      <text x="400" y="140" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Network — fixed by subnet mask</text>
+      <text x="770" y="140" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Bit 0 (LSB)</text>
+      <polygon points="555,90 545,105 565,105" fill="#6366f1" />
+      <text x="555" y="85" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/24 boundary</text>
+      <rect x="30" y="160" width="123" height="30" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="91" y="179" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">255</text>
+      <rect x="161" y="160" width="123" height="30" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="222" y="179" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">255</text>
+      <rect x="292" y="160" width="123" height="30" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="353" y="179" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">255</text>
+      <rect x="423" y="160" width="123" height="30" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="484" y="179" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11">0</text>
+      <text x="587" y="179" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Subnet mask = 255.255.255.0</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A /24 subnet splits the 32-bit address into 24 network bits and 8 host bits, with a decimal subnet mask of 255.255.255.0</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formulas behind the calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Subnet Mask</h3>
+        <p class="mt-1 text-sm text-slate-600">Set the first N bits to 1, remaining to 0. <code class="rounded bg-slate-100 px-1 px-1.5 py-0.5 text-xs">mask = (2^N - 1) &lt;&lt; (32 - N)</code></p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Network Address</h3>
+        <p class="mt-1 text-sm text-slate-600">Bitwise AND of IP and mask. <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">network = ip AND mask</code></p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Broadcast Address</h3>
+        <p class="mt-1 text-sm text-slate-600">Bitwise OR of IP and inverted mask. <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">broadcast = ip OR NOT(mask)</code></p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Usable Hosts</h3>
+        <p class="mt-1 text-sm text-slate-600">Total addresses minus 2. <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">hosts = 2^(32 - prefix) - 2</code></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why subnetting matters</h2>
+    <p class="mt-2 text-slate-600">
+      Subnetting is one of the most fundamental concepts in network design. Without subnetting, every device on a network would compete for bandwidth and receive every broadcast packet, leading to congestion and security vulnerabilities. By dividing a large network into smaller subnets, administrators can isolate traffic, contain broadcast domains, apply access control policies, and allocate addresses more efficiently.
+    </p>
+    <p class="mt-3 text-slate-600">
+      In enterprise environments, subnetting enables network segmentation for security purposes. A finance department might be on a separate subnet from engineering, with firewall rules controlling traffic between them. This limits the blast radius of a security breach and simplifies compliance with data protection regulations such as PCI DSS and HIPAA.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Variable Length Subnet Masking (VLSM), defined in RFC 1009, allows subnets of different sizes within the same network. This avoids wasting IP addresses by matching subnet sizes to actual host counts. For example, a point-to-point link between two routers only needs a /30 subnet (2 usable addresses), while a busy office might need a /23 (510 usable addresses). VLSM is a core feature of modern routing protocols including OSPF, EIGRP, and ISIS.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Subnet calculation is also essential for troubleshooting connectivity issues. If two devices cannot communicate despite being on the same physical network, the most common cause is incorrect subnet mask configuration. One device may believe the other is on a different subnet and try to route traffic through a default gateway that does not exist or is misconfigured. The ping and traceroute commands together with subnet knowledge form the foundation of network diagnostics.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Common subnet sizes reference</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 font-medium">CIDR</th>
+            <th class="pb-2 font-medium">Subnet Mask</th>
+            <th class="pb-2 font-medium">Total Addresses</th>
+            <th class="pb-2 font-medium">Usable Hosts</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/30</td><td class="py-1.5 font-mono">255.255.255.252</td><td class="py-1.5">4</td><td class="py-1.5">2</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/29</td><td class="py-1.5 font-mono">255.255.255.248</td><td class="py-1.5">8</td><td class="py-1.5">6</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/28</td><td class="py-1.5 font-mono">255.255.255.240</td><td class="py-1.5">16</td><td class="py-1.5">14</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/27</td><td class="py-1.5 font-mono">255.255.255.224</td><td class="py-1.5">32</td><td class="py-1.5">30</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/26</td><td class="py-1.5 font-mono">255.255.255.192</td><td class="py-1.5">64</td><td class="py-1.5">62</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/25</td><td class="py-1.5 font-mono">255.255.255.128</td><td class="py-1.5">128</td><td class="py-1.5">126</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/24</td><td class="py-1.5 font-mono">255.255.255.0</td><td class="py-1.5">256</td><td class="py-1.5">254</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/23</td><td class="py-1.5 font-mono">255.255.254.0</td><td class="py-1.5">512</td><td class="py-1.5">510</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/22</td><td class="py-1.5 font-mono">255.255.252.0</td><td class="py-1.5">1024</td><td class="py-1.5">1022</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 font-mono">/21</td><td class="py-1.5 font-mono">255.255.248.0</td><td class="py-1.5">2048</td><td class="py-1.5">2046</td></tr>
+          <tr><td class="py-1.5 font-mono">/20</td><td class="py-1.5 font-mono">255.255.240.0</td><td class="py-1.5">4096</td><td class="py-1.5">4094</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Classful addressing vs. CIDR</h2>
+    <p class="mt-2 text-slate-600">
+      Before CIDR was standardized in 1993 (RFC 1519, later updated by RFC 4632), IP addresses were allocated using classful addressing. Class A networks used a /8 prefix with 16 million addresses, Class B used /16 with 65,536 addresses, and Class C used /24 with 256 addresses. This rigid structure wasted enormous numbers of IP addresses — a company needing 300 addresses had to be allocated a Class B /16, wasting 65,236 addresses.
+    </p>
+    <p class="mt-3 text-slate-600">
+      CIDR (Classless Inter-Domain Routing) eliminated these fixed boundaries and allowed any prefix length from /0 to /32. This enabled much finer-grained address allocation and dramatically slowed the depletion of the IPv4 address pool. CIDR also introduced route aggregation (supernetting), where a single routing table entry could represent many contiguous smaller networks, reducing the size of global routing tables. Today, all internet routing is based on CIDR principles, and classful addressing is considered obsolete.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations and considerations</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator works with standard IPv4 CIDR notation. It does not handle IPv6 subnets (which use a different address format and /64 as the typical subnet boundary). The calculation assumes a flat subnet without considering secondary IPs, VLAN interfaces, or overlapping address spaces common in complex network topologies. For networks using NAT, PAT, or carrier-grade NAT, the usable address count at the WAN interface differs from what the subnet math suggests.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Subnet calculators help with design and verification but cannot replace a proper IP address management (IPAM) system for large-scale deployments. In production networks with thousands of subnets, manual calculation is error-prone and IPAM tools should be used to track allocations, detect overlaps, and manage DHCP scopes. The calculator is best used for quick ad-hoc checks, studying for networking certifications (CompTIA Network+, CCNA), and learning the underlying binary arithmetic.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const ipInput = el('ip-input');
+    const prefixInput = el('prefix-input');
+    const calcBtn = el('calc-btn');
+    const out = (id) => el(id);
+
+    function parseIp(str) {
+      const parts = str.trim().split('.');
+      if (parts.length !== 4) return null;
+      const octets = parts.map(Number);
+      if (octets.some((o) => isNaN(o) || o < 0 || o > 255)) return null;
+      return octets;
+    }
+
+    function ipToInt(octets) {
+      return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+    }
+
+    function intToIp(n) {
+      return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+    }
+
+    function toBinary(n) {
+      return n
+        .split('.')
+        .map((o) => Number(o).toString(2).padStart(8, '0'))
+        .join('.');
+    }
+
+    function calculate() {
+      const octets = parseIp(ipInput.value);
+      const prefix = parseInt(prefixInput.value, 10);
+      if (!octets || isNaN(prefix) || prefix < 0 || prefix > 32) {
+        el('subnet-output').classList.add('hidden');
+        return;
+      }
+
+      const ipInt = ipToInt(octets);
+      const maskInt = (prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0);
+      const networkInt = (ipInt & maskInt) >>> 0;
+      const broadcastInt = (networkInt | (~maskInt >>> 0)) >>> 0;
+      const maskOctets = intToIp(maskInt).split('.').map(Number);
+      const wildcardOctets = maskOctets.map((o) => 255 - o);
+
+      const firstHost = networkInt + 1;
+      const lastHost = broadcastInt - 1;
+      const totalHosts = Math.pow(2, 32 - prefix);
+      const usableHosts = totalHosts - 2;
+
+      el('subnet-output').classList.remove('hidden');
+      out('out-network').textContent = intToIp(networkInt);
+      out('out-broadcast').textContent = intToIp(broadcastInt);
+      out('out-range').textContent =
+        prefix < 31
+          ? intToIp(firstHost) + ' — ' + intToIp(lastHost)
+          : prefix === 31
+            ? 'No usable hosts (RFC 3021 allows /31 for point-to-point)'
+            : 'No usable hosts (prefix /32 is a single host)';
+      out('out-hosts').textContent = prefix < 31 ? usableHosts.toLocaleString() : '—';
+      out('out-mask').textContent = maskOctets.join('.');
+      out('out-wildcard').textContent = wildcardOctets.join('.');
+      out('out-binary').textContent =
+        'IP:    ' + toBinary(ipInput.value) +
+        '\nMask:  ' + toBinary(maskOctets.join('.')) +
+        '\nNet:   ' + toBinary(intToIp(networkInt)) +
+        '\nBCast: ' + toBinary(intToIp(broadcastInt));
+    }
+
+    calcBtn.addEventListener('click', calculate);
+    ipInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+    prefixInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>

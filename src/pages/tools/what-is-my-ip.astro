@@ -1,0 +1,211 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'What Is My IP Address';
+const description =
+  'See your public IP address, location, ISP, ASN, and browser information ' +
+  'instantly. No data is stored — everything runs client-side.';
+const intro =
+  'Your public IP reveals your approximate location and internet service provider. ' +
+  'This tool fetches your IP data from a secure worker and displays it instantly.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a public IP address?', a: 'A public IP address is a globally unique identifier assigned to your network by your ISP. It allows devices on the internet to find and communicate with your network. Every device connected to the internet has a public IP, though it is often shared via NAT (Network Address Translation) on home networks.' },
+  { q: 'Why does my IP address change?', a: 'Most ISPs assign dynamic IP addresses that change periodically — typically every 24–48 hours or when your router reboots. Static IPs are available for an extra fee and remain the same indefinitely.' },
+  { q: 'Can someone find my exact location from my IP?', a: 'No — IP geolocation typically identifies your city or region, not your street address. The accuracy varies by ISP and region, ranging from a few hundred meters to tens of kilometers. Your IP does not reveal your exact physical address.' },
+  { q: 'What is an ISP?', a: 'An Internet Service Provider (ISP) is the company that provides your internet connection — for example Comcast, Verizon, AT&T, British Telecom, or Reliance Jio. Your IP address belongs to a block assigned to your ISP.' },
+  { q: 'Is my IP address private?', a: 'Any website you visit can see your public IP address — it is a necessary part of how the internet works. Using a VPN hides your real IP by routing traffic through the VPN server and showing its IP instead.' },
+  { q: 'What is an ASN?', a: 'An Autonomous System Number (ASN) identifies a network organization on the internet. Large ISPs and cloud providers each have one or more ASNs. ASNs are used in BGP routing to exchange traffic between networks.' },
+  { q: 'Can I hide my IP address?', a: 'Yes — a VPN (Virtual Private Network) routes your traffic through a remote server, masking your real IP. A proxy server or Tor browser also hides your IP, though with different privacy and performance trade-offs.' },
+  { q: 'What is the difference between IPv4 and IPv6?', a: 'IPv4 uses 32-bit addresses (e.g., 192.0.2.1) and supports about 4.3 billion addresses. IPv6 uses 128-bit addresses (e.g., 2001:db8::1) and supports 340 undecillion addresses — enough for every device on the planet. Many networks now use both (dual-stack).' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Your IP Information</h2>
+    <div id="ip-result" class="mt-4 space-y-3">
+      <div class="flex items-center justify-center py-8">
+        <div class="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></div>
+        <span class="ml-3 text-sm text-slate-500">Looking up your IP...</span>
+      </div>
+    </div>
+    <button id="refresh-btn" class="mt-4 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-600">Refresh</button>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IP address lookup works</h2>
+    <p class="mt-2 text-slate-600">
+      When you visit this page, your browser sends a request to a Cloudflare Worker endpoint at <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">https://toolnestr.toolnestr.workers.dev/api/ip-lookup</code>. The worker receives your connection's source IP address and queries several geolocation and ISP databases to return information about that IP. Because no parameters are sent, the worker returns data about <em>your own</em> public IP address. The entire exchange happens over HTTPS so your data is encrypted in transit. No information is logged or stored on the server side.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The response from the worker includes your IP address (both IPv4 and IPv6 if available), the ISP name, the autonomous system number (ASN), the approximate city and region, the country code, and the latitude/longitude coordinates. Your browser's user agent string is also shown so you can verify which device and browser version you are using.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Geolocation databases used by IP lookup services aggregate data from ISPs, regional internet registries (RIRs), and network probes. Accuracy varies: city-level accuracy is typical for most desktop connections, but mobile devices routed through carrier-grade NAT may show the location of the carrier's gateway instead of your physical location.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="ip-request-title ip-request-desc">
+      <title id="ip-request-title">IP Lookup Request Flow</title>
+      <desc id="ip-request-desc">Diagram showing browser to worker to databases flow for IP lookup</desc>
+      <rect x="60" y="20" width="140" height="60" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="130" y="47" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Your Browser</text>
+      <text x="130" y="65" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">HTTPS request</text>
+      <line x1="200" y1="50" x2="280" y2="50" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="290" y="20" width="160" height="60" rx="8" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <text x="370" y="47" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Cloudflare Worker</text>
+      <text x="370" y="65" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">/api/ip-lookup</text>
+      <line x1="450" y1="50" x2="530" y2="50" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="540" y="20" width="200" height="60" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="640" y="47" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Geo / ISP Databases</text>
+      <text x="640" y="65" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">IP → location + ISP mapping</text>
+      <line x1="640" y1="80" x2="640" y2="120" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow)" />
+      <rect x="540" y="130" width="200" height="60" rx="8" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <text x="640" y="157" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">JSON Response</text>
+      <text x="640" y="175" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">IP, ISP, city, ASN, lat, lon</text>
+      <line x1="540" y1="160" x2="450" y2="160" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="290" y="130" width="160" height="60" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="370" y="157" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Worker returns</text>
+      <text x="370" y="175" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">JSON to browser</text>
+      <line x1="290" y1="160" x2="200" y2="160" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="60" y="130" width="140" height="60" rx="8" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <text x="130" y="157" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Page displays</text>
+      <text x="130" y="175" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">formatted result</text>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The browser sends a request to the Cloudflare Worker, which resolves the IP against geo and ISP databases and returns a JSON response</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why knowing your public IP matters</h2>
+    <p class="mt-2 text-slate-600">
+      Your public IP address is how the internet identifies your network. When you visit a website, stream a video, or join a video call, the remote server sees your public IP and uses it to send data back to you. Understanding what your public IP is and how it is used helps you make informed decisions about online privacy, remote access, and network troubleshooting.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Network administrators need to know their public IP to configure firewall rules, set up VPN tunnels, whitelist access to internal services, and troubleshoot connectivity issues. If your public IP changes unexpectedly, remote access configurations may break until they are updated. Home users who run game servers, security cameras, or smart home hubs often need to know their public IP to configure port forwarding on their router.
+    </p>
+    <p class="mt-3 text-slate-600">
+      IP geolocation is used by websites to serve region-specific content, enforce licensing restrictions, and detect fraudulent activity. E-commerce platforms use it to estimate shipping costs and calculate sales tax. Streaming services use it to enforce regional content libraries. Knowing what location your IP advertises helps you understand what geolocation-dependent services see when you browse the web.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Browser information, including the user agent string, is sent with every HTTP request and reveals your browser name, version, operating system, and device type. Websites use this to optimize page rendering and deliver compatible content. Checking your own user agent helps you understand what information you are broadcasting to every website you visit. Some privacy-conscious users modify or spoof their user agent to reduce fingerprinting, though this can break some websites.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IPv4 versus IPv6</h2>
+    <p class="mt-2 text-slate-600">
+      The internet currently uses two IP addressing schemes side by side. IPv4 uses 32-bit addresses written as four decimal octets separated by dots — for example, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">192.0.2.1</code>. This provides approximately 4.3 billion unique addresses, which seemed more than sufficient when the protocol was designed in 1981. However, the explosive growth of the internet in the 1990s and 2000s exhausted the IPv4 address pool. The last IPv4 /8 block was allocated by IANA in 2011.
+    </p>
+    <p class="mt-3 text-slate-600">
+      IPv6 was standardized in RFC 2460 to solve the address exhaustion problem. It uses 128-bit addresses written as eight groups of four hexadecimal digits separated by colons — for example, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">2001:0db8:85a3:0000:0000:8a2e:0370:7334</code>. This provides approximately 340 undecillion addresses, enough to assign an IP to every atom on the surface of the Earth many times over. While adoption has been gradual, most major ISPs, cloud providers, and content delivery networks now support IPv6 alongside IPv4 in a configuration known as dual-stack.
+    </p>
+    <p class="mt-3 text-slate-600">
+      When you check your IP on this page, the result shows both your IPv4 and IPv6 addresses if your network supports both. If you only see an IPv4 address, your ISP may not yet offer IPv6 connectivity, or your router may have IPv6 disabled. Many operating systems prefer IPv6 when available but fall back to IPv4 if the destination does not support IPv6.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the data returned</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-900">IP Address</h3>
+        <p class="mt-1 text-sm text-slate-600">The public IP address assigned to your connection by your ISP. This is the address seen by every website and service you access.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">ISP (Internet Service Provider)</h3>
+        <p class="mt-1 text-sm text-slate-600">The organization that provides your internet connectivity. The ISP name is derived from the WHOIS registration data of the IP block your address belongs to.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">ASN (Autonomous System Number)</h3>
+        <p class="mt-1 text-sm text-slate-600">A unique number assigned to a network organization for BGP routing purposes. ASNs are managed by IANA and allocated through the five regional internet registries (ARIN, RIPE, APNIC, LACNIC, AFRINIC). See <a href="https://www.iana.org/numbers" class="text-indigo-500 hover:text-indigo-600" target="_blank" rel="noopener">IANA Number Resources</a>.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Geolocation (City, Region, Country)</h3>
+        <p class="mt-1 text-sm text-slate-600">The approximate geographic location associated with the IP. This is based on ISP-reported data and network topology measurements. Accuracy varies and should not be relied on for precise location services.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Coordinates (Latitude / Longitude)</h3>
+        <p class="mt-1 text-sm text-slate-600">The approximate center of the IP's geolocation area. For most residential IPs this corresponds to the city or regional level, not a specific address.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Privacy and security considerations</h2>
+    <p class="mt-2 text-slate-600">
+      Every time you connect to a website, your public IP address is logged by the remote server as part of the standard HTTP connection process. This logging is essential for operational security, rate limiting, and fraud detection. However, your IP can also be used to build a browsing profile over time, correlate your activity across different websites, and approximate your physical location.
+    </p>
+    <p class="mt-3 text-slate-600">
+      If you are concerned about privacy, several tools can help. A VPN encrypts all your traffic and routes it through a server in a location of your choice, making websites see the VPN server's IP instead of your own. Tor bounces your traffic through multiple encrypted relays, providing even stronger anonymity at the cost of slower speeds. A proxy server can mask your IP for specific applications but does not encrypt your traffic by default.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For security purposes, knowing your own IP is important. If you notice unexpected IP addresses in your server logs or router admin panel, it could indicate unauthorized access. Regularly checking your public IP helps you detect whether your VPN is functioning correctly and whether your ISP has changed your address unexpectedly.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const resultDiv = el('ip-result');
+    const refreshBtn = el('refresh-btn');
+    const WORKER_URL = 'https://toolnestr.toolnestr.workers.dev/api/ip-lookup';
+
+    class IpLookup {
+      constructor(container, workerUrl) {
+        this.container = container;
+        this.workerUrl = workerUrl;
+      }
+
+      async fetch() {
+        this.container.innerHTML =
+          '<div class="flex items-center justify-center py-8"><div class="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500"></div><span class="ml-3 text-sm text-slate-500">Looking up your IP...</span></div>';
+        try {
+          const res = await fetch(this.workerUrl);
+          if (!res.ok) throw new Error('Worker returned ' + res.status);
+          const data = await res.json();
+          this.render(data);
+        } catch (err) {
+          this.container.innerHTML =
+            '<div class="rounded-lg bg-red-50 p-4 text-sm text-red-700">Failed to look up IP: ' + err.message + '</div>';
+        }
+      }
+
+      render(data) {
+        const rows = [
+          { label: 'IP Address', value: data.ip || data.query || '—' },
+          { label: 'IPv6 Address', value: data.ipv6 || '—' },
+          { label: 'ISP', value: data.isp || data.org || '—' },
+          { label: 'ASN', value: data.asn || data.as || '—' },
+          { label: 'City', value: data.city || '—' },
+          { label: 'Region', value: data.regionName || data.region || '—' },
+          { label: 'Country', value: data.country || data.country_name || '—' },
+          { label: 'Latitude / Longitude', value: data.lat && data.lon ? data.lat + ', ' + data.lon : '—' },
+          { label: 'Timezone', value: data.timezone || '—' },
+          { label: 'Browser', value: navigator.userAgent },
+        ];
+        this.container.innerHTML = rows
+          .map(
+            (r) =>
+              '<div class="flex items-baseline justify-between border-b border-slate-100 pb-2 last:border-0"><span class="text-sm font-medium text-slate-500">' +
+              r.label +
+              '</span><span class="ml-4 max-w-[60%] truncate text-right text-sm text-slate-900" title="' +
+              r.value +
+              '">' +
+              r.value +
+              '</span></div>'
+          )
+          .join('');
+      }
+    }
+
+    const lookup = new IpLookup(resultDiv, WORKER_URL);
+    lookup.fetch();
+    refreshBtn.addEventListener('click', () => lookup.fetch());
+  </script>
+</ToolLayout>

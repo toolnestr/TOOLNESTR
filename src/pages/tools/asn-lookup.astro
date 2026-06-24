@@ -1,0 +1,217 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'ASN Lookup';
+const description =
+  'Look up the Autonomous System Number (ASN) and network owner for any IP address. Fetches live data from the RIR databases and shows the organization, country, and CIDR range.';
+const intro =
+  'Enter an IP address to find its ASN, organization name, and registration details. Leave blank to look up your own IP address.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is an ASN?', a: 'An Autonomous System Number (ASN) is a unique identifier assigned to a network or group of networks under a single administrative control. It is used in BGP routing to exchange routing information between large networks on the internet.' },
+  { q: 'How is an ASN assigned?', a: 'ASNs are assigned by Regional Internet Registries (RIRs) such as ARIN (North America), RIPE NCC (Europe), APNIC (Asia Pacific), LACNIC (Latin America), and AFRINIC (Africa). They are allocated to ISPs, cloud providers, universities, and large organizations.' },
+  { q: 'What is the difference between public and private ASNs?', a: 'Public ASNs (1–64511) are globally unique and used for BGP peering on the public internet. Private ASNs (64512–65535) are used internally within an organization and are not advertised to the global internet.' },
+  { q: 'Can one IP belong to multiple ASNs?', a: 'No. Each IP prefix (CIDR range) is registered under a single ASN. However, the same organization may own multiple ASNs for different purposes, such as separate ASNs for peering, transit, and internal routing.' },
+  { q: 'Why does ASN lookup matter?', a: 'ASN information helps network engineers troubleshoot routing issues, identify traffic sources, configure BGP policies, and understand the internet topology. It is also used in security analysis to identify malicious traffic originating from specific networks.' },
+  { q: 'Is the data real-time?', a: 'The lookup fetches live data from regional internet registries via our backend API. The results reflect the current RIR database state, which is typically updated within minutes of a new allocation or transfer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Enter an IP address</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <input id="ip-input" type="text" placeholder="8.8.8.8 (or leave blank for your IP)" class="flex-1 min-w-[200px] rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <button id="lookup-btn" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Look up ASN</button>
+      </div>
+    </div>
+
+    <div id="result-area" class="hidden space-y-3">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Autonomous System Information</h3>
+        <div class="mt-3 grid gap-4 sm:grid-cols-2">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">IP Address</span>
+            <p id="r-ip" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">ASN Number</span>
+            <p id="r-asn" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div class="sm:col-span-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Organization</span>
+            <p id="r-org" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Country</span>
+            <p id="r-country" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">CIDR Range</span>
+            <p id="r-cidr" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Registry</span>
+            <p id="r-registry" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Date Allocated</span>
+            <p id="r-date" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+          </div>
+        </div>
+      </div>
+      <div id="error-msg" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is an Autonomous System Number?</h2>
+    <p class="mt-2 text-slate-600">
+      An Autonomous System Number (ASN) is a globally unique identifier that allows a network to participate in inter-domain routing on the internet. The internet is not a single monolithic network but a collection of tens of thousands of independently operated networks called Autonomous Systems (ASes). Each AS uses the Border Gateway Protocol (BGP) to advertise the IP prefixes it controls and to learn about routes to destinations in other ASes. Without ASNs, BGP would have no way to identify the origin of each route announcement, making the routing system unmanageable.
+    </p>
+    <p class="mt-3 text-slate-600">
+      ASNs are 16-bit numbers (originally) ranging from 1 to 64511 for public use, with 64512 through 65535 reserved for private use. In 2007, the 32-bit ASN format was introduced to handle the growing demand, extending the range to 4,294,967,295. These are often written in "dot" notation: ASN 131072 is written as AS0.65536 or simply expressed as a plain decimal number. Most modern networks use 32-bit ASNs, though many legacy networks still operate with 16-bit numbers.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The five Regional Internet Registries (RIRs) manage ASN allocation for their respective geographic regions. ARIN covers North America, RIPE NCC covers Europe and the Middle East, APNIC covers Asia-Pacific, LACNIC covers Latin America and the Caribbean, and AFRINIC covers Africa. Each RIR maintains a publicly accessible WHOIS database that maps IP prefixes to their originating ASN and provides contact information for the network operator. This lookup tool queries these databases to return the ASN associated with any IP address.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-labelledby="asn-title asn-desc">
+      <title id="asn-title">BGP ASN Hierarchy Diagram</title>
+      <desc id="asn-desc">Hierarchical structure showing the Internet under IANA, Regional Internet Registries, ASN allocation to ISPs and organizations, and BGP peering between Autonomous Systems</desc>
+      <rect x="300" y="10" width="200" height="36" rx="6" fill="#6366f1" />
+      <text x="400" y="33" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="13" font-weight="700">IANA</text>
+      <line x1="400" y1="46" x2="400" y2="66" stroke="#cbd5e1" stroke-width="2" />
+      <rect x="40" y="66" width="120" height="32" rx="4" fill="#818cf8" />
+      <text x="100" y="86" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">ARIN</text>
+      <rect x="175" y="66" width="120" height="32" rx="4" fill="#818cf8" />
+      <text x="235" y="86" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">RIPE NCC</text>
+      <rect x="310" y="66" width="120" height="32" rx="4" fill="#818cf8" />
+      <text x="370" y="86" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">APNIC</text>
+      <rect x="445" y="66" width="120" height="32" rx="4" fill="#818cf8" />
+      <text x="505" y="86" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">LACNIC</text>
+      <rect x="580" y="66" width="120" height="32" rx="4" fill="#818cf8" />
+      <text x="640" y="86" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">AFRINIC</text>
+      <text x="400" y="52" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-style="italic">RIRs allocate ASNs</text>
+      <line x1="100" y1="98" x2="100" y2="118" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="235" y1="98" x2="235" y2="118" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="370" y1="98" x2="370" y2="118" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="505" y1="98" x2="505" y2="118" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="640" y1="98" x2="640" y2="118" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect x="60" y="118" width="100" height="30" rx="4" fill="#e0e7ff" />
+      <text x="110" y="137" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">ISP ASN 12345</text>
+      <rect x="190" y="118" width="100" height="30" rx="4" fill="#e0e7ff" />
+      <text x="240" y="137" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">ISP ASN 67890</text>
+      <rect x="340" y="118" width="100" height="30" rx="4" fill="#e0e7ff" />
+      <text x="390" y="137" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Cloud ASN 15169</text>
+      <rect x="480" y="118" width="100" height="30" rx="4" fill="#e0e7ff" />
+      <text x="530" y="137" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Org ASN 1234</text>
+      <text x="400" y="108" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-style="italic">Organizations receive ASNs</text>
+      <line x1="110" y1="148" x2="110" y2="168" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="240" y1="148" x2="240" y2="168" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="390" y1="148" x2="390" y2="168" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="530" y1="148" x2="530" y2="168" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect x="60" y="170" width="80" height="28" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="100" y="188" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">192.0.2.0/24</text>
+      <rect x="160" y="170" width="80" height="28" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="200" y="188" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">203.0.113.0/24</text>
+      <rect x="350" y="170" width="80" height="28" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="390" y="188" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">8.8.8.0/24</text>
+      <rect x="490" y="170" width="80" height="28" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="530" y="188" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10">10.0.0.0/8</text>
+      <text x="400" y="160" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-style="italic">IP prefixes announced via BGP</text>
+      <rect x="200" y="218" width="200" height="44" rx="8" fill="#6366f1" opacity="0.15" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="6,3" />
+      <text x="300" y="240" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">BGP Peering</text>
+      <text x="300" y="254" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">AS12345  &lt;---&gt;  AS15169</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Hierarchy from IANA through RIRs to organizations and their IP prefixes, interconnected via BGP peering</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How ASN data is used in practice</h2>
+    <p class="mt-2 text-slate-600">
+      Network engineers rely on ASN data for BGP peering configuration, route filtering, and traffic engineering. When an organization needs to announce its IP prefixes to the internet, it must first obtain an ASN from its regional registry, then establish BGP sessions with its upstream transit providers or settlement-free peering partners. The ASN acts as the origin identifier in BGP path attributes, allowing each router along the path to know which AS originated each route prefix.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Security analysts use ASN data as a threat intelligence signal. When suspicious traffic is detected, looking up the source IP's ASN can reveal whether the attack originates from a known malicious hosting provider, a residential ISP, or a cloud platform. Many security orchestration tools automatically enrich IP addresses with ASN metadata to prioritize incident response. In DDoS mitigation, ASN information helps distinguish between legitimate traffic from a major CDN and attack traffic from a compromised network segment.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For internet researchers and policymakers, ASN data is essential for studying the structure and evolution of the internet. The number of allocated ASNs has grown from a few hundred in the early 1990s to over 100,000 today. Mapping ASN relationships reveals the internet's topology — which networks are tier 1 transit providers, which are content delivery networks, and which serve specific geographic regions. This analysis informs decisions about internet governance, interconnection policy, and infrastructure investment.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Reading the results</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">ASN Number</h3>
+        <p class="mt-1 text-sm text-slate-600">The unique identifier for the autonomous system, shown as ASXXXXX. Lower numbers are older allocations. Numbers above 4,000,000,000 indicate 32-bit ASNs.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Organization</h3>
+        <p class="mt-1 text-sm text-slate-600">The legal entity registered as the owner of this ASN. This is typically an ISP, cloud provider, university, or large enterprise network operator.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">CIDR Range</h3>
+        <p class="mt-1 text-sm text-slate-600">The IP prefix that is announced under this ASN. Each AS can advertise multiple prefixes, and the lookup returns the specific range containing the queried IP.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use ASN lookup</h2>
+    <p class="mt-2 text-slate-600">
+      System administrators troubleshooting network connectivity issues can use ASN lookup to verify that their IP prefixes are correctly registered and announced. If a BGP session is not establishing, checking the ASN configuration is one of the first diagnostic steps. Security teams investigating suspicious login attempts or web scraping activity can identify the network provider behind the source IP address and contact their abuse department with the ASN ownership information.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Content providers optimizing delivery performance can use ASN data to identify which networks their users are connecting from and whether additional peering or CDN points-of-presence are needed in specific regions. The ASN-to-organization mapping also helps in deciding which traffic should be routed through which transit provider based on cost, latency, and capacity requirements.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const btn = el('lookup-btn');
+    const input = el('ip-input');
+    const area = el('result-area');
+    const err = el('error-msg');
+
+    async function lookup() {
+      const ip = input.value.trim();
+      area.classList.add('hidden');
+      err.classList.add('hidden');
+
+      btn.disabled = true;
+      btn.textContent = 'Looking up...';
+
+      try {
+        const url = `https://toolnestr.toolnestr.workers.dev/api/asn-lookup?ip=${encodeURIComponent(ip)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        el('r-ip').textContent = data.ip || '—';
+        el('r-asn').textContent = data.asn ? `AS${data.asn}` : '—';
+        el('r-org').textContent = data.org || '—';
+        el('r-country').textContent = data.country || '—';
+        el('r-cidr').textContent = data.cidr || '—';
+        el('r-registry').textContent = data.registry || '—';
+        el('r-date').textContent = data.date || '—';
+        area.classList.remove('hidden');
+      } catch (e) {
+        err.textContent = `Lookup failed: ${e.message}`;
+        err.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Look up ASN';
+      }
+    }
+
+    btn.addEventListener('click', lookup);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+  </script>
+</ToolLayout>

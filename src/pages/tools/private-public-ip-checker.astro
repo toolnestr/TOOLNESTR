@@ -1,0 +1,184 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Private vs Public IP Checker';
+const description =
+  'Check whether an IP address is private (RFC 1918, RFC 6598, link-local) or ' +
+  'public. Includes regex validation and detailed classification.';
+const intro =
+  'Enter any IPv4 address to find out if it belongs to a private range, a public ' +
+  'range, or a special-purpose block. The checker validates the IP format and ' +
+  'classifies the address according to IANA standards.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a private IP address?', a: 'A private IP address is an address that is not routable on the public internet. Defined in RFC 1918, private ranges include 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16. These addresses are used within local networks and must be translated to a public IP via NAT to access the internet.' },
+  { q: 'What is a public IP address?', a: 'A public IP address is globally unique and routable on the internet. These addresses are assigned by IANA to Regional Internet Registries (RIRs), then to ISPs, and finally to end users. Any device with a public IP can be reached from anywhere on the internet.' },
+  { q: 'What is the 10.0.0.0/8 range?', a: 'The 10.0.0.0/8 range spans from 10.0.0.0 to 10.255.255.255, providing 16,777,216 addresses. It is the largest private address block defined in RFC 1918 and is commonly used by large organizations and cloud providers for internal networking.' },
+  { q: 'What are the 172.16.0.0/12 private addresses?', a: 'The 172.16.0.0/12 range spans from 172.16.0.0 to 172.31.255.255, providing 1,048,576 addresses. Despite being in the 172.x.x.x range, only 172.16.0.0 to 172.31.255.255 are private — addresses like 172.32.0.0 are public. This truncated range is a common point of confusion.' },
+  { q: 'What is 192.168.0.0/16?', a: 'The 192.168.0.0/16 range spans from 192.168.0.0 to 192.168.255.255, providing 65,536 addresses. This is the most common private address range used in home routers, small offices, and consumer devices. Most home networks use a subset like 192.168.1.0/24 or 192.168.0.0/24.' },
+  { q: 'What is link-local addressing?', a: 'The 169.254.0.0/16 range is reserved for link-local addressing (RFC 3927). These addresses are automatically assigned by devices when no DHCP server is available, using APIPA (Automatic Private IP Addressing). They are only valid on a single network segment and are not routable.' },
+  { q: 'What is carrier-grade NAT (CGNAT)?', a: 'CGNAT uses the 100.64.0.0/10 range (RFC 6598) for sharing a single public IP among multiple customers. ISPs use CGNAT to conserve IPv4 addresses. Addresses in this range are not private but are also not globally routable — they are shared address space.' },
+  { q: 'Can I use private IP addresses on the internet?', a: 'No — private IP addresses are filtered by ISPs and cannot route on the public internet. If a device with a private IP tries to access the internet, the router performs NAT (Network Address Translation) to replace the private source IP with the router public IP before forwarding the packet.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Check an IP address</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="check-ip-input" type="text" placeholder="192.168.1.1 or 8.8.8.8" class="w-48 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <button id="check-ip-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">Check</button>
+    </div>
+    <div id="check-output" class="mt-4 hidden space-y-2">
+      <div id="check-badge" class="inline-block rounded-full px-3 py-1 text-sm font-semibold">—</div>
+      <div class="grid gap-2 sm:grid-cols-2">
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">IP Address</span><p id="chk-ip" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Classification</span><p id="chk-class" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">RFC Reference</span><p id="chk-rfc" class="mt-0.5 font-mono text-sm text-slate-700">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Range</span><p id="chk-range" class="mt-0.5 font-mono text-sm text-slate-700">—</p></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Private vs public IP classification</h2>
+    <p class="mt-2 text-slate-600">
+      The IPv4 address space is divided into public and private ranges by the Internet Assigned Numbers Authority (IANA). Private IP addresses are defined in RFC 1918 and are reserved for use within private networks. These addresses are not globally unique — the same private IP can be used by millions of networks around the world. Public IP addresses are globally unique and are assigned to organizations and individuals by Regional Internet Registries (RIRs) through ISPs.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The classification is determined entirely by the address range, specifically the first octet (for 10.x.x.x and 192.168.x.x) or the first two octets (for 172.16.x.x through 172.31.x.x). The checker also identifies special-purpose addresses such as loopback (127.0.0.0/8, RFC 1122), link-local (169.254.0.0/16, RFC 3927), carrier-grade NAT (100.64.0.0/10, RFC 6598), and multicast (224.0.0.0/4, RFC 5771). Each of these ranges has different routing properties and use cases.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding the difference between private and public IPs is fundamental to network design. Private IPs enable the reuse of address space across different organizations, which has been critical in slowing IPv4 exhaustion. NAT gateways at the network boundary translate private IPs to public IPs for internet access, allowing thousands of devices to share a single public IP address through port multiplexing. Without private IP addressing and NAT, the IPv4 address space would have been exhausted years earlier than it was.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="priv-pub-title priv-pub-desc">
+      <title id="priv-pub-title">Private vs Public IP Space Diagram</title>
+      <desc id="priv-pub-desc">Venn-like diagram showing IPv4 address space divided into private ranges and public ranges with NAT translation</desc>
+      <text x="400" y="22" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">IPv4 Address Space Classification</text>
+      <rect x="50" y="40" width="320" height="120" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+      <text x="210" y="68" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Private (RFC 1918)</text>
+      <text x="210" y="90" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">10.0.0.0/8</text>
+      <text x="210" y="108" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">172.16.0.0/12</text>
+      <text x="210" y="126" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">192.168.0.0/16</text>
+      <text x="210" y="148" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Not routable on internet</text>
+      <rect x="430" y="40" width="320" height="120" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2" />
+      <text x="590" y="68" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Public</text>
+      <text x="590" y="90" text-anchor="middle" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11">All other IPv4 ranges</text>
+      <text x="590" y="108" text-anchor="middle" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11">Assigned by IANA / RIRs</text>
+      <text x="590" y="126" text-anchor="middle" fill="#b91c1c" font-family="system-ui, sans-serif" font-size="11">Globally unique</text>
+      <text x="590" y="148" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Routable on internet</text>
+      <rect x="320" y="80" width="120" height="40" rx="6" fill="#fff" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3" />
+      <text x="380" y="105" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">NAT</text>
+      <text x="400" y="190" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">NAT translates private source IPs to a public IP for internet access</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Private IP ranges are isolated from the public internet; NAT bridges the two by translating private addresses to a public address</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">RFC 1918 private address blocks</h2>
+    <p class="mt-2 text-slate-600">
+      RFC 1918 defines three blocks of IPv4 address space reserved for private internets. The largest is 10.0.0.0/8, which provides over 16 million addresses and is typically used by large corporations, government agencies, and cloud providers for their internal networks. Amazon Web Services (AWS), Microsoft Azure, and Google Cloud all use 10.0.0.0/8 as the default range for their Virtual Private Cloud (VPC) networks, allowing customers to create subnets of any size within this massive block.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The 172.16.0.0/12 block (172.16.0.0 to 172.31.255.255) provides approximately 1 million addresses. This range is particularly common in medium-sized organizations and educational institutions. Note that only 172.16.0.0 through 172.31.255.255 are private — addresses like 172.32.0.0 and above are public. This truncated range often causes confusion, as people mistakenly assume all 172.x.x.x addresses are private.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The 192.168.0.0/16 block (192.168.0.0 to 192.168.255.255) is the most widely recognized private range, used in virtually every consumer router. Most home networks use 192.168.0.0/24 or 192.168.1.0/24, providing 254 usable addresses for household devices. This range is also commonly used in small office networks, IoT deployments, and test labs due to its simplicity and universal support across networking equipment.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Special-purpose address ranges</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-900">Loopback — 127.0.0.0/8 (RFC 1122)</h3>
+        <p class="mt-1 text-sm text-slate-600">The loopback address range is reserved for local testing and inter-process communication on a host machine. The most commonly used address is 127.0.0.1 (localhost). Packets addressed to 127.x.x.x never leave the host.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Link-Local — 169.254.0.0/16 (RFC 3927)</h3>
+        <p class="mt-1 text-sm text-slate-600">Link-local addresses are automatically assigned when a device fails to obtain an IP from DHCP. This Auto-Configuration (APIPA) mechanism ensures that devices on the same subnet can still communicate even without a DHCP server. These addresses are not routable.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Carrier-Grade NAT — 100.64.0.0/10 (RFC 6598)</h3>
+        <p class="mt-1 text-sm text-slate-600">This shared address space is used by ISPs for CGNAT deployments. It allows ISPs to multiplex thousands of customers behind a single public IP, conserving IPv4 addresses. Addresses in this range are not private but are also not globally routable.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Multicast — 224.0.0.0/4 (RFC 5771)</h3>
+        <p class="mt-1 text-sm text-slate-600">Multicast addresses are used for one-to-many communication. Common multicast addresses include 224.0.0.1 (all hosts on a subnet), 224.0.0.2 (all routers), and 224.0.0.5/6 (OSPF). Multicast routing requires IGMP and PIM protocols.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Reserved — 240.0.0.0/4 (RFC 1112)</h3>
+        <p class="mt-1 text-sm text-slate-600">The Class E range (240.0.0.0 to 255.255.255.255) is reserved for future use. 255.255.255.255 is the limited broadcast address used for DHCP discovery and other local broadcast traffic.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why IP classification matters</h2>
+    <p class="mt-2 text-slate-600">
+      Knowing whether an IP is private or public is critical for network troubleshooting, security configuration, and compliance audits. When a device cannot reach the internet, the first check is whether it has a valid public IP or is correctly configured for NAT. Private IPs in public-facing configurations create security risks and routing problems, while accidental public IP assignment to internal devices wastes scarce public address space.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Firewall rules and access control lists frequently use IP classification to determine policy. Traffic from private IPs destined for the internet is typically allowed through NAT, while traffic from public IPs destined for internal private IPs is blocked at the perimeter unless it matches an allowlisted exception. Understanding these boundaries helps network engineers design secure, correctly routed network topologies that comply with organizational security policies and regulatory requirements.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This tool classifies IPv4 addresses only. IPv6 has its own private addressing concept (Unique Local Addresses, or ULAs, defined in RFC 4193, using the fd00::/8 prefix). The checker identifies standard RFC 1918 private ranges, RFC 6598 CGNAT, RFC 3927 link-local, and several other special-purpose blocks recognized by IANA. It does not validate whether an IP is actually assigned or in use — it only checks the address range against published standards. For real-time availability checks, use a ping or WHOIS lookup tool.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('check-ip-input');
+    const btn = el('check-ip-btn');
+
+    function parseIp(str) {
+      const p = str.trim().split('.');
+      if (p.length !== 4) return null;
+      const o = p.map(Number);
+      if (o.some((v) => isNaN(v) || v < 0 || v > 255)) return null;
+      return o;
+    }
+
+    function classify(octets) {
+      const [o1, o2] = octets;
+      if (o1 === 0) return { type: 'Public (reserved)', badge: 'Special', color: 'bg-yellow-100 text-yellow-800', rfc: 'RFC 1122 — "This host on this network"', range: '0.0.0.0/8' };
+      if (o1 === 10) return { type: 'Private', badge: 'Private (RFC 1918)', color: 'bg-indigo-100 text-indigo-800', rfc: 'RFC 1918 — Private Internet', range: '10.0.0.0/8' };
+      if (o1 === 127) return { type: 'Loopback', badge: 'Loopback', color: 'bg-yellow-100 text-yellow-800', rfc: 'RFC 1122 — Loopback', range: '127.0.0.0/8' };
+      if (o1 === 169 && o2 === 254) return { type: 'Link-Local', badge: 'Link-Local (APIPA)', color: 'bg-orange-100 text-orange-800', rfc: 'RFC 3927 — Link-Local', range: '169.254.0.0/16' };
+      if (o1 === 100 && o2 >= 64 && o2 <= 127) return { type: 'Shared (CGNAT)', badge: 'Carrier-Grade NAT', color: 'bg-purple-100 text-purple-800', rfc: 'RFC 6598 — Shared Address Space', range: '100.64.0.0/10' };
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return { type: 'Private', badge: 'Private (RFC 1918)', color: 'bg-indigo-100 text-indigo-800', rfc: 'RFC 1918 — Private Internet', range: '172.16.0.0/12' };
+      if (o1 === 192 && o2 === 168) return { type: 'Private', badge: 'Private (RFC 1918)', color: 'bg-indigo-100 text-indigo-800', rfc: 'RFC 1918 — Private Internet', range: '192.168.0.0/16' };
+      if (o1 >= 224 && o1 <= 239) return { type: 'Multicast', badge: 'Multicast', color: 'bg-teal-100 text-teal-800', rfc: 'RFC 5771 — Multicast', range: '224.0.0.0/4' };
+      if (o1 >= 240) return { type: 'Reserved', badge: 'Reserved (Future use)', color: 'bg-gray-100 text-gray-800', rfc: 'RFC 1112 — Reserved', range: '240.0.0.0/4' };
+      return { type: 'Public', badge: 'Public', color: 'bg-emerald-100 text-emerald-800', rfc: 'Globally routable (IANA assigned)', range: 'Various RIR allocations' };
+    }
+
+    function check() {
+      const octets = parseIp(input.value);
+      const output = el('check-output');
+      if (!octets) {
+        output.classList.add('hidden');
+        return;
+      }
+      output.classList.remove('hidden');
+      const c = classify(octets);
+      const badge = el('check-badge');
+      badge.textContent = c.badge;
+      badge.className = 'inline-block rounded-full px-3 py-1 text-sm font-semibold ' + c.color;
+      el('chk-ip').textContent = octets.join('.');
+      el('chk-class').textContent = c.type;
+      el('chk-rfc').textContent = c.rfc;
+      el('chk-range').textContent = c.range;
+    }
+
+    btn.addEventListener('click', check);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</ToolLayout>

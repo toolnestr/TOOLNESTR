@@ -1,0 +1,288 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Email Header Analyzer';
+const description =
+  'Paste raw email headers to analyze the delivery path, extract sender, recipient, subject, date, and authentication results. See delays between each hop on the email delivery route.';
+const intro =
+  'Copy the full raw headers from any email and paste them below to analyze the delivery path, authentication results (SPF, DKIM, DMARC), and timing between each mail server hop.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'How do I get the raw headers from an email?', a: 'In Gmail, open the email and click the three dots menu > "Show original". In Outlook, double-click the email and go to File > Properties. In Apple Mail, open the email and select View > Message > Raw Source. The raw headers include all routing and authentication information.' },
+  { q: 'What information can I extract from headers?', a: 'Headers reveal the email delivery path (all intermediate Mail Transfer Agents), the authentication results (SPF pass/fail, DKIM signature verification, DMARC policy), timestamps from each hop, the original sender IP address, and whether the message was delivered over encrypted TLS connections.' },
+  { q: 'How do I identify delays between hops?', a: 'The "Received" headers form a chain from the originating server to your mail server. Each shows a timestamp. By comparing consecutive Received timestamps, you can calculate the delay contributed by each server in the delivery chain.' },
+  { q: 'What is SPF, DKIM, and DMARC?', a: 'SPF (Sender Policy Framework) checks that the sending server is authorized to send mail for the domain. DKIM (DomainKeys Identified Mail) uses cryptographic signatures to verify the email was not tampered with. DMARC (Domain-based Message Authentication, Reporting and Conformance) tells receivers how to handle messages that fail SPF or DKIM checks.' },
+  { q: 'Can I see if the email was spoofed?', a: 'Yes. The Authentication-Results header shows whether SPF and DKIM checks passed. If they failed, the email may be spoofed or forged. The Received-SPF header also shows which IP sent the message and whether it matches the domain policy.' },
+  { q: 'Why are there so many Received headers?', a: 'Each email server that handles the message adds its own Received header to the top of the header block. A typical email passes through 2-5 servers: the sender MTA, possibly a submission server, the recipient inbound server, and maybe spam filtering gateways.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Paste raw email headers</h2>
+      <textarea id="header-input" rows="12" class="mt-3 w-full resize-y rounded-lg border border-slate-300 p-3 font-mono text-xs outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Paste the full raw email headers here..."></textarea>
+      <button id="parse-btn" class="mt-3 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Analyze Headers</button>
+    </div>
+
+    <div id="result-area" class="hidden space-y-4">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Message Overview</h3>
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <div><span class="text-xs font-semibold uppercase tracking-wide text-slate-400">From</span><p id="r-from" class="mt-1 font-medium text-slate-900">—</p></div>
+          <div><span class="text-xs font-semibold uppercase tracking-wide text-slate-400">To</span><p id="r-to" class="mt-1 font-medium text-slate-900">—</p></div>
+          <div><span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Subject</span><p id="r-subject" class="mt-1 font-medium text-slate-900">—</p></div>
+          <div><span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Date</span><p id="r-date" class="mt-1 font-medium text-slate-900">—</p></div>
+          <div class="sm:col-span-2"><span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Message-ID</span><p id="r-msgid" class="mt-1 break-all font-mono text-xs text-slate-600">—</p></div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Authentication Results</h3>
+        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+          <div class="rounded-lg border border-slate-200 p-3">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">SPF</span>
+            <p id="r-spf" class="mt-1 font-bold text-slate-900">—</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-3">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">DKIM</span>
+            <p id="r-dkim" class="mt-1 font-bold text-slate-900">—</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 p-3">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">DMARC</span>
+            <p id="r-dmarc" class="mt-1 font-bold text-slate-900">—</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Delivery Path (Received Chain)</h3>
+        <div id="r-route" class="mt-3 space-y-3"></div>
+      </div>
+    </div>
+
+    <div id="error-msg" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How email header analysis works</h2>
+    <p class="mt-2 text-slate-600">
+      Every email that traverses the internet carries with it a set of metadata headers that record the entire delivery journey. When you send an email from your Mail User Agent (MUA), it is submitted to a Mail Submission Agent (MSA), which relays it through one or more Mail Transfer Agents (MTAs) until it reaches the recipient's incoming mail server. Each server that handles the message adds a "Received" header to the top of the email, creating a chronological chain from the destination back to the source. Reading this chain from bottom to top reveals the path the email took across the internet.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Beyond the routing information, email headers contain critical authentication data that helps receivers determine whether the message is legitimate or fraudulent. The Sender Policy Framework (SPF) header records which IP addresses are authorized to send mail for the domain. DomainKeys Identified Mail (DKIM) adds a digital signature that cryptographically binds the email to the sending domain. DMARC (Domain-based Message Authentication, Reporting and Conformance) tells the receiving server how to handle messages that fail SPF or DKIM checks — whether to deliver them anyway, quarantine them, or reject them outright.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This tool extracts all of this information from the raw headers you paste. It parses the header block line by line, identifying known header fields and extracting their values. The Received headers are processed in reverse order (from the last MTA back to the original sender) to reconstruct the delivery path. Timestamps from each Received header are compared to calculate the delay introduced by each intermediate server. The authentication results are extracted from the Authentication-Results header, which mail servers add after performing SPF, DKIM, and DMARC checks.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" width="800" height="320" role="img" aria-labelledby="email-title email-desc">
+      <title id="email-title">Email Delivery Route with Hop Timeline</title>
+      <desc id="email-desc">Diagram showing an email traversing from sender through MSA, several MTAs, and finally to the recipient's mail server, with timestamps at each hop</desc>
+      <rect x="30" y="10" width="740" height="300" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="35" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Email Delivery Route with Hop Timeline</text>
+
+      <rect x="50" y="55" width="120" height="30" rx="6" fill="#6366f1" />
+      <text x="110" y="74" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Sender MUA</text>
+
+      <line x1="170" y1="70" x2="210" y2="70" stroke="#6366f1" stroke-width="2" />
+      <polygon points="210,65 220,70 210,75" fill="#6366f1" />
+      <text x="195" y="62" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">T0</text>
+
+      <rect x="225" y="55" width="100" height="30" rx="6" fill="#818cf8" />
+      <text x="275" y="74" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="700">MSA</text>
+
+      <line x1="325" y1="70" x2="365" y2="70" stroke="#6366f1" stroke-width="2" />
+      <polygon points="365,65 375,70 365,75" fill="#6366f1" />
+      <text x="350" y="62" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">+0.1s</text>
+
+      <rect x="380" y="55" width="100" height="30" rx="6" fill="#818cf8" />
+      <text x="430" y="74" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="700">MTA 1</text>
+
+      <line x1="480" y1="70" x2="520" y2="70" stroke="#6366f1" stroke-width="2" />
+      <polygon points="520,65 530,70 520,75" fill="#6366f1" />
+      <text x="505" y="62" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">+0.5s</text>
+
+      <rect x="535" y="55" width="100" height="30" rx="6" fill="#818cf8" />
+      <text x="585" y="74" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="700">MTA 2</text>
+
+      <line x1="635" y1="70" x2="675" y2="70" stroke="#6366f1" stroke-width="2" />
+      <polygon points="675,65 685,70 675,75" fill="#6366f1" />
+      <text x="660" y="62" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">+2.0s</text>
+
+      <rect x="690" y="55" width="70" height="30" rx="6" fill="#6366f1" />
+      <text x="725" y="74" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Inbox</text>
+
+      <rect x="50" y="105" width="700" height="18" rx="3" fill="#e0e7ff" />
+      <text x="400" y="118" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Total Delivery Time: 2.6 seconds</text>
+
+      <text x="50" y="155" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Received header chain (read bottom to top):</text>
+
+      <rect x="50" y="168" width="700" height="22" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="60" y="183" fill="#64748b" font-family="monospace, sans-serif" font-size="9">Received: from mail2.example.com (10.0.0.5) by imap.example.org (10.0.0.1) with ESMTP;</text>
+      <text x="60" y="195" fill="#64748b" font-family="monospace, sans-serif" font-size="9">               Thu, 15 Jun 2026 14:32:10 +0000</text>
+      <text x="670" y="183" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9" font-weight="600">Hop 4</text>
+      <text x="650" y="195" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9">+0.3s</text>
+
+      <rect x="50" y="200" width="700" height="22" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="60" y="215" fill="#64748b" font-family="monospace, sans-serif" font-size="9">Received: from mail1.example.org (203.0.113.5) by mail2.example.com (10.0.0.5) with ESMTP;</text>
+      <text x="60" y="227" fill="#64748b" font-family="monospace, sans-serif" font-size="9">               Thu, 15 Jun 2026 14:32:09 +0000</text>
+      <text x="670" y="215" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9" font-weight="600">Hop 3</text>
+      <text x="650" y="227" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9">+1.5s</text>
+
+      <rect x="50" y="232" width="700" height="22" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="60" y="247" fill="#64748b" font-family="monospace, sans-serif" font-size="9">Received: from smtp.sender.com (192.0.2.10) by mail1.example.org (203.0.113.5) with ESMTPS;</text>
+      <text x="60" y="259" fill="#64748b" font-family="monospace, sans-serif" font-size="9">               Thu, 15 Jun 2026 14:32:07 +0000</text>
+      <text x="670" y="247" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9" font-weight="600">Hop 2</text>
+      <text x="650" y="259" fill="#6366f1" font-family="system-ui, sans-serif" font-size="9">+0.7s</text>
+
+      <text x="50" y="282" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Timestamps between consecutive Received headers reveal the delay at each hop</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Email delivery route showing each server hop with cumulative timestamps and the Received header chain</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why email header analysis is important</h2>
+    <p class="mt-2 text-slate-600">
+      Email headers contain the forensic evidence needed to determine whether a message is legitimate or malicious. Phishing emails often spoof the display name or email address of a trusted contact, but the headers reveal the true origin. By examining the Received chain, you can see the actual IP addresses the message passed through, which often differ from the claimed sender domain. The authentication headers — SPF, DKIM, and DMARC — provide an automated mechanism for detecting spoofing attempts. An email that claims to be from a bank but fails SPF and DKIM checks is almost certainly fraudulent.
+    </p>
+    <p class="mt-3 text-slate-600">
+      System administrators responsible for email infrastructure use header analysis to troubleshoot delivery problems. If legitimate emails are being marked as spam or rejected entirely, examining the headers reveals which authentication check is failing. The delay between each hop helps identify bottleneck servers: a 30-second gap between two Received headers points to a specific MTA that is slow to process or relay messages. This information is invaluable for diagnosing email delivery performance issues and optimizing mail server configurations.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Email headers also document the security of the transmission path. Many receiving servers add an "ESMTPS" indicator in the Received header to confirm that the connection from the previous hop was encrypted with TLS. By reviewing these indicators, you can verify whether all hops in the delivery chain used encrypted transport. An email that passed through any unencrypted hop could theoretically have been intercepted or modified in transit, which is especially concerning for sensitive communications.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Understanding authentication results</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">SPF (Sender Policy Framework)</h3>
+        <p class="mt-1 text-sm text-slate-600">SPF checks whether the sending IP address is listed in the domain's DNS TXT record. A "pass" means the IP is authorized. "fail" means the IP is not authorized and the email may be forged. "neutral" or "softfail" means the domain owner has not fully committed to a policy.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">DKIM (DomainKeys Identified Mail)</h3>
+        <p class="mt-1 text-sm text-slate-600">DKIM uses a public key published in DNS to verify a cryptographic signature in the email headers. A "pass" means the email was signed with the domain's private key and has not been modified in transit. "fail" means the signature is invalid or the email was tampered with.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">DMARC (Domain-based Message Authentication)</h3>
+        <p class="mt-1 text-sm text-slate-600">DMARC tells receiving servers what to do when SPF or DKIM fails. The policy can be "none" (monitor only), "quarantine" (send to spam), or "reject" (block delivery). DMARC also enables aggregate reporting so domains can see who is sending email using their domain.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use an email header analyzer</h2>
+    <p class="mt-2 text-slate-600">
+      Security-conscious users should analyze email headers whenever they receive a suspicious message. By pasting the raw headers into this tool, you can quickly determine whether the email actually came from the claimed sender or is a sophisticated phishing attempt. IT support teams helping users who receive suspicious emails can ask them to forward the raw headers for analysis, providing objective evidence about the email's authenticity that can guide the response — whether that is ignoring the message, reporting it, or escalating to incident response.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Email marketers and deliverability specialists use header analysis to ensure their campaigns are reaching inboxes rather than spam folders. If email open rates suddenly drop, examining the headers from test sends can reveal whether the DKIM signature is correctly configured, whether the sending IP has good reputation, and whether any intermediate servers are adding or modifying headers. DMARC failure reports help identify unauthorized use of the sending domain, such as spoofing attempts or misconfigured third-party senders.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The tool is equally useful for learning. Students of networking and system administration can dissect real email headers to see SMTP in action. Each Received header documents a real SMTP transaction between two mail servers, complete with the protocol version (ESMTP, ESMTPS), the server hostnames, IP addresses, and timestamps. This practical understanding of email routing is difficult to gain from textbooks alone but immediately accessible through the raw headers of any email you have received.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const input = el('header-input');
+    const btn = el('parse-btn');
+    const resultArea = el('result-area');
+    const errMsg = el('error-msg');
+
+    function getHeader(lines, name) {
+      const re = new RegExp(`^${name}:\\s*(.*)`, 'im');
+      const m = lines.match(re);
+      return m ? m[1].trim() : null;
+    }
+
+    function getAllHeaders(lines, name) {
+      const re = new RegExp(`^${name}:\\s*(.*)`, 'mig');
+      const results = [];
+      let match;
+      while ((match = re.exec(lines)) !== null) {
+        results.push(match[1].trim());
+      }
+      return results;
+    }
+
+    function extractAuthResult(lines) {
+      const auth = getHeader(lines, 'Authentication-Results');
+      if (!auth) return { spf: 'Not found', dkim: 'Not found', dmarc: 'Not found' };
+      const spfMatch = auth.match(/spf=(\w+)/i);
+      const dkimMatch = auth.match(/dkim=(\w+)/i);
+      const dmarcMatch = auth.match(/dmarc=(\w+)/i);
+      return {
+        spf: spfMatch ? spfMatch[1] : 'Not found',
+        dkim: dkimMatch ? dkimMatch[1] : 'Not found',
+        dmarc: dmarcMatch ? dmarcMatch[1] : 'Not found',
+      };
+    }
+
+    function parse() {
+      const raw = input.value.trim();
+      if (!raw) {
+        errMsg.textContent = 'Please paste email headers first.';
+        errMsg.classList.remove('hidden');
+        resultArea.classList.add('hidden');
+        return;
+      }
+      errMsg.classList.add('hidden');
+
+      const spfResult = getHeader(raw, 'Received-SPF') || getHeader(raw, 'X-Received-SPF') || 'Not found';
+      const authRes = extractAuthResult(raw);
+
+      el('r-from').textContent = getHeader(raw, 'From') || 'Not found';
+      el('r-to').textContent = getHeader(raw, 'To') || 'Not found';
+      el('r-subject').textContent = getHeader(raw, 'Subject') || 'Not found';
+      el('r-date').textContent = getHeader(raw, 'Date') || 'Not found';
+      el('r-msgid').textContent = getHeader(raw, 'Message-ID') || 'Not found';
+
+      const spf = authRes.spf !== 'Not found' ? authRes.spf : (spfResult !== 'Not found' ? spfResult : 'Not found');
+      el('r-spf').textContent = spf;
+      el('r-spf').className = 'mt-1 font-bold ' + (spf.toLowerCase().includes('pass') ? 'text-green-600' : spf.toLowerCase().includes('fail') ? 'text-red-600' : 'text-slate-600');
+      el('r-dkim').textContent = authRes.dkim;
+      el('r-dkim').className = 'mt-1 font-bold ' + (authRes.dkim.toLowerCase().includes('pass') ? 'text-green-600' : authRes.dkim.toLowerCase().includes('fail') ? 'text-red-600' : 'text-slate-600');
+      el('r-dmarc').textContent = authRes.dmarc;
+      el('r-dmarc').className = 'mt-1 font-bold ' + (authRes.dmarc.toLowerCase().includes('pass') ? 'text-green-600' : authRes.dmarc.toLowerCase().includes('fail') ? 'text-red-600' : 'text-slate-600');
+
+      const received = getAllHeaders(raw, 'Received');
+      const routeEl = el('r-route');
+      routeEl.innerHTML = '';
+
+      if (received.length === 0) {
+        routeEl.innerHTML = '<p class="text-sm text-slate-500">No Received headers found. Make sure you pasted the full raw headers including the header block.</p>';
+      } else {
+        received.reverse().forEach((line, i) => {
+          const ipMatch = line.match(/\[(\d+\.\d+\.\d+\.\d+)\]/);
+          const hostMatch = line.match(/from\s+([^\s]+)/);
+          const protoMatch = line.match(/ESMTPS?/i);
+          const dateMatch = line.match(/\w{3}, \d{1,2} \w{3} \d{4} \d{2}:\d{2}:\d{2}/);
+          const hop = document.createElement('div');
+          hop.className = 'flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3';
+          hop.innerHTML = `
+            <div class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">${i + 1}</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs text-slate-400 font-mono">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+              <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-600">
+                ${hostMatch ? `<span>Host: <strong>${hostMatch[1].replace(/</g, '&lt;').replace(/>/g, '&gt;')}</strong></span>` : ''}
+                ${ipMatch ? `<span>IP: <strong>${ipMatch[1]}</strong></span>` : ''}
+                ${protoMatch ? `<span class="font-medium text-green-600">${protoMatch[0]}</span>` : ''}
+                ${dateMatch ? `<span class="font-mono text-indigo-600">${dateMatch[0]}</span>` : ''}
+              </div>
+            </div>
+          `;
+          routeEl.appendChild(hop);
+        });
+      }
+
+      resultArea.classList.remove('hidden');
+    }
+
+    btn.addEventListener('click', parse);
+  </script>
+</ToolLayout>

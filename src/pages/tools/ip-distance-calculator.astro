@@ -1,0 +1,257 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IP Geolocation Distance Calculator';
+const description =
+  'Calculate the geographic distance between two IP addresses. Uses IP geolocation data to find the coordinates of each IP and computes the great-circle distance using the Haversine formula.';
+const intro =
+  'Enter two IP addresses to calculate the geographic distance between them. Each IP is looked up to find its approximate location, then the Haversine formula computes the great-circle distance.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'How accurate is IP geolocation?', a: 'IP geolocation is not precise. It typically identifies the approximate city or region of an IP address, not a street address. Accuracy varies by provider — some IPs resolve to the ISP headquarters rather than the actual user location. Consider coordinates as approximate, especially for mobile IPs.' },
+  { q: 'How does the Haversine formula work?', a: 'The Haversine formula calculates the great-circle distance between two points on a sphere given their latitude and longitude. It accounts for the Earth\'s curvature, unlike a flat-Earth Pythagoras approach. The formula uses trigonometric functions of the latitude and longitude differences.' },
+  { q: 'What factors affect geolocation accuracy?', a: 'Geolocation databases rely on various data sources including ISP registration data, BGP announcements, Wi-Fi positioning, and user-contributed data. Accuracy is higher for static ISP-assigned IPs in urban areas and lower for mobile IPs, VPNs, and IPs in rural areas where fewer data points exist.' },
+  { q: 'Why might two IPs in the same city show a distance?', a: 'Since geolocation returns approximate coordinates (often the center of a city or the ISP hub), two IPs in the same city may resolve to the same coordinates and show 0 km, or to different coordinates within the same metropolitan area and show a short distance.' },
+  { q: 'Is my data sent to a server?', a: 'Yes, each IP address is sent to the backend API to look up its geolocation data. The API uses a third-party geolocation database to determine approximate coordinates. No other personal data is transmitted.' },
+  { q: 'Can I calculate distance between coordinates directly?', a: 'This tool is designed for IP addresses and automatically fetches the coordinates for you. If you already have latitude and longitude values, you can use any standard distance calculator or apply the Haversine formula yourself.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">IP Distance Calculator</h2>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="ip1-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">IP Address 1</label>
+          <input id="ip1-input" type="text" placeholder="8.8.8.8" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label for="ip2-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">IP Address 2</label>
+          <input id="ip2-input" type="text" placeholder="1.1.1.1" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+      <button id="calc-btn" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate Distance</button>
+    </div>
+
+    <div id="result-area" class="hidden space-y-3">
+      <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm text-center">
+        <p class="text-sm font-semibold uppercase tracking-wide text-indigo-500">Great-Circle Distance</p>
+        <p id="r-distance-km" class="mt-1 text-3xl font-extrabold text-indigo-700">—</p>
+        <p id="r-distance-mi" class="mt-1 text-lg text-indigo-500">—</p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 class="text-sm font-semibold text-slate-900">Location 1</h3>
+          <div class="mt-2 space-y-1 text-sm">
+            <p><span class="text-slate-400">IP:</span> <span id="r-ip1" class="font-mono font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">City:</span> <span id="r-city1" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Region:</span> <span id="r-region1" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Country:</span> <span id="r-country1" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Coordinates:</span> <span id="r-coords1" class="font-mono text-slate-600">—</span></p>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 class="text-sm font-semibold text-slate-900">Location 2</h3>
+          <div class="mt-2 space-y-1 text-sm">
+            <p><span class="text-slate-400">IP:</span> <span id="r-ip2" class="font-mono font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">City:</span> <span id="r-city2" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Region:</span> <span id="r-region2" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Country:</span> <span id="r-country2" class="font-medium text-slate-900">—</span></p>
+            <p><span class="text-slate-400">Coordinates:</span> <span id="r-coords2" class="font-mono text-slate-600">—</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="error-msg" class="hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IP distance calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      This tool estimates the geographic distance between two IP addresses using a combination of IP geolocation and spherical trigonometry. When you enter two IP addresses and click calculate, the tool sends each IP to a backend API that queries a geolocation database. These databases map IP ranges to approximate geographic coordinates based on registration data, ISP network topology, and aggregated location data. The API returns the city, region, country, and latitude/longitude for each IP address.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Once both coordinates are obtained, the tool applies the Haversine formula to compute the great-circle distance between the two points. The Haversine formula calculates distances on a sphere (the Earth) using the central angle between the two points. It uses the latitude and longitude values in radians, computes the differences, and applies trigonometric functions: <code>a = sin(&#916;lat/2)&#178; + cos(lat1) * cos(lat2) * sin(&#916;lon/2)&#178;</code>, then <code>c = 2 * atan2(&#8730;a, &#8730;(1-a))</code>, and finally <code>d = R * c</code>, where R is the Earth's mean radius of 6,371 kilometers.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The result is displayed in both kilometers and miles. The great-circle distance represents the shortest path along the Earth's surface between the two points — the equivalent of the path an airplane would fly. Note that the actual network distance (the path data packets take through routers and undersea cables) is typically much longer than the great-circle distance, because internet traffic does not travel in straight lines. Fiber optic cables follow roads, railways, and ocean floors, adding significant extra distance compared to the direct geographic route.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-labelledby="dist-title dist-desc">
+      <title id="dist-title">Two Points on a Globe with Great-Circle Distance Arc</title>
+      <desc id="dist-desc">Globe representation showing two geographic points connected by a great-circle arc with labeled coordinates and distance</desc>
+      <rect x="30" y="10" width="740" height="280" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="35" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Great-Circle Distance Between Two Points</text>
+
+      <ellipse cx="400" cy="150" rx="200" ry="120" fill="none" stroke="#cbd5e1" stroke-width="2" />
+      <ellipse cx="400" cy="150" rx="200" ry="120" fill="#e0e7ff" opacity="0.3" />
+      <ellipse cx="400" cy="150" rx="80" ry="120" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4" />
+      <line x1="200" y1="150" x2="600" y2="150" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
+      <line x1="400" y1="30" x2="400" y2="270" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
+
+      <circle cx="300" cy="100" r="8" fill="#6366f1" />
+      <text x="300" y="90" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Point A</text>
+      <text x="300" y="80" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">(lat1, lon1)</text>
+
+      <circle cx="520" cy="200" r="8" fill="#818cf8" />
+      <text x="520" y="220" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Point B</text>
+      <text x="520" y="230" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">(lat2, lon2)</text>
+
+      <path d="M 308 106 Q 400 80 520 200" fill="none" stroke="#6366f1" stroke-width="3" stroke-dasharray="6,3" />
+      <text x="415" y="100" fill="#6366f1" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Great-Circle Arc</text>
+      <text x="415" y="115" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">d = R x arccos(sin ...)</text>
+
+      <rect x="280" y="240" width="240" height="30" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="400" y="254" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">R = 6,371 km (Earth radius)</text>
+      <text x="400" y="265" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">c = 2 x atan2(&#8730;a, &#8730;(1-a))</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Two geographic points on a globe connected by the great-circle arc, with the Haversine formula parameters labeled</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding IP geolocation accuracy</h2>
+    <p class="mt-2 text-slate-600">
+      IP geolocation is an estimation technique, not an exact science. The accuracy depends on several factors including the type of IP address (residential ISP, mobile carrier, cloud provider, VPN), the quality of the geolocation database used, and the geographic region. For residential broadband connections, accuracy is typically at the city level within a 10–50 kilometer radius. Mobile IPs are harder to locate because they are assigned from pools that cover entire regions. Cloud provider IPs (AWS, Google Cloud, Azure) often resolve to the data center location rather than the end user, which may be in a completely different city or country from the actual user.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The geolocation databases used by the backend API aggregate data from multiple sources: whois registration records that include the registered address of the ISP, BGP routing data that maps IP prefixes to network locations, latency measurements from known vantage points, and user-contributed data from mapping services. These sources provide overlapping estimates that are combined to produce the most likely location. The accuracy continues to improve as more data points become available, but fundamental limitations remain because ISPs do not publish precise customer location data.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Factors to consider</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Geographic vs network distance</h3>
+        <p class="mt-1 text-sm text-slate-600">The great-circle distance calculated here represents the direct geographic path. Actual network latency depends on fiber optic cable routes, router hops, and network congestion, which typically add 2-10x the geographic distance in effective path length.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">VPN and proxy effects</h3>
+        <p class="mt-1 text-sm text-slate-600">If either IP address is a VPN endpoint, proxy server, or cloud exit node, the geolocation reflects the server location, not the actual user. Two users connecting through the same VPN may show as nearby even if they are on different continents.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Database staleness</h3>
+        <p class="mt-1 text-sm text-slate-600">IP allocations change frequently as ISPs expand, merge, and renumber their networks. The geolocation database may not reflect recent changes, especially for newly allocated IP blocks or recently transferred address space.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use IP distance calculation</h2>
+    <p class="mt-2 text-slate-600">
+      Network engineers and CDN architects use IP distance calculations as a rough guide for understanding traffic patterns. Knowing the approximate geographic distance between origin servers and end users helps in planning content delivery strategies. If the distance between your server IP and your user IPs is consistently large, adding a CDN with points of presence closer to your users can significantly reduce latency and improve the user experience. The tool provides a quick visual indication of whether your users are geographically concentrated or distributed worldwide.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Security analysts investigating anomalous network traffic can use the distance between two IPs as one signal among many. A login attempt from an IP that geolocates to a different continent than the user's usual location, combined with a distance of thousands of kilometers in a short time window, is a strong indicator of account compromise. While not definitive on its own (the user could be traveling or using a VPN), the distance metric contributes to the overall risk assessment.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For general curiosity and learning, the tool demonstrates how IP addresses are distributed geographically and how the internet physically connects people around the world. You can look up your own IP address and compare it against well-known services to see how far your data travels when you visit a website. This geographic awareness helps contextualize discussions about internet infrastructure, undersea cables, data sovereignty, and the physical reality of the supposedly "virtual" world of internet communication.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const btn = el('calc-btn');
+    const ip1 = el('ip1-input');
+    const ip2 = el('ip2-input');
+    const resultArea = el('result-area');
+    const errMsg = el('error-msg');
+
+    const API = 'https://toolnestr.toolnestr.workers.dev/api/ip-lookup';
+
+    function toRad(deg) {
+      return deg * (Math.PI / 180);
+    }
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    async function lookupIP(ip) {
+      const url = `${API}?ip=${encodeURIComponent(ip)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    async function calculate() {
+      const ipVal1 = ip1.value.trim();
+      const ipVal2 = ip2.value.trim();
+
+      if (!ipVal1 || !ipVal2) {
+        errMsg.textContent = 'Please enter both IP addresses.';
+        errMsg.classList.remove('hidden');
+        resultArea.classList.add('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Calculating...';
+      errMsg.classList.add('hidden');
+      resultArea.classList.add('hidden');
+
+      try {
+        const [d1, d2] = await Promise.all([lookupIP(ipVal1), lookupIP(ipVal2)]);
+
+        const lat1 = parseFloat(d1.lat), lon1 = parseFloat(d1.lon);
+        const lat2 = parseFloat(d2.lat), lon2 = parseFloat(d2.lon);
+
+        if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+          throw new Error('Could not determine coordinates for one or both IPs.');
+        }
+
+        const km = Math.round(haversineKm(lat1, lon1, lat2, lon2) * 10) / 10;
+        const mi = Math.round(km * 0.621371 * 10) / 10;
+
+        el('r-distance-km').textContent = `${km.toLocaleString()} km`;
+        el('r-distance-mi').textContent = `${mi.toLocaleString()} miles`;
+
+        const setLoc = (prefix, d) => {
+          el(`r-${prefix}1`).textContent = d.ip || '—';
+          el(`r-city1`).textContent = prefix === 'ip' ? (d.city || '—') : '—';
+          el(`r-region1`).textContent = prefix === 'ip' ? (d.region || '—') : '—';
+          el(`r-country1`).textContent = prefix === 'ip' ? (d.country || '—') : '—';
+          el(`r-coords1`).textContent = `${d.lat || '—'}, ${d.lon || '—'}`;
+        };
+
+        el('r-ip1').textContent = d1.ip || '—';
+        el('r-city1').textContent = d1.city || '—';
+        el('r-region1').textContent = d1.region || '—';
+        el('r-country1').textContent = d1.country || '—';
+        el('r-coords1').textContent = `${d1.lat || '—'}, ${d1.lon || '—'}`;
+
+        el('r-ip2').textContent = d2.ip || '—';
+        el('r-city2').textContent = d2.city || '—';
+        el('r-region2').textContent = d2.region || '—';
+        el('r-country2').textContent = d2.country || '—';
+        el('r-coords2').textContent = `${d2.lat || '—'}, ${d2.lon || '—'}`;
+
+        resultArea.classList.remove('hidden');
+      } catch (e) {
+        errMsg.textContent = `Lookup failed: ${e.message}`;
+        errMsg.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Calculate Distance';
+      }
+    }
+
+    btn.addEventListener('click', calculate);
+    [ip1, ip2].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); }));
+  </script>
+</ToolLayout>

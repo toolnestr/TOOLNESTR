@@ -1,0 +1,217 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'HTTP Latency / Ping Test';
+const description =
+  'Measure HTTP round-trip latency to popular internet endpoints from your browser. Results show response time in milliseconds for each target — useful for spotting connectivity issues and comparing network paths.';
+const intro =
+  'Test the HTTP latency to well-known endpoints from your current network. Click "Start Test" to measure round-trip times using fetch requests.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'Why does this say HTTP round-trip latency instead of ping?', a: 'Browsers cannot send raw ICMP packets due to security restrictions in the JavaScript runtime. Instead, we measure the time it takes for a full HTTP request-response cycle. This includes DNS resolution, TCP connection, TLS handshake, and HTTP response time — not just the ICMP echo round-trip.' },
+  { q: 'How does the test work?', a: 'The tool sends a fetch() request to each endpoint and records the time using performance.now() before and after the request. The difference is the total round-trip time. Each endpoint is tested sequentially with multiple attempts.' },
+  { q: 'Why do results vary between runs?', a: 'Network conditions change constantly due to congestion, routing changes, server load, and your own connection quality. Running the test multiple times and averaging the results gives a more reliable picture of typical latency.' },
+  { q: 'Does this affect the target servers?', a: 'The requests are lightweight HEAD or GET requests to publicly accessible endpoints. They are similar to what happens when you visit a website in your browser. Please use reasonable intervals between tests.' },
+  { q: 'Which endpoints are tested?', a: 'The tool tests four common endpoints: cloudflare.com, google.com, toolnestr.com, and 1.1.1.1. These are chosen because they represent different geographic distributions and network paths.' },
+  { q: 'Can I add custom endpoints?', a: 'Custom endpoint support is not available in this version, but you can use the browser developer tools to measure fetch timings for any URL using the Network panel or Performance API.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-base font-semibold text-slate-900">HTTP Round-Trip Latency Test</h2>
+        <button id="start-btn" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Start Test</button>
+      </div>
+      <p class="mt-2 text-xs text-amber-600 font-medium">HTTP round-trip latency, not ICMP ping — browsers cannot send raw ICMP packets.</p>
+    </div>
+
+    <div id="results" class="hidden">
+      <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-slate-700">Endpoint</th>
+              <th class="px-4 py-3 text-right font-semibold text-slate-700">Attempt 1</th>
+              <th class="px-4 py-3 text-right font-semibold text-slate-700">Attempt 2</th>
+              <th class="px-4 py-3 text-right font-semibold text-slate-700">Attempt 3</th>
+              <th class="px-4 py-3 text-right font-semibold text-slate-700">Average</th>
+              <th class="px-4 py-3 text-right font-semibold text-slate-700">Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+      <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">Test Duration</span>
+        <p id="r-duration" class="mt-1 text-lg font-bold text-indigo-600">—</p>
+      </div>
+    </div>
+
+    <div id="loading-msg" class="hidden">
+      <div class="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white p-6">
+        <svg class="h-5 w-5 animate-spin text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg>
+        <span class="text-sm text-slate-600">Testing endpoints, please wait...</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How HTTP latency testing works</h2>
+    <p class="mt-2 text-slate-600">
+      This tool measures the round-trip time (RTT) of HTTP requests from your browser to well-known internet endpoints. Unlike the traditional ICMP ping command, which sends a small echo request packet directly at the network layer, browser-based latency measurement must use the HTTP protocol. The measurement begins with a DNS lookup to resolve the hostname to an IP address, followed by a TCP three-way handshake to establish a connection. If the endpoint uses HTTPS, a TLS handshake adds additional round trips for certificate exchange and key agreement. Only after these connection steps can the HTTP request be sent, and the response must travel back through the same layers.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The JavaScript <code>performance.now()</code> API provides high-resolution timestamps with microsecond precision, far better than the millisecond resolution of <code>Date.now()</code>. By recording a timestamp immediately before initiating the fetch and immediately after the promise resolves, we capture the entire duration of the operation. Each endpoint is tested three times and the results are averaged to smooth out transient network spikes. The standard deviation between attempts provides an indication of jitter — the variability of latency over short time intervals.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Testing multiple endpoints gives a more complete picture of your network quality than any single target. Low latency to a geographically nearby CDN endpoint with high latency to a distant server suggests the issue is physical distance rather than your local connection. Conversely, high latency to all endpoints regardless of location points to a local network problem such as bufferbloat, saturated bandwidth, or a faulty router. The four endpoints in this test are chosen to represent different network paths and geographic regions.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="ping-title ping-desc">
+      <title id="ping-title">HTTP Request-Response Timing Diagram</title>
+      <desc id="ping-desc">Timeline showing the sequence of DNS lookup, TCP handshake, TLS handshake, HTTP request, and HTTP response for a latency measurement</desc>
+      <rect x="30" y="10" width="740" height="200" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="35" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">HTTP Round-Trip Timing Sequence</text>
+      <line x1="60" y1="50" x2="740" y2="50" stroke="#e2e8f0" stroke-width="1" />
+      <line x1="180" y1="50" x2="180" y2="180" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4" />
+      <text x="180" y="195" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Start</text>
+      <rect x="190" y="60" width="120" height="22" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="250" y="75" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">DNS Lookup</text>
+      <polygon points="340,68 350,71 340,74" fill="#6366f1" />
+      <rect x="345" y="60" width="100" height="22" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="395" y="75" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">TCP Handshake</text>
+      <rect x="450" y="60" width="110" height="22" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="505" y="75" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">TLS Handshake</text>
+      <rect x="565" y="60" width="100" height="22" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="615" y="75" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">HTTP Request</text>
+      <rect x="670" y="60" width="60" height="22" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="700" y="75" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Response</text>
+      <line x1="250" y1="110" x2="700" y2="110" stroke="#6366f1" stroke-width="2" stroke-dasharray="4,2" />
+      <text x="250" y="125" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">performance.now()</text>
+      <text x="700" y="125" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">performance.now()</text>
+      <line x1="250" y1="135" x2="250" y2="145" stroke="#6366f1" stroke-width="1.5" />
+      <line x1="700" y1="135" x2="700" y2="145" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="300" y="148" width="300" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="450" y="164" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Round-Trip Time = end - start</text>
+      <text x="650" y="164" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">(ms)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Full sequence of steps in an HTTP latency measurement from the browser using performance.now() timestamps</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Interpreting latency results</h2>
+    <p class="mt-2 text-slate-600">
+      Latency is measured in milliseconds (ms) and represents the time required for a packet to travel from your browser to the server and back. The following general benchmarks apply: under 20 ms is excellent (typical for a local network or nearby CDN), 20–50 ms is very good (typical for well-connected regional infrastructure), 50–100 ms is average (most consumer connections to geographically distant servers), 100–200 ms is noticeable but acceptable for most applications, and above 200 ms indicates significant distance or network congestion that may impact real-time applications like video conferencing and online gaming.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The three-attempt-per-endpoint design helps distinguish between consistent latency patterns and transient spikes. If all three attempts to a given endpoint show similar values (within 10–20 ms), the latency is stable and the average is a reliable metric. Large variations between attempts suggest jitter — a common symptom of bufferbloat in consumer routers, Wi-Fi interference, or competing traffic on your connection. Comparing average latencies across the four endpoints helps isolate the source of problems: if only one endpoint is slow, the issue is in that server's network or geographic distance; if all are slow, the problem is on your end.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Limitations of browser-based latency testing</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Not real ICMP ping</h3>
+        <p class="mt-1 text-sm text-slate-600">As noted above, browsers cannot send ICMP echo requests due to JavaScript security restrictions. HTTP-based measurement includes protocol overhead (DNS, TCP, TLS) that adds 10–50 ms to the raw network latency. This is acceptable for relative comparison but not for absolute network diagnostics.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">CORS and fetch restrictions</h3>
+        <p class="mt-1 text-sm text-slate-600">The tool can only test endpoints that respond to cross-origin requests (CORS headers). Some servers block OPTIONS or HEAD requests, which may cause a failed attempt even if the server is otherwise reachable.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">No TCP-only ports</h3>
+        <p class="mt-1 text-sm text-slate-600">Since the test uses the HTTP protocol on standard ports 80 and 443, it cannot measure latency for non-HTTP services. Testing SSH (port 22) or database ports (3306, 5432) requires a TCP ping tool outside the browser.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use an HTTP latency test</h2>
+    <p class="mt-2 text-slate-600">
+      Use this tool when you suspect network issues are affecting your browsing experience. If web pages load slowly but you are not sure whether the problem is your internet connection, a misconfigured DNS resolver, or the remote server itself, testing multiple endpoints can help narrow down the cause. IT support teams can ask users to run this test before escalating connectivity issues, providing objective latency measurements rather than subjective descriptions of "the internet being slow."
+    </p>
+    <p class="mt-3 text-slate-600">
+      Developers deploying applications to new regions can use the tool to verify that their content delivery network or cloud provider has points of presence near their target audience. Running the test from different locations (home, office, mobile hotspot) can reveal whether a planned infrastructure change will actually improve performance for end users. While not a substitute for synthetic monitoring tools like Pingdom or ThousandEyes, this quick diagnostic test provides immediate insight without any setup or account creation.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const btn = el('start-btn');
+    const tbody = el('tbody');
+    const resultsDiv = el('results');
+    const loading = el('loading-msg');
+    const durationEl = el('r-duration');
+
+    const endpoints = [
+      { label: 'cloudflare.com', url: 'https://cloudflare.com' },
+      { label: 'google.com', url: 'https://google.com' },
+      { label: 'toolnestr.com', url: 'https://toolnestr.com' },
+      { label: '1.1.1.1', url: 'https://1.1.1.1' },
+    ];
+
+    async function testEndpoint(url, attempts = 3) {
+      const timings = [];
+      for (let i = 0; i < attempts; i++) {
+        const start = performance.now();
+        try {
+          const res = await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+          const end = performance.now();
+          timings.push({ ms: Math.round((end - start) * 10) / 10, status: res.type === 'opaque' ? 'OK' : res.status });
+        } catch {
+          const end = performance.now();
+          timings.push({ ms: Math.round((end - start) * 10) / 10, status: 'FAIL' });
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return timings;
+    }
+
+    async function runTest() {
+      btn.disabled = true;
+      btn.textContent = 'Testing...';
+      resultsDiv.classList.add('hidden');
+      loading.classList.remove('hidden');
+      tbody.innerHTML = '';
+
+      const startAll = performance.now();
+      let total = 0, count = 0;
+
+      for (const ep of endpoints) {
+        const timings = await testEndpoint(ep.url);
+        const valid = timings.filter((t) => t.status !== 'FAIL');
+        const avg = valid.length > 0 ? Math.round(valid.reduce((s, t) => s + t.ms, 0) / valid.length * 10) / 10 : null;
+        const row = document.createElement('tr');
+
+        const statusClass = avg !== null ? 'text-green-600 font-medium' : 'text-red-600 font-medium';
+        const statusText = avg !== null ? 'OK' : 'Unreachable';
+
+        row.innerHTML = `
+          <td class="px-4 py-3 font-medium text-slate-900">${ep.label}</td>
+          <td class="px-4 py-3 text-right font-mono text-slate-600">${timings[0].status === 'FAIL' ? '—' : timings[0].ms + ' ms'}</td>
+          <td class="px-4 py-3 text-right font-mono text-slate-600">${timings[1].status === 'FAIL' ? '—' : timings[1].ms + ' ms'}</td>
+          <td class="px-4 py-3 text-right font-mono text-slate-600">${timings[2].status === 'FAIL' ? '—' : timings[2].ms + ' ms'}</td>
+          <td class="px-4 py-3 text-right font-mono font-bold text-indigo-600">${avg !== null ? avg + ' ms' : '—'}</td>
+          <td class="px-4 py-3 text-right ${statusClass}">${statusText}</td>
+        `;
+        tbody.appendChild(row);
+
+        if (avg !== null) { total += avg; count++; }
+      }
+
+      const totalTime = Math.round((performance.now() - startAll) * 10) / 10;
+      durationEl.textContent = `${totalTime} ms total`;
+      loading.classList.add('hidden');
+      resultsDiv.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Re-run Test';
+    }
+
+    btn.addEventListener('click', runTest);
+  </script>
+</ToolLayout>

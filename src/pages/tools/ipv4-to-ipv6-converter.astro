@@ -1,0 +1,207 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IPv4 to IPv6 Converter';
+const description =
+  'Convert any IPv4 address to IPv6 mapped address formats: ::ffff:x.x.x.x and 2002:xxxx:xxxx::. ' +
+  'Supports both IPv4-mapped IPv6 and 6to4 prefix conversion.';
+const intro =
+  'Enter an IPv4 address to see it converted into two standard IPv6 representations: ' +
+  'the IPv4-mapped format (::ffff/96) and the 6to4 format (2002::/16).';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is an IPv4-mapped IPv6 address?', a: 'An IPv4-mapped IPv6 address embeds an IPv4 address into the lower 32 bits of a 128-bit IPv6 address using the ::ffff/96 prefix. For example, ::ffff:192.0.2.1 represents the IPv4 address 192.0.2.1. This format is used by dual-stack applications to represent IPv4 connections over an IPv6 socket API.' },
+  { q: 'What is a 6to4 address?', a: '6to4 is a tunneling mechanism defined in RFC 3056 that allows IPv6 packets to be transmitted over an IPv4 network. It uses the 2002::/16 prefix and embeds the IPv4 address in the next 32 bits. For example, 2002:c000:0201::1 corresponds to 192.0.2.1.' },
+  { q: 'Why are there two different IPv6 formats for IPv4 addresses?', a: 'The ::ffff format is used for compatibility in dual-stack software — it lets IPv6-only applications handle IPv4 connections. The 2002:: format is a tunneling mechanism that encapsulates IPv6 packets inside IPv4 packets. They serve different purposes in the protocol stack.' },
+  { q: 'Can all IPv4 addresses be converted to IPv6?', a: 'Yes — any IPv4 address can be represented in both ::ffff and 2002:: formats. However, these are representations, not protocol-level equivalents. An IPv4-only host cannot communicate with an IPv6-only host through address conversion alone — translation or tunneling is required.' },
+  { q: 'What is the ::ffff:0:0/96 prefix?', a: 'The ::ffff:0:0/96 prefix (also written as ::ffff/96) is reserved by RFC 4291 for IPv4-mapped IPv6 addresses. The first 80 bits are zero, the next 16 bits are all ones (ffff), and the last 32 bits contain the IPv4 address. These addresses are never used as source or destination addresses on the wire — they exist only within socket APIs.' },
+  { q: 'Is 6to4 still used today?', a: '6to4 was widely used in the early days of IPv6 deployment but has largely been replaced by native IPv6, Teredo, and 6in4 tunnels. Many networks now block 6to4 due to security concerns and reliability issues. However, the 2002:: prefix remains a valid representation for converting IPv4 addresses to IPv6 format.' },
+  { q: 'How is the IPv4 address embedded in 6to4?', a: 'In 6to4, the 32-bit IPv4 address is placed in bits 16 to 47 of the IPv6 address. The IPv4 octets are converted to hexadecimal and placed in the second and third hextets. For example, 192.0.2.1 becomes c000:0201 in the 2002:: prefix.' },
+  { q: 'What is the purpose of IPv4-mapped addresses?', a: 'IPv4-mapped IPv6 addresses allow applications written to the IPv6 socket API to handle connections from IPv4 clients transparently. When a dual-stack server listens on an IPv6 socket, incoming IPv4 connections are presented as ::ffff:x.x.x.x addresses, eliminating the need for separate IPv4 and IPv6 listeners.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Enter an IPv4 address</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="v4-input" type="text" placeholder="192.168.1.1" class="w-40 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <button id="convert-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">Convert</button>
+    </div>
+    <div id="v6-output" class="mt-4 hidden space-y-3">
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">IPv4 Address (input)</span>
+        <p id="out-v4" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p>
+      </div>
+      <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-3">
+        <span class="text-xs font-medium text-indigo-600">IPv4-Mapped IPv6 (::ffff/96)</span>
+        <p id="out-mapped" class="mt-0.5 font-mono text-sm font-semibold text-indigo-700">—</p>
+        <p class="mt-1 text-xs text-indigo-500">RFC 4291 — IPv4-mapped IPv6 address. Used in dual-stack socket APIs.</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">6to4 IPv6 (2002::/16)</span>
+        <p id="out-6to4" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p>
+        <p class="mt-1 text-xs text-slate-500">RFC 3056 — 6to4 tunneling mechanism. Embeds IPv4 in 2002:: prefix.</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Binary (IPv4)</span>
+        <p id="out-binary" class="mt-0.5 break-all font-mono text-xs text-slate-700">—</p>
+      </div>
+      <div class="rounded-lg bg-slate-50 p-3">
+        <span class="text-xs font-medium text-slate-500">Hex (IPv4 octets)</span>
+        <p id="out-hex" class="mt-0.5 font-mono text-xs text-slate-700">—</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IPv4 to IPv6 conversion works</h2>
+    <p class="mt-2 text-slate-600">
+      IPv4 and IPv6 are fundamentally different protocols with incompatible address formats. An IPv4 address is 32 bits, written as four decimal octets. An IPv6 address is 128 bits, written as eight hexadecimal groups. To make them interoperable, several standards define ways to embed an IPv4 address inside an IPv6 address. This converter implements two of the most common: IPv4-mapped IPv6 addresses and 6to4 addresses.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The IPv4-mapped format, defined in RFC 4291, places the 32-bit IPv4 address in the lowest 32 bits of the IPv6 address. The first 80 bits are zero, and the next 16 bits are set to one (0xFFFF), resulting in the prefix <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">::ffff:0:0/96</code>. For example, 192.0.2.1 becomes <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">::ffff:192.0.2.1</code> — or in fully expanded hex notation, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">0000:0000:0000:0000:0000:ffff:c000:0201</code>.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The 6to4 format, standardized in RFC 3056, uses the prefix 2002::/16 (which corresponds to the binary value 0010 0000 0000 0010 in the first 16 bits). The next 32 bits carry the IPv4 address, leaving 80 bits for subnet and interface identifier. For the IPv4 address 192.0.2.1, the hex conversion of 192=C0, 0=00, 2=02, 1=01 gives <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">2002:c000:0201::1</code>. The trailing ::1 represents the standard IPv6 solicited-node multicast interface identifier.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="convert-diagram-title convert-diagram-desc">
+      <title id="convert-diagram-title">IPv4 to IPv6 Embedding Structure</title>
+      <desc id="convert-diagram-desc">Diagram showing how a 32-bit IPv4 address is embedded into a 128-bit IPv6 address in both ::ffff and 2002:: formats</desc>
+      <text x="400" y="22" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">IPv4 Address: 192.168.1.1</text>
+      <rect x="200" y="32" width="100" height="24" rx="3" fill="#6366f1" /><text x="250" y="48" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">192</text>
+      <rect x="304" y="32" width="100" height="24" rx="3" fill="#6366f1" /><text x="354" y="48" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">168</text>
+      <rect x="408" y="32" width="100" height="24" rx="3" fill="#6366f1" /><text x="458" y="48" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">1</text>
+      <rect x="512" y="32" width="100" height="24" rx="3" fill="#6366f1" /><text x="562" y="48" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">1</text>
+      <text x="400" y="75" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">4 octets = 32 bits total</text>
+      <line x1="400" y1="85" x2="400" y2="105" stroke="#6366f1" stroke-width="2" marker-end="url(#v6arrow)" />
+      <text x="400" y="120" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Mapped (::ffff/96)</text>
+      <rect x="40" y="135" width="350" height="30" rx="3" fill="#cbd5e1" />
+      <text x="215" y="154" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11">80 bits zeros + 16 bits ffff</text>
+      <rect x="394" y="135" width="120" height="30" rx="3" fill="#6366f1" />
+      <text x="454" y="154" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">192.168.1.1</text>
+      <rect x="518" y="135" width="120" height="30" rx="3" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="578" y="154" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">Subnet + IID</text>
+      <text x="400" y="185" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">6to4 (2002::/16)</text>
+      <rect x="40" y="200" width="110" height="30" rx="3" fill="#818cf8" />
+      <text x="95" y="219" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">2002 prefix</text>
+      <rect x="154" y="200" width="120" height="30" rx="3" fill="#6366f1" />
+      <text x="214" y="219" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11">c0a8:0101</text>
+      <rect x="278" y="200" width="120" height="30" rx="3" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="338" y="219" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">Subnet</text>
+      <rect x="402" y="200" width="120" height="30" rx="3" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="462" y="219" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">Interface ID</text>
+      <defs>
+        <marker id="v6arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" /></marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">An IPv4 address is embedded into the last 32 bits of a ::ffff IPv6 address or into bits 16-47 of a 2002:: 6to4 address</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IPv4-mapped IPv6 addresses in detail</h2>
+    <p class="mt-2 text-slate-600">
+      The IPv4-mapped IPv6 address format was defined in RFC 4291 (IP Version 6 Addressing Architecture) to support the transition from IPv4 to IPv6. The structure is 80 bits of zeros, followed by 16 bits of ones (0xFFFF), followed by the 32-bit IPv4 address. In standard notation, this is written as <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">::ffff:192.0.2.1</code>. The address is never used as a source or destination in an IPv6 packet header — it exists only as an internal representation within the socket API layer of dual-stack operating systems.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The practical use of ::ffff addresses is invisible to most users but essential for software developers. When a server application creates an IPv6 listening socket with the IPV6_V6ONLY flag set to false, the operating system automatically maps incoming IPv4 connections to ::ffff addresses. This allows the server to handle both IPv4 and IPv6 clients with a single socket. Without this mechanism, servers would need to maintain separate IPv4 and IPv6 listeners, doubling the complexity of network service code.
+    </p>
+    <p class="mt-3 text-slate-600">
+      It is important to distinguish IPv4-mapped addresses from IPv4-compatible addresses (::/96 with zeros instead of ffff), which were used in earlier transition mechanisms but have been deprecated by RFC 4291. The ::ffff/96 prefix specifically uses the 16-bit field of all ones to indicate that the address is an IPv4-mapped address. This eliminates ambiguity and simplifies the handling of these addresses in routing and forwarding decisions.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The 6to4 tunneling mechanism</h2>
+    <p class="mt-2 text-slate-600">
+      6to4 was designed as an automatic tunneling mechanism that allows isolated IPv6 sites to communicate over the existing IPv4 internet without manual tunnel configuration. Defined in RFC 3056, it assigns every public IPv4 address a corresponding /48 IPv6 prefix derived by prepending the IPv4 address to the 2002::/16 prefix. An organization with the IPv4 address 192.0.2.1 gets the 6to4 prefix 2002:c000:0201::/48, which provides 65,535 /64 subnets for their internal network.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The encapsulation process is straightforward: the 6to4 router takes an IPv6 packet destined for a 2002:: address, strips the 2002:: prefix to extract the destination IPv4 address, then encapsulates the entire IPv6 packet in an IPv4 packet with protocol type 41. On the receiving end, the 6to4 router decapsulates the packet and forwards the inner IPv6 packet to its final destination. This tunneling is automatic because the destination IPv4 address is embedded directly in the IPv6 destination address — no configuration or mapping table is needed.
+    </p>
+    <p class="mt-3 text-slate-600">
+      While 6to4 was an important stepping stone in IPv6 deployment, it has fallen out of favor due to several limitations. Many firewalls block protocol 41 traffic, and the reliance on IPv4 anycast for 6to4 relay routers introduced reliability and performance issues. The IETF now recommends native IPv6 connectivity or manually configured tunnels over 6to4. However, the 2002:: prefix remains a valid address format for educational purposes and legacy systems.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">When to use each format</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-900">::ffff/96 (IPv4-Mapped)</h3>
+        <p class="mt-1 text-sm text-slate-600">Use when developing or debugging dual-stack network applications. This format appears in log files, socket API calls, and debugging tools like netstat when IPv6 sockets accept IPv4 connections. It is not used for actual packet transmission.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">2002::/16 (6to4)</h3>
+        <p class="mt-1 text-sm text-slate-600">Use when configuring 6to4 tunnels for IPv6 connectivity across IPv4-only infrastructure. This format is used in router configurations and represents a routable IPv6 prefix. It enables IPv6 communication without native IPv6 from your ISP.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Native IPv6</h3>
+        <p class="mt-1 text-sm text-slate-600">Always prefer native IPv6 (2001::/16 and other global unicast prefixes) when available. Native connectivity avoids the overhead and reliability issues of tunneling and provides full IPv6 performance. Check with your ISP about native IPv6 support.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Transition technologies and the future</h2>
+    <p class="mt-2 text-slate-600">
+      The transition from IPv4 to IPv6 has been underway for over two decades. Various mechanisms have been developed to ensure interoperability during the transition period, which has lasted much longer than originally anticipated. Besides IPv4-mapped addresses and 6to4, other notable transition technologies include Teredo (RFC 4380), which tunnels IPv6 over UDP through NAT devices, and DNS64/NAT64 (RFC 6146), which allows IPv6-only clients to access IPv4-only servers through protocol translation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      As of the mid-2020s, global IPv6 adoption exceeds 40% in many regions, with some countries and ISPs exceeding 70%. Major content providers including Google, Facebook, Netflix, and Cloudflare serve the majority of their traffic over IPv6. As native IPv6 becomes ubiquitous, the need for transition mechanisms and IPv4-to-IPv6 conversion tools diminishes. However, understanding these formats remains essential for network professionals working with legacy systems and during the continuing coexistence period.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('v4-input');
+    const btn = el('convert-btn');
+
+    function parseIpv4(str) {
+      const parts = str.trim().split('.');
+      if (parts.length !== 4) return null;
+      const octets = parts.map(Number);
+      if (octets.some((o) => isNaN(o) || o < 0 || o > 255)) return null;
+      return octets;
+    }
+
+    function toHex(octets) {
+      return octets.map((o) => o.toString(16).padStart(2, '0')).join('');
+    }
+
+    function toBinary(octets) {
+      return octets.map((o) => o.toString(2).padStart(8, '0')).join('.');
+    }
+
+    function format6to4(hex) {
+      return '2002:' + hex.slice(0, 4) + ':' + hex.slice(4, 8) + '::1';
+    }
+
+    function formatMapped(octets) {
+      return '::ffff:' + octets.join('.');
+    }
+
+    function compute() {
+      const octets = parseIpv4(input.value);
+      const output = el('v6-output');
+      if (!octets) {
+        output.classList.add('hidden');
+        return;
+      }
+      output.classList.remove('hidden');
+
+      const hex = toHex(octets);
+      el('out-v4').textContent = octets.join('.');
+      el('out-mapped').textContent = formatMapped(octets);
+      el('out-6to4').textContent = format6to4(hex);
+      el('out-binary').textContent = toBinary(octets);
+      el('out-hex').textContent = '0x' + hex + '  (each octet in hex: ' + octets.map((o) => '0x' + o.toString(16).toUpperCase()).join(', ') + ')';
+    }
+
+    btn.addEventListener('click', compute);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') compute(); });
+  </script>
+</ToolLayout>

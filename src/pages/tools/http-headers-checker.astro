@@ -1,0 +1,241 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'HTTP Headers Checker';
+const description =
+  'Inspect HTTP request headers in real-time. See what headers your browser sends and understand ' +
+  'how HTTP headers work — Content-Type, User-Agent, Accept, Cache-Control, and more.';
+const intro =
+  'Click the button below to see the HTTP headers your browser sends to this server. Each request includes headers that carry metadata about the request context.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What are HTTP headers?', a: 'HTTP headers are key-value pairs sent between client and server during an HTTP request or response. They carry metadata about the request, response, or resource being transferred.' },
+  { q: 'What is the difference between request and response headers?', a: 'Request headers are sent by the client (browser) to inform the server about the request context, including User-Agent, Accept, and Referer. Response headers are sent by the server back to the client, including Content-Type, Cache-Control, and Set-Cookie.' },
+  { q: 'Why does this tool show request headers instead of response headers?', a: 'This tool makes a request to the Worker API and displays the headers that the Worker received from your browser. It shows how your browser identifies itself to servers. A true response header checker would need to fetch a remote URL and report its response headers.' },
+  { q: 'What is the User-Agent header?', a: 'The User-Agent header identifies the client application (browser, crawler, API client) to the server. It typically includes the browser name, version, rendering engine, and operating system.' },
+  { q: 'What is the Accept header?', a: 'The Accept header tells the server what content types (MIME types) the client can handle. For example, text/html, application/json, image/webp. Servers use this to decide how to format their response.' },
+  { q: 'What is the Cache-Control header?', a: 'Cache-Control is a request or response header that specifies caching policies. On requests, it can include directives like no-cache (force revalidation) or max-age=0. On responses, it may include public, private, no-store, or must-revalidate.' },
+  { q: 'What is Content-Type?', a: 'Content-Type indicates the media type of the resource being sent or received. On requests, it tells the server what format the request body is in. On responses, it tells the client how to interpret the response body (e.g., text/html, application/json).' },
+  { q: 'Can HTTP headers be modified?', a: 'Some headers can be modified client-side using JavaScript (like setting custom headers in fetch() calls), but many standard headers are controlled by the browser for security reasons. Servers can add, modify, or remove headers in their responses.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Inspect Your Request Headers</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="urlInput"
+          type="text"
+          value="https://toolnestr.toolnestr.workers.dev/api/headers"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-sm text-slate-500 outline-none"
+          readonly
+        />
+        <button
+          id="fetchBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Fetch Headers
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-slate-400">
+        This tool sends a request to the API Worker and displays the headers that your browser sent with the request. It reflects your browser's request headers, not headers from a remote URL fetch.
+      </p>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Requesting headers...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Request Headers</span>
+          <button
+            id="copyBtn"
+            class="rounded px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            Copy All
+          </button>
+        </div>
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+              <th class="pb-2 pr-3 font-semibold">Header</th>
+              <th class="pb-2 font-semibold">Value</th>
+            </tr>
+          </thead>
+          <tbody id="headersBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How HTTP headers work</h2>
+    <p class="mt-2 text-slate-600">
+      HTTP headers are the metadata layer of every web transaction. When your browser sends an HTTP request to a server, it includes a set of request headers that describe the request context — what content types the browser can handle, what language it prefers, what kind of compression it supports, and how it identifies itself. The server uses this information to tailor its response. When the server replies, it includes response headers that tell the browser how to interpret the response, how to cache it, what security policies to enforce, and when it was last modified.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The HTTP/1.1 specification (RFC 7231) defines four categories of headers: general headers apply to both requests and responses (e.g., Date, Connection); request headers are specific to the client's request (e.g., User-Agent, Accept, Cookie); response headers are specific to the server's response (e.g., Set-Cookie, WWW-Authenticate); and entity headers describe the body of the message (e.g., Content-Length, Content-Type). Each header is a case-insensitive name followed by a colon and a value.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The tool above displays the request headers that your browser sent when it requested the Worker API. These include standard headers that every browser sends, such as Host (the target server), User-Agent (your browser identification), Accept (acceptable response formats), Accept-Language (preferred languages), Accept-Encoding (supported compression algorithms), Connection (connection management), and possibly Cache-Control, Upgrade-Insecure-Requests, and custom headers added by extensions or your network.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding your browser's request headers is useful for debugging web applications, configuring CDN rules, troubleshooting CORS issues, and understanding how servers identify and respond to different clients. For example, the Accept-Encoding header tells servers whether they can compress responses with gzip or Brotli. The Accept-Language header enables content negotiation for multilingual sites. The User-Agent header allows servers to serve different content to mobile vs desktop browsers or detect outdated browsers that need upgrade prompts.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="http-title http-desc">
+      <title id="http-title">HTTP Request and Response Header Flow Diagram</title>
+      <desc id="http-desc">A diagram showing the HTTP request-response cycle with request headers flowing from browser to server and response headers flowing from server back to browser</desc>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="30" y="30" width="180" height="80" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="120" y="58" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Browser / Client</text>
+      <text x="120" y="74" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">GET /api/headers</text>
+      <text x="120" y="88" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Host: toolnestr...</text>
+      <text x="120" y="100" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">User-Agent: Mozilla/5.0</text>
+      <line x1="210" y1="70" x2="310" y2="70" stroke="#6366f1" stroke-width="2" marker-end="url(#ah)" />
+      <text x="280" y="58" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Request</text>
+      <text x="280" y="80" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">Headers added by</text>
+      <text x="280" y="92" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="9">browser automatically</text>
+      <rect x="315" y="20" width="200" height="56" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="415" y="42" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Internet</text>
+      <text x="415" y="58" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">TCP / TLS / HTTP/2</text>
+      <line x1="515" y1="70" x2="590" y2="70" stroke="#6366f1" stroke-width="2" marker-end="url(#ah)" />
+      <rect x="595" y="30" width="170" height="80" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" />
+      <text x="680" y="58" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Worker API</text>
+      <text x="680" y="74" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Reads request headers</text>
+      <text x="680" y="88" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Returns as JSON</text>
+      <text x="680" y="100" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">response</text>
+      <line x1="595" y1="110" x2="120" y2="160" stroke="#22c55e" stroke-width="2" marker-end="url(#ah)" />
+      <text x="400" y="148" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Response (JSON)</text>
+      <rect x="30" y="145" width="180" height="56" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="120" y="167" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Headers Displayed</text>
+      <text x="120" y="183" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">In key-value table</text>
+      <line x1="120" y1="110" x2="120" y2="145" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2" />
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">HTTP request-response cycle showing how request headers flow from browser to server and response data (including the echoed headers) flows back</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common HTTP request headers</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">General headers</h3>
+        <p class="mt-1 text-sm text-slate-600">Headers like Date, Connection, and Via apply to both requests and responses. Connection: keep-alive indicates persistent connections. Cache-Control on requests can force cache revalidation with no-cache.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Content negotiation headers</h3>
+        <p class="mt-1 text-sm text-slate-600">Accept, Accept-Language, Accept-Encoding, and Accept-Charset tell servers what the client can handle. Servers use these to deliver optimised responses — sending WebP images only to supporting browsers, for example.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Security headers</h3>
+        <p class="mt-1 text-sm text-slate-600">Headers like Authorization, Cookie, Origin, and Referer carry security-critical data. Origin is sent with CORS requests. Cookie contains stored session tokens. Authorization carries credentials for protected resources.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Conditional and range headers</h3>
+        <p class="mt-1 text-sm text-slate-600">If-Modified-Since, If-None-Match, and Range enable conditional requests and partial content delivery. If-None-Match uses ETag values for efficient cache validation without refetching unchanged resources.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why HTTP headers matter</h2>
+    <p class="mt-2 text-slate-600">
+      HTTP headers directly impact website performance, security, and user experience. Cache-Control headers determine whether browsers and CDNs can cache your assets, directly affecting page load times for returning visitors. Content-Security-Policy (CSP) headers prevent XSS attacks by controlling which resources the browser is allowed to load. Strict-Transport-Security (HSTS) headers enforce HTTPS connections. CORS (Cross-Origin Resource Sharing) headers control which websites can access your API from browser-based JavaScript.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For web developers, understanding headers is essential for debugging API integrations, configuring web servers, setting up CDN rules, and troubleshooting authentication issues. Tools like this header checker help you understand what information your browser reveals with every request — information that can be used for analytics, fingerprinting, content negotiation, and bot detection. The Accept-Language header, for example, reveals your preferred language. The User-Agent header reveals your operating system and browser version. The Referer header reveals the page you came from.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Note that this tool shows the headers your browser sent to the Worker API — it reflects your own device's request headers, not the response headers of a third-party URL you input. For a true HTTP response header inspector, you would need a tool that fetches a remote URL and returns the response headers from that server. This distinction is important: what you see here is the metadata your browser provides about itself, which is the first half of the HTTP conversation.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7231" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7231 — HTTP/1.1 Semantics and Content</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7230" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7230 — HTTP/1.1 Message Syntax and Routing</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">MDN Web Docs — HTTP Headers Reference</a></li>
+      <li><a href="https://developers.cloudflare.com/fundamentals/get-started/reference/http-request-headers/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Cloudflare — HTTP Request Headers Reference</a></li>
+      <li><a href="https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 2616 — HTTP/1.1 Header Field Definitions (historic)</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const urlInput = document.getElementById('urlInput');
+    const btn = document.getElementById('fetchBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const body = document.getElementById('headersBody');
+    const copyBtn = document.getElementById('copyBtn');
+    const apiUrl = urlInput.value;
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    async function fetchHeaders() {
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(apiUrl);
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        const headers = d.headers || d;
+        const entries = typeof headers === 'object' && !Array.isArray(headers) ? Object.entries(headers) : [];
+        if (entries.length === 0) throw new Error('No headers returned from server.');
+        body.innerHTML = entries.map(([key, val]) =>
+          '<tr class="text-slate-700">' +
+            '<td class="py-2 pr-3 font-mono text-xs font-semibold text-slate-800">' + esc(key) + '</td>' +
+            '<td class="py-2 font-mono text-xs break-all">' + esc(val) + '</td>' +
+          '</tr>'
+        ).join('');
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    copyBtn.addEventListener('click', function () {
+      const rows = body.querySelectorAll('tr');
+      let text = '';
+      rows.forEach(function (row) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 2) {
+          text += cells[0].textContent + ': ' + cells[1].textContent + '\n';
+        }
+      });
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.textContent = 'Copy All'; }, 2000);
+      }).catch(function () {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.textContent = 'Copy All'; }, 2000);
+      });
+    });
+
+    btn.addEventListener('click', fetchHeaders);
+    fetchHeaders();
+  </script>
+</ToolLayout>

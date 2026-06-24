@@ -1,0 +1,216 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Blacklist / DNSBL Checker';
+const description =
+  'Check if an IP address is blacklisted on major DNS-based blocklists (DNSBL) — Spamhaus ZEN, ' +
+  'Spamcop, and Barracuda BRBL. Free IP reputation checker.';
+const intro =
+  'Enter an IP address to check if it is listed on any of the major public Real-time Blackhole Lists (RBL).';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is a DNSBL?', a: 'A DNS-based Blockhole List (DNSBL) is a real-time blacklist of IP addresses known to send spam or engage in malicious activity. Mail servers query DNSBLs to decide whether to accept or reject incoming email.' },
+  { q: 'What is Spamhaus ZEN?', a: 'ZEN is Spamhaus\'s combined blacklist that aggregates data from multiple Spamhaus zones (SBL, XBL, PBL). It is the most widely used DNSBL in the world, covering spam sources, compromised machines, and end-user IP ranges not meant to send mail.' },
+  { q: 'What is Spamcop?', a: 'Spamcop is a DNSBL maintained by the Spamcop service, which relies on user-submitted spam reports. An IP is listed when sufficient evidence of spam activity is reported by recipients.' },
+  { q: 'What is Barracuda BRBL?', a: 'Barracuda Reputation Block List (BRBL) is a free DNSBL provided by Barracuda Networks. It lists IPs with poor sending reputation based on data from Barracuda\'s global email security infrastructure.' },
+  { q: 'How do I get my IP removed from a blacklist?', a: 'Each blacklist has a delisting process. For Spamhaus, remove the spam source and submit a delisting request at https://www.spamhaus.org/lookup/. For Spamcop, address the reports and wait for automatic removal. For Barracuda BRBL, use their inquiry page.' },
+  { q: 'What does "Listed" mean?', a: '"Listed" means the IP address appears on that DNSBL and mail servers using that blacklist will likely reject or flag mail from this IP. This indicates the IP has a reputation problem that needs to be investigated.' },
+  { q: 'Why would my IP be blacklisted?', a: 'Common causes include: sending spam or having your server compromised to send spam, an infected device on your network sending malicious traffic, previous malicious use of the IP if it is a shared or recycled IP, or the IP being in a range listed as not authorised for direct mail sending.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Blacklist Check</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="ip"
+          type="text"
+          placeholder="1.2.3.4"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="checkBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Check Blacklists
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Querying DNSBL zones...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+              <th class="pb-2 pr-3 font-semibold">DNSBL Zone</th>
+              <th class="pb-2 pr-3 font-semibold">Status</th>
+              <th class="pb-2 font-semibold">Return Code</th>
+            </tr>
+          </thead>
+          <tbody id="blBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How DNS-based blocklists work</h2>
+    <p class="mt-2 text-slate-600">
+      DNS-based Blockhole Lists (DNSBLs), also called Real-time Blackhole Lists (RBLs), are a cornerstone of email anti-spam infrastructure. They work by leveraging the DNS protocol itself — an ingenious design that allows mail servers to perform IP reputation checks with minimal overhead. Each DNSBL maintains a list of IP addresses known to send spam, host malware, or exhibit other malicious behaviour. The list is published as a special DNS zone, and mail servers query it by constructing a lookup for the IP address reversed and appended to the blacklist's domain.
+    </p>
+    <p class="mt-3 text-slate-600">
+      When a mail server receives an inbound SMTP connection, it typically performs a DNSBL check on the connecting IP. For example, to check 1.2.3.4 against Spamhaus ZEN, the mail server constructs the query "4.3.2.1.zen.spamhaus.org". If the DNS query returns an IP address (usually 127.0.0.2 or similar), the IP is listed. If the query returns NXDOMAIN (domain not found), the IP is not listed. The returned IP address — the return code — often indicates the specific reason for the listing, such as compromised machine (127.0.0.4) or IP range not authorised for direct mail (127.0.0.7).
+    </p>
+    <p class="mt-3 text-slate-600">
+      This tool checks three of the most widely used DNSBLs. Spamhaus ZEN is the most comprehensive, combining data from the Spamhaus Block List (SBL), Exploits Block List (XBL), and Policy Block List (PBL). Spamcop relies on user-reported spam data and is maintained by Cisco's Talos threat intelligence team. Barracuda BRBL is maintained by Barracuda Networks based on data from their global network of email security appliances. Together, these three lists provide broad coverage for IP reputation checking.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 310" width="800" height="310" role="img" aria-labelledby="bl-title bl-desc">
+      <title id="bl-title">DNSBL / RBL Query Flow Diagram</title>
+      <desc id="bl-desc">A diagram showing how an email server checks a sender IP against multiple DNSBL zones (Spamhaus, Spamcop, Barracuda) when receiving an email, and how the response determines whether to accept, reject, or flag the message</desc>
+      <defs>
+        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="30" y="10" width="140" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="100" y="32" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Sender / MTA</text>
+      <text x="100" y="52" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Attempts email delivery</text>
+      <line x1="170" y1="38" x2="240" y2="38" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ab)" />
+      <text x="205" y="30" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">SMTP</text>
+      <rect x="245" y="10" width="180" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="335" y="32" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Receiving Mail Server</text>
+      <text x="335" y="52" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Checks IP against DNSBLs</text>
+      <line x1="335" y1="66" x2="335" y2="100" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#ab)" />
+      <text x="350" y="85" text-anchor="start" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">1. Query</text>
+      <rect x="245" y="105" width="180" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="335" y="120" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Spamhaus ZEN</text>
+      <text x="335" y="134" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">zen.spamhaus.org</text>
+      <line x1="335" y1="147" x2="335" y2="170" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#ab)" />
+      <text x="350" y="160" text-anchor="start" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">2. Query</text>
+      <rect x="245" y="175" width="180" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="335" y="190" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Spamcop</text>
+      <text x="335" y="204" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">bl.spamcop.net</text>
+      <line x1="335" y1="217" x2="335" y2="240" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#ab)" />
+      <text x="350" y="230" text-anchor="start" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">3. Query</text>
+      <rect x="245" y="245" width="180" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="335" y="260" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Barracuda BRBL</text>
+      <text x="335" y="274" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">b.barracudacentral.org</text>
+      <line x1="460" y1="40" x2="510" y2="40" stroke="#cbd5e1" stroke-width="1" />
+      <rect x="515" y="10" width="130" height="56" rx="8" fill="#eef2ff" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="580" y="32" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Decision</text>
+      <text x="580" y="48" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Accept / Reject</text>
+      <text x="580" y="60" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">/ Flag as Spam</text>
+      <line x1="580" y1="66" x2="580" y2="100" stroke="#cbd5e1" stroke-width="1" />
+      <rect x="515" y="105" width="130" height="42" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" />
+      <text x="580" y="125" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Not Listed</text>
+      <text x="580" y="138" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Clean IP</text>
+      <rect x="515" y="165" width="130" height="42" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5" />
+      <text x="580" y="185" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Listed</text>
+      <text x="580" y="198" text-anchor="middle" fill="#ef4444" font-family="system-ui, sans-serif" font-size="10">Return code: 127.0.0.x</text>
+      <line x1="425" y1="126" x2="515" y2="126" stroke="#22c55e" stroke-width="1.5" marker-end="url(#ab)" stroke-dasharray="5,2" />
+      <line x1="425" y1="260" x2="515" y2="186" stroke="#ef4444" stroke-width="1.5" marker-end="url(#ab)" stroke-dasharray="5,2" />
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Email server IP reputation check flow — the receiving MTA queries multiple DNSBL zones and acts based on whether each returns a listing code</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding return codes</h2>
+    <p class="mt-2 text-slate-600">
+      When a DNSBL lookup returns a positive result (the IP is listed), the return code is typically an IP address in the 127.0.0.0/8 loopback range. Different codes indicate different listing reasons. For Spamhaus ZEN, 127.0.0.2 indicates the IP is in the SBL (Spamhaus Block List) for sending spam, 127.0.0.4 through 127.0.0.7 indicate the XBL (Exploits Block List) for compromised machines, 127.0.0.8 through 127.0.0.10 indicate the PBL (Policy Block List) for end-user IP ranges not authorised to send mail directly. Return codes help administrators understand why their IP was listed so they can take the appropriate corrective action.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For Spamcop, the return code is usually 127.0.0.2 for all listings, as Spamcop does not differentiate between listing reasons in its response. Barracuda BRBL similarly returns a standard code. The key takeaway is that any response from a DNSBL indicates the IP has a reputation issue that requires investigation. Even a single listing can significantly impact email deliverability, as many mail servers will reject mail from an IP listed on any major DNSBL.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding what a DNSBL listing means in practice is important. Spamhaus PBL listings, for example, do not necessarily mean the IP has sent spam — they indicate that the IP is in an end-user range that should relay mail through the ISP's mail servers rather than sending directly. Many residential and dynamic IPs are listed on the PBL by design. This is why checking the specific return code helps determine whether the listing indicates malicious activity or a policy that can be addressed by routing mail through a properly configured SMTP relay.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to check and improve IP reputation</h2>
+    <p class="mt-2 text-slate-600">
+      Regular IP reputation monitoring is essential for anyone running a mail server. Use this checker periodically to ensure your sending IPs remain clean. If you find your IP is listed, first determine the cause. Check for compromised accounts, open relays, or malware on your server. Review outgoing mail logs for unusual patterns that might indicate a security breach. Ensure your server is properly configured with SPF, DKIM, and DMARC records, as many receiving servers perform these checks alongside DNSBL lookups as part of their overall email authentication evaluation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      After addressing the root cause, submit a delisting request to each blacklist that has listed you. Most DNSBL operators review delisting requests within 24-48 hours. Prevent future listings by securing your mail server: use strong passwords, keep software updated, implement rate limiting, monitor for unusual outbound traffic patterns, and consider using a reputable SMTP relay service for transactional email rather than sending directly from your server's IP.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations and considerations</h2>
+    <p class="mt-2 text-slate-600">
+      This tool checks three major DNSBLs, but there are hundreds of other blacklists used by various mail servers around the world. A clean result on these three does not guarantee your IP is not listed elsewhere. Additionally, some blacklists use dynamic scoring systems rather than binary listed/not-listed states, and individual mail servers may have customised thresholds for DNSBL responses. The tool provides a useful baseline check for the most widely used blacklists and should be part of a broader email deliverability monitoring strategy.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://www.spamhaus.org/zen/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Spamhaus ZEN — Official Documentation</a></li>
+      <li><a href="https://www.spamcop.net/fom-serve/cache/297.html" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Spamcop DNSBL — FAQ and Usage</a></li>
+      <li><a href="https://www.barracudacentral.org/lookups" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Barracuda BRBL Lookup and Information</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc5782" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 5782 — DNS Blacklists and Whitelists</a></li>
+      <li><a href="https://www.cloudflare.com/learning/email-security/what-is-dnsbl/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Cloudflare — What is a DNSBL?</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const ip = document.getElementById('ip');
+    const btn = document.getElementById('checkBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const body = document.getElementById('blBody');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/blacklist-check';
+
+    const blacklists = { 'Spamhaus ZEN': 'spamhaus', 'Spamcop': 'spamcop', 'Barracuda BRBL': 'barracuda' };
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    async function check() {
+      const addr = ip.value.trim();
+      if (!addr) { errEl.textContent = 'Please enter an IP address.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?ip=' + encodeURIComponent(addr));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        body.innerHTML = Object.entries(blacklists).map(([label, key]) => {
+          const res = d[key] || d.results?.[key] || {};
+          const listed = res.listed || res.Listed || res.blacklisted || res.is_listed;
+          const code = res.code || res.Code || res.return_code || res.ReturnCode || res.returnCode || '';
+          const isListed = listed === true || listed === 'true' || listed === 'yes' || (typeof listed === 'string' && listed.toLowerCase() === 'true');
+          const statusClass = isListed ? 'text-red-700 bg-red-50 border-red-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200';
+          const statusText = isListed ? 'Listed' : 'Clean';
+          return '<tr class="text-slate-700">' +
+            '<td class="py-2 pr-3 font-medium">' + esc(label) + '</td>' +
+            '<td class="py-2 pr-3"><span class="inline-block rounded px-2 py-0.5 text-xs font-semibold border ' + statusClass + '">' + statusText + '</span></td>' +
+            '<td class="py-2 font-mono text-xs">' + (code ? esc(code) : '—') + '</td>' +
+          '</tr>';
+        }).join('');
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', check);
+    ip.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</ToolLayout>

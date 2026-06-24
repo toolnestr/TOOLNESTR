@@ -1,0 +1,211 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Port Checker';
+const description =
+  'Check whether common network ports (80, 443, 22, 21, 25) are reachable on any hostname. Best-effort reachability check using HTTP fetches for HTTP/HTTPS ports; non-HTTP ports cannot be tested from the browser.';
+const intro =
+  'Enter a hostname and select a port to check. HTTP and HTTPS ports (80, 443) are tested via fetch. Non-HTTP ports show "not testable" — those require server-side TCP sockets.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What ports can this tool check?', a: 'This tool can test HTTP ports (80 for HTTP, 443 for HTTPS) using the browser fetch API. Ports like 22 (SSH), 21 (FTP), and 25 (SMTP) cannot be tested from the browser because JavaScript cannot open raw TCP connections.' },
+  { q: 'Why cant non-HTTP ports be tested?', a: 'Web browsers do not expose a raw TCP socket API to JavaScript. The fetch() API is limited to HTTP and HTTPS protocols only. Testing SSH, FTP, or SMTP ports requires server-side code with raw TCP socket access.' },
+  { q: 'Is this a port scanner?', a: 'No. This tool checks a single port at a time against a hostname you provide. It does not scan ranges, send SYN packets, or perform any behavior that could be mistaken for a malicious port scan. The disclaimer at the top explains this.' },
+  { q: 'How accurate is the HTTP/HTTPS test?', a: 'The fetch test confirms that an HTTP server responds on the given port. A successful response means the port is open and serving HTTP. A failure could mean the port is closed, firewalled, or the server does not respond to cross-origin requests from this tool.' },
+  { q: 'Can a firewall cause a false positive?', a: 'Yes. Firewalls may allow outbound traffic on port 443 but the target server may reject the connection or drop the packet. Conversely, some firewalls respond with a TCP RST for blocked ports, which appears as a connection refused error rather than a timeout.' },
+  { q: 'Is my hostname logged anywhere?', a: 'All testing happens client-side in your browser. The tool does not send the hostname to any server. For HTTP/HTTPS tests, the fetch goes directly to the target hostname from your browser.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Check a port</h2>
+      <div class="mt-3 flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[180px]">
+          <label for="host-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">Hostname</label>
+          <input id="host-input" type="text" placeholder="example.com" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="w-32">
+          <label for="port-select" class="text-xs font-semibold uppercase tracking-wide text-slate-400">Port</label>
+          <select id="port-select" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="80">80 (HTTP)</option>
+            <option value="443" selected>443 (HTTPS)</option>
+            <option value="22">22 (SSH)</option>
+            <option value="21">21 (FTP)</option>
+            <option value="25">25 (SMTP)</option>
+          </select>
+        </div>
+        <button id="check-btn" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Check</button>
+      </div>
+    </div>
+
+    <div id="result-area" class="hidden">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center gap-3">
+          <div id="result-icon" class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl">—</div>
+          <div>
+            <p id="result-status" class="text-lg font-bold text-slate-900">—</p>
+            <p id="result-detail" class="text-sm text-slate-500">—</p>
+          </div>
+        </div>
+        <div id="result-extra" class="mt-3 hidden rounded-lg bg-slate-50 p-3 text-xs text-slate-500"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How port checking works</h2>
+    <p class="mt-2 text-slate-600">
+      A network port is a virtual endpoint that identifies a specific process or service running on a computer connected to a network. Ports range from 0 to 65535, with the first 1024 ports reserved for well-known services. Port 80 is reserved for HTTP traffic, port 443 for HTTPS, port 22 for SSH, port 21 for FTP, and port 25 for SMTP email delivery. When a client wants to connect to a service, it must know both the IP address of the host and the port number on which the service listens.
+    </p>
+    <p class="mt-3 text-slate-600">
+      In a browser environment, the only protocol available for network connections is HTTP/HTTPS via the fetch API. When you check port 443 on a hostname, the tool constructs a URL like <code>https://hostname:443/</code> and attempts to fetch it. If the server responds, even with an error status like 403 or 404, the port is confirmed open. A network error (connection refused, timeout, or DNS failure) means the port is unreachable from your location. For HTTPS, the browser also validates the TLS certificate, so a certificate error can also cause a failure even if the port is open.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Ports 22 (SSH), 21 (FTP), and 25 (SMTP) cannot be tested from the browser because they use protocols other than HTTP. JavaScript's fetch API can only make HTTP and HTTPS requests. Testing these ports requires a server-side component that opens raw TCP sockets and checks for a connection acceptance or timeout. The tool displays "not testable" for these ports and explains the limitation. For a complete port check on any port, you would need a desktop tool like Nmap or a web service backed by a TCP socket server.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="port-title port-desc">
+      <title id="port-title">TCP Three-Way Handshake Diagram</title>
+      <desc id="port-desc">Sequence diagram showing the TCP three-way handshake between a client and server: SYN, SYN-ACK, ACK</desc>
+      <rect x="30" y="10" width="740" height="220" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="35" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">TCP Three-Way Handshake — Port Reachability</text>
+      <rect x="80" y="50" width="140" height="30" rx="6" fill="#6366f1" />
+      <text x="150" y="69" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Client (Browser)</text>
+      <rect x="560" y="50" width="140" height="30" rx="6" fill="#818cf8" />
+      <text x="630" y="69" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Server (Port 443)</text>
+      <line x1="150" y1="100" x2="630" y2="100" stroke="#6366f1" stroke-width="2" />
+      <polygon points="630,95 620,100 630,105" fill="#6366f1" />
+      <text x="260" y="95" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">SYN (port open?)</text>
+      <line x1="630" y1="120" x2="150" y2="120" stroke="#818cf8" stroke-width="2" />
+      <polygon points="150,115 160,120 150,125" fill="#818cf8" />
+      <text x="280" y="115" text-anchor="end" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">SYN-ACK (port open)</text>
+      <line x1="150" y1="140" x2="630" y2="140" stroke="#6366f1" stroke-width="2" />
+      <polygon points="630,135 620,140 630,145" fill="#6366f1" />
+      <text x="260" y="135" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">ACK (connection established)</text>
+      <rect x="65" y="160" width="170" height="22" rx="4" fill="#e0e7ff" stroke="#cbd5e1" stroke-width="1" />
+      <text x="150" y="175" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Port Reachable</text>
+      <rect x="540" y="160" width="170" height="22" rx="4" fill="#e0e7ff" stroke="#cbd5e1" stroke-width="1" />
+      <text x="625" y="175" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Port Closed / Firewalled</text>
+      <text x="200" y="205" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">If SYN-ACK received: port is open and listening</text>
+      <text x="200" y="220" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">If RST or timeout: port is closed or filtered by firewall</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">TCP three-way handshake illustrating how port reachability is determined at the transport layer</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding port states</h2>
+    <p class="mt-2 text-slate-600">
+      Network ports can be in one of three states from the perspective of a remote client: open, closed, or filtered. An open port means an application is actively listening for connections on that port. The operating system completes the TCP three-way handshake and passes the connection to the listening application. For HTTP ports, an open port typically means a web server is running. If you receive an HTTP response, even a 403 Forbidden or 404 Not Found, the port is confirmed open.
+    </p>
+    <p class="mt-3 text-slate-600">
+      A closed port means no application is listening on that port. The operating system responds to the initial SYN packet with a TCP RST (reset) packet, immediately refusing the connection. The browser translates this into a "connection refused" error. A filtered port means the packet was silently dropped, typically by a firewall rule or network ACL. No response is sent to the SYN packet, and the client waits until a timeout occurs. Filtered ports are common for internal services that should not be accessible from the public internet.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Common port uses and security considerations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Port 80 (HTTP) and 443 (HTTPS)</h3>
+        <p class="mt-1 text-sm text-slate-600">The most common ports for web traffic. Port 80 sends data in plaintext and should be redirected to port 443 in modern deployments. Port 443 uses TLS encryption and is the standard for secure web browsing.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Port 22 (SSH)</h3>
+        <p class="mt-1 text-sm text-slate-600">Used for secure remote shell access. Exposing SSH to the internet without proper security (key-only authentication, fail2ban, non-standard port) invites brute force attacks. Should be restricted to VPN or trusted IPs in production.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Port 21 (FTP) and 25 (SMTP)</h3>
+        <p class="mt-1 text-sm text-slate-600">FTP transmits credentials in plaintext and should be replaced with SFTP or FTPS. SMTP is essential for email delivery but misconfigured servers can become open relays for spam. Both should be carefully firewalled and monitored.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use a port checker</h2>
+    <p class="mt-2 text-slate-600">
+      A port checker is useful when you need to verify that a service is running and reachable from your network location. Web developers deploying a new server need to confirm that port 80 and 443 are open and the web server responds. System administrators migrating a service to a new host can quickly verify that the correct ports are open on the new server before directing production traffic to it. Security professionals use port checks as a basic reconnaissance step to verify firewall rules are working as intended.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For home users, a port checker helps diagnose whether their ISP blocks certain ports (some ISPs block port 25 to prevent spam, for example) or whether their router port forwarding rules are correctly configured. When setting up a home server, game server, or remote access solution, checking port reachability from an external network confirms that the router is properly forwarding traffic to the internal server.
+    </p>
+  </section>
+
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const btn = el('check-btn');
+    const host = el('host-input');
+    const port = el('port-select');
+    const resultArea = el('result-area');
+    const resultStatus = el('result-status');
+    const resultDetail = el('result-detail');
+    const resultIcon = el('result-icon');
+    const resultExtra = el('result-extra');
+
+    const httpPorts = [80, 443];
+
+    async function check() {
+      const hostname = host.value.trim();
+      const portNum = parseInt(port.value, 10);
+
+      if (!hostname) {
+        resultArea.classList.remove('hidden');
+        resultStatus.textContent = 'Please enter a hostname';
+        resultDetail.textContent = 'A hostname or IP address is required.';
+        resultIcon.innerHTML = '&#9888;';
+        resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl';
+        resultExtra.classList.add('hidden');
+        return;
+      }
+
+      resultArea.classList.remove('hidden');
+      resultExtra.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Checking...';
+
+      if (!httpPorts.includes(portNum)) {
+        resultIcon.innerHTML = '&#128683;';
+        resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-2xl';
+        resultStatus.textContent = 'Not Testable';
+        resultDetail.textContent = `Port ${portNum} uses a non-HTTP protocol that cannot be tested from the browser. This port requires server-side TCP socket access.`;
+        resultExtra.classList.remove('hidden');
+        resultExtra.innerHTML = 'Browsers cannot open raw TCP connections to arbitrary ports. To check non-HTTP ports, use a desktop tool like <strong>nmap</strong> or <strong>telnet</strong> from a command line.';
+        btn.disabled = false;
+        btn.textContent = 'Check';
+        return;
+      }
+
+      try {
+        const protocol = portNum === 443 ? 'https' : 'http';
+        const url = `${protocol}://${hostname}:${portNum}/`;
+        const start = performance.now();
+        const res = await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+        const end = performance.now();
+        const ms = Math.round((end - start) * 10) / 10;
+
+        resultIcon.innerHTML = '&#9989;';
+        resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl';
+        resultStatus.textContent = 'Reachable';
+        resultDetail.textContent = `Port ${portNum} responded in ${ms} ms.`;
+        resultExtra.classList.remove('hidden');
+        resultExtra.innerHTML = `HTTP response received. The service on ${hostname}:${portNum} is accepting connections.`;
+      } catch (e) {
+        resultIcon.innerHTML = '&#10060;';
+        resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl';
+        resultStatus.textContent = 'Unreachable';
+        resultDetail.textContent = `Could not connect to ${hostname}:${portNum}. ${e.message || ''}`;
+        resultExtra.classList.remove('hidden');
+        resultExtra.innerHTML = 'The port may be closed, firewalled, or the hostname may not resolve. Try verifying with a ping or traceroute first.';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Check';
+    }
+
+    btn.addEventListener('click', check);
+    host.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</ToolLayout>
