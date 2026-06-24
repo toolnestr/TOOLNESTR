@@ -33,6 +33,17 @@ addEventListener('fetch', (event) => {
 });
 
 async function handleAudit(request) {
+  // CRITICAL: Initialize ALL variables to prevent undefined errors
+  let finalUrl = '';
+  let wordCount = 0;
+  let textRatio = 0;
+  let isThin = false;
+  const redirectChain = [];
+  const keywords = [];
+  const entities = [];
+  const recommendations = { critical: [], high: [], medium: [], low: [] };
+  let scores = { overall: 0, content: 0, technical: 0, performance: 0, accessibility: 0 };
+
   const url = new URL(request.url);
   const targetUrl = url.searchParams.get('url');
   if (!targetUrl) {

@@ -244,15 +244,25 @@ const faqs = [
 
       runAudit: function () {
         var url = document.getElementById('urlInput').value.trim();
-        if (!url) return;
+        if (!url) {
+          this.showError('Please enter a URL');
+          return;
+        }
         this.showLoading();
         var apiUrl = WORKER_URL + '/api/full-audit?url=' + encodeURIComponent(url);
         fetch(apiUrl)
           .then(function (r) {
-            if (!r.ok) return r.text().then(function (t) { throw new Error(t); });
+            if (!r.ok) return r.text().then(function (t) { throw new Error('Server error (' + r.status + '): ' + t); });
             return r.json();
           })
           .then(function (data) {
+            if (!data || data.error) {
+              throw new Error(data ? data.error : 'Received empty response from server');
+            }
+            if (!data.scores) {
+              console.error('Invalid data received:', data);
+              throw new Error('Received invalid data from server - missing scores');
+            }
             app.data = data;
             app.hideLoading();
             app.renderDashboard(data);
@@ -472,12 +482,15 @@ const faqs = [
       renderRecommendationsTab: function (d) {
         var recs = d.recommendations;
         var h = '';
+        if (!recs || typeof recs !== 'object') {
+          return '<div style="text-align:center;padding:24px;color:var(--text-muted);"><p>No recommendations available</p></div>';
+        }
         var priorities = ['critical', 'high', 'medium', 'low'];
         var labels = { critical: 'Critical', high: 'High Priority', medium: 'Medium Priority', low: 'Low Priority' };
         var icons = { critical: 'fa-exclamation-triangle', high: 'fa-exclamation-circle', medium: 'fa-info-circle', low: 'fa-check-circle' };
 
         priorities.forEach(function (p) {
-          if (recs[p] && recs[p].length > 0) {
+          if (Array.isArray(recs[p]) && recs[p].length > 0) {
             h += '<h3 style="margin-bottom:12px;margin-top:16px;"><i class="fas ' + icons[p] + '"></i> ' + labels[p] + ' (' + recs[p].length + ')</h3>';
             recs[p].forEach(function (rec) {
               h += '<div class="card rec-card severity-' + p + '">';
