@@ -157,26 +157,98 @@ async function handleIpLookup(request, url) {
   if (!isValidPublicIp(targetIp)) {
     return jsonResponse({ error: 'Invalid IP address' }, 400);
   }
-  const res = await fetch('https://ipwho.is/' + encodeURIComponent(targetIp));
-  if (!res.ok) return jsonResponse({ error: 'Lookup failed' }, 502);
-  const data = await res.json();
-  if (!data.success) return jsonResponse({ error: 'Lookup failed: ' + (data.message || 'unknown') }, 502);
-  return jsonResponse({
-    ip: data.ip || targetIp,
-    country: data.country || '',
-    countryCode: data.country_code || '',
-    region: data.region || '',
-    city: data.city || '',
-    postalCode: data.postal || '',
-    latitude: data.latitude || 0,
-    longitude: data.longitude || 0,
-    timezone: (data.timezone && data.timezone.id) || '',
-    isp: (data.connection && data.connection.isp) || '',
-    asn: (data.connection && data.connection.asn) || 0,
-    org: (data.connection && data.connection.org) || '',
-    currency: (data.currency && data.currency.code) || '',
-    isSelf: false,
-  });
+
+  // ip-api.com is the primary provider: it isn't fronted by Cloudflare, so it
+  // doesn't lump Worker egress traffic in with the abuse it blocks. ipwho.is
+  // and freeipapi.com are both Cloudflare-proxied and rate-limit/WAF-block
+  // Worker traffic hard, so they're kept only as fallbacks.
+  const result = await lookupViaIpApiCom(targetIp) || await lookupViaIpwhoIs(targetIp) || await lookupViaFreeIpApi(targetIp);
+  if (!result) return jsonResponse({ error: 'Lookup failed — all providers unavailable' }, 502);
+  return jsonResponse(result);
+}
+
+async function lookupViaIpApiCom(targetIp) {
+  try {
+    const res = await fetch('http://ip-api.com/json/' + encodeURIComponent(targetIp));
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status !== 'success') return null;
+    return {
+      ip: data.query || targetIp,
+      country: data.country || '',
+      countryCode: data.countryCode || '',
+      region: data.regionName || '',
+      city: data.city || '',
+      postalCode: data.zip || '',
+      latitude: data.lat || 0,
+      longitude: data.lon || 0,
+      timezone: data.timezone || '',
+      isp: data.isp || '',
+      asn: data.as ? parseInt(String(data.as).replace(/^AS/, ''), 10) : 0,
+      org: data.org || '',
+      currency: '',
+      isProxy: null,
+      isSelf: false,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function lookupViaIpwhoIs(targetIp) {
+  try {
+    const res = await fetch('https://ipwho.is/' + encodeURIComponent(targetIp));
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.success) return null;
+    return {
+      ip: data.ip || targetIp,
+      country: data.country || '',
+      countryCode: data.country_code || '',
+      region: data.region || '',
+      city: data.city || '',
+      postalCode: data.postal || '',
+      latitude: data.latitude || 0,
+      longitude: data.longitude || 0,
+      timezone: (data.timezone && data.timezone.id) || '',
+      isp: (data.connection && data.connection.isp) || '',
+      asn: (data.connection && data.connection.asn) || 0,
+      org: (data.connection && data.connection.org) || '',
+      currency: (data.currency && data.currency.code) || '',
+      isProxy: null,
+      isSelf: false,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function lookupViaFreeIpApi(targetIp) {
+  try {
+    const res = await fetch('https://freeipapi.com/api/json/' + encodeURIComponent(targetIp));
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.ipAddress) return null;
+    return {
+      ip: data.ipAddress || targetIp,
+      country: data.countryName || '',
+      countryCode: data.countryCode || '',
+      region: data.regionName || '',
+      city: data.cityName || '',
+      postalCode: data.zipCode || '',
+      latitude: data.latitude || 0,
+      longitude: data.longitude || 0,
+      timezone: (data.timeZones && data.timeZones[0]) || '',
+      isp: data.asnOrganization || '',
+      asn: data.asn ? parseInt(data.asn, 10) : 0,
+      org: data.asnOrganization || '',
+      currency: (data.currencies && data.currencies[0]) || '',
+      isProxy: typeof data.isProxy === 'boolean' ? data.isProxy : null,
+      isSelf: false,
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 // ── DNS Lookup Handler ──
@@ -332,14 +404,12 @@ async function handleAsnLookup(request, url) {
     });
   }
   if (!isValidPublicIp(targetIp)) return jsonResponse({ error: 'Invalid IP address' }, 400);
-  const res = await fetch('https://ipwho.is/' + encodeURIComponent(targetIp));
-  if (!res.ok) return jsonResponse({ error: 'Lookup failed' }, 502);
-  const data = await res.json();
-  if (!data.success) return jsonResponse({ error: 'Lookup failed' }, 502);
+  const result = await lookupViaIpApiCom(targetIp) || await lookupViaIpwhoIs(targetIp) || await lookupViaFreeIpApi(targetIp);
+  if (!result) return jsonResponse({ error: 'Lookup failed — all providers unavailable' }, 502);
   return jsonResponse({
-    ip: targetIp,
-    asn: (data.connection && data.connection.asn) || 0,
-    org: (data.connection && data.connection.org) || '',
+    ip: result.ip || targetIp,
+    asn: result.asn || 0,
+    org: result.org || '',
     isSelf: false,
   });
 }
