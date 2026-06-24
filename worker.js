@@ -43,10 +43,13 @@ function isValidPublicIp(str) {
 
 // ── DoH (DNS-over-HTTPS) helpers ──
 async function dohQuery(domain, type, resolver) {
+  // Quad9 only supports RFC 8484 wire-format DoH, not the simplified JSON
+  // GET style — AdGuard DNS supports the same JSON format as Cloudflare/Google
+  // and serves the same "independent third resolver" purpose for propagation checks.
   const endpoints = {
     cloudflare: 'https://1.1.1.1/dns-query?name=' + encodeURIComponent(domain) + '&type=' + type,
     google: 'https://dns.google/resolve?name=' + encodeURIComponent(domain) + '&type=' + type,
-    quad9: 'https://dns9.quad9.net:5053/dns-query?name=' + encodeURIComponent(domain) + '&type=' + type,
+    adguard: 'https://dns.adguard-dns.com/resolve?name=' + encodeURIComponent(domain) + '&type=' + type,
   };
   const url = endpoints[resolver] || endpoints.cloudflare;
   const res = await fetch(url, { headers: { 'Accept': 'application/dns-json' } });
@@ -116,6 +119,11 @@ export default {
       // ── Route: ASN Lookup ──
       if (path === '/api/asn-lookup' && method === 'GET') {
         return handleAsnLookup(request, url);
+      }
+
+      // ── Route: Port Check ──
+      if (path === '/api/port-check' && method === 'GET') {
+        return handlePortCheck(url);
       }
 
       return new Response('Not Found', { status: 404, headers: corsHeaders });
@@ -292,10 +300,10 @@ async function handleDnsPropagation(url) {
   const domain = url.searchParams.get('domain') || '';
   const type = (url.searchParams.get('type') || 'A').toUpperCase();
   if (!domain) return jsonResponse({ error: 'Missing domain parameter' }, 400);
-  const [cf, google, quad9] = await Promise.all([
+  const [cf, google, adguard] = await Promise.all([
     dohQuery(domain, type, 'cloudflare').then(function (d) { return d; }).catch(function () { return { error: 'Cloudflare resolver failed' }; }),
     dohQuery(domain, type, 'google').then(function (d) { return d; }).catch(function () { return { error: 'Google resolver failed' }; }),
-    dohQuery(domain, type, 'quad9').then(function (d) { return d; }).catch(function () { return { error: 'Quad9 resolver failed' }; }),
+    dohQuery(domain, type, 'adguard').then(function (d) { return d; }).catch(function () { return { error: 'AdGuard resolver failed' }; }),
   ]);
   return jsonResponse({
     domain: domain,
@@ -303,12 +311,12 @@ async function handleDnsPropagation(url) {
     results: {
       cloudflare: (cf.Answer || []).map(function (a) { return a.data; }),
       google: (google.Answer || []).map(function (a) { return a.data; }),
-      quad9: (quad9.Answer || []).map(function (a) { return a.data; }),
+      adguard: (adguard.Answer || []).map(function (a) { return a.data; }),
     },
     resolved: {
       cloudflare: !cf.error && cf.Status === 0,
       google: !google.error && google.Status === 0,
-      quad9: !quad9.error && quad9.Status === 0,
+      adguard: !adguard.error && adguard.Status === 0,
     },
   });
 }
@@ -325,15 +333,24 @@ async function handleBlacklistCheck(url) {
     { name: 'Barracuda BRBL', zone: 'b.barracudacentral.org' },
   ];
   const results = [];
+  // Spamhaus (and most RBLs) reserve 127.255.255.252-255 as "querier blocked /
+  // rate-limited" error codes, NOT "this IP is listed" — Cloudflare Workers'
+  // shared egress IPs trip this often, so it must be excluded or every lookup
+  // falsely reports as blacklisted.
+  const RBL_ERROR_CODE = /^127\.255\.255\.(252|253|254|255)$/;
   for (const rbl of rblZones) {
     try {
       const query = reversed + '.' + rbl.zone;
       const data = await dohQuery(query, 'A', 'cloudflare');
-      const listed = data.Answer && data.Answer.length > 0;
+      const returnCode = (data.Answer && data.Answer[0] && data.Answer[0].data) || null;
+      if (returnCode && RBL_ERROR_CODE.test(returnCode)) {
+        results.push({ name: rbl.name, listed: false, returnCode: null, error: 'Resolver rate-limited by this RBL, try again later' });
+        continue;
+      }
       results.push({
         name: rbl.name,
-        listed: listed,
-        returnCode: listed ? (data.Answer[0].data || '127.0.0.2') : null,
+        listed: !!returnCode,
+        returnCode: returnCode,
       });
     } catch (e) {
       results.push({ name: rbl.name, listed: false, error: 'Query failed' });
@@ -346,32 +363,64 @@ async function handleBlacklistCheck(url) {
   });
 }
 
+// rdap.org is Cloudflare-fronted and blocks Worker egress traffic (403), so we
+// bypass it entirely: resolve domains via IANA's own bootstrap registry, and
+// for IPs query the 5 regional registries directly (none are Cloudflare-fronted).
+async function resolveDomainRdapEndpoint(domain) {
+  const tld = domain.split('.').pop().toLowerCase();
+  const res = await fetch('https://data.iana.org/rdap/dns.json');
+  const data = await res.json();
+  for (const service of data.services || []) {
+    const tlds = service[0] || [];
+    const urls = service[1] || [];
+    if (tlds.some(function (t) { return t.toLowerCase() === tld; }) && urls[0]) {
+      return urls[0].replace(/\/$/, '') + '/domain/' + encodeURIComponent(domain);
+    }
+  }
+  return null;
+}
+
+async function fetchFirstSuccessfulRdap(urls) {
+  const responses = await Promise.all(urls.map(function (u) {
+    return fetch(u).then(function (r) { return r.ok ? r.json().then(function (d) { return { ok: true, data: d }; }) : { ok: false }; }).catch(function () { return { ok: false }; });
+  }));
+  const hit = responses.find(function (r) { return r.ok; });
+  return hit ? hit.data : null;
+}
+
 // ── WHOIS Lookup Handler ──
 async function handleWhois(url) {
   const query = url.searchParams.get('query') || '';
   if (!query) return jsonResponse({ error: 'Missing query parameter' }, 400);
-  let endpoint;
+
+  let data;
   if (IP_V4_REGEX.test(query) || IP_V6_REGEX.test(query)) {
-    endpoint = 'https://rdap.org/ip/' + encodeURIComponent(query);
+    data = await fetchFirstSuccessfulRdap([
+      'https://rdap.arin.net/registry/ip/' + encodeURIComponent(query),
+      'https://rdap.db.ripe.net/ip/' + encodeURIComponent(query),
+      'https://rdap.apnic.net/ip/' + encodeURIComponent(query),
+      'https://rdap.lacnic.net/rdap/ip/' + encodeURIComponent(query),
+      'https://rdap.afrinic.net/rdap/ip/' + encodeURIComponent(query),
+    ]);
   } else {
-    endpoint = 'https://rdap.org/domain/' + encodeURIComponent(query);
+    const endpoint = await resolveDomainRdapEndpoint(query);
+    if (!endpoint) return jsonResponse({ error: 'Unsupported or unknown TLD' }, 404);
+    const res = await fetch(endpoint);
+    if (res.ok) data = await res.json();
   }
-  const res = await fetch(endpoint);
-  if (!res.ok) {
-    if (res.status === 404) return jsonResponse({ error: 'Not found in RDAP registry' }, 404);
-    return jsonResponse({ error: 'WHOIS query failed: ' + res.status }, 502);
-  }
-  const data = await res.json();
+  if (!data) return jsonResponse({ error: 'Not found in any RDAP registry' }, 404);
   const events = data.events || [];
   return jsonResponse({
     query: query,
     handle: data.handle || '',
     name: data.name || data.ldhName || '',
     entities: (data.entities || []).map(function (e) {
+      const vcardProps = (e.vcardArray && e.vcardArray[1]) || [];
+      const fnProp = vcardProps.find(function (p) { return p[0] === 'fn'; });
       return {
         handle: e.handle || '',
         role: (e.roles || []).join(', '),
-        name: (e.vcardArray && e.vcardArray[1] && e.vcardArray[1][0] && e.vcardArray[1][0][3]) || '',
+        name: (fnProp && fnProp[3]) || '',
       };
     }),
     nameservers: (data.nameservers || []).map(function (n) { return n.ldhName || n.name; }),
@@ -380,6 +429,37 @@ async function handleWhois(url) {
     expiryDate: (events.filter(function (e) { return e.eventAction === 'expiration'; })[0] || {}).eventDate || '',
     lastChangedDate: (events.filter(function (e) { return e.eventAction === 'last changed'; })[0] || {}).eventDate || '',
   });
+}
+
+// ── Port Check Handler ──
+// Runs server-side (not in the browser) for two reasons: browsers enforce a
+// hard-coded "unsafe ports" blocklist that includes several common ports
+// regardless of CORS settings, and a strict CSP connect-src cannot allowlist
+// an arbitrary user-supplied host in advance. Scoped to HTTP(S) reachability
+// only, matching the rest of this Worker's fetch-only capabilities.
+async function handlePortCheck(url) {
+  const host = (url.searchParams.get('host') || '').trim();
+  const port = parseInt(url.searchParams.get('port') || '', 10);
+  if (!host) return jsonResponse({ error: 'Missing host parameter' }, 400);
+  if (port !== 80 && port !== 443) {
+    return jsonResponse({ error: 'Only ports 80 and 443 can be checked — other ports use non-HTTP protocols this tool cannot test.' }, 400);
+  }
+  const lowerHost = host.toLowerCase();
+  if (lowerHost === 'localhost' || lowerHost === '127.0.0.1' || lowerHost === '::1') {
+    return jsonResponse({ error: 'Local/internal hosts cannot be checked' }, 400);
+  }
+  if (IP_V4_REGEX.test(host) && !isValidPublicIp(host)) {
+    return jsonResponse({ error: 'Private/internal IP addresses cannot be checked' }, 400);
+  }
+  const protocol = port === 443 ? 'https' : 'http';
+  const target = protocol + '://' + host + ':' + port + '/';
+  const start = Date.now();
+  try {
+    const res = await fetch(target, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(6000) });
+    return jsonResponse({ host: host, port: port, reachable: true, status: res.status, ms: Date.now() - start });
+  } catch (e) {
+    return jsonResponse({ host: host, port: port, reachable: false, ms: Date.now() - start, error: 'Connection failed or timed out' });
+  }
 }
 
 // ── HTTP Headers Handler ──

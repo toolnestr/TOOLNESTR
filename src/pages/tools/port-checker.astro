@@ -179,26 +179,36 @@ const faqs = [
       }
 
       try {
-        const protocol = portNum === 443 ? 'https' : 'http';
-        const url = `${protocol}://${hostname}:${portNum}/`;
-        const start = performance.now();
-        const res = await fetch(url, { mode: 'no-cors', cache: 'no-store' });
-        const end = performance.now();
-        const ms = Math.round((end - start) * 10) / 10;
+        // Checked server-side via the Worker, not a direct browser fetch: browsers
+        // block several common ports outright (the "unsafe ports" list) regardless
+        // of CORS, and a strict CSP can't allowlist an arbitrary host in advance.
+        const api = 'https://toolnestr.toolnestr.workers.dev/api/port-check';
+        const r = await fetch(`${api}?host=${encodeURIComponent(hostname)}&port=${portNum}`);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
 
-        resultIcon.innerHTML = '&#9989;';
-        resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl';
-        resultStatus.textContent = 'Reachable';
-        resultDetail.textContent = `Port ${portNum} responded in ${ms} ms.`;
-        resultExtra.classList.remove('hidden');
-        resultExtra.innerHTML = `HTTP response received. The service on ${hostname}:${portNum} is accepting connections.`;
+        if (d.reachable) {
+          resultIcon.innerHTML = '&#9989;';
+          resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl';
+          resultStatus.textContent = 'Reachable';
+          resultDetail.textContent = `Port ${portNum} responded in ${d.ms} ms (HTTP ${d.status}).`;
+          resultExtra.classList.remove('hidden');
+          resultExtra.innerHTML = `The service on ${hostname}:${portNum} is accepting connections.`;
+        } else {
+          resultIcon.innerHTML = '&#10060;';
+          resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl';
+          resultStatus.textContent = 'Unreachable';
+          resultDetail.textContent = `Could not connect to ${hostname}:${portNum}.`;
+          resultExtra.classList.remove('hidden');
+          resultExtra.innerHTML = 'The port may be closed, firewalled, or the hostname may not resolve.';
+        }
       } catch (e) {
         resultIcon.innerHTML = '&#10060;';
         resultIcon.className = 'flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl';
         resultStatus.textContent = 'Unreachable';
         resultDetail.textContent = `Could not connect to ${hostname}:${portNum}. ${e.message || ''}`;
         resultExtra.classList.remove('hidden');
-        resultExtra.innerHTML = 'The port may be closed, firewalled, or the hostname may not resolve. Try verifying with a ping or traceroute first.';
+        resultExtra.innerHTML = 'The port may be closed, firewalled, or the hostname may not resolve.';
       }
 
       btn.disabled = false;
