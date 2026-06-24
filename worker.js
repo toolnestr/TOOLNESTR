@@ -291,6 +291,7 @@ function calculateEEAT(html, cleaned) {
   if (/dateModified|article:modified_time/i.test(html)) score += 10;
   if (/about/i.test(html)) score += 10;
   var citationDomains = html.match(/https?:\/\/(?:www\.)?([^\/"'\s]+)/gi) || [];
+  citationDomains = citationDomains.filter(function(d) { return d.indexOf('schema.org') === -1 && d.indexOf('example.com') === -1; });
   var nofollowDomains = html.match(/<a[^>]*rel=["']nofollow["'][^>]*href=["'](https?:\/\/(?:www\.)?[^\/"'\s]+)/gi) || [];
   var nofollowSet = {};
   nofollowDomains.forEach(function(m) {
@@ -299,13 +300,14 @@ function calculateEEAT(html, cleaned) {
   });
   var authoritative = citationDomains.filter(function (d) {
     var domain = d.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/.*$/, '');
-    return /\.(gov|edu|org|wikipedia|who\.int|nih\.gov|webmd|mayoclinic)\.[a-z]{2,}$/i.test(domain) && !nofollowSet[domain];
+    return /\.(gov|edu|org|wikipedia|who\.int|nih\.gov|webmd|mayoclinic)(\.[a-z]{2,})?$/i.test(domain) && !nofollowSet[domain];
   });
   if (authoritative.length > 0) score += Math.min(15, authoritative.length * 5);
   if (/author-bio|about-the-author|writer\s*bio/i.test(html)) score += 10;
   var words = cleaned.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
   if (words >= 1500) score += 15; else if (words >= 600) score += 10; else if (words >= 300) score += 5;
   if (/schema\.org\/(Person|Organization)/i.test(html)) score += 5;
+  if (/<article[^>]*>/i.test(html)) score += 5;
   return Math.min(100, score);
 }
 
