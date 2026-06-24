@@ -186,6 +186,7 @@ export const tools = [
   { slug: 'readability-checker', title: 'Text Readability Checker', short: 'Flesch-Kincaid, Gunning Fog & SMOG readability scores.', category: 'seo', emoji: '📖', enabled: true, status: 'live' },
   { slug: 'keyword-extractor', title: 'Keyword Extractor', short: 'Extract most frequent words and phrases from text.', category: 'seo', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'heading-hierarchy-checker', title: 'Heading Hierarchy Checker', short: 'Validate H1 to H6 heading structure from pasted HTML.', category: 'seo', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'seo-analyzer', title: 'SEO Analyzer', short: 'Full-page SEO audit — content, technical, performance & accessibility scores.', category: 'seo', emoji: '🔬', enabled: true, status: 'live' },
 
   // ── Converters ──
   { slug: 'csv-to-json', title: 'CSV ↔ JSON Converter', short: 'Convert CSV data to JSON and back — bidirectional.', category: 'converters', emoji: '📊', enabled: true, status: 'live' },

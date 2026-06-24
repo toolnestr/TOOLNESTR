@@ -1,0 +1,424 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'SEO Analyzer';
+const description =
+  'Free comprehensive SEO audit tool. Analyze any webpage for content quality, technical SEO, performance, accessibility, schema markup, and more — all in one report.';
+const intro =
+  'Enter a URL to get a full SEO audit covering content analysis, technical setup, performance, accessibility, social tags, keywords, and more. Results rival paid tools like Ahrefs for single-page analysis.';
+const category = { id: 'seo', name: 'SEO Tools' };
+const faqs = [
+  { q: 'What does the SEO Analyzer check?', a: 'It runs a comprehensive 360° audit covering: content quality and thin content detection, E-E-A-T signals, readability (Flesch-Kincaid, Gunning Fog), featured snippet readiness, keyword analysis, image optimization, internal/external links, schema markup validation, hreflang, canonical tags, security headers, Core Web Vitals patterns, semantic HTML and accessibility, Open Graph and Twitter Card tags, and entity recognition.' },
+  { q: 'How is the overall SEO score calculated?', a: 'The overall score is a weighted average: Content (35%), Technical (25%), Performance (20%), and Accessibility (20%). Each sub-score is calculated from multiple factors — for example, the content score considers word count, E-E-A-T signals, freshness, readability, heading structure, and thin content detection.' },
+  { q: 'What is the E-E-A-T score?', a: 'E-E-A-T stands for Experience, Expertise, Authoritativeness, and Trustworthiness. It checks for author information, publication/modification dates, about page links, citations to authoritative sources (gov, edu, org), author bios, word count depth, and schema.org Person/Organization markup.' },
+  { q: 'How does the Content Freshness score work?', a: 'It checks the Last-Modified HTTP header, dateModified schema/meta tags, mentions of the current and previous year in content, recent date patterns, and published/posted dates. Content updated within 30 days gets the highest score.' },
+  { q: 'What schema types are validated?', a: 'The tool checks for JSON-LD, microdata, and RDFa schema markup. It validates against Google-supported types including Article, Product, Recipe, LocalBusiness, Event, Organization, Person, BreadcrumbList, FAQPage, HowTo, Review, and SoftwareApplication, and flags missing required properties.' },
+  { q: 'What Core Web Vitals patterns are checked?', a: 'It identifies render-blocking scripts in the head, images missing width/height dimensions (CLS risk), large DOM size, font-display strategies, and other patterns that may affect LCP, CLS, and INP scores.' },
+  { q: 'How does the keyword analysis work?', a: 'Body text is extracted, stop words are removed, and remaining words are counted for frequency and density percentages. The top 15 keywords are returned. Keyword stuffing is flagged if any word exceeds 5% density.' },
+  { q: 'Is the analysis client-side or server-side?', a: 'The analysis runs on the server (Cloudflare Worker) which fetches the target URL and performs all checks. This allows the tool to see the full HTTP headers, redirect chain, and raw HTML — things client-side tools cannot access.' },
+  { q: 'Can I analyze any public webpage?', a: 'Yes, any publicly accessible URL. Enter the full URL including https://. The tool follows redirects and reports the full chain.' },
+  { q: 'How long does the analysis take?', a: 'Most pages are analyzed in under 5 seconds. Large pages with extensive content may take slightly longer.' },
+  { q: 'Does this tool store any data?', a: 'No. The URL is sent to the worker for analysis and the results are returned to your browser. No data is persisted or logged.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <input
+        id="url-input"
+        type="url"
+        placeholder="https://example.com"
+        class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+      />
+      <button id="analyze-btn" class="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50">
+        Analyze
+      </button>
+    </div>
+
+    <div id="error" class="mt-3 hidden rounded-lg bg-red-50 p-3 text-sm text-red-700"></div>
+
+    <div id="loading" class="mt-6 hidden">
+      <div class="flex items-center gap-3 text-sm text-slate-500">
+        <svg class="h-5 w-5 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+        Fetching and analyzing page...
+      </div>
+    </div>
+
+    <div id="results" class="mt-6 hidden space-y-6"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is checked in an SEO audit?</h2>
+    <p class="mt-2 text-slate-600">A complete SEO audit covers four major categories with 20+ distinct checks.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">📝</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Content</h3>
+        <ul class="mt-2 space-y-1 text-xs text-slate-500">
+          <li>• Word count &amp; text ratio</li>
+          <li>• E-E-A-T signals</li>
+          <li>• Readability scores</li>
+          <li>• Featured snippet readiness</li>
+          <li>• Keyword analysis</li>
+          <li>• Entity recognition</li>
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">⚙️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Technical</h3>
+        <ul class="mt-2 space-y-1 text-xs text-slate-500">
+          <li>• Schema markup validation</li>
+          <li>• Canonical &amp; hreflang</li>
+          <li>• Security headers</li>
+          <li>• Redirect chain</li>
+          <li>• Image optimization</li>
+          <li>• Internal/external links</li>
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">🚀</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Performance</h3>
+        <ul class="mt-2 space-y-1 text-xs text-slate-500">
+          <li>• Render-blocking resources</li>
+          <li>• DOM size analysis</li>
+          <li>• Image dimension checks</li>
+          <li>• Font loading strategy</li>
+          <li>• CLS risk detection</li>
+          <li>• JS rendering risks</li>
+        </ul>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">♿</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Accessibility</h3>
+        <ul class="mt-2 space-y-1 text-xs text-slate-500">
+          <li>• Semantic HTML elements</li>
+          <li>• ARIA labels</li>
+          <li>• Form label association</li>
+          <li>• Alt text on images</li>
+          <li>• Skip navigation</li>
+          <li>• Heading hierarchy</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the SEO Analyzer</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter a URL</h3>
+        <p class="mt-1 text-sm text-slate-600">Paste the full URL of the page you want to audit, including https://.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Click Analyze</h3>
+        <p class="mt-1 text-sm text-slate-600">The tool fetches the page and runs 20+ checks across all categories in seconds.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Review &amp; Improve</h3>
+        <p class="mt-1 text-sm text-slate-600">Each category shows detailed findings, scores, and specific recommendations to fix issues.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the scores</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Overall SEO Score (0–100)</h3>
+        <p class="mt-1 text-sm text-slate-600">A weighted composite of all four sub-scores. 90–100 is excellent, 70–89 is good, 50–69 needs improvement, below 50 requires significant work.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Content Score (35% weight)</h3>
+        <p class="mt-1 text-sm text-slate-600">Evaluates thin content, E-E-A-T signals, freshness, readability, featured snippet optimization, heading structure, and keyword usage. High-quality, authoritative content scores best.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Technical Score (25% weight)</h3>
+        <p class="mt-1 text-sm text-slate-600">Measures schema implementation, canonical URL correctness, hreflang setup, security headers (HSTS, X-Frame-Options, CSP), and redirect chain health.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Performance Score (20% weight)</h3>
+        <p class="mt-1 text-sm text-slate-600">Analyzes render-blocking resources, image dimensions (CLS), font-display, DOM size, and JavaScript rendering risks. Optimized pages score higher.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Accessibility Score (20% weight)</h3>
+        <p class="mt-1 text-sm text-slate-600">Checks semantic HTML elements, ARIA labels, form label associations, alt text on images, skip navigation, heading hierarchy, and language attributes.</p>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    const urlInput = document.getElementById('url-input');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const resultsDiv = document.getElementById('results');
+    const loadingDiv = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
+
+    const DEFAULT_WORKER_URL = 'https://toolnestr.toolnestr.workers.dev/api/full-audit';
+
+    function getWorkerUrl() {
+      if (DEFAULT_WORKER_URL) return DEFAULT_WORKER_URL;
+      return window.location.origin + '/api/full-audit';
+    }
+
+    analyzeBtn.addEventListener('click', async () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      errorDiv.classList.add('hidden');
+      resultsDiv.classList.add('hidden');
+      resultsDiv.innerHTML = '';
+      loadingDiv.classList.remove('hidden');
+      analyzeBtn.disabled = true;
+
+      try {
+        const apiUrl = getWorkerUrl() + '?url=' + encodeURIComponent(url);
+        const res = await fetch(apiUrl);
+        const data = await res.json();
+
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+
+        renderResults(data);
+      } catch (err) {
+        showError('Failed to analyze URL: ' + err.message);
+      } finally {
+        loadingDiv.classList.add('hidden');
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      errorDiv.classList.remove('hidden');
+    }
+
+    function scoreBar(score, label) {
+      const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500';
+      return '<div class="flex items-center gap-3"><div class="flex-1"><div class="h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ' + color + '" style="width:' + score + '%"></div></div></div><span class="text-sm font-semibold text-slate-700 w-8 text-right">' + score + '</span></div>';
+    }
+
+    function statusTag(ok, good, bad) {
+      const cls = ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700';
+      return '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ' + cls + '">' + (ok ? good : bad) + '</span>';
+    }
+
+    function section(title, content, cls) {
+      return '<div class="rounded-xl border border-slate-200 bg-white p-5 ' + (cls || '') + '"><h3 class="mb-3 text-base font-bold text-slate-900">' + title + '</h3>' + content + '</div>';
+    }
+
+    function renderResults(d) {
+      let html = '';
+
+      // ── URL & Redirect Chain ──
+      html += section('URL &amp; Redirects',
+        '<p class="text-sm text-slate-600">Final URL: <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">' + escapeHtml(d.url) + '</code></p>' +
+        (d.redirectChain && d.redirectChain.length > 1 ? '<div class="mt-2 space-y-1">' + d.redirectChain.map((r, i) =>
+          '<div class="flex items-center gap-2 text-xs text-slate-500"><span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">' + r.status + '</span><span>' + escapeHtml(r.url) + '</span>' + (i < d.redirectChain.length - 1 ? '<span class="text-slate-300">→</span>' : '') + '</div>'
+        ).join('') + '</div>' : '')
+      );
+
+      // ── Scores ──
+      const s = d.scores;
+      html += section('Overall Score', scoreBar(s.overall, s.overall));
+      html += '<div class="-mt-4 grid gap-3 sm:grid-cols-2">';
+      html += section('Content', scoreBar(s.content, s.content));
+      html += section('Technical', scoreBar(s.technical, s.technical));
+      html += section('Performance', scoreBar(s.performance, s.performance));
+      html += section('Accessibility', scoreBar(s.accessibility, s.accessibility));
+      html += '</div>';
+
+      // ── Content ──
+      const c = d.content;
+      let contentHtml = '';
+      contentHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">';
+      contentHtml += statBox('Words', c.wordCount.toLocaleString());
+      contentHtml += statBox('Text/HTML Ratio', c.textRatio + '%');
+      contentHtml += statBox('E-E-A-T Score', c.eeaScore + '/100');
+      contentHtml += statBox('Freshness', c.freshnessScore + '/100');
+      contentHtml += statBox('Readability (FK)', c.readability.fleschKincaid);
+      contentHtml += statBox('Gunning Fog', c.readability.gunningFog);
+      contentHtml += statBox('Snippet Score', c.snippetScore + '/100');
+      contentHtml += '</div>';
+      if (c.verdict) contentHtml += '<div class="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">' + c.verdict + '</div>';
+
+      // Headings
+      const h = c.headings;
+      contentHtml += '<div class="mt-3 flex flex-wrap gap-2 text-xs">' +
+        Object.entries(h).map(([tag, count]) =>
+          '<span class="rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">' + tag.toUpperCase() + ': ' + count + '</span>'
+        ).join('') +
+      '</div>';
+
+      contentHtml += '<div class="mt-3 flex flex-wrap gap-2">';
+      contentHtml += statusTag(!c.isThin, 'Content is not thin', 'Thin content detected');
+      contentHtml += statusTag(c.readability.fleschKincaid >= 60, 'Readable (' + c.readability.fleschKincaid + ')', 'Hard to read (' + c.readability.fleschKincaid + ')');
+      contentHtml += statusTag(c.eeaScore >= 50, 'Good E-E-A-T signals', 'Weak E-E-A-T signals');
+      if (c.readability.complexSentences > 0) contentHtml += '<span class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">' + c.readability.complexSentences + ' complex sentences</span>';
+      if (c.readability.passiveVoiceCount > 0) contentHtml += '<span class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">' + c.readability.passiveVoiceCount + ' passive voice</span>';
+      contentHtml += '</div>';
+
+      html += section('Content Analysis', contentHtml);
+
+      // ── Technical ──
+      const t = d.technical;
+      let techHtml = '';
+
+      // Schema
+      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Schema Markup</span> ' + statusTag(t.schema.types.length > 0, t.schema.types.length + ' type(s) found', 'No schema found') + '</div>';
+      if (t.schema.types.length > 0) {
+        techHtml += '<div class="mb-2 flex flex-wrap gap-1.5">' + t.schema.types.map((t) => '<span class="rounded bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">' + t + '</span>').join('') + '</div>';
+      }
+      if (t.schema.errors.length > 0) {
+        techHtml += '<div class="mb-3 space-y-1">' + t.schema.errors.map((e) => '<div class="text-xs text-red-600">⚠ ' + e + '</div>').join('') + '</div>';
+      }
+
+      // Canonical
+      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Canonical</span> ' +
+        statusTag(t.canonical.isValid, 'Valid', t.canonical.url === 'Not set' ? 'Missing' : 'Mismatch') +
+        '<p class="mt-1 text-xs text-slate-500">' + escapeHtml(t.canonical.url) + '</p></div>';
+
+      // Hreflang
+      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Hreflang</span> ' +
+        statusTag(t.hreflang.detected, 'Configured', 'Not detected') +
+        (t.hreflang.errors.length > 0 ? '<div class="mt-1 text-xs text-amber-600">' + t.hreflang.errors.join(', ') + '</div>' : '') +
+      '</div>';
+
+      // Security headers
+      const sec = t.securityHeaders;
+      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Security Headers</span></div>';
+      techHtml += '<div class="flex flex-wrap gap-2 text-xs">';
+      techHtml += statusTag(sec.hasHSTS, 'HSTS ✓', 'HSTS ✗');
+      techHtml += statusTag(sec.hasXFrame, 'X-Frame-Options ✓', 'X-Frame-Options ✗');
+      techHtml += statusTag(sec.hasXContentType, 'X-Content-Type-Options ✓', 'X-Content-Type-Options ✗');
+      techHtml += statusTag(sec.hasCSP, 'CSP ✓', 'CSP ✗');
+      techHtml += statusTag(sec.hasReferrerPolicy, 'Referrer-Policy ✓', 'Referrer-Policy ✗');
+      techHtml += '</div>';
+
+      html += section('Technical SEO', techHtml);
+
+      // ── Performance ──
+      const p = d.performance;
+      let perfHtml = '';
+      perfHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">';
+      perfHtml += statBox('Render-blocking', p.renderBlockingResources);
+      perfHtml += statBox('DOM Elements', p.totalDOMElements.toLocaleString());
+      perfHtml += statBox('Images w/o dims', p.imagesWithoutDimensions);
+      perfHtml += '</div>';
+      if (p.predictedCWVIssues && p.predictedCWVIssues.length > 0) {
+        perfHtml += '<div class="mt-3 space-y-1">' + p.predictedCWVIssues.map((i) => '<div class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">⚠ ' + i + '</div>').join('') + '</div>';
+      }
+      if (p.jsRenderingRisks && p.jsRenderingRisks.length > 0) {
+        perfHtml += '<div class="mt-2 space-y-1">' + p.jsRenderingRisks.map((i) => '<div class="rounded bg-red-50 px-3 py-2 text-xs text-red-700">⚠ ' + i + '</div>').join('') + '</div>';
+      }
+      html += section('Performance', perfHtml);
+
+      // ── Images ──
+      const im = d.images;
+      let imgHtml = '';
+      imgHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">';
+      imgHtml += statBox('Total', im.total);
+      imgHtml += statBox('Missing alt', im.missingAlt);
+      imgHtml += statBox('No dimensions', im.missingDimensions);
+      imgHtml += statBox('Outdated format', im.outdatedFormats);
+      imgHtml += statBox('Not lazy', im.notLazyLoaded);
+      imgHtml += '</div>';
+      html += section('Images', imgHtml);
+
+      // ── Links ──
+      const l = d.links;
+      let linkHtml = '';
+      linkHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">';
+      linkHtml += statBox('Internal', l.internal);
+      linkHtml += statBox('External', l.external);
+      linkHtml += statBox('Orphan paragraphs', l.orphanParagraphs);
+      linkHtml += '</div>';
+      if (l.anchorTextDistribution && l.anchorTextDistribution.length > 0) {
+        linkHtml += '<div class="mt-3"><span class="text-xs font-semibold text-slate-600">Anchor text distribution:</span><div class="mt-1 space-y-1">';
+        linkHtml += l.anchorTextDistribution.slice(0, 5).map((a) =>
+          '<div class="flex items-center gap-2 text-xs text-slate-500"><span class="flex-1 truncate">' + escapeHtml(a.text) + '</span><span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">' + a.count + '</span></div>'
+        ).join('');
+        linkHtml += '</div></div>';
+      }
+      html += section('Links', linkHtml);
+
+      // ── Social ──
+      const so = d.social;
+      let socialHtml = '';
+      socialHtml += '<div class="space-y-1 text-sm">';
+      if (so.ogTitle) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:title</span><span class="text-slate-700">' + escapeHtml(so.ogTitle) + '</span></div>';
+      if (so.ogDescription) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:description</span><span class="text-slate-700 line-clamp-2">' + escapeHtml(so.ogDescription) + '</span></div>';
+      if (so.ogImage) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:image</span><span class="text-slate-700 truncate">' + escapeHtml(so.ogImage) + '</span></div>';
+      if (so.twitterCard) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">twitter:card</span><span class="text-slate-700">' + escapeHtml(so.twitterCard) + '</span></div>';
+      socialHtml += '</div>';
+      if (so.missingTags && so.missingTags.length > 0) {
+        socialHtml += '<div class="mt-2 flex flex-wrap gap-1.5">' + so.missingTags.map((t) => '<span class="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Missing: ' + t + '</span>').join('') + '</div>';
+      }
+      html += section('Social Media', socialHtml);
+
+      // ── Keywords ──
+      if (d.keywords && d.keywords.length > 0) {
+        const maxCount = d.keywords[0].count;
+        let kwHtml = '';
+        kwHtml += '<div class="space-y-1.5">';
+        d.keywords.slice(0, 15).forEach((kw) => {
+          const pct = (kw.count / maxCount) * 100;
+          const isStuffed = parseFloat(kw.density) > 5;
+          kwHtml += '<div class="flex items-center gap-2">' +
+            '<span class="w-32 truncate text-xs text-slate-700">' + escapeHtml(kw.word) + '</span>' +
+            '<div class="flex-1"><div class="h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full ' + (isStuffed ? 'bg-red-400' : 'bg-indigo-400') + '" style="width:' + pct + '%"></div></div></div>' +
+            '<span class="w-16 text-right text-xs text-slate-500">' + kw.count + ' (' + kw.density + ')</span>' +
+          '</div>';
+        });
+        kwHtml += '</div>';
+        html += section('Top Keywords', kwHtml);
+      }
+
+      // ── Entities ──
+      if (d.entities && d.entities.length > 0) {
+        let entHtml = '<div class="flex flex-wrap gap-2">';
+        d.entities.slice(0, 20).forEach((e) => {
+          const bg = e.type === 'Organization' ? 'bg-blue-50 text-blue-700' : e.type === 'Person' ? 'bg-green-50 text-green-700' : e.type === 'Location' ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-600';
+          entHtml += '<span class="rounded-full px-2.5 py-0.5 text-xs font-medium ' + bg + '">' + escapeHtml(e.name) + ' <span class="opacity-50">(' + e.type + ', ' + e.mentions + ')</span></span>';
+        });
+        entHtml += '</div>';
+        html += section('Entities Detected', entHtml);
+      }
+
+      // ── Accessibility ──
+      const a = d.accessibility;
+      let accHtml = '';
+      accHtml += '<div class="flex items-center gap-3"><div class="flex-1"><div class="h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ' + (a.score >= 70 ? 'bg-emerald-500' : a.score >= 50 ? 'bg-amber-500' : 'bg-red-500') + '" style="width:' + a.score + '%"></div></div></div><span class="text-sm font-semibold text-slate-700">' + a.score + '/100</span></div>';
+      if (a.issues && a.issues.length > 0) {
+        accHtml += '<div class="mt-3 space-y-1">' + a.issues.map((i) => '<div class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">⚠ ' + i + '</div>').join('') + '</div>';
+      } else {
+        accHtml += '<p class="mt-2 text-sm text-emerald-600">No accessibility issues detected.</p>';
+      }
+      html += section('Accessibility', accHtml);
+
+      resultsDiv.innerHTML = html;
+      resultsDiv.classList.remove('hidden');
+    }
+
+    function statBox(label, value) {
+      return '<div class="rounded-lg bg-slate-50 p-3 text-center"><div class="text-lg font-bold text-slate-800">' + value + '</div><div class="text-xs text-slate-500">' + label + '</div></div>';
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      var d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // Enter key in URL input triggers analysis
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') analyzeBtn.click();
+    });
+  </script>
+</ToolLayout>
