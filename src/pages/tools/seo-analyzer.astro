@@ -1,424 +1,518 @@
 ---
-import ToolLayout from '../../layouts/ToolLayout.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 
-const title = 'SEO Analyzer';
+const title = 'Enterprise SEO Analyzer';
 const description =
-  'Free comprehensive SEO audit tool. Analyze any webpage for content quality, technical SEO, performance, accessibility, schema markup, and more — all in one report.';
+  'Free premium SEO audit tool. Analyze any webpage for content quality, technical SEO, performance, accessibility, schema markup, and more — with actionable recommendations.';
 const intro =
-  'Enter a URL to get a full SEO audit covering content analysis, technical setup, performance, accessibility, social tags, keywords, and more. Results rival paid tools like Ahrefs for single-page analysis.';
+  'Enter a URL to get a full SEO audit covering content analysis, technical setup, performance, accessibility, social tags, keywords, and more. Get actionable recommendations with code examples.';
 const category = { id: 'seo', name: 'SEO Tools' };
 const faqs = [
   { q: 'What does the SEO Analyzer check?', a: 'It runs a comprehensive 360° audit covering: content quality and thin content detection, E-E-A-T signals, readability (Flesch-Kincaid, Gunning Fog), featured snippet readiness, keyword analysis, image optimization, internal/external links, schema markup validation, hreflang, canonical tags, security headers, Core Web Vitals patterns, semantic HTML and accessibility, Open Graph and Twitter Card tags, and entity recognition.' },
-  { q: 'How is the overall SEO score calculated?', a: 'The overall score is a weighted average: Content (35%), Technical (25%), Performance (20%), and Accessibility (20%). Each sub-score is calculated from multiple factors — for example, the content score considers word count, E-E-A-T signals, freshness, readability, heading structure, and thin content detection.' },
-  { q: 'What is the E-E-A-T score?', a: 'E-E-A-T stands for Experience, Expertise, Authoritativeness, and Trustworthiness. It checks for author information, publication/modification dates, about page links, citations to authoritative sources (gov, edu, org), author bios, word count depth, and schema.org Person/Organization markup.' },
-  { q: 'How does the Content Freshness score work?', a: 'It checks the Last-Modified HTTP header, dateModified schema/meta tags, mentions of the current and previous year in content, recent date patterns, and published/posted dates. Content updated within 30 days gets the highest score.' },
-  { q: 'What schema types are validated?', a: 'The tool checks for JSON-LD, microdata, and RDFa schema markup. It validates against Google-supported types including Article, Product, Recipe, LocalBusiness, Event, Organization, Person, BreadcrumbList, FAQPage, HowTo, Review, and SoftwareApplication, and flags missing required properties.' },
-  { q: 'What Core Web Vitals patterns are checked?', a: 'It identifies render-blocking scripts in the head, images missing width/height dimensions (CLS risk), large DOM size, font-display strategies, and other patterns that may affect LCP, CLS, and INP scores.' },
+  { q: 'How is the overall SEO score calculated?', a: 'The overall score is a weighted average: Content (35%), Technical (25%), Performance (20%), and Accessibility (20%). Each sub-score is calculated from multiple factors.' },
+  { q: 'What is the E-E-A-T score?', a: 'E-E-A-T stands for Experience, Expertise, Authoritativeness, and Trustworthiness. It checks for author information, publication/modification dates, about page links, citations to authoritative sources, author bios, word count depth, and schema.org markup.' },
+  { q: 'How are the recommendations generated?', a: 'For every failed or poor check, the system generates a prioritized recommendation with a severity level (critical, high, medium, low), impact description, solution steps, code example, estimated fix time, and expected ranking impact.' },
+  { q: 'What schema types are validated?', a: 'The tool checks for JSON-LD, microdata, and RDFa schema markup against types including Article, Product, Recipe, LocalBusiness, Event, Organization, Person, BreadcrumbList, FAQPage, HowTo, Review, and SoftwareApplication.' },
   { q: 'How does the keyword analysis work?', a: 'Body text is extracted, stop words are removed, and remaining words are counted for frequency and density percentages. The top 15 keywords are returned. Keyword stuffing is flagged if any word exceeds 5% density.' },
-  { q: 'Is the analysis client-side or server-side?', a: 'The analysis runs on the server (Cloudflare Worker) which fetches the target URL and performs all checks. This allows the tool to see the full HTTP headers, redirect chain, and raw HTML — things client-side tools cannot access.' },
-  { q: 'Can I analyze any public webpage?', a: 'Yes, any publicly accessible URL. Enter the full URL including https://. The tool follows redirects and reports the full chain.' },
+  { q: 'Can I export the report?', a: 'Yes. After the analysis completes, click the "Export PDF" button to download a complete PDF report of the audit.' },
   { q: 'How long does the analysis take?', a: 'Most pages are analyzed in under 5 seconds. Large pages with extensive content may take slightly longer.' },
-  { q: 'Does this tool store any data?', a: 'No. The URL is sent to the worker for analysis and the results are returned to your browser. No data is persisted or logged.' },
 ];
 ---
 
-<ToolLayout {title} {description} {intro} {category} {faqs}>
-  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-    <div class="flex flex-col gap-3 sm:flex-row">
-      <input
-        id="url-input"
-        type="url"
-        placeholder="https://example.com"
-        class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
-      />
-      <button id="analyze-btn" class="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50">
-        Analyze
-      </button>
+<BaseLayout title={title} description={description}>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+
+  <style is:inline>
+    :root {
+      --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981;
+      --warning: #f59e0b; --error: #ef4444; --info: #3b82f6;
+      --bg-light: #f8fafc; --bg-dark: #0f172a; --card-bg: #ffffff;
+      --text-main: #1e293b; --text-muted: #64748b;
+      --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    }
+    .dark body, body.dark-mode { --bg-light: #0f172a; --card-bg: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-light); color: var(--text-main); margin: 0; }
+    .premium-hero { background: var(--gradient); padding: 48px 24px; text-align: center; color: white; border-radius: 0 0 32px 32px; }
+    .premium-hero h1 { font-size: 2.5rem; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+    .premium-hero p { font-size: 1.1rem; opacity: 0.9; margin: 0 0 24px; }
+    .url-input-group { display: flex; max-width: 640px; margin: 0 auto; gap: 12px; }
+    .url-input-group input { flex: 1; padding: 16px 20px; border-radius: 12px; border: none; font-size: 1rem; outline: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-gradient { background: var(--gradient); color: white; padding: 16px 32px; border-radius: 12px; font-weight: 700; border: none; cursor: pointer; font-size: 1rem; transition: transform 0.2s, box-shadow 0.2s; white-space: nowrap; }
+    .btn-gradient:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.3); }
+    .btn-gradient:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .card { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    .dashboard-grid { display: grid; gap: 24px; max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (min-width: 768px) { .score-grid { grid-template-columns: repeat(4, 1fr); } }
+    .circular-score { text-align: center; position: relative; }
+    .circular-score svg { width: 100px; height: 100px; transform: rotate(-90deg); }
+    .circular-score .bg { fill: none; stroke: #e2e8f0; stroke-width: 8; }
+    .circular-score .progress { fill: none; stroke-width: 8; stroke-linecap: round; }
+    .circular-score .label { margin-top: 8px; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
+    .circular-score .value { font-size: 1.5rem; font-weight: 800; }
+    .overall-section { max-width: 280px; margin: 0 auto; text-align: center; position: relative; }
+    .overall-section canvas { max-height: 240px; }
+    .overall-grade { font-size: 2.8rem; font-weight: 800; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -65%); }
+    .tabs { display: flex; gap: 4px; background: #e2e8f0; border-radius: 12px; padding: 4px; overflow-x: auto; }
+    .tab-btn { padding: 10px 20px; border: none; background: transparent; border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--text-muted); white-space: nowrap; transition: all 0.2s; }
+    .tab-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .tab-content { display: none; margin-top: 16px; }
+    .tab-content.active { display: block; }
+    .severity-critical { border-left: 6px solid var(--error); }
+    .severity-high { border-left: 6px solid var(--warning); }
+    .severity-medium { border-left: 6px solid var(--info); }
+    .severity-low { border-left: 6px solid var(--text-muted); }
+    .rec-card { margin-bottom: 16px; }
+    .rec-card h4 { margin: 0 0 8px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+    .rec-card p { margin: 4px 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+    .rec-card pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 10px; font-size: 0.8rem; overflow-x: auto; margin: 12px 0; white-space: pre-wrap; }
+    .rec-card .meta { display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; }
+    .export-bar { position: sticky; bottom: 0; background: var(--card-bg); border-top: 1px solid #e2e8f0; padding: 12px 24px; display: flex; gap: 12px; justify-content: center; z-index: 50; }
+    .export-bar button { padding: 10px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+    .loading-overlay { text-align: center; padding: 48px 24px; }
+    .loading-steps { max-width: 400px; margin: 24px auto; text-align: left; }
+    .loading-step { padding: 12px 16px; margin: 4px 0; border-radius: 8px; background: var(--card-bg); transition: all 0.3s; display: flex; align-items: center; gap: 10px; opacity: 0.4; }
+    .loading-step.active { opacity: 1; border-left: 4px solid var(--primary); }
+    .loading-step.done { opacity: 0.7; border-left: 4px solid var(--success); }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+    .stat-box { text-align: center; padding: 12px; background: #f1f5f9; border-radius: 10px; }
+    .dark-mode .stat-box { background: #0f172a; }
+    .stat-box .num { font-size: 1.4rem; font-weight: 700; }
+    .stat-box .lbl { font-size: 0.75rem; color: var(--text-muted); }
+    .keyword-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .keyword-bar .name { width: 120px; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .keyword-bar .bar-bg { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; }
+    .keyword-bar .bar-fill { height: 8px; border-radius: 4px; background: var(--primary); }
+    .keyword-bar .stat { width: 80px; text-align: right; font-size: 0.8rem; color: var(--text-muted); }
+    .error-msg { background: #fef2f2; color: var(--error); padding: 16px; border-radius: 12px; text-align: center; font-weight: 500; }
+    .spinner { width: 48px; height: 48px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .circle-progress-ring { position: relative; display: inline-flex; }
+    .circle-progress-ring .center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.8rem; font-weight: 800; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .tag-green { background: #d1fae5; color: #065f46; }
+    .tag-red { background: #fee2e2; color: #991b1b; }
+    .tag-amber { background: #fef3c7; color: #92400e; }
+    .dark-mode .tag-green { background: #064e3b; color: #6ee7b7; }
+    .dark-mode .tag-red { background: #7f1d1d; color: #fca5a5; }
+    .dark-mode .tag-amber { background: #78350f; color: #fcd34d; }
+    .dark-mode .tabs { background: #1e293b; }
+    .dark-mode .tab-btn.active { background: #0f172a; }
+    .dark-mode .export-bar { border-top-color: #1e293b; }
+    .hidden { display: none; }
+    .entity-tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; margin: 2px; background: #e0e7ff; color: #4338ca; }
+    .dark-mode .entity-tag { background: #312e81; color: #a5b4fc; }
+  </style>
+
+  <div class="premium-hero">
+    <h1>Enterprise SEO Analyzer</h1>
+    <p>Comprehensive audit with actionable recommendations &mdash; rivaling paid tools</p>
+    <div class="url-input-group">
+      <input id="urlInput" type="url" placeholder="https://example.com" />
+      <button id="analyzeBtn" class="btn-gradient"><i class="fas fa-search"></i> Analyze</button>
     </div>
-
-    <div id="error" class="mt-3 hidden rounded-lg bg-red-50 p-3 text-sm text-red-700"></div>
-
-    <div id="loading" class="mt-6 hidden">
-      <div class="flex items-center gap-3 text-sm text-slate-500">
-        <svg class="h-5 w-5 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-        Fetching and analyzing page...
-      </div>
-    </div>
-
-    <div id="results" class="mt-6 hidden space-y-6"></div>
   </div>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">What is checked in an SEO audit?</h2>
-    <p class="mt-2 text-slate-600">A complete SEO audit covers four major categories with 20+ distinct checks.</p>
-    <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="rounded-xl border border-slate-200 bg-white p-4">
-        <span class="text-2xl">📝</span>
-        <h3 class="mt-2 font-semibold text-slate-900">Content</h3>
-        <ul class="mt-2 space-y-1 text-xs text-slate-500">
-          <li>• Word count &amp; text ratio</li>
-          <li>• E-E-A-T signals</li>
-          <li>• Readability scores</li>
-          <li>• Featured snippet readiness</li>
-          <li>• Keyword analysis</li>
-          <li>• Entity recognition</li>
-        </ul>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4">
-        <span class="text-2xl">⚙️</span>
-        <h3 class="mt-2 font-semibold text-slate-900">Technical</h3>
-        <ul class="mt-2 space-y-1 text-xs text-slate-500">
-          <li>• Schema markup validation</li>
-          <li>• Canonical &amp; hreflang</li>
-          <li>• Security headers</li>
-          <li>• Redirect chain</li>
-          <li>• Image optimization</li>
-          <li>• Internal/external links</li>
-        </ul>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4">
-        <span class="text-2xl">🚀</span>
-        <h3 class="mt-2 font-semibold text-slate-900">Performance</h3>
-        <ul class="mt-2 space-y-1 text-xs text-slate-500">
-          <li>• Render-blocking resources</li>
-          <li>• DOM size analysis</li>
-          <li>• Image dimension checks</li>
-          <li>• Font loading strategy</li>
-          <li>• CLS risk detection</li>
-          <li>• JS rendering risks</li>
-        </ul>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4">
-        <span class="text-2xl">♿</span>
-        <h3 class="mt-2 font-semibold text-slate-900">Accessibility</h3>
-        <ul class="mt-2 space-y-1 text-xs text-slate-500">
-          <li>• Semantic HTML elements</li>
-          <li>• ARIA labels</li>
-          <li>• Form label association</li>
-          <li>• Alt text on images</li>
-          <li>• Skip navigation</li>
-          <li>• Heading hierarchy</li>
-        </ul>
-      </div>
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <h3 style="margin-top:16px;">Analyzing your page...</h3>
+    <div class="loading-steps">
+      <div class="loading-step" data-step="1"><i class="fas fa-globe"></i> Fetching page and headers</div>
+      <div class="loading-step" data-step="2"><i class="fas fa-file-alt"></i> Analyzing content and readability</div>
+      <div class="loading-step" data-step="3"><i class="fas fa-cogs"></i> Checking technical SEO</div>
+      <div class="loading-step" data-step="4"><i class="fas fa-chart-bar"></i> Calculating scores and recommendations</div>
     </div>
-  </section>
+  </div>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">How to use the SEO Analyzer</h2>
-    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Enter a URL</h3>
-        <p class="mt-1 text-sm text-slate-600">Paste the full URL of the page you want to audit, including https://.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
-        <h3 class="mt-3 font-semibold text-slate-600">Click Analyze</h3>
-        <p class="mt-1 text-sm text-slate-600">The tool fetches the page and runs 20+ checks across all categories in seconds.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
-        <h3 class="mt-3 font-semibold text-slate-600">Review &amp; Improve</h3>
-        <p class="mt-1 text-sm text-slate-600">Each category shows detailed findings, scores, and specific recommendations to fix issues.</p>
-      </div>
-    </div>
-  </section>
+  <div id="errorContainer" class="hidden" style="max-width:1200px;margin:24px auto;padding:0 24px;">
+    <div id="errorMsg" class="error-msg"></div>
+  </div>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">Understanding the scores</h2>
-    <div class="mt-4 space-y-4">
-      <div class="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 class="font-semibold text-slate-900">Overall SEO Score (0–100)</h3>
-        <p class="mt-1 text-sm text-slate-600">A weighted composite of all four sub-scores. 90–100 is excellent, 70–89 is good, 50–69 needs improvement, below 50 requires significant work.</p>
+  <div id="dashboardContainer" class="hidden">
+    <div class="dashboard-grid">
+      <div class="card" style="grid-column:1/-1;">
+        <div class="score-grid">
+          <div class="overall-section">
+            <canvas id="overallChart"></canvas>
+            <div id="overallGrade" class="overall-grade">A</div>
+          </div>
+          <div id="subScores" class="score-grid" style="grid-column:span 3;"></div>
+        </div>
       </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 class="font-semibold text-slate-900">Content Score (35% weight)</h3>
-        <p class="mt-1 text-sm text-slate-600">Evaluates thin content, E-E-A-T signals, freshness, readability, featured snippet optimization, heading structure, and keyword usage. High-quality, authoritative content scores best.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 class="font-semibold text-slate-900">Technical Score (25% weight)</h3>
-        <p class="mt-1 text-sm text-slate-600">Measures schema implementation, canonical URL correctness, hreflang setup, security headers (HSTS, X-Frame-Options, CSP), and redirect chain health.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 class="font-semibold text-slate-900">Performance Score (20% weight)</h3>
-        <p class="mt-1 text-sm text-slate-600">Analyzes render-blocking resources, image dimensions (CLS), font-display, DOM size, and JavaScript rendering risks. Optimized pages score higher.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 class="font-semibold text-slate-900">Accessibility Score (20% weight)</h3>
-        <p class="mt-1 text-sm text-slate-600">Checks semantic HTML elements, ARIA labels, form label associations, alt text on images, skip navigation, heading hierarchy, and language attributes.</p>
+
+      <div class="card" style="grid-column:1/-1;">
+        <div class="tabs" id="tabHeaders">
+          <button class="tab-btn active" data-tab="content"><i class="fas fa-file-alt"></i> Content</button>
+          <button class="tab-btn" data-tab="technical"><i class="fas fa-cogs"></i> Technical</button>
+          <button class="tab-btn" data-tab="performance"><i class="fas fa-rocket"></i> Performance</button>
+          <button class="tab-btn" data-tab="media"><i class="fas fa-images"></i> Media &amp; Links</button>
+          <button class="tab-btn" data-tab="keywords"><i class="fas fa-tags"></i> Social &amp; Keywords</button>
+          <button class="tab-btn" data-tab="recommendations"><i class="fas fa-list-check"></i> Recommendations</button>
+        </div>
+        <div id="tabContentContainer" style="margin-top:16px;"></div>
       </div>
     </div>
-  </section>
+
+    <div class="export-bar">
+      <button id="exportPdfBtn" class="btn-gradient" style="padding:10px 24px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
+    </div>
+  </div>
 
   <script is:inline>
-    const urlInput = document.getElementById('url-input');
-    const analyzeBtn = document.getElementById('analyze-btn');
-    const resultsDiv = document.getElementById('results');
-    const loadingDiv = document.getElementById('loading');
-    const errorDiv = document.getElementById('error');
+    var WORKER_URL = 'https://toolnestr.toolnestr.workers.dev';
 
-    const DEFAULT_WORKER_URL = 'https://toolnestr.toolnestr.workers.dev/api/full-audit';
+    var app = {
+      charts: {},
+      data: null,
 
-    function getWorkerUrl() {
-      if (DEFAULT_WORKER_URL) return DEFAULT_WORKER_URL;
-      return window.location.origin + '/api/full-audit';
-    }
+      init: function () {
+        document.getElementById('analyzeBtn').addEventListener('click', function () { app.runAudit(); });
+        document.getElementById('urlInput').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') app.runAudit();
+        });
+        document.getElementById('exportPdfBtn').addEventListener('click', function () { app.exportPDF(); });
+      },
 
-    analyzeBtn.addEventListener('click', async () => {
-      const url = urlInput.value.trim();
-      if (!url) return;
+      showLoading: function () {
+        document.getElementById('dashboardContainer').classList.add('hidden');
+        document.getElementById('errorContainer').classList.add('hidden');
+        var lo = document.getElementById('loadingOverlay');
+        lo.classList.remove('hidden');
+        var steps = lo.querySelectorAll('.loading-step');
+        steps.forEach(function (s) { s.classList.remove('active', 'done'); });
+        steps.forEach(function (s, i) {
+          setTimeout(function () {
+            s.classList.add('active');
+            if (i > 0) steps[i - 1].classList.remove('active');
+            steps[i - 1] && steps[i - 1].classList.add('done');
+          }, (i + 1) * 1000);
+        });
+      },
 
-      errorDiv.classList.add('hidden');
-      resultsDiv.classList.add('hidden');
-      resultsDiv.innerHTML = '';
-      loadingDiv.classList.remove('hidden');
-      analyzeBtn.disabled = true;
+      hideLoading: function () {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+      },
 
-      try {
-        const apiUrl = getWorkerUrl() + '?url=' + encodeURIComponent(url);
-        const res = await fetch(apiUrl);
-        const data = await res.json();
+      showError: function (msg) {
+        document.getElementById('errorMsg').textContent = msg;
+        document.getElementById('errorContainer').classList.remove('hidden');
+      },
 
-        if (data.error) {
-          showError(data.error);
-          return;
+      runAudit: function () {
+        var url = document.getElementById('urlInput').value.trim();
+        if (!url) return;
+        this.showLoading();
+        var apiUrl = WORKER_URL + '/api/full-audit?url=' + encodeURIComponent(url);
+        fetch(apiUrl)
+          .then(function (r) {
+            if (!r.ok) return r.text().then(function (t) { throw new Error(t); });
+            return r.json();
+          })
+          .then(function (data) {
+            app.data = data;
+            app.hideLoading();
+            app.renderDashboard(data);
+            app.renderTabs(data);
+            app.initCharts(data.scores);
+          })
+          .catch(function (err) {
+            app.hideLoading();
+            app.showError('Failed to analyze URL: ' + err.message);
+          });
+      },
+
+      renderDashboard: function (d) {
+        document.getElementById('dashboardContainer').classList.remove('hidden');
+        var grade = this.getGrade(d.scores.overall);
+        document.getElementById('overallGrade').textContent = grade;
+
+        var subs = document.getElementById('subScores');
+        subs.innerHTML = '';
+        var cats = [
+          { key: 'content', label: 'Content', color: '#6366f1' },
+          { key: 'technical', label: 'Technical', color: '#10b981' },
+          { key: 'performance', label: 'Performance', color: '#f59e0b' },
+          { key: 'accessibility', label: 'Accessibility', color: '#3b82f6' },
+        ];
+        var self = this;
+        cats.forEach(function (cat) {
+          var score = d.scores[cat.key];
+          var circ = document.createElement('div');
+          circ.className = 'circular-score';
+          var r = 40, circLen = 2 * Math.PI * r;
+          var offset = circLen - (circLen * score / 100);
+          circ.innerHTML =
+            '<svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="' + r + '"/><circle class="progress" stroke="' + cat.color + '" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + circLen + '" stroke-dashoffset="' + offset + '"/><text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-size="24" font-weight="800" fill="' + cat.color + '">' + score + '</text></svg>' +
+            '<div class="label">' + cat.label + '</div>';
+          subs.appendChild(circ);
+        });
+      },
+
+      renderTabs: function (d) {
+        var container = document.getElementById('tabContentContainer');
+        var tabs = {
+          content: this.renderContentTab(d),
+          technical: this.renderTechnicalTab(d),
+          performance: this.renderPerformanceTab(d),
+          media: this.renderMediaTab(d),
+          keywords: this.renderKeywordsTab(d),
+          recommendations: this.renderRecommendationsTab(d),
+        };
+
+        container.innerHTML = '';
+        var tabKeys = Object.keys(tabs);
+        tabKeys.forEach(function (key) {
+          var div = document.createElement('div');
+          div.className = 'tab-content' + (key === 'content' ? ' active' : '');
+          div.id = 'tab-' + key;
+          div.innerHTML = tabs[key];
+          container.appendChild(div);
+        });
+
+        var btns = document.querySelectorAll('#tabHeaders .tab-btn');
+        btns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            btns.forEach(function (b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            var target = this.getAttribute('data-tab');
+            container.querySelectorAll('.tab-content').forEach(function (tc) { tc.classList.remove('active'); });
+            var el = document.getElementById('tab-' + target);
+            if (el) el.classList.add('active');
+          });
+        });
+      },
+
+      renderContentTab: function (d) {
+        var c = d.content;
+        var h = '';
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-box"><div class="num">' + c.wordCount.toLocaleString() + '</div><div class="lbl">Word Count</div></div>';
+        h += '<div class="stat-box"><div class="num">' + c.textRatio + '%</div><div class="lbl">Text/HTML Ratio</div></div>';
+        h += '<div class="stat-box"><div class="num">' + c.readability.fleschKincaid + '</div><div class="lbl">Flesch-Kincaid</div></div>';
+        h += '<div class="stat-box"><div class="num">' + c.readability.gunningFog + '</div><div class="lbl">Gunning Fog</div></div>';
+        h += '<div class="stat-box"><div class="num">' + c.eeat.score + '</div><div class="lbl">E-E-A-T Score</div></div>';
+        h += '<div class="stat-box"><div class="num">' + c.snippets.score + '</div><div class="lbl">Snippet Score</div></div>';
+        h += '</div>';
+
+        var hd = c.headings;
+        h += '<div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:6px;">';
+        h += '<span class="tag ' + (hd.h1 === 1 ? 'tag-green' : 'tag-red') + '">H1: ' + hd.h1 + '</span>';
+        h += '<span class="tag ' + (hd.h2 > 0 ? 'tag-green' : 'tag-amber') + '">H2: ' + hd.h2 + '</span>';
+        h += '<span class="tag">H3: ' + hd.h3 + '</span>';
+        h += '<span class="tag">H4: ' + hd.h4 + '</span>';
+        h += '<span class="tag ' + (hd.hierarchyValid ? 'tag-green' : 'tag-red') + '">Hierarchy: ' + (hd.hierarchyValid ? 'Valid' : 'Invalid') + '</span>';
+        h += '<span class="tag ' + (c.isThin ? 'tag-red' : 'tag-green') + '">' + (c.isThin ? 'Thin Content' : 'Content OK') + '</span>';
+        h += '<span class="tag">Grade: ' + c.readability.gradeLevel + '</span>';
+        h += '</div>';
+
+        if (c.entities && c.entities.length > 0) {
+          h += '<div style="margin-top:16px;"><strong style="font-size:0.9rem;">Entities Detected:</strong><br>';
+          c.entities.forEach(function (e) {
+            h += '<span class="entity-tag">' + app.escapeHtml(e) + '</span>';
+          });
+          h += '</div>';
         }
 
-        renderResults(data);
-      } catch (err) {
-        showError('Failed to analyze URL: ' + err.message);
-      } finally {
-        loadingDiv.classList.add('hidden');
-        analyzeBtn.disabled = false;
-      }
-    });
+        return h;
+      },
 
-    function showError(msg) {
-      errorDiv.textContent = msg;
-      errorDiv.classList.remove('hidden');
-    }
+      renderTechnicalTab: function (d) {
+        var t = d.technical;
+        var h = '';
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-box"><div class="num">' + (t.schema.typesFound.length || 0) + '</div><div class="lbl">Schema Types</div></div>';
+        h += '<div class="stat-box"><div class="num ' + (t.schema.isValid ? 'tag-green' : 'tag-red') + '">' + (t.schema.isValid ? 'Valid' : 'Issues') + '</div><div class="lbl">Schema Valid</div></div>';
+        h += '<div class="stat-box"><div class="num ' + (t.canonical.isValid ? 'tag-green' : 'tag-red') + '">' + (t.canonical.isValid ? 'OK' : 'Issue') + '</div><div class="lbl">Canonical</div></div>';
+        h += '</div>';
 
-    function scoreBar(score, label) {
-      const color = score >= 80 ? 'bg-emerald-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500';
-      return '<div class="flex items-center gap-3"><div class="flex-1"><div class="h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ' + color + '" style="width:' + score + '%"></div></div></div><span class="text-sm font-semibold text-slate-700 w-8 text-right">' + score + '</span></div>';
-    }
+        h += '<div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:6px;">';
+        var sec = t.securityHeaders;
+        h += '<span class="tag ' + (sec.hsts ? 'tag-green' : 'tag-red') + '">HSTS</span>';
+        h += '<span class="tag ' + (sec.xFrame ? 'tag-green' : 'tag-red') + '">X-Frame</span>';
+        h += '<span class="tag ' + (sec.csp ? 'tag-green' : 'tag-red') + '">CSP</span>';
+        h += '</div>';
 
-    function statusTag(ok, good, bad) {
-      const cls = ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700';
-      return '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ' + cls + '">' + (ok ? good : bad) + '</span>';
-    }
+        if (t.schema.typesFound && t.schema.typesFound.length > 0) {
+          h += '<div style="margin-top:12px;"><strong>Schema Types:</strong> ' + t.schema.typesFound.join(', ') + '</div>';
+        }
+        if (t.schema.errors && t.schema.errors.length > 0) {
+          h += '<div style="margin-top:12px;"><strong>Schema Errors:</strong></div>';
+          t.schema.errors.forEach(function (e) {
+            h += '<div style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(e) + '</div>';
+          });
+        }
 
-    function section(title, content, cls) {
-      return '<div class="rounded-xl border border-slate-200 bg-white p-5 ' + (cls || '') + '"><h3 class="mb-3 text-base font-bold text-slate-900">' + title + '</h3>' + content + '</div>';
-    }
+        h += '<div style="margin-top:12px;"><strong>Canonical URL:</strong> <code>' + app.escapeHtml(t.canonical.url) + '</code></div>';
 
-    function renderResults(d) {
-      let html = '';
+        return h;
+      },
 
-      // ── URL & Redirect Chain ──
-      html += section('URL &amp; Redirects',
-        '<p class="text-sm text-slate-600">Final URL: <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">' + escapeHtml(d.url) + '</code></p>' +
-        (d.redirectChain && d.redirectChain.length > 1 ? '<div class="mt-2 space-y-1">' + d.redirectChain.map((r, i) =>
-          '<div class="flex items-center gap-2 text-xs text-slate-500"><span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">' + r.status + '</span><span>' + escapeHtml(r.url) + '</span>' + (i < d.redirectChain.length - 1 ? '<span class="text-slate-300">→</span>' : '') + '</div>'
-        ).join('') + '</div>' : '')
-      );
+      renderPerformanceTab: function (d) {
+        var p = d.performance;
+        var h = '';
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-box"><div class="num">' + p.renderBlocking + '</div><div class="lbl">Render-Blocking</div></div>';
+        h += '<div class="stat-box"><div class="num">' + p.domSize.toLocaleString() + '</div><div class="lbl">DOM Elements</div></div>';
+        h += '<div class="stat-box"><div class="num">' + p.imagesWithoutDimensions + '</div><div class="lbl">Images w/o Dims</div></div>';
+        h += '</div>';
 
-      // ── Scores ──
-      const s = d.scores;
-      html += section('Overall Score', scoreBar(s.overall, s.overall));
-      html += '<div class="-mt-4 grid gap-3 sm:grid-cols-2">';
-      html += section('Content', scoreBar(s.content, s.content));
-      html += section('Technical', scoreBar(s.technical, s.technical));
-      html += section('Performance', scoreBar(s.performance, s.performance));
-      html += section('Accessibility', scoreBar(s.accessibility, s.accessibility));
-      html += '</div>';
+        if (p.cwvRisks && p.cwvRisks.length > 0) {
+          h += '<div style="margin-top:16px;"><strong>CWV Risks:</strong></div>';
+          p.cwvRisks.forEach(function (risk) {
+            h += '<div style="margin:4px 0;padding:8px 12px;background:#fef3c7;border-radius:8px;font-size:0.85rem;">⚠ ' + app.escapeHtml(risk) + '</div>';
+          });
+        }
 
-      // ── Content ──
-      const c = d.content;
-      let contentHtml = '';
-      contentHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">';
-      contentHtml += statBox('Words', c.wordCount.toLocaleString());
-      contentHtml += statBox('Text/HTML Ratio', c.textRatio + '%');
-      contentHtml += statBox('E-E-A-T Score', c.eeaScore + '/100');
-      contentHtml += statBox('Freshness', c.freshnessScore + '/100');
-      contentHtml += statBox('Readability (FK)', c.readability.fleschKincaid);
-      contentHtml += statBox('Gunning Fog', c.readability.gunningFog);
-      contentHtml += statBox('Snippet Score', c.snippetScore + '/100');
-      contentHtml += '</div>';
-      if (c.verdict) contentHtml += '<div class="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">' + c.verdict + '</div>';
+        return h;
+      },
 
-      // Headings
-      const h = c.headings;
-      contentHtml += '<div class="mt-3 flex flex-wrap gap-2 text-xs">' +
-        Object.entries(h).map(([tag, count]) =>
-          '<span class="rounded bg-slate-100 px-2 py-1 font-mono text-slate-600">' + tag.toUpperCase() + ': ' + count + '</span>'
-        ).join('') +
-      '</div>';
+      renderMediaTab: function (d) {
+        var im = d.images;
+        var l = d.links;
+        var h = '';
+        h += '<h3><i class="fas fa-images"></i> Images</h3>';
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-box"><div class="num">' + im.total + '</div><div class="lbl">Total</div></div>';
+        h += '<div class="stat-box"><div class="num">' + im.missingAlt + '</div><div class="lbl">Missing Alt</div></div>';
+        h += '<div class="stat-box"><div class="num">' + im.outdatedFormats + '</div><div class="lbl">Outdated Formats</div></div>';
+        h += '<div class="stat-box"><div class="num">' + im.notLazyLoaded + '</div><div class="lbl">Not Lazy-Loaded</div></div>';
+        h += '</div>';
 
-      contentHtml += '<div class="mt-3 flex flex-wrap gap-2">';
-      contentHtml += statusTag(!c.isThin, 'Content is not thin', 'Thin content detected');
-      contentHtml += statusTag(c.readability.fleschKincaid >= 60, 'Readable (' + c.readability.fleschKincaid + ')', 'Hard to read (' + c.readability.fleschKincaid + ')');
-      contentHtml += statusTag(c.eeaScore >= 50, 'Good E-E-A-T signals', 'Weak E-E-A-T signals');
-      if (c.readability.complexSentences > 0) contentHtml += '<span class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">' + c.readability.complexSentences + ' complex sentences</span>';
-      if (c.readability.passiveVoiceCount > 0) contentHtml += '<span class="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">' + c.readability.passiveVoiceCount + ' passive voice</span>';
-      contentHtml += '</div>';
+        h += '<h3 style="margin-top:24px;"><i class="fas fa-link"></i> Links</h3>';
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-box"><div class="num">' + l.internal + '</div><div class="lbl">Internal</div></div>';
+        h += '<div class="stat-box"><div class="num">' + l.external + '</div><div class="lbl">External</div></div>';
+        h += '</div>';
 
-      html += section('Content Analysis', contentHtml);
+        if (l.poorAnchorText && l.poorAnchorText.length > 0) {
+          h += '<div style="margin-top:12px;"><strong>Poor Anchor Text:</strong></div>';
+          l.poorAnchorText.forEach(function (a) {
+            h += '<div style="font-size:0.85rem;color:var(--warning);">⚠ "' + app.escapeHtml(a) + '"</div>';
+          });
+        }
 
-      // ── Technical ──
-      const t = d.technical;
-      let techHtml = '';
+        return h;
+      },
 
-      // Schema
-      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Schema Markup</span> ' + statusTag(t.schema.types.length > 0, t.schema.types.length + ' type(s) found', 'No schema found') + '</div>';
-      if (t.schema.types.length > 0) {
-        techHtml += '<div class="mb-2 flex flex-wrap gap-1.5">' + t.schema.types.map((t) => '<span class="rounded bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">' + t + '</span>').join('') + '</div>';
-      }
-      if (t.schema.errors.length > 0) {
-        techHtml += '<div class="mb-3 space-y-1">' + t.schema.errors.map((e) => '<div class="text-xs text-red-600">⚠ ' + e + '</div>').join('') + '</div>';
-      }
+      renderKeywordsTab: function (d) {
+        var so = d.social;
+        var kw = d.keywords || [];
+        var h = '';
 
-      // Canonical
-      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Canonical</span> ' +
-        statusTag(t.canonical.isValid, 'Valid', t.canonical.url === 'Not set' ? 'Missing' : 'Mismatch') +
-        '<p class="mt-1 text-xs text-slate-500">' + escapeHtml(t.canonical.url) + '</p></div>';
+        h += '<h3><i class="fas fa-share-alt"></i> Social Media</h3>';
+        h += '<div style="display:grid;gap:8px;margin-top:8px;">';
+        if (so.ogTitle) h += '<div><strong>og:title:</strong> ' + app.escapeHtml(so.ogTitle) + '</div>';
+        if (so.ogImage) h += '<div><strong>og:image:</strong> ' + app.escapeHtml(so.ogImage) + '</div>';
+        if (so.missing && so.missing.length > 0) {
+          h += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">';
+          so.missing.forEach(function (m) {
+            h += '<span class="tag tag-red">Missing: ' + m + '</span>';
+          });
+          h += '</div>';
+        }
+        h += '</div>';
 
-      // Hreflang
-      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Hreflang</span> ' +
-        statusTag(t.hreflang.detected, 'Configured', 'Not detected') +
-        (t.hreflang.errors.length > 0 ? '<div class="mt-1 text-xs text-amber-600">' + t.hreflang.errors.join(', ') + '</div>' : '') +
-      '</div>';
+        if (kw.length > 0) {
+          h += '<h3 style="margin-top:24px;"><i class="fas fa-key"></i> Top Keywords</h3>';
+          var maxCount = kw[0].count;
+          kw.forEach(function (k) {
+            var pct = (k.count / maxCount) * 100;
+            var densityNum = parseFloat(k.density);
+            h += '<div class="keyword-bar"><span class="name">' + app.escapeHtml(k.word) + '</span><div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%"></div></div><span class="stat">' + k.count + ' (' + k.density + ')</span></div>';
+          });
+        }
 
-      // Security headers
-      const sec = t.securityHeaders;
-      techHtml += '<div class="mb-3"><span class="text-sm font-semibold text-slate-700">Security Headers</span></div>';
-      techHtml += '<div class="flex flex-wrap gap-2 text-xs">';
-      techHtml += statusTag(sec.hasHSTS, 'HSTS ✓', 'HSTS ✗');
-      techHtml += statusTag(sec.hasXFrame, 'X-Frame-Options ✓', 'X-Frame-Options ✗');
-      techHtml += statusTag(sec.hasXContentType, 'X-Content-Type-Options ✓', 'X-Content-Type-Options ✗');
-      techHtml += statusTag(sec.hasCSP, 'CSP ✓', 'CSP ✗');
-      techHtml += statusTag(sec.hasReferrerPolicy, 'Referrer-Policy ✓', 'Referrer-Policy ✗');
-      techHtml += '</div>';
+        return h;
+      },
 
-      html += section('Technical SEO', techHtml);
+      renderRecommendationsTab: function (d) {
+        var recs = d.recommendations;
+        var h = '';
+        var priorities = ['critical', 'high', 'medium', 'low'];
+        var labels = { critical: 'Critical', high: 'High Priority', medium: 'Medium Priority', low: 'Low Priority' };
+        var icons = { critical: 'fa-exclamation-triangle', high: 'fa-exclamation-circle', medium: 'fa-info-circle', low: 'fa-check-circle' };
 
-      // ── Performance ──
-      const p = d.performance;
-      let perfHtml = '';
-      perfHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">';
-      perfHtml += statBox('Render-blocking', p.renderBlockingResources);
-      perfHtml += statBox('DOM Elements', p.totalDOMElements.toLocaleString());
-      perfHtml += statBox('Images w/o dims', p.imagesWithoutDimensions);
-      perfHtml += '</div>';
-      if (p.predictedCWVIssues && p.predictedCWVIssues.length > 0) {
-        perfHtml += '<div class="mt-3 space-y-1">' + p.predictedCWVIssues.map((i) => '<div class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">⚠ ' + i + '</div>').join('') + '</div>';
-      }
-      if (p.jsRenderingRisks && p.jsRenderingRisks.length > 0) {
-        perfHtml += '<div class="mt-2 space-y-1">' + p.jsRenderingRisks.map((i) => '<div class="rounded bg-red-50 px-3 py-2 text-xs text-red-700">⚠ ' + i + '</div>').join('') + '</div>';
-      }
-      html += section('Performance', perfHtml);
-
-      // ── Images ──
-      const im = d.images;
-      let imgHtml = '';
-      imgHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">';
-      imgHtml += statBox('Total', im.total);
-      imgHtml += statBox('Missing alt', im.missingAlt);
-      imgHtml += statBox('No dimensions', im.missingDimensions);
-      imgHtml += statBox('Outdated format', im.outdatedFormats);
-      imgHtml += statBox('Not lazy', im.notLazyLoaded);
-      imgHtml += '</div>';
-      html += section('Images', imgHtml);
-
-      // ── Links ──
-      const l = d.links;
-      let linkHtml = '';
-      linkHtml += '<div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">';
-      linkHtml += statBox('Internal', l.internal);
-      linkHtml += statBox('External', l.external);
-      linkHtml += statBox('Orphan paragraphs', l.orphanParagraphs);
-      linkHtml += '</div>';
-      if (l.anchorTextDistribution && l.anchorTextDistribution.length > 0) {
-        linkHtml += '<div class="mt-3"><span class="text-xs font-semibold text-slate-600">Anchor text distribution:</span><div class="mt-1 space-y-1">';
-        linkHtml += l.anchorTextDistribution.slice(0, 5).map((a) =>
-          '<div class="flex items-center gap-2 text-xs text-slate-500"><span class="flex-1 truncate">' + escapeHtml(a.text) + '</span><span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono">' + a.count + '</span></div>'
-        ).join('');
-        linkHtml += '</div></div>';
-      }
-      html += section('Links', linkHtml);
-
-      // ── Social ──
-      const so = d.social;
-      let socialHtml = '';
-      socialHtml += '<div class="space-y-1 text-sm">';
-      if (so.ogTitle) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:title</span><span class="text-slate-700">' + escapeHtml(so.ogTitle) + '</span></div>';
-      if (so.ogDescription) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:description</span><span class="text-slate-700 line-clamp-2">' + escapeHtml(so.ogDescription) + '</span></div>';
-      if (so.ogImage) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">og:image</span><span class="text-slate-700 truncate">' + escapeHtml(so.ogImage) + '</span></div>';
-      if (so.twitterCard) socialHtml += '<div class="flex gap-2"><span class="w-28 text-xs font-medium text-slate-500">twitter:card</span><span class="text-slate-700">' + escapeHtml(so.twitterCard) + '</span></div>';
-      socialHtml += '</div>';
-      if (so.missingTags && so.missingTags.length > 0) {
-        socialHtml += '<div class="mt-2 flex flex-wrap gap-1.5">' + so.missingTags.map((t) => '<span class="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">Missing: ' + t + '</span>').join('') + '</div>';
-      }
-      html += section('Social Media', socialHtml);
-
-      // ── Keywords ──
-      if (d.keywords && d.keywords.length > 0) {
-        const maxCount = d.keywords[0].count;
-        let kwHtml = '';
-        kwHtml += '<div class="space-y-1.5">';
-        d.keywords.slice(0, 15).forEach((kw) => {
-          const pct = (kw.count / maxCount) * 100;
-          const isStuffed = parseFloat(kw.density) > 5;
-          kwHtml += '<div class="flex items-center gap-2">' +
-            '<span class="w-32 truncate text-xs text-slate-700">' + escapeHtml(kw.word) + '</span>' +
-            '<div class="flex-1"><div class="h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full ' + (isStuffed ? 'bg-red-400' : 'bg-indigo-400') + '" style="width:' + pct + '%"></div></div></div>' +
-            '<span class="w-16 text-right text-xs text-slate-500">' + kw.count + ' (' + kw.density + ')</span>' +
-          '</div>';
+        priorities.forEach(function (p) {
+          if (recs[p] && recs[p].length > 0) {
+            h += '<h3 style="margin-bottom:12px;margin-top:16px;"><i class="fas ' + icons[p] + '"></i> ' + labels[p] + ' (' + recs[p].length + ')</h3>';
+            recs[p].forEach(function (rec) {
+              h += '<div class="card rec-card severity-' + p + '">';
+              h += '<h4><i class="fas ' + icons[p] + '" style="color:var(--' + (p === 'critical' ? 'error' : p === 'high' ? 'warning' : p === 'medium' ? 'info' : 'text-muted') + ');"></i> ' + app.escapeHtml(rec.issue) + '</h4>';
+              h += '<p><strong>Impact:</strong> ' + app.escapeHtml(rec.impact) + '</p>';
+              h += '<p><strong>How to fix:</strong> ' + app.escapeHtml(rec.solution) + '</p>';
+              if (rec.codeExample) {
+                h += '<pre><code>' + app.escapeHtml(rec.codeExample) + '</code></pre>';
+              }
+              h += '<div class="meta"><span><i class="fas fa-clock"></i> ' + app.escapeHtml(rec.timeToFix) + '</span> <span><i class="fas fa-chart-line"></i> ' + app.escapeHtml(rec.estimatedImpact) + '</span></div>';
+              h += '</div>';
+            });
+          }
         });
-        kwHtml += '</div>';
-        html += section('Top Keywords', kwHtml);
-      }
 
-      // ── Entities ──
-      if (d.entities && d.entities.length > 0) {
-        let entHtml = '<div class="flex flex-wrap gap-2">';
-        d.entities.slice(0, 20).forEach((e) => {
-          const bg = e.type === 'Organization' ? 'bg-blue-50 text-blue-700' : e.type === 'Person' ? 'bg-green-50 text-green-700' : e.type === 'Location' ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-600';
-          entHtml += '<span class="rounded-full px-2.5 py-0.5 text-xs font-medium ' + bg + '">' + escapeHtml(e.name) + ' <span class="opacity-50">(' + e.type + ', ' + e.mentions + ')</span></span>';
+        if (!h) {
+          h = '<div style="text-align:center;padding:24px;color:var(--success);"><i class="fas fa-check-circle" style="font-size:3rem;"></i><p style="margin-top:8px;">No issues found! Your page is well-optimized.</p></div>';
+        }
+
+        return h;
+      },
+
+      initCharts: function (scores) {
+        var ctx = document.getElementById('overallChart').getContext('2d');
+        if (this.charts.overall) this.charts.overall.destroy();
+        this.charts.overall = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            datasets: [{
+              data: [scores.overall, 100 - scores.overall],
+              backgroundColor: ['#6366f1', '#e2e8f0'],
+              borderWidth: 0,
+              borderRadius: 10,
+            }]
+          },
+          options: {
+            cutout: '82%',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+          }
         });
-        entHtml += '</div>';
-        html += section('Entities Detected', entHtml);
+      },
+
+      getGrade: function (score) {
+        if (score >= 90) return 'A+';
+        if (score >= 80) return 'A';
+        if (score >= 70) return 'B';
+        if (score >= 60) return 'C';
+        if (score >= 50) return 'D';
+        return 'F';
+      },
+
+      exportPDF: function () {
+        if (typeof html2pdf === 'undefined') {
+          alert('PDF export library is loading. Please try again in a moment.');
+          return;
+        }
+        var element = document.getElementById('dashboardContainer');
+        html2pdf().set({
+          margin: 10,
+          filename: 'seo-audit-report.pdf',
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(element).save();
+      },
+
+      escapeHtml: function (str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
+    };
 
-      // ── Accessibility ──
-      const a = d.accessibility;
-      let accHtml = '';
-      accHtml += '<div class="flex items-center gap-3"><div class="flex-1"><div class="h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full ' + (a.score >= 70 ? 'bg-emerald-500' : a.score >= 50 ? 'bg-amber-500' : 'bg-red-500') + '" style="width:' + a.score + '%"></div></div></div><span class="text-sm font-semibold text-slate-700">' + a.score + '/100</span></div>';
-      if (a.issues && a.issues.length > 0) {
-        accHtml += '<div class="mt-3 space-y-1">' + a.issues.map((i) => '<div class="rounded bg-amber-50 px-3 py-2 text-xs text-amber-700">⚠ ' + i + '</div>').join('') + '</div>';
-      } else {
-        accHtml += '<p class="mt-2 text-sm text-emerald-600">No accessibility issues detected.</p>';
-      }
-      html += section('Accessibility', accHtml);
-
-      resultsDiv.innerHTML = html;
-      resultsDiv.classList.remove('hidden');
-    }
-
-    function statBox(label, value) {
-      return '<div class="rounded-lg bg-slate-50 p-3 text-center"><div class="text-lg font-bold text-slate-800">' + value + '</div><div class="text-xs text-slate-500">' + label + '</div></div>';
-    }
-
-    function escapeHtml(s) {
-      if (s == null) return '';
-      var d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    // Enter key in URL input triggers analysis
-    urlInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') analyzeBtn.click();
-    });
+    document.addEventListener('DOMContentLoaded', function () { app.init(); });
   </script>
-</ToolLayout>
+</BaseLayout>

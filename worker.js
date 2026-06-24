@@ -108,9 +108,9 @@ async function performFullAudit(targetUrl) {
   const entityAnalysis = analyzeEntities(html);
   const accessibilityAnalysis = analyzeAccessibility(html);
 
-  // ───────────────────────────────────────────────────────────
-  //  PHASE 4: Calculate Final Scores
-  // ───────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────
+    //  PHASE 4: Calculate Final Scores
+    // ───────────────────────────────────────────────────────────
 
   const scores = calculateScores({
     content: contentAnalysis,
@@ -122,62 +122,100 @@ async function performFullAudit(targetUrl) {
     accessibility: accessibilityAnalysis,
   });
 
+  const recommendations = generateRecommendations({
+    content: contentAnalysis,
+    technical: technicalAnalysis,
+    performance: performanceAnalysis,
+    images: imageAnalysis,
+    links: linkAnalysis,
+    social: socialAnalysis,
+    accessibility: accessibilityAnalysis,
+    scores,
+  });
+
   return {
     url: finalUrl,
     redirectChain,
-    scores,
+    scores: {
+      overall: scores.overall,
+      content: scores.content,
+      technical: scores.technical,
+      performance: scores.performance,
+      accessibility: scores.accessibility,
+    },
     content: {
       wordCount: contentAnalysis.wordCount,
       textRatio: contentAnalysis.textRatio,
-      headings: contentAnalysis.headings,
       isThin: contentAnalysis.isThin,
-      verdict: contentAnalysis.verdict,
-      readability: contentAnalysis.readability,
-      eeaScore: contentAnalysis.eeaScore,
-      freshnessScore: contentAnalysis.freshnessScore,
-      snippetScore: contentAnalysis.snippetScore,
+      headings: {
+        h1: contentAnalysis.headings.h1,
+        h2: contentAnalysis.headings.h2,
+        h3: contentAnalysis.headings.h3,
+        h4: contentAnalysis.headings.h4,
+        h5: contentAnalysis.headings.h5,
+        h6: contentAnalysis.headings.h6,
+        hierarchyValid: contentAnalysis.headings.h1 === 1 && !(contentAnalysis.headings.h1 > 0 && contentAnalysis.headings.h3 > 0 && contentAnalysis.headings.h2 === 0),
+      },
+      readability: {
+        fleschKincaid: contentAnalysis.readability.fleschKincaid,
+        gunningFog: contentAnalysis.readability.gunningFog,
+        gradeLevel: getGradeLevel(contentAnalysis.readability.fleschKincaid),
+      },
+      eeat: {
+        score: contentAnalysis.eeaScore,
+        hasAuthor: contentAnalysis.eeaScore >= 20,
+        hasDate: contentAnalysis.freshnessScore >= 15,
+        hasCitations: false,
+      },
+      snippets: {
+        score: contentAnalysis.snippetScore,
+        hasLists: contentAnalysis.snippetScore >= 20,
+        hasFAQ: contentAnalysis.snippetScore >= 25,
+      },
+      entities: entityAnalysis.slice(0, 10).map((e) => e.name),
     },
     technical: {
-      schema: technicalAnalysis.schema,
-      canonical: technicalAnalysis.canonical,
-      hreflang: technicalAnalysis.hreflang,
-      securityHeaders: technicalAnalysis.securityHeaders,
-      httpHeaders: technicalAnalysis.httpHeaders,
+      schema: {
+        typesFound: technicalAnalysis.schema.types,
+        isValid: technicalAnalysis.schema.errors.length === 0,
+        errors: technicalAnalysis.schema.errors,
+      },
+      canonical: {
+        url: technicalAnalysis.canonical.url,
+        isValid: technicalAnalysis.canonical.isValid,
+      },
+      securityHeaders: {
+        hsts: technicalAnalysis.securityHeaders.hasHSTS,
+        xFrame: technicalAnalysis.securityHeaders.hasXFrame,
+        csp: technicalAnalysis.securityHeaders.hasCSP,
+      },
     },
     performance: {
-      renderBlockingResources: performanceAnalysis.renderBlockingResources,
+      renderBlocking: performanceAnalysis.renderBlockingResources,
+      domSize: performanceAnalysis.totalDOMElements,
       imagesWithoutDimensions: imageAnalysis.missingDimensions,
-      totalDOMElements: performanceAnalysis.totalDOMElements,
-      predictedCWVIssues: performanceAnalysis.predictedCWVIssues,
-      jsRenderingRisks: performanceAnalysis.jsRenderingRisks,
+      cwvRisks: performanceAnalysis.predictedCWVIssues,
     },
     images: {
       total: imageAnalysis.total,
       missingAlt: imageAnalysis.missingAlt,
-      missingDimensions: imageAnalysis.missingDimensions,
       outdatedFormats: imageAnalysis.outdatedFormats,
       notLazyLoaded: imageAnalysis.notLazyLoaded,
     },
     links: {
       internal: linkAnalysis.internal,
       external: linkAnalysis.external,
-      orphanParagraphs: linkAnalysis.orphanParagraphs,
-      anchorTextDistribution: linkAnalysis.anchorTextDistribution,
+      poorAnchorText: linkAnalysis.anchorTextDistribution
+        .filter((a) => /click\s*here|read\s*more|learn\s*more/i.test(a.text))
+        .map((a) => a.text),
     },
     social: {
-      ogTitle: socialAnalysis.ogTitle,
-      ogDescription: socialAnalysis.ogDescription,
-      ogImage: socialAnalysis.ogImage,
-      twitterCard: socialAnalysis.twitterCard,
-      missingTags: socialAnalysis.missingTags,
+      ogTitle: socialAnalysis.ogTitle || '',
+      ogImage: socialAnalysis.ogImage || '',
+      missing: socialAnalysis.missingTags,
     },
     keywords: keywordAnalysis.slice(0, 15),
-    entities: entityAnalysis.slice(0, 20),
-    accessibility: {
-      score: accessibilityAnalysis.score,
-      issues: accessibilityAnalysis.issues,
-    },
-    jsRenderingRisks: performanceAnalysis.jsRenderingRisks,
+    recommendations,
   };
 }
 
@@ -944,6 +982,288 @@ function calculateScores(analysis) {
 // ─────────────────────────────────────────────────────────────
 //  UTILITY
 // ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+//  GRADE LEVEL HELPER
+// ─────────────────────────────────────────────────────────────
+
+function getGradeLevel(fkScore) {
+  if (fkScore >= 90) return '5th Grade';
+  if (fkScore >= 80) return '6th Grade';
+  if (fkScore >= 70) return '7th Grade';
+  if (fkScore >= 60) return '8th-9th Grade';
+  if (fkScore >= 50) return '10th-12th Grade';
+  if (fkScore >= 30) return 'College';
+  return 'College Graduate';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RECOMMENDATIONS ENGINE
+// ─────────────────────────────────────────────────────────────
+
+function generateRecommendations(ctx) {
+  const critical = [];
+  const high = [];
+  const medium = [];
+  const low = [];
+
+  const c = ctx.content;
+  const t = ctx.technical;
+  const p = ctx.performance;
+  const im = ctx.images;
+  const l = ctx.links;
+  const so = ctx.social;
+  const a = ctx.accessibility;
+
+  // ── Critical issues ──
+  if (c.isThin) {
+    critical.push({
+      issue: 'Thin Content Detected',
+      impact: 'Pages with less than 300 words or a text-to-HTML ratio below 15% are considered thin content by Google and rarely rank well.',
+      solution: 'Expand your content to at least 600 words. Add detailed paragraphs, examples, data, and visuals. Ensure the text-to-HTML ratio is above 20%.',
+      codeExample: '<article>\n  <h1>Primary Topic</h1>\n  <p>In-depth explanation with at least 50-100 words per section...</p>\n  <h2>Supporting Section</h2>\n  <p>Add data, statistics, or examples here...</p>\n</article>',
+      timeToFix: '30-60 minutes',
+      estimatedImpact: '+40% ranking potential',
+    });
+  }
+
+  if (c.headings.h1 === 0) {
+    critical.push({
+      issue: 'Missing H1 Tag',
+      impact: 'Search engines cannot determine the primary topic of the page without an H1 tag.',
+      solution: 'Add exactly one H1 tag at the top of your main content area containing your primary keyword.',
+      codeExample: '<h1>Your Primary Keyword Here | Brand Name</h1>',
+      timeToFix: '2 minutes',
+      estimatedImpact: '+10% ranking potential',
+    });
+  } else if (c.headings.h1 > 1) {
+    critical.push({
+      issue: 'Multiple H1 Tags Found',
+      impact: 'Having more than one H1 tag dilutes the topical focus of the page and confuses search engines.',
+      solution: 'Keep exactly one H1 tag. Convert additional H1 tags to H2 or H3 as appropriate.',
+      codeExample: '<h1>Primary Topic</h1>\n<h2>Sub-topic 1</h2>\n<h2>Sub-topic 2</h2>',
+      timeToFix: '5 minutes',
+      estimatedImpact: '+8% ranking potential',
+    });
+  }
+
+  if (t.schema.typesFound.length === 0) {
+    critical.push({
+      issue: 'No Schema Markup Found',
+      impact: 'Pages without schema markup miss out on rich snippets in search results, which can improve CTR by up to 30%.',
+      solution: 'Add JSON-LD structured data appropriate for your content type (Article, Product, LocalBusiness, etc.).',
+      codeExample: '<script type="application/ld+json">\n{\n  "@context": "https://schema.org",\n  "@type": "Article",\n  "headline": "Page Title",\n  "author": { "@type": "Person", "name": "Author Name" },\n  "datePublished": "2025-01-01"\n}\n</script>',
+      timeToFix: '15 minutes',
+      estimatedImpact: '+25% CTR potential',
+    });
+  }
+
+  // ── High priority issues ──
+  if (c.wordCount < 600) {
+    high.push({
+      issue: 'Low Word Count',
+      impact: 'Pages with fewer than 600 words often lack the depth needed to rank competitively for most queries.',
+      solution: 'Expand your content to 600-1500 words. Cover the topic comprehensively with subheadings, examples, and supporting data.',
+      codeExample: 'Aim for:\n- Introduction: 50-100 words\n- 3-5 sections: 100-200 words each\n- Conclusion: 50-100 words',
+      timeToFix: '20-40 minutes',
+      estimatedImpact: '+20% ranking potential',
+    });
+  }
+
+  if (c.eeat.score < 30) {
+    high.push({
+      issue: 'Weak E-E-A-T Signals',
+      impact: 'Google prioritizes content that demonstrates Experience, Expertise, Authoritativeness, and Trustworthiness. Low E-E-A-T signals can hurt rankings, especially for YMYL topics.',
+      solution: 'Add author bylines, publication dates, author bios, and citations from authoritative sources (.gov, .edu, .org).',
+      codeExample: '<meta name="author" content="Dr. Jane Smith">\n<time datetime="2025-01-15">January 15, 2025</time>\n<a href="https://example.edu/research" rel="nofollow">Source: University Research</a>',
+      timeToFix: '30 minutes',
+      estimatedImpact: '+15% ranking potential',
+    });
+  }
+
+  if (im.missingAlt > 0) {
+    high.push({
+      issue: 'Images Missing Alt Text',
+      impact: 'Screen readers cannot describe images without alt text, hurting accessibility. Google also uses alt text to understand image content.',
+      solution: 'Add descriptive alt text to every image that conveys information. Use empty alt="" for decorative images.',
+      codeExample: '<img src="chart.png" alt="Bar chart showing 40% revenue growth in Q3 2025">\n<img src="decoration.png" alt="">',
+      timeToFix: '10 minutes',
+      estimatedImpact: '+5% image search visibility',
+    });
+  }
+
+  if (so.missing && so.missing.length > 0) {
+    high.push({
+      issue: 'Missing Social Media Meta Tags',
+      impact: 'Without Open Graph and Twitter Card tags, your page will not render properly when shared on social media platforms.',
+      solution: 'Add og:title, og:description, og:image, and twitter:card meta tags to the page head.',
+      codeExample: '<meta property="og:title" content="Your Page Title">\n<meta property="og:description" content="Compelling description">\n<meta property="og:image" content="https://example.com/image.jpg">\n<meta name="twitter:card" content="summary_large_image">',
+      timeToFix: '10 minutes',
+      estimatedImpact: '+12% social engagement',
+    });
+  }
+
+  if (p.renderBlocking > 0) {
+    high.push({
+      issue: 'Render-Blocking Resources Detected',
+      impact: 'Scripts and stylesheets in the <head> without async/defer delay page rendering, increasing Largest Contentful Paint (LCP) time.',
+      solution: 'Add async or defer attributes to non-critical scripts. Move non-critical CSS to load after the initial render.',
+      codeExample: '<script src="analytics.js" defer></script>\n<script src="widget.js" async></script>\n<link rel="preload" href="critical.css" as="style" onload="this.onload=null;this.rel=\'stylesheet\'">',
+      timeToFix: '15 minutes',
+      estimatedImpact: '+8% LCP improvement',
+    });
+  }
+
+  if (a.score < 50) {
+    high.push({
+      issue: 'Poor Accessibility Score',
+      impact: 'Low accessibility excludes users with disabilities and may violate legal requirements (ADA, WCAG).',
+      solution: 'Add semantic HTML landmarks, ARIA labels, proper heading hierarchy, and skip-navigation links.',
+      codeExample: '<a href="#main-content" class="skip-link">Skip to main content</a>\n<main id="main-content" role="main">\n  <article aria-label="Main article">\n    <h1>Page Title</h1>\n  </article>\n</main>',
+      timeToFix: '30 minutes',
+      estimatedImpact: '+10% user engagement',
+    });
+  }
+
+  // ── Medium priority issues ──
+  if (c.readability.fleschKincaid < 50) {
+    medium.push({
+      issue: 'Low Readability Score',
+      impact: 'Content that is difficult to read (Flesch-Kincaid below 50) may frustrate visitors and increase bounce rates.',
+      solution: 'Use shorter sentences, simpler words, and more paragraph breaks. Aim for a Flesch-Kincaid score above 60.',
+      codeExample: 'Before:\n"The implementation of strategic SEO methodologies requires comprehensive analysis of multiple ranking factors."\n\nAfter:\n"Good SEO requires analyzing many ranking factors. Start with the basics and build up."',
+      timeToFix: '20 minutes',
+      estimatedImpact: '+7% engagement',
+    });
+  }
+
+  if (!t.canonical.isValid) {
+    medium.push({
+      issue: 'Canonical URL Mismatch',
+      impact: 'A mismatched or missing canonical URL can cause duplicate content issues and dilute ranking signals.',
+      solution: 'Set the canonical URL to point to the preferred version of the page. Ensure it matches the page URL exactly.',
+      codeExample: '<link rel="canonical" href="https://example.com/current-page-url/">',
+      timeToFix: '5 minutes',
+      estimatedImpact: '+5% ranking stability',
+    });
+  }
+
+  if (im.outdatedFormats > 0) {
+    medium.push({
+      issue: 'Outdated Image Formats Detected',
+      impact: 'JPEG, PNG, and GIF images are larger than modern WebP and AVIF formats, slowing page load times.',
+      solution: 'Convert images to modern WebP or AVIF formats for better compression and faster loading.',
+      codeExample: '<!-- Convert with: cwebp -q 80 input.jpg -o output.webp -->\n<img src="image.webp" alt="Description" width="800" height="600">',
+      timeToFix: '15 minutes',
+      estimatedImpact: '+6% page speed',
+    });
+  }
+
+  if (im.notLazyLoaded > 5) {
+    medium.push({
+      issue: 'Images Not Lazy Loaded',
+      impact: 'Loading all images upfront increases initial page weight and delays the Largest Contentful Paint.',
+      solution: 'Add loading="lazy" to all below-the-fold images to defer their loading until needed.',
+      codeExample: '<img src="hero.jpg" alt="Hero" loading="eager">\n<img src="gallery-1.jpg" alt="Gallery" loading="lazy">\n<img src="gallery-2.jpg" alt="Gallery" loading="lazy">',
+      timeToFix: '10 minutes',
+      estimatedImpact: '+5% LCP improvement',
+    });
+  }
+
+  if (l.poorAnchorText && l.poorAnchorText.length > 0) {
+    medium.push({
+      issue: 'Poor Anchor Text Detected',
+      impact: 'Generic anchor text like "click here" or "read more" provides no context to search engines about the linked page.',
+      solution: 'Replace generic anchor text with descriptive, keyword-rich phrases that describe the destination.',
+      codeExample: 'Bad: <a href="/guide">Click here</a> to read our guide.\nGood: <a href="/guide">Read our comprehensive SEO guide</a>.',
+      timeToFix: '10 minutes',
+      estimatedImpact: '+4% link equity',
+    });
+  }
+
+  if (c.snippets.score < 40) {
+    medium.push({
+      issue: 'Low Featured Snippet Optimization',
+      impact: 'Your page is not optimized for featured snippets, missing the opportunity to appear in position zero.',
+      solution: 'Add structured lists, FAQ schema, and clear definition patterns. Answer common questions directly with concise paragraphs.',
+      codeExample: '<h2>What is featured snippet optimization?</h2>\n<p>Featured snippet optimization is the practice of structuring content...</p>\n<ul>\n  <li>Use clear headings that match question phrases</li>\n  <li>Provide direct answers in the first paragraph</li>\n  <li>Include ordered and unordered lists</li>\n</ul>',
+      timeToFix: '30 minutes',
+      estimatedImpact: '+10% organic visibility',
+    });
+  }
+
+  if (p.domSize > 1500) {
+    medium.push({
+      issue: 'Large DOM Size',
+      impact: 'A DOM with more than 1,500 elements can slow down page rendering and interactivity, affecting INP scores.',
+      solution: 'Simplify the HTML structure. Remove unnecessary wrapper elements, consolidate repeated patterns, and use semantic HTML efficiently.',
+      codeExample: '// Before: deeply nested wrappers\n<div><div><div><p>Text</p></div></div></div>\n\n// After: minimal structure\n<p>Text</p>',
+      timeToFix: '20 minutes',
+      estimatedImpact: '+4% INP improvement',
+    });
+  }
+
+  // ── Low priority issues ──
+  if (!t.securityHeaders.hsts) {
+    low.push({
+      issue: 'Missing HSTS Header',
+      impact: 'Without Strict-Transport-Security, the page may be served over unencrypted HTTP if the user types http://.',
+      solution: 'Add the Strict-Transport-Security header with a minimum age of 1 year to force HTTPS connections.',
+      codeExample: 'Strict-Transport-Security: max-age=31536000; includeSubDomains; preload',
+      timeToFix: '5 minutes',
+      estimatedImpact: '+3% security score',
+    });
+  }
+
+  if (!t.securityHeaders.xFrame) {
+    low.push({
+      issue: 'Missing X-Frame-Options Header',
+      impact: 'Without X-Frame-Options, your page can be embedded in iframes on other domains (clickjacking risk).',
+      solution: 'Add X-Frame-Options: SAMEORIGIN or DENY to prevent clickjacking attacks.',
+      codeExample: 'X-Frame-Options: SAMEORIGIN',
+      timeToFix: '2 minutes',
+      estimatedImpact: '+2% security score',
+    });
+  }
+
+  if (!t.securityHeaders.csp) {
+    low.push({
+      issue: 'Missing Content-Security-Policy',
+      impact: 'Without CSP, the page is more vulnerable to XSS and data injection attacks.',
+      solution: 'Add a Content-Security-Policy header to restrict which scripts and resources can be loaded.',
+      codeExample: 'Content-Security-Policy: default-src \'self\'; script-src \'self\' https://analytics.example.com; style-src \'self\' \'unsafe-inline\'',
+      timeToFix: '20 minutes',
+      estimatedImpact: '+3% security score',
+    });
+  }
+
+  if (c.freshnessScore < 30) {
+    low.push({
+      issue: 'Content Appears Outdated',
+      impact: 'Search engines prefer fresh content. Pages without recent updates may gradually lose rankings.',
+      solution: 'Review and update the content. Add recent statistics, examples, and data. Update the dateModified field.',
+      codeExample: '<meta property="article:modified_time" content="2025-06-15T10:00:00+00:00">\n<time datetime="2025-06-15">Updated June 15, 2025</time>',
+      timeToFix: '15 minutes',
+      estimatedImpact: '+5% freshness signal',
+    });
+  }
+
+  if (a.issues && a.issues.length > 0) {
+    const hasNav = a.issues.some((i) => /skip nav/i.test(i));
+    if (!hasNav) {
+      low.push({
+        issue: 'No Skip Navigation Link',
+        impact: 'Keyboard and screen reader users must tab through all navigation links before reaching the main content.',
+        solution: 'Add a skip-to-content link as the first focusable element on the page.',
+        codeExample: '<a href="#main-content" class="skip-link">\n  Skip to main content\n</a>\n<style>\n.skip-link {\n  position: absolute;\n  top: -40px;\n  left: 0;\n  background: #000;\n  color: #fff;\n  padding: 8px;\n  z-index: 100;\n}\n.skip-link:focus {\n  top: 0;\n}\n</style>',
+        timeToFix: '10 minutes',
+        estimatedImpact: '+3% accessibility',
+      });
+    }
+  }
+
+  return { critical, high, medium, low };
+}
 
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
