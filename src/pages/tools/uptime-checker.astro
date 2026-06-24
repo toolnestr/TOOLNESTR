@@ -1,0 +1,197 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Website Uptime / Is It Down Checker';
+const description =
+  'Check if a website is reachable from our network. Instant uptime check with HTTP status code ' +
+  'and response time. Free website availability test.';
+const intro =
+  'Enter a URL to check whether it is reachable from our network. The tool performs a single HTTP request and reports the status code and response time.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What does this uptime checker measure?', a: "This tool performs an HTTP request from Cloudflare's network and reports whether the server responded, the HTTP status code received, and the time it took to get a response. It is a single-region reachability test, not a multi-region uptime monitor." },
+  { q: 'What does "up" mean in this context?', a: "\"Up\" means the server responded to our HTTP request with a valid status code (any 2xx, 3xx, or 4xx response). It confirms the server is reachable from Cloudflare's network and is responding to HTTP requests." },
+  { q: 'What does "down" mean?', a: '"Down" means the server did not respond within the timeout period, returned a 5xx server error, or was unreachable due to DNS resolution failure, network issues, or a firewall blocking our IP. A "down" result from our network does not necessarily mean the site is down for everyone.' },
+  { q: 'Can this tool tell me if a site is blocked in my country?', a: "No. This tool checks reachability from Cloudflare's network, not from your specific location or ISP. If a site is blocked in your country but accessible from Cloudflare, the tool will show it as \"up\" even though you cannot access it yourself." },
+  { q: 'What is the difference between this tool and a real uptime monitor?', a: 'A real uptime monitor checks your website from multiple geographic regions at regular intervals (every 1-5 minutes), tracks historical uptime percentages, and sends alerts when downtime is detected. This tool is a single point-in-time check from one location.' },
+  { q: 'Why does a site show as "down" when I can access it fine?', a: "There are several possible reasons: the site may have a firewall or WAF rule that blocks Cloudflare's IP range; the site may use geoblocking that restricts access from our network's region; or there may be a temporary routing issue between Cloudflare and the target server. Try again in a few minutes." },
+  { q: 'What HTTP status codes indicate a working site?', a: '2xx codes (200 OK, 201 Created, etc.) indicate success. 3xx codes indicate redirects. 4xx codes (401, 403, 404) indicate the request was received but rejected — the server is technically up. Only 5xx codes (500, 502, 503) or no response indicate server-side problems.' },
+  { q: 'How should I interpret the response time?', a: 'The response time is the total time from the start of the request until the first byte of the response is received (TTFB). It includes DNS resolution, TCP connection, TLS handshake, and server processing time. A high response time may indicate network congestion, slow server processing, or geographic distance between Cloudflare and the target server.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Check Website Availability</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="url"
+          type="text"
+          placeholder="https://example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="checkBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Check Now
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Checking reachability...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</span>
+            <span id="statusBadge" class="inline-block rounded-full px-3 py-1 text-sm font-bold"></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">HTTP Status</span>
+            <span id="httpStatus" class="font-mono text-sm font-semibold text-slate-700"></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Response Time</span>
+            <span id="responseTime" class="font-mono text-sm text-slate-600"></span>
+          </div>
+        </div>
+      </div>
+      <div id="disclaimer" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        This checks reachability from Cloudflare's network at the moment you click — it is not a multi-region uptime monitor and cannot tell you if the site is down only for you specifically (for that, compare against another network/device).
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How uptime checking works</h2>
+    <p class="mt-2 text-slate-600">
+      Website uptime checking is the practice of periodically testing whether a web server is reachable and responding correctly. The most basic check is an HTTP GET request: the monitoring system sends a standard HTTP request to the target URL and waits for a response. If the server responds with a valid HTTP status code within a configurable timeout, the site is considered "up." If the connection times out, DNS resolution fails, the TCP handshake is refused, or the server returns a 5xx error, the site is considered "down." This simple check reveals a lot about the health of a web service, but it has important limitations that every user should understand.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This tool performs a single HTTP request from Cloudflare's global network. It measures the total time from the initial request to the receipt of the first byte of the response (TTFB or Time to First Byte). This metric includes every step of the network stack: DNS resolution (looking up the IP address for the hostname), TCP connection establishment, TLS handshake (if HTTPS), HTTP request transmission, server processing time, and the start of the response transmission. A slow TTFB can indicate any problem along this chain — a slow DNS provider, congested network path, overloaded server, or inefficient application code.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Professional uptime monitoring services deploy probes in multiple geographic regions and datacenters, checking every minute or even every 30 seconds. They track historical uptime percentages (usually reported as "99.9% uptime" over the last 30 days), generate alerts via email, SMS, or webhook when downtime is detected, and provide dashboards showing response time trends over time. This tool provides none of that — it is a single point-in-time check from one location. However, that single check is often enough to answer the question "is the site currently reachable?" with reasonable confidence.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-labelledby="uptime-title uptime-desc">
+      <title id="uptime-title">Website Uptime Check Flow Diagram</title>
+      <desc id="uptime-desc">A diagram showing how a browser uptime check flows through Cloudflare's network to the target server and back</desc>
+      <defs>
+        <marker id="arr-u" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+        <marker id="arr-u-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+        </marker>
+      </defs>
+      <rect x="30" y="80" width="140" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="100" y="103" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Your Browser</text>
+      <text x="100" y="120" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Sends URL to check</text>
+      <line x1="170" y1="110" x2="230" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr-u)" />
+      <rect x="235" y="80" width="150" height="60" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="310" y="103" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Cloudflare</text>
+      <text x="310" y="120" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Worker / Network</text>
+      <line x1="385" y1="110" x2="445" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr-u)" />
+      <rect x="450" y="80" width="150" height="60" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" />
+      <text x="525" y="97" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Target Server</text>
+      <text x="525" y="114" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">HTTP Request</text>
+      <text x="525" y="128" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Timed response</text>
+      <line x1="525" y1="80" x2="525" y2="10" stroke="#22c55e" stroke-width="2" marker-end="url(#arr-u-green)" />
+      <rect x="445" y="10" width="160" height="42" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="525" y="28" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Response</text>
+      <text x="525" y="43" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="11">Status code + TTFB</text>
+      <line x1="525" y1="52" x2="525" y2="80" stroke="#22c55e" stroke-width="2" />
+      <line x1="525" y1="140" x2="100" y2="180" stroke="#22c55e" stroke-width="2" marker-end="url(#arr-u-green)" />
+      <text x="310" y="170" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Result returned to browser</text>
+      <rect x="30" y="175" width="140" height="50" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="100" y="198" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Status Displayed</text>
+      <text x="100" y="214" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Up / Down + stats</text>
+      <line x1="100" y1="140" x2="100" y2="175" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2" />
+      <rect x="235" y="190" width="320" height="50" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="395" y="210" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Single point-in-time check</text>
+      <text x="395" y="226" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">Not a multi-region uptime monitor</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Flow of a single-reachability check from browser through Cloudflare network to the target server and back</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What uptime really means</h2>
+    <p class="mt-2 text-slate-600">
+      In the context of web services, uptime is the percentage of time a website or service is accessible and functioning correctly. A 99.9% uptime SLA means the service can be down for no more than about 8.76 hours per year. 99.99% uptime allows only 52.56 minutes of downtime annually. These numbers sound impressive, but they mask important nuances. A service may technically be "up" (responding to HTTP requests) while providing a degraded experience — slow page loads, missing assets, or incorrect data. Conversely, a service may be "down" for users in one region but perfectly reachable from another.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Many factors beyond the server itself can cause downtime from the user's perspective. DNS propagation delays after a nameserver change can make a site unreachable for hours. CDN outages can prevent users from loading cached assets even though the origin server is healthy. DDoS attacks can saturate network links and make services unreachable. Routing issues between ISPs can cause packet loss and timeouts. Firewall rules and web application firewalls (WAFs) can block legitimate traffic. ISP-level filtering or government censorship can prevent access entirely. This tool cannot diagnose any of these issues — it only tells you whether Cloudflare's network can reach the target server right now.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to interpret results</h2>
+    <p class="mt-2 text-slate-600">
+      When this tool returns a status of "Up," it means the target server responded to an HTTP request from Cloudflare's network. A 200 OK response is the ideal result — the server is reachable and the page loads correctly. A 301 or 302 redirect is also normal if the server is configured to redirect HTTP to HTTPS or from a bare domain to www. A 401 or 403 indicates the server rejected the request (possibly expecting authentication), but the server itself is up. A 404 indicates the requested URL was not found, but the server is running. Only a 5xx error (500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable) or no response at all indicates a server-side problem.
+    </p>
+    <p class="mt-3 text-slate-600">
+      When the tool returns "Down," the first step is to verify from another device or network. If you can access the site from your phone on mobile data but your desktop on a home ISP cannot, the issue is likely with your ISP or network configuration. If the site is inaccessible from every device and network you try, use a global CDN status page or a multi-region monitoring service to confirm a widespread outage. This tool's single-region check is a useful first step, but it should never be the only data point you rely on to determine whether a service is experiencing an outage.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://www.cloudflarestatus.com/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Cloudflare Status Page</a> — real-time status of Cloudflare's network</li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7231" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7231 — HTTP/1.1 Semantics and Content</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">MDN Web Docs — HTTP Response Status Codes</a></li>
+      <li><a href="https://www.pingdom.com/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Pingdom</a> — multi-region uptime monitoring service</li>
+      <li><a href="https://www.checklyhq.com/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Checkly</a> — synthetic monitoring and multi-region uptime checks</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const urlInput = document.getElementById('url');
+    const btn = document.getElementById('checkBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const statusBadge = document.getElementById('statusBadge');
+    const httpStatusEl = document.getElementById('httpStatus');
+    const responseTimeEl = document.getElementById('responseTime');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/uptime-check';
+
+    async function check() {
+      const url = urlInput.value.trim();
+      if (!url) { errEl.textContent = 'Please enter a URL.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?url=' + encodeURIComponent(url));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        const isUp = d.status === 'up' || (d.httpStatus >= 200 && d.httpStatus < 500);
+        if (isUp) {
+          statusBadge.textContent = 'Up';
+          statusBadge.className = 'inline-block rounded-full px-3 py-1 text-sm font-bold bg-green-100 text-green-800';
+        } else {
+          statusBadge.textContent = 'Down';
+          statusBadge.className = 'inline-block rounded-full px-3 py-1 text-sm font-bold bg-red-100 text-red-800';
+        }
+        httpStatusEl.textContent = d.httpStatus || d.statusCode || 'N/A';
+        responseTimeEl.textContent = (d.responseTime != null ? d.responseTime + ' ms' : 'N/A');
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', check);
+    urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</ToolLayout>

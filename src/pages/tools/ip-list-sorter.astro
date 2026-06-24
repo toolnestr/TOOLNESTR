@@ -1,0 +1,244 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IP List Sorter &amp; Deduplicator';
+const description =
+  'Sort, deduplicate and filter IP addresses numerically. ' +
+  'Extract public or private IPs from any list. Copy the cleaned result to your clipboard.';
+const intro =
+  'Paste a list of IP addresses — one per line — then sort, deduplicate, or filter by public or private range. ' +
+  'Sorting is numerical (not lexical), so 10.0.0.2 comes before 10.0.0.10.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'Why does numerical sorting matter for IP addresses?', a: 'Lexical (alphabetical) sorting compares strings character by character, so 10.0.0.10 appears before 10.0.0.2 because "1" is less than "2" after the second dot. Numerical sorting converts each IP to a 32-bit integer, producing the correct logical order: 10.0.0.1, 10.0.0.2, ..., 10.0.0.10. This is essential for subnet planning, log analysis, and firewall rule ordering.' },
+  { q: 'What is considered a private IP address?', a: 'RFC 1918 defines three private IPv4 ranges: 10.0.0.0/8 (16.7 million addresses), 172.16.0.0/12 (1,048,576 addresses spanning 172.16.0.0 through 172.31.255.255), and 192.168.0.0/16 (65,536 addresses). These addresses are not routable on the public internet and are used exclusively within private networks such as home LANs, corporate intranets, and cloud VPCs.' },
+  { q: 'How does IP deduplication work?', a: 'The tool uses a JavaScript Set to track unique IP addresses. As each IP is parsed and validated, it is added to the Set — duplicate entries are automatically discarded because a Set can only hold each unique value once. This is equivalent to running `sort -u` on a Unix command line but with correct numerical ordering rather than lexical sorting.' },
+  { q: 'What happens to invalid IPs?', a: 'Invalid lines are silently ignored. This includes blank lines, whitespace-only lines, and lines that do not contain a valid IPv4 address (e.g., missing octets, values outside 0–255, extra characters). Tolerating extra whitespace and blank lines makes the tool convenient when pasting logs or config extracts without manual cleanup.' },
+  { q: 'Can I use this with IPv6 addresses?', a: 'No — this tool processes IPv4 addresses only. IPv6 addresses are 128-bit and use hexadecimal colon notation, which requires a different parsing and sorting approach. For IPv6 sorting, consider a tool that converts addresses to 128-bit integers or uses BigInt arithmetic.' },
+  { q: 'What is the difference between public and private IPs?', a: 'Public IPs are globally unique and routable on the internet — they are assigned by regional internet registries (RIRs) to ISPs and organizations. Private IPs are non-routable on the internet and can be reused across different private networks. NAT (Network Address Translation) allows multiple private IPs to share a single public IP when accessing the internet, which is how most home and office networks operate.' },
+  { q: 'How does this compare to command-line tools?', a: 'On Unix/Linux, you can sort IPs numerically with `sort -t. -k1,1n -k2,2n -k3,3n -k4,4n` and deduplicate with `sort -u`. This web tool provides the same functionality in your browser without needing a terminal, plus adds public/private filtering with visual counts and a copy button. It is especially useful for non-technical users or when working on systems that lack standard command-line tools.' },
+  { q: 'Why are 172.16.0.0 to 172.31.255.255 private?', a: 'The 172.16.0.0/12 range is a contiguous block of 16 class-B networks (172.16.x.x through 172.31.x.x) reserved by RFC 1918. Note that 172.32.0.0 and above are public addresses, as is 172.0.0.0 through 172.15.0.0. Many people assume the entire 172.x.x.x range is private, but only the 172.16.x.x–172.31.x.x subset falls under RFC 1918 — a common source of misconfiguration in firewall rules.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Process IP list</h2>
+    <div class="mt-3">
+      <label class="block text-xs font-medium text-slate-500" for="ip-input">Input IPs (one per line)</label>
+      <textarea id="ip-input" rows="6" class="mt-1 w-full resize-y rounded-lg border border-slate-300 p-3 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="10.0.0.1&#10;192.168.1.10&#10;8.8.8.8&#10;10.0.0.1&#10;172.16.0.5">10.0.0.1
+192.168.1.10
+8.8.8.8
+10.0.0.1
+172.16.0.5</textarea>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button id="btn-sort" class="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-600">Sort &amp; Deduplicate</button>
+      <button id="btn-public" class="rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50">Filter Public Only</button>
+      <button id="btn-private" class="rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50">Filter Private Only</button>
+      <button id="btn-copy" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Copy to Clipboard</button>
+    </div>
+    <div id="stats" class="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+      <span>Total input: <strong id="stat-total" class="text-slate-800">0</strong></span>
+      <span>Unique: <strong id="stat-unique" class="text-slate-800">0</strong></span>
+      <span>Public: <strong id="stat-public" class="text-slate-800">0</strong></span>
+      <span>Private: <strong id="stat-private" class="text-slate-800">0</strong></span>
+    </div>
+    <div class="mt-3">
+      <label class="block text-xs font-medium text-slate-500" for="ip-output">Output</label>
+      <textarea id="ip-output" rows="6" class="mt-1 w-full resize-y rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-sm text-slate-700 outline-none" readonly placeholder="Processed IPs will appear here"></textarea>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="ip-sort-title ip-sort-desc">
+      <title id="ip-sort-title">IP List Sorting Pipeline</title>
+      <desc id="ip-sort-desc">Diagram showing a messy list of IP addresses entering a sorting and deduplication pipeline and emerging as a clean sorted list</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">IP List Processing Pipeline</text>
+
+      <rect x="30" y="45" width="160" height="120" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="110" y="65" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Raw Input</text>
+      <text x="110" y="82" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">192.168.1.10</text>
+      <text x="110" y="96" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">10.0.0.1</text>
+      <text x="110" y="110" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">8.8.8.8</text>
+      <text x="110" y="124" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">10.0.0.1</text>
+      <text x="110" y="138" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">172.16.0.5</text>
+      <text x="110" y="155" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, sans-serif" font-size="9">(5 entries, 1 duplicate)</text>
+
+      <rect x="240" y="55" width="320" height="100" rx="20" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <rect x="280" y="55" width="140" height="100" rx="20" fill="#c7d2fe" opacity="0.4" />
+      <text x="400" y="90" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Sort &amp; Deduplicate</text>
+      <text x="400" y="108" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="10">Parse IPs, convert to 32-bit ints</text>
+      <text x="400" y="122" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="10">Sort numerically, deduplicate via Set</text>
+      <text x="400" y="140" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, sans-serif" font-size="9">Filter: public or private check</text>
+
+      <line x1="190" y1="105" x2="235" y2="105" stroke="#6366f1" stroke-width="2.5" marker-end="url(#ip-arrow)" />
+      <line x1="560" y1="105" x2="605" y2="105" stroke="#6366f1" stroke-width="2.5" marker-end="url(#ip-arrow)" />
+
+      <rect x="610" y="45" width="160" height="120" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="690" y="65" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Clean Output</text>
+      <text x="690" y="82" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">8.8.8.8</text>
+      <text x="690" y="96" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">10.0.0.1</text>
+      <text x="690" y="110" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">172.16.0.5</text>
+      <text x="690" y="124" text-anchor="middle" fill="#6366f1" font-family="monospace, monospace" font-size="10">192.168.1.10</text>
+      <text x="690" y="141" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, sans-serif" font-size="9">(4 unique, sorted)</text>
+
+      <defs>
+        <marker id="ip-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A raw IP list with mixed ordering and duplicates is parsed, sorted numerically, deduplicated, and optionally filtered to produce a clean output</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IP list processing works</h2>
+    <p class="mt-2 text-slate-600">
+      Processing a list of IP addresses may seem straightforward, but doing it correctly requires careful attention to sorting order, duplicate detection, and address classification. The most common mistake in IP sorting is using lexical (string) ordering instead of numerical ordering. When sorted as strings, the IP 10.0.0.9 appears after 10.0.0.10 because the character "9" is greater than "1" in the Unicode collation sequence. This produces a counterintuitive and practically useless ordering for network engineers who need to scan ranges or identify gaps.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Correct numerical sorting treats an IPv4 address as a 32-bit unsigned integer. Each octet contributes 8 bits: the first octet is shifted left by 24 positions, the second by 16, the third by 8, and the fourth occupies the least significant byte. The resulting integer is then used as the sort key. For example, 192.168.1.1 becomes 3232235777 in decimal. Sorting by this integer value naturally groups addresses by their network prefix and produces the familiar sequential order that network professionals expect.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Deduplication is handled using a JavaScript Set object, which maintains a collection of unique values. As each valid IP is parsed from the input text, it is inserted into the Set. Duplicate entries are automatically rejected because a Set will not store a value it already contains. This approach is both simple and efficient for any reasonable input size. The tool also tracks how many total lines were entered (including duplicates and blanks) versus how many unique IPs were found, giving you clear visibility into your data quality.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Public versus private IP classification</h2>
+    <p class="mt-2 text-slate-600">
+      The private IP detection follows RFC 1918, which reserves three ranges for private internal use. The 10.0.0.0/8 block covers all addresses from 10.0.0.0 to 10.255.255.255 — a single /8 that provides over 16 million addresses and is commonly used by large enterprises and cloud VPCs. The 172.16.0.0/12 block covers 172.16.0.0 through 172.31.255.255, providing roughly one million addresses often seen in medium-sized deployments. The 192.168.0.0/16 block covers 192.168.0.0 through 192.168.255.255, the most familiar range to home network users who see it in their router configuration pages.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Any IP address that does not fall into one of these three ranges is classified as public. This includes all other addresses like 8.8.8.8 (Google DNS), 1.1.1.1 (Cloudflare DNS), 203.0.113.0/24 (documentation range per RFC 5737), and everything else routable on the internet. Note that some addresses have special purposes — 127.0.0.0/8 is loopback, 169.254.0.0/16 is link-local, 224.0.0.0/4 is multicast — but these are not considered private under RFC 1918 and are classified as non-private by this tool.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The ability to filter public or private IPs from a mixed list is valuable in several scenarios. Security analysts reviewing firewall logs may want to isolate private-source addresses to investigate internal traffic patterns. Network architects planning IP migrations need to identify which addresses in a spreadsheet are routable versus reserved. Cloud engineers configuring VPC peering connections need to ensure that overlapping private ranges are detected before linking networks together. The filtering buttons make these tasks instantaneous.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-3 space-y-4 text-sm text-slate-600">
+      <div>
+        <h3 class="font-semibold text-slate-800">Cleaning up DHCP lease lists</h3>
+        <p class="mt-0.5">DHCP servers often show lease lists with duplicates, expired entries, and out-of-order addresses. Pasting the active IPs into this sorter gives you a clean, sorted inventory of all assigned addresses in your subnet, making it easy to spot address exhaustion or reservation gaps.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">Auditing firewall rule logs</h3>
+        <p class="mt-0.5">Firewall logs contain both public source IPs (internet traffic) and private destination IPs (internal hosts). Filter out the private or public subset to analyze traffic patterns by address class. The numerical sort order also helps correlate with other sorted log data sources.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">Preparing IP lists for tools</h3>
+        <p class="mt-0.5">Many network tools expect sorted, deduplicated IP lists as input — ping sweeps, port scanners, and configuration management scripts all benefit from clean input. Running a raw list through this sorter ensures you are not wasting time scanning duplicate or out-of-range addresses.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">VPC peering conflict detection</h3>
+        <p class="mt-0.5">When setting up VPC peering between cloud environments (AWS, Azure, GCP), you must ensure the CIDR blocks do not overlap. Pasting the route tables from both VPCs into the sorter and sorting them numerically helps you quickly identify overlapping private ranges before attempting the peering connection.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IP address structure primer</h2>
+    <p class="mt-2 text-slate-600">
+      An IPv4 address is a 32-bit number conventionally written in dotted-decimal notation as four octets separated by periods (e.g., 192.168.1.1). Each octet is an 8-bit value ranging from 0 to 255. The total address space is 2^32 = 4,294,967,296 addresses. The Internet Assigned Numbers Authority (IANA) manages the global allocation of this space, delegating large blocks to Regional Internet Registries (RIRs) such as ARIN (North America), RIPE NCC (Europe), APNIC (Asia-Pacific), LACNIC (Latin America), and AFRINIC (Africa).
+    </p>
+    <p class="mt-3 text-slate-600">
+      The original classful addressing scheme divided the address space into fixed-size blocks: Class A (0.0.0.0–127.255.255.255, /8 networks), Class B (128.0.0.0–191.255.255.255, /16 networks), and Class C (192.0.0.0–223.255.255.255, /24 networks). This was replaced by CIDR in 1993, which allows variable-length prefixes and much more efficient allocation. Private addresses were defined under the classful system but remain in use under CIDR because they were carved out of the classful space in a way that CIDR naturally accommodates.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding IP structure is essential for this tool because the numerical sort key is derived directly from the 32-bit representation. The same integer that is used for comparison also determines whether an address falls into a private range — for example, any address whose first octet equals 10 is in the 10.0.0.0/8 private block. The 172.16.0.0/12 check requires that the first octet is 172 and the second octet is between 16 and 31 inclusive, which matches the bit pattern of 172.16.0.0 (10101100.00010000.00000000.00000000) with a 12-bit prefix.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This tool processes IPv4 addresses only. IPv6 support would require 128-bit integer arithmetic and different parsing logic. The tool silently ignores invalid lines rather than reporting errors, so you should manually verify that the input count matches expectations. Very large lists (tens of thousands of IPs) may cause brief UI lag since all processing happens on the main thread — for production-scale processing of millions of addresses, command-line tools are more appropriate.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The public/private classification follows strict RFC 1918 rules. Some organizations use additional ranges like 100.64.0.0/10 (Carrier-Grade NAT, RFC 6598) or 198.18.0.0/15 (benchmarking, RFC 2544), which are not classified as private by this tool. If you need to include those ranges, you should manually filter the output or use a more configurable network tool.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('ip-input');
+    const output = el('ip-output');
+
+    function ipToInt(str) {
+      const parts = str.trim().split('.');
+      if (parts.length !== 4) return null;
+      const octets = parts.map(Number);
+      if (octets.some(function (o) { return isNaN(o) || o < 0 || o > 255; })) return null;
+      return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+    }
+
+    function intToIp(n) {
+      return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+    }
+
+    function isPrivate(n) {
+      const o1 = (n >>> 24) & 255;
+      const o2 = (n >>> 16) & 255;
+      if (o1 === 10) return true;
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return true;
+      if (o1 === 192 && o2 === 168) return true;
+      return false;
+    }
+
+    function process(mode) {
+      const raw = input.value.split('\n');
+      var total = 0;
+      var uniqueSet = new Set();
+      var privateCount = 0;
+      var publicCount = 0;
+
+      for (var i = 0; i < raw.length; i++) {
+        var line = raw[i].trim();
+        if (line === '') continue;
+        var n = ipToInt(line);
+        if (n === null) continue;
+        total++;
+        if (!uniqueSet.has(n)) {
+          uniqueSet.add(n);
+          if (isPrivate(n)) privateCount++;
+          else publicCount++;
+        }
+      }
+
+      var arr = [];
+      uniqueSet.forEach(function (v) { arr.push(v); });
+      arr.sort(function (a, b) { return a - b; });
+
+      if (mode === 'public') {
+        arr = arr.filter(function (n) { return !isPrivate(n); });
+      } else if (mode === 'private') {
+        arr = arr.filter(function (n) { return isPrivate(n); });
+      }
+
+      el('stat-total').textContent = total;
+      el('stat-unique').textContent = arr.length;
+      el('stat-public').textContent = arr.filter(function (n) { return !isPrivate(n); }).length;
+      el('stat-private').textContent = arr.filter(function (n) { return isPrivate(n); }).length;
+
+      output.value = arr.map(function (n) { return intToIp(n); }).join('\n');
+    }
+
+    el('btn-sort').addEventListener('click', function () { process('all'); });
+    el('btn-public').addEventListener('click', function () { process('public'); });
+    el('btn-private').addEventListener('click', function () { process('private'); });
+
+    el('btn-copy').addEventListener('click', function () {
+      if (!output.value) return;
+      navigator.clipboard.writeText(output.value).then(function () {
+        var btn = el('btn-copy');
+        var orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = orig; }, 2000);
+      });
+    });
+  </script>
+</ToolLayout>

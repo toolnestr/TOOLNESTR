@@ -1,0 +1,228 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'SSL/TLS Certificate Checker';
+const description =
+  'Check SSL/TLS certificate details for any domain — issuer, validity period, days until expiry, ' +
+  'and serial number. Free SSL certificate checker.';
+const intro =
+  'Enter any domain name to retrieve its SSL/TLS certificate details. The tool shows the certificate issuer, validity dates, days remaining before expiry, and the serial number.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is an SSL/TLS certificate?', a: "An SSL/TLS certificate is a digital certificate that authenticates a website's identity and enables an encrypted connection. It is issued by a Certificate Authority (CA) and contains the domain name, issuer name, validity period, and a public key used for encryption." },
+  { q: 'What does "issuer" mean?', a: "The issuer is the Certificate Authority (CA) that signed and issued the certificate. Common issuers include Let's Encrypt, DigiCert, Sectigo, and Cloudflare. The issuer must be trusted by the client's root store for the certificate to be considered valid." },
+  { q: 'What happens when a certificate expires?', a: 'When a certificate expires, browsers show security warnings like "Your connection is not private" or "NET::ERR_CERT_DATE_INVALID." Visitors may leave the site, and some browsers block access entirely. Setting up certificate renewal automation prevents this.' },
+  { q: 'How does the certificate chain work?', a: "A certificate chain (or chain of trust) links the server certificate to a trusted root CA. The server sends its leaf certificate plus intermediate certificates. The client verifies each signature up to a root CA that is pre-installed in the browser's trust store. If any link in the chain is invalid or missing, the certificate is not trusted." },
+  { q: 'What is a self-signed certificate?', a: 'A self-signed certificate is signed by its own private key rather than a trusted CA. Self-signed certificates provide encryption but no identity verification. Browsers treat them as untrusted and display warning pages. They are acceptable for internal development and testing but not for production public websites.' },
+  { q: 'How often should I renew my SSL certificate?', a: "As of 2024, most CAs issue certificates valid for up to 90 days (Let's Encrypt) or up to 398 days (other CAs). Automated renewal through ACME clients like Certbot or cloud provider integrations is recommended. Manually tracking renewal dates is error-prone and leads to unexpected downtime." },
+  { q: 'What is a wildcard certificate?', a: 'A wildcard certificate secures a domain and all its subdomains (e.g., *.example.com covers www.example.com, mail.example.com, blog.example.com). It uses a wildcard character (*) in the subject name. Wildcard certificates cannot be used for the bare domain itself in some configurations.' },
+  { q: 'Can I check SSL certificates for non-HTTPS services?', a: 'This tool checks TLS certificates presented on port 443 (HTTPS). Other services like SMTP (port 587), IMAP (port 993), or LDAPS (port 636) may also use TLS but require a different type of checker that connects to the specific port.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">SSL/TLS Certificate Details</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="domain"
+          type="text"
+          placeholder="example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="checkBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Check Certificate
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Retrieving certificate...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <table class="w-full text-left text-sm">
+          <tbody id="certBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+        <div id="expiryBar" class="mt-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How SSL/TLS certificates work</h2>
+    <p class="mt-2 text-slate-600">
+      SSL (Secure Sockets Layer) and its successor TLS (Transport Layer Security) are cryptographic protocols that provide secure communication over a computer network. When a client connects to an HTTPS website, the server presents its TLS certificate to prove its identity and establish an encrypted connection. The certificate contains the server's public key, the domain name it is issued to, the issuing Certificate Authority (CA), the certificate's validity period, and a digital signature from the CA that certifies the information is authentic.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The process works through a mechanism called the chain of trust. At the top of the chain are root Certificate Authorities — organisations like DigiCert, GlobalSign, and Let's Encrypt — whose root certificates are pre-installed in every major operating system and browser. The root CA signs intermediate CA certificates, which in turn sign the end-entity (leaf) certificates that websites use. When your browser connects to a website, the server sends its leaf certificate along with any intermediate certificates needed to complete the chain. The browser verifies each signature in the chain up to a trusted root. If the chain is valid and the certificate has not expired or been revoked, the browser establishes a secure TLS connection.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Certificate expiration is one of the most common causes of TLS errors. Every certificate has a notBefore and notAfter date defining its validity window. If the current date falls outside this window, the certificate is considered invalid regardless of whether the domain ownership is still correct or the private key is still secure. Modern best practices favour short-lived certificates — Let's Encrypt issues certificates valid for only 90 days — to reduce the impact of key compromise and encourage automation of the renewal process through the ACME (Automated Certificate Management Environment) protocol.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-labelledby="ssl-chain-title ssl-chain-desc">
+      <title id="ssl-chain-title">SSL/TLS Certificate Chain of Trust Diagram</title>
+      <desc id="ssl-chain-desc">A diagram showing the certificate chain from root CA through intermediate CA to the server certificate installed on a website</desc>
+      <defs>
+        <marker id="arr-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="30" y="15" width="220" height="70" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+      <text x="140" y="40" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Root Certificate Authority</text>
+      <text x="140" y="58" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Self-signed root certificate</text>
+      <text x="140" y="72" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Pre-installed in browser trust store</text>
+      <text x="140" y="5" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Trusted by OS / Browser</text>
+      <line x1="250" y1="50" x2="310" y2="80" stroke="#6366f1" stroke-width="2" marker-end="url(#arr-s)" />
+      <text x="280" y="58" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Signs</text>
+      <rect x="315" y="70" width="220" height="70" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+      <text x="425" y="95" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Intermediate CA</text>
+      <text x="425" y="113" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Signed by root CA</text>
+      <text x="425" y="127" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Issued by root CA's private key</text>
+      <line x1="535" y1="105" x2="595" y2="135" stroke="#6366f1" stroke-width="2" marker-end="url(#arr-s)" />
+      <text x="565" y="113" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Signs</text>
+      <rect x="600" y="125" width="170" height="70" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+      <text x="685" y="150" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Server / Leaf</text>
+      <text x="685" y="165" text-anchor="middle" fill="#15803d" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Certificate</text>
+      <text x="685" y="183" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">Issued to your domain</text>
+      <line x1="685" y1="195" x2="685" y2="240" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="685" y1="240" x2="100" y2="240" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="100" y1="240" x2="100" y2="85" stroke="#22c55e" stroke-width="2" marker-end="url(#arr-s)" />
+      <text x="395" y="233" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Browser verifies each signature up the chain</text>
+      <rect x="30" y="120" width="80" height="50" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,2" />
+      <text x="70" y="140" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Trust</text>
+      <text x="70" y="154" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9">Anchor</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Certificate chain of trust from root Certificate Authority through intermediate CA to the server leaf certificate</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why certificate expiry monitoring matters</h2>
+    <p class="mt-2 text-slate-600">
+      An expired SSL/TLS certificate causes immediate and visible problems. Modern browsers display full-page security warnings that prevent users from accessing the site without manually accepting the risk. These warnings erode user trust, increase bounce rates, and can significantly impact revenue for e-commerce and subscription-based services. Search engines may also downgrade the ranking of sites with expired certificates. For businesses that handle sensitive data, an expired certificate can mean non-compliance with industry regulations like PCI-DSS, HIPAA, or GDPR.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Despite the severity of expiration, many organisations still experience certificate-related outages. Common causes include: relying on manual renewal processes that depend on a single person; losing track of certificates across multiple domains, subdomains, and cloud providers; failing to renew wildcard certificates that cover hundreds of subdomains; and not testing renewal automation after infrastructure changes. The industry trend toward shorter certificate lifetimes (90 days for Let's Encrypt, 90 days for Google Trust Services, 398 days maximum for others as of 2024) makes automation essential. ACME clients like Certbot, acme.sh, and cloud provider integrations can fully automate certificate issuance and renewal.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the certificate details</h2>
+    <p class="mt-2 text-slate-600">
+      This tool displays several key fields from the TLS certificate presented by the server. The issuer field identifies which Certificate Authority signed the certificate. Recognising trusted issuers helps you detect misconfiguration or potential security issues — for example, a production website using a self-signed certificate or a certificate from an unknown CA. The valid from and valid until dates define the certificate's validity period. Browsers and operating systems enforce these dates strictly; a request outside the validity window will produce a TLS error.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The days until expiry is the most immediately actionable metric. Certificates with fewer than 30 days remaining should be renewed promptly. Those with fewer than 7 days remaining are critically close to expiration and may already be causing intermittent issues if your server's clock or the client's clock has any drift. The serial number is a unique identifier assigned by the CA to each certificate. While not typically used in day-to-day operations, the serial number appears in Certificate Revocation Lists (CRLs) and OCSP responses if a certificate is revoked before its expiration date.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">TLS best practices</h2>
+    <p class="mt-2 text-slate-600">
+      Maintaining a strong TLS configuration requires attention to several areas beyond certificate validity. Use modern TLS versions (TLS 1.2 or TLS 1.3) and disable deprecated versions (SSLv3, TLS 1.0, TLS 1.1) to protect against protocol-level attacks. Configure secure cipher suites that support forward secrecy (ECDHE key exchange) and authenticated encryption (AEAD ciphers like AES-GCM or ChaCha20-Poly1305). Enable OCSP stapling so your server sends proof of certificate validity during the TLS handshake, reducing the time clients spend verifying revocation status. Implement HSTS (HTTP Strict-Transport-Security) headers to tell browsers to always connect via HTTPS, preventing downgrade attacks. Use tools like SSL Labs SSL Server Test or this certificate checker to verify your configuration after any change to your TLS settings.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://crt.sh/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">crt.sh — Certificate Transparency Log Search</a></li>
+      <li><a href="https://letsencrypt.org/docs/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Let's Encrypt Documentation</a> — free automated certificates via ACME</li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc8446" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 8446 — TLS 1.3 Protocol Specification</a></li>
+      <li><a href="https://www.ssllabs.com/ssltest/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Qualys SSL Labs SSL Server Test</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">OWASP Transport Layer Protection Cheat Sheet</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const domainInput = document.getElementById('domain');
+    const btn = document.getElementById('checkBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const certBody = document.getElementById('certBody');
+    const expiryBar = document.getElementById('expiryBar');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/ssl-check';
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    const expiryColor = (days) => {
+      if (days > 30) return 'bg-green-500';
+      if (days >= 7) return 'bg-amber-500';
+      return 'bg-red-500';
+    };
+
+    const expiryLabel = (days) => {
+      if (days > 30) return 'text-green-700 bg-green-100';
+      if (days >= 7) return 'text-amber-700 bg-amber-100';
+      return 'text-red-700 bg-red-100';
+    };
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'N/A';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function check() {
+      const domain = domainInput.value.trim();
+      if (!domain) { errEl.textContent = 'Please enter a domain name.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?domain=' + encodeURIComponent(domain));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        const days = d.daysUntilExpiry != null ? d.daysUntilExpiry : (d.daysUntilExpiration != null ? d.daysUntilExpiration : 0);
+        const fields = [
+          { label: 'Issuer', value: d.issuer || d.Issuer || 'N/A' },
+          { label: 'Valid From', value: formatDate(d.validFrom || d.valid_from || d.notBefore) },
+          { label: 'Valid Until', value: formatDate(d.validUntil || d.valid_until || d.notAfter) },
+          { label: 'Days Until Expiry', value: days != null ? String(days) + ' days' : 'N/A', highlight: expiryLabel(days) },
+          { label: 'Serial Number', value: d.serialNumber || d.serial_number || d.SerialNumber || 'N/A' },
+        ];
+        certBody.innerHTML = fields.map((f) =>
+          '<tr class="text-slate-700">' +
+            '<td class="py-2 pr-4 text-xs font-semibold uppercase tracking-wide text-slate-500">' + esc(f.label) + '</td>' +
+            '<td class="py-2 font-mono text-sm' + (f.highlight ? ' ' + f.highlight : '') + '">' + esc(f.value) + '</td>' +
+          '</tr>'
+        ).join('');
+        if (days != null) {
+          const maxDays = 90;
+          const pct = Math.min(days / maxDays * 100, 100);
+          const color = expiryColor(days);
+          expiryBar.innerHTML =
+            '<div class="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Expiry Timeline</div>' +
+            '<div class="h-3 w-full rounded-full bg-slate-200">' +
+              '<div class="h-3 rounded-full ' + color + '" style="width:' + pct + '%"></div>' +
+            '</div>' +
+            '<div class="mt-1 flex justify-between text-xs text-slate-400">' +
+              '<span>0 days</span>' +
+              '<span>' + days + ' days remaining</span>' +
+              '<span>' + maxDays + ' days</span>' +
+            '</div>';
+        }
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', check);
+    domainInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') check(); });
+  </script>
+</ToolLayout>

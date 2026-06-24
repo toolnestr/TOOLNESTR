@@ -1,0 +1,275 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IPv6 Compressor / Expander';
+const description =
+  'Compress or expand any IPv6 address following RFC 5952 rules. See both forms ' +
+  'simultaneously as you type.';
+const intro =
+  'Type or paste any IPv6 address to see its compressed and expanded forms side by ' +
+  'side. The expander fills in leading zeros and reinstates omitted groups. The ' +
+  'compressor applies RFC 5952 rules: omit leading zeros and replace the longest ' +
+  'run of zero groups with ::.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is IPv6 address compression?', a: 'IPv6 address compression (RFC 5952) reduces the length of an IPv6 address by two methods: omitting leading zeros in each 16-bit group, and replacing the longest contiguous run of all-zero groups with a double colon (::). Only one :: per address is allowed. For example, 2001:0db8:0000:0000:0000:0000:0000:0001 compresses to 2001:db8::1.' },
+  { q: 'What is the :: rule in IPv6 compression?', a: 'The :: (double colon) replaces a contiguous block of zero groups. RFC 5952 specifies that you must replace the longest run of consecutive zero groups. If there are multiple runs of the same length, replace the leftmost one. Only one :: is allowed per address, so if there are multiple zero runs, the longest one is replaced.' },
+  { q: 'Can leading zeros always be omitted?', a: 'Yes, in each 16-bit hexadecimal group, leading zeros can be omitted entirely. For example, 00a0 becomes a0, 0001 becomes 1, and 0000 becomes 0. However, RFC 5952 recommends that the single zero group left after omitting zeros from 0000 should be written as 0, not omitted. This is the canonical compressed form.' },
+  { q: 'How do I expand an IPv6 address with ::?', a: 'To expand, count the number of groups present. Subtract from 8 to determine how many zero groups :: represents. Insert that many 0000 groups. Then pad each remaining group to 4 hex digits by adding leading zeros. For example, ::1 expands to 0000:0000:0000:0000:0000:0000:0000:0001.' },
+  { q: 'Is there a difference between :: and ::1?', a: 'Yes. :: is the unspecified address (all zeros), equivalent to 0:0:0:0:0:0:0:0. It is used in DHCPv6 and as a source address during duplicate address detection. ::1 is the loopback address, equivalent to 127.0.0.1 in IPv4, used for testing the local protocol stack.' },
+  { q: 'Why does my browser show IPv6 in a different format?', a: 'When you type an IPv6 address in a browser URL bar, you must enclose it in square brackets, e.g. http://[2001:db8::1]:8080/. This is required by RFC 3986 to distinguish the colon separators from the port number separator. The address inside the brackets can be in any valid format.' },
+  { q: 'What is the canonical IPv6 text representation?', a: 'RFC 5952 defines the canonical text representation: lowercase hex digits, leading zeros omitted, longest zero run replaced with ::, and only one ::. For consistent results, all tools should produce and accept this canonical form. This calculator follows the RFC 5952 specification.' },
+  { q: 'Are there any limitations to compression?', a: 'The main limitation is that only the longest zero run can be compressed. If an address has two zero runs of equal length (e.g. 2001:0000:0000:0001:0000:0000:0000:0002), only the rightmost or longest is replaced based on RFC 5952 rules. The other zero run remains as explicit zeros. This prevents ambiguity when expanding.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Enter an IPv6 address</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="ipv6-input" type="text" placeholder="2001:0db8:0000:0000:0000:0000:0000:0001" class="w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-500">Compressed (RFC 5952)</span>
+          <button id="copy-compressed" class="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100">Copy</button>
+        </div>
+        <p id="out-compressed" class="mt-2 break-all font-mono text-sm text-slate-900">—</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-500">Expanded (full notation)</span>
+          <button id="copy-expanded" class="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100">Copy</button>
+        </div>
+        <p id="out-expanded" class="mt-2 break-all font-mono text-sm text-slate-900">—</p>
+      </div>
+    </div>
+    <div id="ipv6-groups" class="mt-4 hidden">
+      <span class="text-xs font-medium text-slate-500">Address groups</span>
+      <div id="out-groups" class="mt-1 flex flex-wrap gap-1"></div>
+    </div>
+    <div id="ipv6-error" class="mt-3 hidden text-sm text-red-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IPv6 compression and expansion work</h2>
+    <p class="mt-2 text-slate-600">
+      IPv6 addresses are 128 bits long, written as eight groups of four hexadecimal digits separated by colons. RFC 4291 defines the basic format, and RFC 5952 defines the canonical text representation. Because a full address like 2001:0db8:0000:0000:0000:0000:0000:0001 is cumbersome, two compression techniques were introduced: leading zero omission and double colon replacement.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Leading zero omission is straightforward. In each 16-bit group, any leading zeros can be removed. The group 0db8 becomes db8, 0001 becomes 1, and 0000 becomes 0. This alone typically halves the length of the address. The double colon (::) rule is more complex: you may replace the longest contiguous run of all-zero groups with a single ::. For example, 2001:0db8:0000:0000:0000:0000:0000:0001 becomes 2001:db8::1. Only one :: is permitted per address to avoid ambiguity when expanding.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The expansion process is the reverse. Given a compressed address like 2001:db8::1, the expander splits the string on colons, counts the groups, and determines how many zero groups the :: represents by subtracting from 8. It then inserts that many 0000 groups at the :: position, pads every group to 4 hex digits with leading zeros, and joins them with colons. The result is the canonical full form: 2001:0db8:0000:0000:0000:0000:0000:0001.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-labelledby="ipv6ce-title ipv6ce-desc">
+      <title id="ipv6ce-title">IPv6 Address Compression Diagram</title>
+      <desc id="ipv6ce-desc">Diagram showing an IPv6 address before and after compression, with each 16-bit group labeled</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">IPv6 Address — Before and After Compression (RFC 5952)</text>
+
+      <text x="30" y="55" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Expanded form</text>
+      <rect x="30" y="65" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="70" y="85" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">2001</text>
+      <rect x="118" y="65" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="158" y="85" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0db8</text>
+      <rect x="206" y="65" width="80" height="32" rx="3" fill="#a5b4fc" />
+      <text x="246" y="85" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0000</text>
+      <rect x="294" y="65" width="80" height="32" rx="3" fill="#a5b4fc" />
+      <text x="334" y="85" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0000</text>
+      <rect x="382" y="65" width="80" height="32" rx="3" fill="#a5b4fc" />
+      <text x="422" y="85" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0000</text>
+      <rect x="470" y="65" width="80" height="32" rx="3" fill="#a5b4fc" />
+      <text x="510" y="85" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0000</text>
+      <rect x="558" y="65" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="598" y="85" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0000</text>
+      <rect x="646" y="65" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="686" y="85" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0001</text>
+
+      <text x="30" y="125" fill="#64748b" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Compressed form</text>
+      <rect x="30" y="135" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="70" y="155" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">2001</text>
+      <rect x="118" y="135" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="158" y="155" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">db8</text>
+      <rect x="206" y="135" width="200" height="32" rx="3" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2" />
+      <text x="306" y="155" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10" font-weight="600">:: (replaces 4 zero groups)</text>
+      <rect x="414" y="135" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="454" y="155" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">0</text>
+      <rect x="502" y="135" width="80" height="32" rx="3" fill="#6366f1" />
+      <text x="542" y="155" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="10" font-weight="600">1</text>
+
+      <line x1="30" y1="185" x2="770" y2="185" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="70" y="205" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Group 1</text>
+      <text x="158" y="205" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Group 2</text>
+      <text x="306" y="205" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Groups 3-6 (compressed)</text>
+      <text x="454" y="205" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Group 7</text>
+      <text x="542" y="205" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Group 8</text>
+
+      <text x="400" y="240" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">2001:0db8:0000:0000:0000:0000:0000:0001  ->  2001:db8::1</text>
+
+      <rect x="100" y="255" width="8" height="8" rx="1" fill="#6366f1" />
+      <text x="112" y="263" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Non-zero groups (kept as-is after leading-zero removal)</text>
+      <rect x="460" y="255" width="8" height="8" rx="1" fill="#a5b4fc" />
+      <text x="472" y="263" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Zero groups (replaced by ::)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">An IPv6 address in expanded form (eight 4-digit hex groups) and compressed form, where leading zeros are removed and the longest zero run is replaced with ::</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">RFC 5952 rules for canonical representation</h2>
+    <p class="mt-2 text-slate-600">
+      RFC 5952 establishes a canonical text representation for IPv6 addresses to ensure consistency across tools and implementations. The rules are designed to produce a single unambiguous representation for every valid IPv6 address. The first rule is that hexadecimal digits must use lowercase. Uppercase representations like 2001:DB8::1 are valid but not canonical. All tools should accept uppercase input but produce lowercase output.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The second rule governs leading zero suppression. Each 16-bit group should have all leading zeros removed. The group 0000 becomes 0, 00a0 becomes a0, and 0001 becomes 1. The third and most complex rule handles the double colon. When compressing, replace the longest contiguous run of all-zero groups with ::. If there are multiple runs of equal length, replace the leftmost one. Only one :: is ever used. These rules ensure that the compression is deterministic and reversible.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common IPv6 address types and their formats</h2>
+    <div class="mt-4 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Unspecified address (::)</h3>
+        <p class="mt-1 text-sm text-slate-600">The address :: (all zeros) is used as a source address during duplicate address detection and in DHCPv6 solicit messages. It is never assigned to an interface as a valid destination.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Loopback address (::1)</h3>
+        <p class="mt-1 text-sm text-slate-600">The address ::1 is the IPv6 loopback address, equivalent to 127.0.0.1 in IPv4. Packets sent to ::1 are looped back to the local host and never leave the interface. It is used for testing and local communication.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Global unicast (2000::/3)</h3>
+        <p class="mt-1 text-sm text-slate-600">Global unicast addresses start with 2000::/3 (first 3 bits are 001) and are routable on the internet. A typical global unicast prefix is 2001:db8::/32, which is reserved for documentation (RFC 3849).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Link-local (fe80::/10)</h3>
+        <p class="mt-1 text-sm text-slate-600">Link-local addresses (fe80::/10) are automatically configured on every IPv6 interface and are only valid on the local link. They are used for neighbor discovery (NDP) and routing protocols like OSPFv3 and RIPng.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Practical tips for working with IPv6 addresses</h2>
+    <p class="mt-2 text-slate-600">
+      When copying IPv6 addresses from configuration files, be aware that some systems use uppercase hex digits while others use lowercase. This calculator normalizes all input to lowercase for consistency. If you are entering an IPv6 address in a URL, enclose it in square brackets: http://[2001:db8::1]:8080/path. Without the brackets, the colon after the address is ambiguous with the port separator.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For network configuration, most operating systems accept IPv6 addresses in any valid format (compressed or expanded). However, when writing scripts that parse IPv6 addresses, always normalize to the canonical form first. This calculator can help verify that two addresses are equivalent even if they appear different. For example, 2001:db8::1, 2001:0db8::1, and 2001:0db8:0000:0000:0000:0000:0000:0001 all represent the same address.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('ipv6-input');
+    const outCompressed = el('out-compressed');
+    const outExpanded = el('out-expanded');
+    const outGroups = el('out-groups');
+    const groupsContainer = el('ipv6-groups');
+    const error = el('ipv6-error');
+    const copyCompressed = el('copy-compressed');
+    const copyExpanded = el('copy-expanded');
+
+    function expandIPv6(str) {
+      let s = str.trim();
+      if (!s) return null;
+
+      let groups = s.split(':');
+      if (groups.length > 8) return null;
+
+      const doubleColonIdx = groups.indexOf('');
+      if (doubleColonIdx !== -1) {
+        const before = groups.slice(0, doubleColonIdx);
+        const after = groups.slice(doubleColonIdx + 1).filter(g => g !== '');
+        const missing = 8 - before.length - after.length;
+        if (missing < 1) return null;
+        groups = [...before, ...Array(missing).fill('0'), ...after];
+      }
+
+      if (groups.length !== 8) return null;
+      groups = groups.map(g => g.padStart(4, '0').toLowerCase());
+      if (groups.some(g => !/^[0-9a-f]{4}$/.test(g))) return null;
+
+      return groups;
+    }
+
+    function compressGroups(groups) {
+      let trimmed = groups.map(g => g.replace(/^0+/, '') || '0');
+
+      let bestStart = -1, bestLen = 0;
+      let curStart = -1, curLen = 0;
+
+      for (let i = 0; i < trimmed.length; i++) {
+        if (trimmed[i] === '0') {
+          if (curStart === -1) { curStart = i; curLen = 1; }
+          else curLen++;
+          if (curLen > bestLen) { bestStart = curStart; bestLen = curLen; }
+        } else {
+          if (curLen > bestLen) { bestStart = curStart; bestLen = curLen; }
+          curStart = -1; curLen = 0;
+        }
+      }
+
+      if (bestLen >= 2) {
+        const before = trimmed.slice(0, bestStart).join(':');
+        const after = trimmed.slice(bestStart + bestLen).join(':');
+        return (before ? before + '::' : '::') + after;
+      }
+
+      return trimmed.join(':');
+    }
+
+    function getFullForm(groups) {
+      return groups.join(':');
+    }
+
+    function update() {
+      const raw = input.value;
+      if (!raw.trim()) {
+        outCompressed.textContent = '—';
+        outExpanded.textContent = '—';
+        groupsContainer.classList.add('hidden');
+        error.classList.add('hidden');
+        return;
+      }
+
+      const expanded = expandIPv6(raw);
+      if (!expanded) {
+        error.textContent = 'Invalid IPv6 address. Enter 8 hex groups separated by colons, optionally using ::.';
+        error.classList.remove('hidden');
+        groupsContainer.classList.add('hidden');
+        return;
+      }
+
+      error.classList.add('hidden');
+
+      outExpanded.textContent = getFullForm(expanded);
+
+      const compressed = compressGroups(expanded);
+      outCompressed.textContent = compressed;
+
+      outGroups.innerHTML = expanded.map(g => {
+        const h = parseInt(g, 16);
+        const isZero = h === 0;
+        return '<span class="inline-block rounded px-1.5 py-0.5 font-mono text-xs ' +
+          (isZero ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-700') +
+          '">' + g + '</span>';
+      }).join('');
+      groupsContainer.classList.remove('hidden');
+    }
+
+    function copyToClipboard(el) {
+      const text = el.textContent;
+      if (text && text !== '\u2014') {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    }
+
+    input.addEventListener('input', update);
+    copyCompressed.addEventListener('click', () => copyToClipboard(outCompressed));
+    copyExpanded.addEventListener('click', () => copyToClipboard(outExpanded));
+
+    update();
+  </script>
+</ToolLayout>

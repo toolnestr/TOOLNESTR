@@ -1,0 +1,296 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'VLSM Calculator';
+const description =
+  'Variable Length Subnet Mask (VLSM) calculator that allocates subnets of optimal ' +
+  'size for each required host count within a given base network.';
+const intro =
+  'Enter a base network (e.g. 192.168.1.0/24) and a comma-separated list of required ' +
+  'host counts. The tool will sort requirements from largest to smallest and allocate ' +
+  'non-overlapping subnets that exactly fit each need.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is VLSM?', a: 'VLSM (Variable Length Subnet Masking) is a technique that allows subnets of different sizes within the same network. Instead of using a single subnet mask for all subnets, VLSM assigns the smallest prefix that satisfies each requirement, reducing wasted addresses. VLSM is defined in RFC 1878 and is supported by modern routing protocols such as OSPF, EIGRP, and IS-IS.' },
+  { q: 'How does VLSM differ from FLSM?', a: 'FLSM (Fixed Length Subnet Mask) uses the same prefix length for every subnet. If you need one subnet with 50 hosts and another with 2 hosts, FLSM forces both to use the same size (e.g. /26 for 62 usable hosts), wasting 12 addresses on the second subnet. VLSM allocates a /26 (62 usable) for the first and a /30 (2 usable) for the second, wasting zero addresses.' },
+  { q: 'What does "smallest prefix that fits" mean?', a: 'For a required host count N, the calculator finds the smallest prefix P such that 2^(32-P) - 2 >= N. The -2 accounts for the network and broadcast addresses. For example, 50 hosts need 52 total addresses, which requires a /26 (64 total, 62 usable). The formula ensures no addresses are wasted beyond the unavoidable network + broadcast overhead.' },
+  { q: 'Why are 2 addresses subtracted?', a: 'Every IPv4 subnet reserves the first address (all host bits zero) as the network identifier and the last address (all host bits one) as the broadcast address. These cannot be assigned to hosts. RFC 1122 specifies this reservation. The only exception is /31 subnets (RFC 3021) for point-to-point links, where the two addresses are both usable.' },
+  { q: 'Can I use VLSM with any routing protocol?', a: 'VLSM requires routing protocols that carry the subnet mask in their advertisements. Classful protocols like RIPv1 do not support VLSM. Protocols that do support VLSM include RIPv2, OSPF, EIGRP, IS-IS, and BGP. The routing table must distinguish between 192.168.1.0/25 and 192.168.1.128/26 as separate entries with different masks.' },
+  { q: 'What happens if the base network is too small?', a: 'The calculator reports an error if the combined address space of all subnets exceeds the base network. Subnets are allocated sequentially from the network address upward. If a subnet would extend past the broadcast address of the base network, the allocation fails and you need either a larger base prefix or fewer requirements.' },
+  { q: 'What are the practical benefits of VLSM?', a: 'VLSM dramatically reduces IP address waste, which is critical given IPv4 address exhaustion. A well-designed VLSM plan can fit more subnets into a given address space. It also improves routing efficiency by allowing route summarization at bit boundaries, reducing the size of routing tables in large networks.' },
+  { q: 'How do I choose the base network prefix?', a: 'The base network must have enough total addresses (2^(32 - prefix)) to accommodate the sum of all required subnet sizes. A good rule is to start with a /24 for small office networks, /22 or /20 for larger sites. The calculator shows the total addresses consumed so you can verify your choice.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">VLSM subnet allocation</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="vlsm-base" type="text" placeholder="192.168.1.0/24" class="w-40 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <span class="text-xs text-slate-400">Hosts:</span>
+      <input id="vlsm-hosts" type="text" placeholder="50, 25, 10, 2" class="w-48 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <button id="vlsm-calc-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">Allocate</button>
+    </div>
+    <div id="vlsm-summary" class="mt-3 hidden text-xs text-slate-500">
+      <span id="vlsm-usage"></span>
+    </div>
+    <div id="vlsm-output" class="mt-4 hidden overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 pr-2 font-medium">#</th>
+            <th class="pb-2 pr-2 font-medium">Subnet</th>
+            <th class="pb-2 pr-2 font-medium">CIDR</th>
+            <th class="pb-2 pr-2 font-medium">Required Hosts</th>
+            <th class="pb-2 pr-2 font-medium">Usable Hosts</th>
+            <th class="pb-2 pr-2 font-medium">Usable Range</th>
+            <th class="pb-2 pr-2 font-medium">Broadcast</th>
+          </tr>
+        </thead>
+        <tbody id="vlsm-tbody" class="text-slate-700"></tbody>
+      </table>
+    </div>
+    <div id="vlsm-error" class="mt-3 hidden text-sm text-red-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How VLSM works</h2>
+    <p class="mt-2 text-slate-600">
+      Variable Length Subnet Masking (VLSM) is a method of allocating IP addresses to subnets according to their specific host requirements, rather than forcing every subnet to use the same prefix length. This approach, standardized in RFC 1878, maximizes address utilization by matching subnet size to actual need. In traditional fixed-length subnet masking (FLSM), a network with 200 hosts, 50 hosts, and 2 hosts all receive the same subnet size — such as a /24 for 254 usable hosts — wasting over two hundred addresses. VLSM would allocate a /24 (254 usable), a /26 (62 usable), and a /30 (2 usable), wasting only 12 addresses across all three subnets combined.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The algorithm used by this calculator is straightforward. It takes the required host counts, sorts them in descending order, and for each one finds the smallest prefix that provides at least that many usable addresses. The formula for usable addresses in a subnet with prefix P is 2^(32 - P) - 2, where the -2 accounts for the network and broadcast addresses that cannot be assigned to hosts. Once the prefix is determined, the subnet is allocated at the current offset within the base network, and the offset is advanced by the subnet size (2^(32 - P)). This sequential allocation ensures that no two subnets overlap.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The reason subnets are allocated largest-first is that it prevents fragmentation. If a small subnet were allocated first, a larger subsequent subnet might not fit in the remaining space. By placing the largest subnets first, the remaining gaps are always large enough to accommodate remaining smaller subnets. This is analogous to the bin-packing problem in computer science, where the "first-fit decreasing" heuristic produces near-optimal results.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260" width="800" height="260" role="img" aria-labelledby="vlsm-title vlsm-desc">
+      <title id="vlsm-title">VLSM Network Split Diagram</title>
+      <desc id="vlsm-desc">Diagram showing a /24 base network subdivided into subnets of varying sizes: a /25, a /26, and two /30 subnets</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">VLSM Allocation - 192.168.1.0/24 Divided into Variable Subnets</text>
+      <rect x="30" y="45" width="740" height="36" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="400" y="68" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Base network: 192.168.1.0/24 (256 addresses)</text>
+      <rect x="30" y="100" width="370" height="36" rx="4" fill="#6366f1" />
+      <text x="215" y="123" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Subnet A: /25 — 126 usable hosts</text>
+      <rect x="400" y="100" width="185" height="36" rx="4" fill="#818cf8" />
+      <text x="492" y="123" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Subnet B: /26 — 62 usable hosts</text>
+      <rect x="585" y="100" width="92" height="36" rx="4" fill="#a5b4fc" />
+      <text x="631" y="115" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Sub C</text>
+      <text x="631" y="128" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">/30 — 2 hosts</text>
+      <rect x="677" y="100" width="93" height="36" rx="4" fill="#a5b4fc" />
+      <text x="723" y="115" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Sub D</text>
+      <text x="723" y="128" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">/30 — 2 hosts</text>
+      <line x1="30" y1="155" x2="770" y2="155" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="30" y="175" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.0</text>
+      <text x="215" y="175" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.128</text>
+      <text x="492" y="175" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.192</text>
+      <text x="631" y="175" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.224</text>
+      <text x="723" y="175" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.228</text>
+      <text x="770" y="175" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">192.168.1.255</text>
+      <rect x="30" y="195" width="37" height="20" rx="2" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="48" y="209" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="9">N</text>
+      <polygon points="407,118 400,131 414,131" fill="#6366f1" />
+      <text x="407" y="150" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10" font-weight="600">/25 boundary</text>
+      <rect x="160" y="195" width="37" height="20" rx="2" fill="#e0e7ff" stroke="#818cf8" stroke-width="1" />
+      <text x="178" y="209" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="9">/26</text>
+      <rect x="310" y="195" width="37" height="20" rx="2" fill="#e0e7ff" stroke="#a5b4fc" stroke-width="1" />
+      <text x="328" y="209" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="9">/30</text>
+      <text x="400" y="240" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">VLSM matches subnet size to host requirement, wasting far fewer addresses than FLSM</text>
+      <rect x="100" y="228" width="8" height="8" rx="1" fill="#6366f1" />
+      <text x="112" y="236" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Allocated subnets</text>
+      <rect x="300" y="228" width="8" height="8" rx="1" fill="#e0e7ff" stroke="#94a3b8" stroke-width="1" />
+      <text x="312" y="236" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Remaining / unallocated space</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A /24 base network subdivided via VLSM: a /25 (126 usable), a /26 (62 usable), and two /30 subnets (2 usable each), with remaining space for future allocation</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The VLSM algorithm step by step</h2>
+    <p class="mt-2 text-slate-600">
+      The VLSM allocation calculator follows a precise algorithm that guarantees optimal address usage. Understanding each step helps network engineers verify results and design efficient addressing plans.
+    </p>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Step 1: Parse and validate inputs</h3>
+        <p class="mt-1 text-sm text-slate-600">Parse the base network (e.g. 192.168.1.0/24) into its network address integer and prefix length. Parse the host requirements string into a sorted list of integers. Validate that the prefix is between 0 and 32 and that the base address is a valid IPv4 address.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Step 2: Sort requirements descending</h3>
+        <p class="mt-1 text-sm text-slate-600">Sort the required host counts from largest to smallest. This ensures that larger subnets are allocated first, preventing fragmentation. For example, requirements of 10, 50, 2 are sorted to 50, 10, 2 before allocation begins.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Step 3: Find smallest fitting prefix</h3>
+        <p class="mt-1 text-sm text-slate-600">For each required host count N, find the smallest prefix P such that 2^(32 - P) - 2 >= N. For instance, N = 50 requires total addresses >= 52, so 2^6 = 64 works, giving prefix 32 - 6 = /26 with 62 usable hosts.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Step 4: Allocate at current offset</h3>
+        <p class="mt-1 text-sm text-slate-600">The subnet starts at the current offset from the base network address. The subnet address, usable range (first + 1 to last - 1), and broadcast address are computed. The offset advances by the subnet size (2^(32 - P)).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Step 5: Validate and report</h3>
+        <p class="mt-1 text-sm text-slate-600">Check that the subnet's broadcast does not exceed the base network's broadcast. If any subnet overflows, the entire allocation fails and the user is notified. Otherwise, display each subnet in a table with all computed fields.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The "2 subtracted" rule in detail</h2>
+    <p class="mt-2 text-slate-600">
+      Every IPv4 subnet must reserve two addresses: the network address (all host bits set to 0) and the broadcast address (all host bits set to 1). The network address identifies the subnet itself in routing tables and is used by routing protocols to advertise reachability. The broadcast address allows a host to send a packet to every host on the subnet simultaneously, using the Address Resolution Protocol (ARP) for neighbor discovery and for services like DHCP discover messages.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The formula for usable addresses is therefore: 2^(32 - prefix) - 2. For a /24, that is 256 - 2 = 254. For a /30, that is 4 - 2 = 2. For a /31 (which many networks use for point-to-point links), the formula gives 2 - 2 = 0, but RFC 3021 redefines the /31 behavior to make both addresses usable since there is no need for broadcast on a point-to-point link. Our calculator uses the standard -2 rule, which is safe for general-purpose subnetting and consistent with RFC 1122 and RFC 1878.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Practical VLSM design considerations</h2>
+    <p class="mt-2 text-slate-600">
+      When designing a VLSM scheme for a production network, start with the largest subnet requirement first. In a typical campus network, the largest subnets are usually for user VLANs, which may need /22 (1022 usable) or /23 (510 usable) depending on the number of devices. Server VLANs often need /24 (254 usable) for smaller deployments or /23 for larger ones. Infrastructure links between routers and switches typically need /30 (2 usable) or /31 (2 usable with RFC 3021). Management networks for device administration interfaces are often /28 (14 usable) or /29 (6 usable).
+    </p>
+    <p class="mt-3 text-slate-600">
+      Route summarization is one of the strongest motivations for careful VLSM design. If subnets are allocated along bit boundaries, they can be summarized into a single route advertisement, reducing routing table size. For example, four /26 subnets (192.168.0.0/26, 192.168.0.64/26, 192.168.0.128/26, 192.168.0.192/26) can be summarized as 192.168.0.0/24. This summarization is only possible because the subnets are contiguous and aligned to the /24 boundary.
+    </p>
+    <p class="mt-3 text-slate-600">
+      VLSM also plays a critical role in IPv4 address conservation. With global IPv4 exhaustion, organizations must maximize the utility of every allocated address block. VLSM enables this by permitting subnets of any size — not just the fixed sizes imposed by classful addressing. The calculator on this page implements the standard VLSM algorithm and can help network engineers design efficient addressing plans for CCNA exam preparation, enterprise network redesign, or datacenter IP allocation.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">VLSM vs. CIDR: related but different</h2>
+    <p class="mt-2 text-slate-600">
+      VLSM and CIDR are closely related but refer to different concepts. CIDR (Classless Inter-Domain Routing), defined in RFC 1518 and RFC 1519, is the addressing and routing methodology that replaced classful addressing. It allows arbitrary prefix lengths and supports route aggregation. VLSM, defined in RFC 1878, is the application of CIDR principles to subnet design within a private network. CIDR changed how the internet routes packets; VLSM changed how network engineers design subnets. Both rely on the same underlying binary math.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The practical distinction is scope: CIDR operates at the inter-domain level (between organizations on the internet), while VLSM operates within an organization's internal network. An ISP might allocate a /22 to a customer using CIDR principles; that customer would then use VLSM to subdivide the /22 into smaller subnets for different departments or functions. The calculator on this page is a VLSM tool — it assumes you already have a base network and shows how to subdivide it efficiently.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const baseInput = el('vlsm-base');
+    const hostsInput = el('vlsm-hosts');
+    const calcBtn = el('vlsm-calc-btn');
+    const tbody = el('vlsm-tbody');
+    const output = el('vlsm-output');
+    const error = el('vlsm-error');
+    const summary = el('vlsm-summary');
+    const usageSpan = el('vlsm-usage');
+
+    function parseIp(str) {
+      const parts = str.trim().split('.');
+      if (parts.length !== 4) return null;
+      const octets = parts.map(Number);
+      if (octets.some((o) => isNaN(o) || o < 0 || o > 255)) return null;
+      return octets;
+    }
+
+    function ipToInt(octets) {
+      return ((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]) >>> 0;
+    }
+
+    function intToIp(n) {
+      return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+    }
+
+    function findPrefixForHosts(n) {
+      for (let p = 0; p <= 32; p++) {
+        const total = Math.pow(2, 32 - p);
+        if (total - 2 >= n) return p;
+      }
+      return 32;
+    }
+
+    function showError(msg) {
+      error.textContent = msg;
+      error.classList.remove('hidden');
+      output.classList.add('hidden');
+      summary.classList.add('hidden');
+    }
+
+    function calculate() {
+      error.classList.add('hidden');
+      output.classList.add('hidden');
+      summary.classList.add('hidden');
+
+      const baseRaw = baseInput.value.trim();
+      const baseParts = baseRaw.split('/');
+      if (baseParts.length !== 2) { showError('Enter base network as network/prefix, e.g. 192.168.1.0/24'); return; }
+
+      const octets = parseIp(baseParts[0]);
+      const basePrefix = parseInt(baseParts[1], 10);
+      if (!octets || isNaN(basePrefix) || basePrefix < 0 || basePrefix > 32) { showError('Invalid base network or prefix'); return; }
+
+      const baseInt = ipToInt(octets);
+      const baseSize = Math.pow(2, 32 - basePrefix);
+      const baseBroadcast = (baseInt + baseSize - 1) >>> 0;
+
+      const rawHosts = hostsInput.value.trim();
+      if (!rawHosts) { showError('Enter at least one host count'); return; }
+
+      const required = rawHosts.split(',').map(s => parseInt(s.trim(), 10));
+      if (required.some(n => isNaN(n) || n < 1 || n > 4294967294)) { showError('Each host count must be a number between 1 and 4294967294'); return; }
+
+      const sorted = [...required].sort((a, b) => b - a);
+
+      const rows = [];
+      let offset = 0;
+      let totalAllocated = 0;
+
+      for (let i = 0; i < sorted.length; i++) {
+        const req = sorted[i];
+        const prefix = findPrefixForHosts(req);
+        const subnetSize = Math.pow(2, 32 - prefix);
+        const subnetInt = (baseInt + offset) >>> 0;
+        const broadcastInt = (subnetInt + subnetSize - 1) >>> 0;
+        const usable = subnetSize - 2;
+        const firstHost = (subnetInt + 1) >>> 0;
+        const lastHost = (broadcastInt - 1) >>> 0;
+
+        if (broadcastInt > baseBroadcast) {
+          showError('Base network is too small for these requirements. Try a larger prefix (e.g. /23 instead of /24).');
+          return;
+        }
+
+        rows.push({
+          index: i + 1,
+          subnet: intToIp(subnetInt),
+          prefix,
+          required: req,
+          usable,
+          range: intToIp(firstHost) + ' - ' + intToIp(lastHost),
+          broadcast: intToIp(broadcastInt),
+          subnetSize,
+        });
+
+        offset += subnetSize;
+        totalAllocated += subnetSize;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const showMath = r.prefix <= 30 ? r.usable.toString() : '0';
+        return '<tr class="border-b border-slate-100">' +
+          '<td class="py-1.5 pr-2 text-slate-400">' + r.index + '</td>' +
+          '<td class="py-1.5 pr-2 font-mono font-medium text-slate-900">' + r.subnet + '</td>' +
+          '<td class="py-1.5 pr-2 font-mono">/' + r.prefix + '</td>' +
+          '<td class="py-1.5 pr-2">' + r.required.toLocaleString() + '</td>' +
+          '<td class="py-1.5 pr-2">' + showMath + ' <span class="text-xs text-slate-400">(2^' + (32 - r.prefix) + ' - 2)</span></td>' +
+          '<td class="py-1.5 pr-2 font-mono text-xs">' + r.range + '</td>' +
+          '<td class="py-1.5 pr-2 font-mono">' + r.broadcast + '</td>' +
+          '</tr>';
+      }).join('');
+
+      const percent = ((totalAllocated / baseSize) * 100).toFixed(1);
+      usageSpan.textContent = 'Total allocated: ' + totalAllocated + ' / ' + baseSize + ' addresses (' + percent + '% of base network)';
+      summary.classList.remove('hidden');
+      output.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+    baseInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+    hostsInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>

@@ -1,0 +1,225 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Redirect Chain / HTTP Status Tracer';
+const description =
+  'Trace the full HTTP redirect chain for any URL. See every hop — 301, 302, 307, and more — with ' +
+  'status codes, response times, and the final destination. Free redirect checker tool.';
+const intro =
+  'Enter any URL to trace its complete redirect chain. The tool follows up to 10 hops and reports each redirect along with the HTTP status code and response time.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is an HTTP redirect?', a: 'An HTTP redirect is a server response (3xx status code) that tells the client to make a new request to a different URL. The most common redirect types are 301 (Moved Permanently), 302 (Found), and 307 (Temporary Redirect).' },
+  { q: 'What is the difference between a 301 and 302 redirect?', a: 'A 301 redirect indicates a permanent move. Browsers and search engines cache this redirect and update their records accordingly. A 302 redirect indicates a temporary move; the client should continue using the original URL for future requests.' },
+  { q: 'What is a 307 redirect?', a: 'A 307 (Temporary Redirect) is similar to a 302 but guarantees that the request method (POST, PUT, etc.) is preserved across the redirect. A 302 may change POST to GET in some browsers, but 307 ensures the original method and body are used.' },
+  { q: 'Why should I care about redirect chains?', a: 'Long redirect chains slow down page load times because each hop adds a full HTTP round trip. Search engines also penalise sites with excessive redirects. Keeping redirect chains to one hop or zero is a best practice for both performance and SEO.' },
+  { q: 'What is a redirect loop?', a: 'A redirect loop occurs when URL A redirects to B, B redirects back to A, or forms a longer cycle that never reaches a 200 OK response. Browsers detect this and display an error. This tool limits tracing to 10 hops to prevent infinite loops.' },
+  { q: 'How do I fix a broken redirect?', a: 'Inspect your server configuration (htaccess for Apache, nginx.conf for Nginx, or your CMS settings). Check that the target URL exists and does not itself redirect elsewhere unless intended. Use this tool to verify the fix after making changes.' },
+  { q: 'What is a meta refresh redirect?', a: 'A meta refresh redirect uses an HTML meta tag (meta http-equiv="refresh") instead of an HTTP header. Search engines treat these differently and may not pass link equity as effectively as HTTP 301 redirects.' },
+  { q: 'Can redirects affect SEO?', a: 'Yes. 301 redirects pass most link equity to the new URL and are the recommended method for permanent URL changes. 302 redirects do not pass link equity reliably. Chains of multiple redirects dilute link equity and increase page load time, both of which can harm search rankings.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Redirect Chain Tracer</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="url"
+          type="text"
+          placeholder="https://example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="traceBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Trace Redirects
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Following redirect chain...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden">
+        <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Redirect Chain</div>
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+              <th class="pb-2 pr-2 font-semibold">#</th>
+              <th class="pb-2 pr-3 font-semibold">URL</th>
+              <th class="pb-2 pr-3 font-semibold">Status</th>
+              <th class="pb-2 font-semibold">Time</th>
+            </tr>
+          </thead>
+          <tbody id="chainBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+        <div id="finalMsg" class="mt-3 text-xs text-slate-500"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How HTTP redirects work</h2>
+    <p class="mt-2 text-slate-600">
+      HTTP redirects are the web's mechanism for pointing a client from one URL to another. When a server sends a 3xx status code in response to a request, the accompanying Location header tells the client where to go next. The browser automatically follows this instruction and makes a new request to the target URL. This process repeats until a non-redirect response (typically 200 OK) is received, or until a redirect loop is detected. The redirect chain is the sequence of URLs visited during this process, from the original URL to the final destination.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The most common redirect status codes are defined in the HTTP/1.1 specification (RFC 7231). A 301 Moved Permanently tells the client and search engines that the resource has permanently relocated. Browsers cache this redirect so future requests go directly to the new URL. A 302 Found indicates a temporary move where the client should continue to request the original URL in the future. A 307 Temporary Redirect functions like a 302 but explicitly preserves the HTTP method and request body. A 308 Permanent Redirect is the permanent equivalent of 307, preserving the method. There are also 303 See Other, which forces a GET after a POST, and 304 Not Modified, which is not technically a redirect but tells the client its cached copy is still valid.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Each redirect hop adds a full HTTP round trip — DNS resolution, TCP connection, TLS handshake if applicable, request transmission, server processing, and response download. If the redirect points to a different hostname, the entire process repeats from DNS resolution onward. A chain of three or more redirects can easily add multiple seconds to page load time, especially on mobile networks with higher latency. For this reason, performance audits often flag any redirect chain longer than one hop as an issue that should be addressed.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-labelledby="redirect-flow-title redirect-flow-desc">
+      <title id="redirect-flow-title">HTTP Redirect Flow Diagram</title>
+      <desc id="redirect-flow-desc">A step-by-step diagram showing how a browser follows HTTP redirects through multiple hops until reaching the final destination</desc>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+        <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+        </marker>
+      </defs>
+      <rect x="30" y="10" width="140" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="100" y="30" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Browser</text>
+      <text x="100" y="45" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">Original request</text>
+      <line x1="170" y1="35" x2="220" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)" />
+      <text x="195" y="27" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">1</text>
+      <rect x="225" y="10" width="140" height="50" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="295" y="30" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Server A</text>
+      <text x="295" y="45" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">301 / Location: B</text>
+      <line x1="365" y1="35" x2="415" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)" />
+      <text x="390" y="27" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">2</text>
+      <rect x="420" y="10" width="140" height="50" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="490" y="30" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Server B</text>
+      <text x="490" y="45" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">302 / Location: C</text>
+      <line x1="560" y1="35" x2="610" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)" />
+      <text x="585" y="27" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">3</text>
+      <rect x="615" y="10" width="150" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="690" y="30" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Server C</text>
+      <text x="690" y="45" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">200 OK (final)</text>
+      <line x1="690" y1="60" x2="690" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="690" y1="100" x2="100" y2="100" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="100" y1="100" x2="100" y2="60" stroke="#22c55e" stroke-width="2" marker-end="url(#arr-green)" />
+      <text x="395" y="93" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">4. Final response (200 OK) returned to browser</text>
+      <rect x="225" y="130" width="530" height="100" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="490" y="155" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Each hop adds latency</text>
+      <text x="490" y="172" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">DNS lookup + TCP connect + TLS handshake + HTTP request</text>
+      <text x="490" y="189" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Each redirect may point to a different hostname,</text>
+      <text x="490" y="204" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">requiring a full connection cycle from scratch</text>
+      <text x="490" y="221" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Best practice: minimise redirects, eliminate chains</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">HTTP redirect flow showing how each hop adds latency through DNS, TCP, and TLS connection overhead</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common redirect scenarios</h2>
+    <p class="mt-2 text-slate-600">
+      Redirects are used in many common web scenarios. Domain migration is one of the most frequent — when a website moves from example.com to example.net, all old URLs should 301-redirect to their new equivalents so both users and search engines are directed to the correct location. URL normalisation is another: many servers redirect non-www to www (or vice versa), redirect HTTP to HTTPS, and redirect bare domains to a trailing slash path (example.com to example.com/ ). Tracking and affiliate links often use redirects to log clicks before forwarding visitors to the destination. URL shorteners are built entirely around redirects, storing a short code and issuing a 301 or 302 to the long target URL.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Content management systems also create redirects when page slugs change. If you rename a blog post from /blog/old-title to /blog/new-title, a well-configured CMS will set up a 301 from the old URL to the new one. E-commerce platforms redirect outdated product URLs when inventory changes. Marketing campaigns use redirects to send traffic from a QR code or short link to a landing page. In each of these cases, keeping the redirect chain to a single hop is critical for performance and search engine optimisation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The worst-case scenario is the redirect chain that grows unintentionally over time. A common example: a site initially redirects http://example.com to http://www.example.com, then later adds an HTTPS redirect from http://www.example.com to https://www.example.com, resulting in a two-hop chain. Each subsequent configuration change can add another hop. This tool helps you identify such chains so you can consolidate them into zero or one hop by configuring your server to redirect directly to the final HTTPS URL.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How redirects affect SEO and performance</h2>
+    <p class="mt-2 text-slate-600">
+      Search engines like Google consider redirects when crawling and indexing websites. A 301 redirect passes most of the original URL's ranking signals (link equity) to the destination URL. This means you can change your URL structure without losing search rankings, as long as you use proper 301 redirects. However, a chain of multiple redirects dilutes this equity — each hop reduces the amount of ranking signal that passes through. Google has stated that multiple redirects can also increase crawl time and reduce crawl budget, potentially slowing down how quickly your new content is indexed.
+    </p>
+    <p class="mt-3 text-slate-600">
+      From a performance perspective, each redirect adds latency. On a desktop with a fast connection, two or three redirects might add only a few hundred milliseconds. On a mobile device on a 3G network, the same chain could add several seconds. The HTTP Archive reports that a significant percentage of websites still have redirect chains of three or more hops. Tools like Google PageSpeed Insights and Lighthouse flag these as opportunities for improvement. The fix is often straightforward: configure your web server or CDN to redirect directly to the final destination in a single hop.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7231" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7231 — HTTP/1.1 Semantics and Content (3xx Redirection)</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7538" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7538 — 308 Permanent Redirect</a></li>
+      <li><a href="https://developers.google.com/search/docs/crawling-indexing/301-redirects" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">Google Search Central — Redirects and SEO</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">MDN Web Docs — HTTP Redirections</a></li>
+      <li><a href="https://httparchive.org/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">HTTP Archive — Web Performance Trends</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const urlInput = document.getElementById('url');
+    const btn = document.getElementById('traceBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const body = document.getElementById('chainBody');
+    const finalMsg = document.getElementById('finalMsg');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/redirect-trace';
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    const statusClass = (code) => {
+      if (code >= 301 && code <= 303) return 'bg-indigo-100 text-indigo-800';
+      if (code === 307 || code === 308) return 'bg-purple-100 text-purple-800';
+      return 'bg-slate-100 text-slate-700';
+    };
+
+    const statusLabel = (code) => {
+      const labels = { 301: 'Moved Permanently', 302: 'Found', 303: 'See Other', 304: 'Not Modified', 307: 'Temp Redirect', 308: 'Perm Redirect' };
+      return labels[code] || 'Redirect';
+    };
+
+    async function trace() {
+      const url = urlInput.value.trim();
+      if (!url) { errEl.textContent = 'Please enter a URL.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?url=' + encodeURIComponent(url));
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        const chain = d.chain || d;
+        if (!chain || chain.length === 0) throw new Error('No redirect chain data returned.');
+        body.innerHTML = chain.map((hop, i) => {
+          const isRedirect = hop.status >= 300 && hop.status < 400;
+          const sc = isRedirect ? statusClass(hop.status) : 'bg-green-100 text-green-800';
+          const sl = isRedirect ? statusLabel(hop.status) : (hop.status === 200 ? 'OK' : '');
+          return '<tr class="text-slate-700">' +
+            '<td class="py-2 pr-2 text-xs text-slate-400">' + (i + 1) + '</td>' +
+            '<td class="py-2 pr-3 font-mono text-xs break-all max-w-xs truncate">' + esc(hop.url || '') + '</td>' +
+            '<td class="py-2 pr-3"><span class="inline-block rounded px-1.5 py-0.5 text-xs font-semibold ' + sc + '">' + esc(String(hop.status)) + ' ' + esc(sl) + '</span></td>' +
+            '<td class="py-2 text-xs text-slate-500">' + esc(hop.responseTime != null ? hop.responseTime + 'ms' : '') + '</td>' +
+          '</tr>';
+        }).join('');
+        const last = chain[chain.length - 1];
+        if (last.status >= 200 && last.status < 300) {
+          finalMsg.textContent = 'Final destination reached — status ' + last.status + ' (' + chain.length + ' hop' + (chain.length > 1 ? 's' : '') + ')';
+        } else if (chain.length >= 10) {
+          finalMsg.textContent = 'Stopped after 10 hops (possible redirect loop or excessive chain)';
+        } else {
+          finalMsg.textContent = 'Chain ended with status ' + last.status;
+        }
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', trace);
+    urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') trace(); });
+  </script>
+</ToolLayout>

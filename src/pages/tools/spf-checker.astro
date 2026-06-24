@@ -1,0 +1,385 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'SPF Checker';
+const description =
+  'Check SPF (Sender Policy Framework) records for any domain. Parse SPF mechanisms, qualifiers, and DNS lookup counts. ' +
+  'Free SPF record checker to validate email authentication configuration.';
+const intro =
+  'Enter a domain to look up its SPF record, parse all mechanisms and qualifiers, and check the DNS lookup count against the RFC 7208 limit of 10.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  {
+    q: 'What is an SPF record?',
+    a: 'An SPF (Sender Policy Framework) record is a TXT record in DNS that lists which mail servers are authorised to send email on behalf of a domain. It helps prevent email spoofing by allowing receiving servers to verify that incoming mail comes from an approved source.',
+  },
+  {
+    q: 'What is the RFC 7208 DNS lookup limit?',
+    a: 'RFC 7208 limits SPF records to a maximum of 10 DNS lookups during evaluation. Each include: mechanism, a mechanism, and mx mechanism counts toward this limit. Exceeding 10 results in a permanent error (SoftFail), potentially causing legitimate email to be rejected.',
+  },
+  {
+    q: 'What do the SPF qualifiers mean?',
+    a: 'Plus (+) means Pass (accept the email). Minus (-) means Fail (reject the email). Tilde (~) means SoftFail (mark as suspicious but accept). Question mark (?) means Neutral (take no action). The default qualifier when none is specified is + (Pass).',
+  },
+  {
+    q: 'What is the difference between include: and redirect=?',
+    a: 'The include: mechanism evaluates the referenced domain\'s SPF record and contributes its result, but evaluation continues with the remaining mechanisms. The redirect= mechanism replaces the entire SPF record with the referenced domain\'s record — no other mechanisms are evaluated after redirect=.',
+  },
+  {
+    q: 'Why is my SPF record failing?',
+    a: 'Common reasons include: exceeding the 10-lookup limit, typos in IP addresses or domain names, missing or incorrect include: statements for third-party senders (like Google Workspace or Mailchimp), syntax errors, or the record not starting with v=spf1.',
+  },
+  {
+    q: 'How do I set up an SPF record for my domain?',
+    a: 'Create a TXT record in your DNS zone with the value starting with v=spf1, followed by mechanisms listing authorised senders. For example: v=spf1 ip4:192.0.2.0/24 include:_spf.google.com ~all. Publish it via your DNS hosting provider\'s control panel.',
+  },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">SPF Record Lookup</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="domain"
+          type="text"
+          placeholder="example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="lookupBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Check SPF
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Querying SPF records...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden space-y-4">
+        <div id="rawRecord" class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Raw SPF Record</h3>
+          <p id="rawValue" class="mt-1 break-all font-mono text-xs text-slate-800"></p>
+        </div>
+        <div id="lookupCountWrap" class="rounded-lg p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide">DNS Lookup Count</h3>
+          <p id="lookupCount" class="mt-1 text-lg font-bold"></p>
+          <p id="lookupDesc" class="text-xs"></p>
+        </div>
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Mechanisms Found</h3>
+          <div id="mechList" class="mt-2 grid gap-2 sm:grid-cols-2"></div>
+        </div>
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Qualifiers Used</h3>
+          <div id="qualList" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How SPF works in email delivery</h2>
+    <p class="mt-2 text-slate-600">
+      The Sender Policy Framework (SPF) is an email authentication protocol defined in RFC 7208 that helps prevent sender address forgery. When an email is sent, the receiving mail server can check the domain in the envelope sender address (the Return-Path) against the SPF record published in DNS for that domain. If the sending server's IP address is not listed in the SPF record, the email may be rejected or marked as suspicious, depending on the domain's policy.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The SPF record is a specially formatted TXT record that begins with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">v=spf1</code>. It contains a list of mechanisms that define which servers are authorised to send mail. Each mechanism can optionally include a qualifier that tells the receiving server what action to take if the mechanism matches. The most common mechanisms are <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip4:</code> and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip6:</code> which specify authorised IP ranges, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> which references another domain's SPF record, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a</code> which matches the domain's A records, and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mx</code> which matches the domain's MX records.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The mechanism qualifiers use a single-character prefix. Plus (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">+</code>) signals Pass — the server is authorised and the email should be accepted. Minus (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">-</code>) signals Fail — the server is not authorised and the email should be rejected. Tilde (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">~</code>) signals SoftFail — the server is probably not authorised but the email should be accepted anyway for testing purposes. Question mark (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">?</code>) signals Neutral — no assertion about authorisation is made. The default qualifier, when none is written explicitly, is Plus (Pass). Most SPF records end with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">-all</code> (reject all other senders) or <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">~all</code> (softfail all other senders) as a catch-all mechanism.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Email authentication with SPF has a critical limitation: SPF checks only the envelope sender domain, not the domain shown in the From header that the recipient sees. An attacker can send email from an unauthorised server using a forged envelope sender from a domain that publishes a permissive SPF record, while displaying any domain they want in the From header. This is why SPF is typically combined with DKIM (DomainKeys Identified Mail) and DMARC (Domain-based Message Authentication, Reporting and Conformance) to provide comprehensive email authentication. DMARC aligns the From header domain with the SPF-authenticated domain, closing the gap that SPF alone cannot address.
+    </p>
+    <p class="mt-3 text-slate-600">
+      RFC 7208 mandates that SPF evaluation must not exceed 10 DNS lookups. This limit includes each <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> mechanism, each <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a</code> mechanism (including <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a:</code> with a domain), and each <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mx</code> mechanism (including <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mx:</code> with a domain). Mechanisms like <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip4:</code>, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip6:</code>, and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">exists:</code> do not count toward the limit. The 10-lookup limit exists to prevent denial-of-service attacks using deeply nested SPF records. When the limit is exceeded, the receiving server should return a PermError result, effectively treating the SPF check as failed.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380" width="800" height="380" role="img" aria-labelledby="spf-flow-title spf-flow-desc">
+      <title id="spf-flow-title">SPF Email Authentication Flow Diagram</title>
+      <desc id="spf-flow-desc">A diagram showing how a receiving mail server checks the SPF record of the sender's domain to determine whether to accept or reject an email</desc>
+      <defs>
+        <marker id="spfArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="30" y="15" width="150" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="105" y="40" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Sending Server</text>
+      <text x="105" y="56" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">IP: 203.0.113.5</text>
+      <line x1="180" y1="43" x2="230" y2="43" stroke="#6366f1" stroke-width="1.5" marker-end="url(#spfArrow)" />
+      <text x="205" y="33" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">1. Email</text>
+      <rect x="235" y="15" width="150" height="56" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="310" y="40" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Receiving Server</text>
+      <text x="310" y="56" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">Checks SPF</text>
+      <line x1="385" y1="30" x2="445" y2="30" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#spfArrow)" />
+      <text x="415" y="23" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">2. Query DNS</text>
+      <rect x="450" y="10" width="150" height="42" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="525" y="30" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">DNS Server</text>
+      <text x="525" y="44" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">TXT query for domain</text>
+      <line x1="525" y1="52" x2="525" y2="95" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#spfArrow)" />
+      <text x="540" y="78" text-anchor="start" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">3. SPF record</text>
+      <rect x="440" y="100" width="170" height="50" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" />
+      <text x="525" y="120" text-anchor="middle" fill="#166534" font-family="system-ui, sans-serif" font-size="11" font-weight="600">SPF Record Found</text>
+      <text x="525" y="138" text-anchor="middle" fill="#16a34a" font-family="system-ui, sans-serif" font-size="10">v=spf1 ip4:203.0.113.0/24 ~all</text>
+      <line x1="440" y1="125" x2="385" y2="100" stroke="#6366f1" stroke-width="1.5" marker-end="url(#spfArrow)" />
+      <text x="405" y="93" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">4. Return</text>
+      <line x1="310" y1="71" x2="310" y2="155" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="310" y1="155" x2="105" y2="155" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="105" y1="155" x2="105" y2="71" stroke="#6366f1" stroke-width="1.5" marker-end="url(#spfArrow)" />
+      <text x="208" y="148" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">5. IP matches? Result: Pass / SoftFail / Fail / Neutral</text>
+      <rect x="30" y="175" width="600" height="50" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="45" y="198" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">SPF Result Actions:</text>
+      <rect x="180" y="188" width="80" height="28" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="1" />
+      <text x="220" y="207" text-anchor="middle" fill="#166534" font-family="system-ui, sans-serif" font-size="10" font-weight="600">+ Pass</text>
+      <rect x="270" y="188" width="80" height="28" rx="6" fill="#fef9c3" stroke="#eab308" stroke-width="1" />
+      <text x="310" y="207" text-anchor="middle" fill="#854d0e" font-family="system-ui, sans-serif" font-size="10" font-weight="600">~ SoftFail</text>
+      <rect x="360" y="188" width="80" height="28" rx="6" fill="#fecaca" stroke="#ef4444" stroke-width="1" />
+      <text x="400" y="207" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="10" font-weight="600">- Fail</text>
+      <rect x="450" y="188" width="80" height="28" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1" />
+      <text x="490" y="207" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="10" font-weight="600">? Neutral</text>
+      <text x="45" y="240" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">RFC 7208 limits SPF evaluation to 10 DNS lookups (include: + a + mx) to prevent abuse</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">SPF authentication flow showing how a receiving mail server queries DNS for the sender's SPF record and evaluates the result</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">SPF mechanisms in detail</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">ip4: and ip6:</h3>
+        <p class="mt-1 text-sm text-slate-600">These are the most specific mechanisms. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip4:192.0.2.0/24</code> authorises the entire 192.0.2.0/24 subnet. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip6:2001:db8::/32</code> authorises an IPv6 range. These do not count toward the DNS lookup limit and are always evaluated first for performance.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">include:</h3>
+        <p class="mt-1 text-sm text-slate-600">The <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> mechanism references another domain's SPF record and imports its result. This is how organisations delegate authorisation to third-party email senders like Google Workspace, Mailchimp, or SendGrid. Each <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> counts as one DNS lookup.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">a and mx</h3>
+        <p class="mt-1 text-sm text-slate-600">The <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a</code> mechanism matches the domain's A or AAAA records. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a:mail.example.com</code> matches a specific hostname. Similarly, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mx</code> matches the domain's MX record targets. Both count as one DNS lookup each.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">exists: and redirect=</h3>
+        <p class="mt-1 text-sm text-slate-600"><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">exists:</code> checks if a given domain has any DNS record at all. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">redirect=</code> completely replaces the current SPF record with another domain's — no further mechanisms are evaluated after <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">redirect=</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common SPF mistakes</h2>
+    <p class="mt-2 text-slate-600">
+      One of the most frequent errors is exceeding the RFC 7208 limit of 10 DNS lookups. Large organisations that use multiple email service providers often accumulate many <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> statements. When the limit is exceeded, receiving servers return a PermError, which may cause legitimate email to be rejected. Another common mistake is publishing an SPF record with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">+all</code> (pass all) instead of <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">-all</code> or <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">~all</code>. A <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">+all</code> record essentially says "any server is authorised to send email from this domain," completely defeating the purpose of SPF.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Syntax errors are also common — missing spaces between mechanisms, using a semicolon instead of a space as a separator, or forgetting the <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">v=spf1</code> prefix. SPF records are also often placed on the wrong subdomain or are split across multiple TXT records when only one TXT record should contain the SPF declaration. If a domain has multiple TXT records starting with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">v=spf1</code>, the receiving server should return a PermError because the SPF record set is ambiguous.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">SPF best practices</h2>
+    <p class="mt-2 text-slate-600">
+      Always end your SPF record with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">-all</code> (hard fail) once you are confident that all authorised senders are listed. During migration or testing, <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">~all</code> (soft fail) is acceptable. Use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip4:</code> and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ip6:</code> mechanisms instead of <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">a</code> or <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mx</code> whenever possible to reduce DNS lookup count. Monitor your lookup count with this tool and keep it well below 10. Consolidate multiple <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">include:</code> statements if your email senders share a common SPF include. Regularly audit your SPF record to remove stale entries for services you no longer use. Remember that SPF alone is not sufficient for robust email authentication — deploy DKIM signing and a DMARC policy alongside SPF for comprehensive protection against email spoofing and phishing attacks.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7208" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7208 — Sender Policy Framework (SPF) for Authorizing Use of Domains in Email</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc4408" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 4408 — Historical SPF specification (predecessor to RFC 7208)</a></li>
+      <li><a href="https://www.openspf.org/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">OpenSPF.org</a> — community resource for SPF documentation</li>
+      <li><a href="https://dmarc.org/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">DMARC.org</a> — resources on DMARC, SPF, and DKIM email authentication</li>
+      <li><a href="https://www.rfc-editor.org/info/rfc7489" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7489 — Domain-based Message Authentication, Reporting, and Conformance (DMARC)</a></li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const domain = document.getElementById('domain');
+    const btn = document.getElementById('lookupBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const rawValue = document.getElementById('rawValue');
+    const lookupCount = document.getElementById('lookupCount');
+    const lookupDesc = document.getElementById('lookupDesc');
+    const lookupCountWrap = document.getElementById('lookupCountWrap');
+    const mechList = document.getElementById('mechList');
+    const qualList = document.getElementById('qualList');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/dns-lookup';
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    const qualifierLabels = {
+      '+': { label: 'Pass', cls: 'bg-green-100 text-green-800 border-green-200' },
+      '-': { label: 'Fail', cls: 'bg-red-100 text-red-800 border-red-200' },
+      '~': { label: 'SoftFail', cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+      '?': { label: 'Neutral', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+    };
+
+    const mechColors = {
+      'ip4': { label: 'ip4', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+      'ip6': { label: 'ip6', cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+      'include': { label: 'include', cls: 'bg-blue-100 text-blue-800 border-blue-200' },
+      'a': { label: 'a', cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+      'mx': { label: 'mx', cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+      'exists': { label: 'exists', cls: 'bg-teal-100 text-teal-800 border-teal-200' },
+      'redirect': { label: 'redirect', cls: 'bg-orange-100 text-orange-800 border-orange-200' },
+      'all': { label: 'all', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
+    };
+
+    function parseSPF(record) {
+      const parts = record.trim().split(/\s+/);
+      const mechs = [];
+      const quals = {};
+      let lookups = 0;
+
+      for (const part of parts) {
+        if (part === 'v=spf1') continue;
+
+        let qual = '+';
+        let mech = part;
+        if (['+', '-', '~', '?'].includes(part[0])) {
+          qual = part[0];
+          mech = part.slice(1);
+        }
+
+        quals[qual] = (quals[qual] || 0) + 1;
+
+        let type, value;
+        if (mech.startsWith('include:')) {
+          type = 'include';
+          value = mech.slice(8);
+          lookups++;
+        } else if (mech.startsWith('ip4:')) {
+          type = 'ip4';
+          value = mech.slice(4);
+        } else if (mech.startsWith('ip6:')) {
+          type = 'ip6';
+          value = mech.slice(4);
+        } else if (mech.startsWith('a:')) {
+          type = 'a';
+          value = mech.slice(2);
+          lookups++;
+        } else if (mech === 'a') {
+          type = 'a';
+          value = '(current domain)';
+          lookups++;
+        } else if (mech.startsWith('mx:')) {
+          type = 'mx';
+          value = mech.slice(3);
+          lookups++;
+        } else if (mech === 'mx') {
+          type = 'mx';
+          value = '(current domain)';
+          lookups++;
+        } else if (mech.startsWith('exists:')) {
+          type = 'exists';
+          value = mech.slice(7);
+        } else if (mech.startsWith('redirect=')) {
+          type = 'redirect';
+          value = mech.slice(8);
+        } else if (mech === 'all') {
+          type = 'all';
+          value = '';
+        } else {
+          type = 'unknown';
+          value = mech;
+        }
+
+        mechs.push({ type, value, qual });
+      }
+
+      return { mechs, quals, lookups };
+    }
+
+    function renderQualifier(q) {
+      const info = qualifierLabels[q] || { label: q, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+      return '<span class="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold ' + info.cls + '">' +
+        esc(q) + ' ' + esc(info.label) +
+        '</span>';
+    }
+
+    function renderMech(m) {
+      const mc = mechColors[m.type] || { label: m.type, cls: 'bg-slate-100 text-slate-700 border-slate-200' };
+      return '<div class="rounded-lg border bg-white p-3 text-sm">' +
+        '<div class="flex items-center gap-2">' +
+        '<span class="rounded border px-1.5 py-0.5 text-xs font-semibold ' + mc.cls + '">' + esc(mc.label) + '</span>' +
+        '<span class="text-xs text-slate-500">' + esc(qualifierLabels[m.qual]?.label || 'Pass') + '</span>' +
+        '</div>' +
+        (m.value ? '<p class="mt-1 font-mono text-xs text-slate-700 break-all">' + esc(m.value) + '</p>' : '') +
+        '</div>';
+    }
+
+    async function lookup() {
+      const dom = domain.value.trim();
+      if (!dom) { errEl.textContent = 'Please enter a domain name.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const r = await fetch(api + '?domain=' + encodeURIComponent(dom) + '&type=TXT');
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        if (!d.records || d.records.length === 0) throw new Error('No TXT records found for ' + dom + '.');
+
+        const spfRecord = d.records.find((rec) => {
+          const data = rec.data || rec.Data || rec.value || rec.Value || '';
+          return data.trim().startsWith('v=spf1');
+        });
+
+        if (!spfRecord) throw new Error('No SPF record (v=spf1) found for ' + dom + '. The domain may not have an SPF record published.');
+
+        const raw = spfRecord.data || spfRecord.Data || spfRecord.value || spfRecord.Value || '';
+        rawValue.textContent = raw;
+
+        const parsed = parseSPF(raw);
+
+        lookupCount.textContent = parsed.lookups + ' / 10 DNS lookups';
+        if (parsed.lookups < 7) {
+          lookupCountWrap.className = 'rounded-lg bg-green-50 border border-green-200 p-3';
+          lookupCount.className = 'mt-1 text-lg font-bold text-green-700';
+          lookupDesc.textContent = 'Well within the RFC 7208 limit.';
+          lookupDesc.className = 'text-xs text-green-600';
+        } else if (parsed.lookups <= 9) {
+          lookupCountWrap.className = 'rounded-lg bg-amber-50 border border-amber-200 p-3';
+          lookupCount.className = 'mt-1 text-lg font-bold text-amber-700';
+          lookupDesc.textContent = 'Approaching the RFC 7208 limit. Consider consolidating include: statements.';
+          lookupDesc.className = 'text-xs text-amber-600';
+        } else {
+          lookupCountWrap.className = 'rounded-lg bg-red-50 border border-red-200 p-3';
+          lookupCount.className = 'mt-1 text-lg font-bold text-red-700';
+          lookupDesc.textContent = 'EXCEEDS the 10-lookup limit. Mail may be rejected. Consolidate includes immediately.';
+          lookupDesc.className = 'text-xs text-red-600';
+        }
+
+        mechList.innerHTML = parsed.mechs.map(renderMech).join('');
+
+        const qualEntries = Object.entries(parsed.quals);
+        if (qualEntries.length) {
+          qualList.innerHTML = qualEntries.map(([q]) => renderQualifier(q)).join('');
+        } else {
+          qualList.innerHTML = '<span class="text-xs text-slate-500">No qualifiers found (all default to Pass)</span>';
+        }
+
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', lookup);
+    domain.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+  </script>
+</ToolLayout>

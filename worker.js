@@ -126,6 +126,21 @@ export default {
         return handlePortCheck(url);
       }
 
+      // ── Route: Redirect Trace ──
+      if (path === '/api/redirect-trace' && method === 'GET') {
+        return handleRedirectTrace(url);
+      }
+
+      // ── Route: Uptime Check ──
+      if (path === '/api/uptime-check' && method === 'GET') {
+        return handleUptimeCheck(url);
+      }
+
+      // ── Route: SSL Certificate Check ──
+      if (path === '/api/ssl-check' && method === 'GET') {
+        return handleSslCheck(url);
+      }
+
       return new Response('Not Found', { status: 404, headers: corsHeaders });
 
     } catch (error) {
@@ -492,6 +507,65 @@ async function handleAsnLookup(request, url) {
     org: result.org || '',
     isSelf: false,
   });
+}
+
+// ── Redirect Trace Handler ──
+async function handleRedirectTrace(url) {
+  let target = url.searchParams.get('url') || '';
+  if (!target) return jsonResponse({ error: 'Missing url parameter' }, 400);
+  if (!/^https?:\/\//i.test(target)) target = 'https://' + target;
+  try { new URL(target); } catch (e) { return jsonResponse({ error: 'Invalid URL' }, 400); }
+
+  const chain = [];
+  let current = target;
+  for (let i = 0; i < 10; i++) {
+    const start = Date.now();
+    const res = await fetch(current, { method: 'GET', redirect: 'manual' });
+    chain.push({ url: current, status: res.status, ms: Date.now() - start });
+    const location = res.headers.get('location');
+    if (!location || res.status < 300 || res.status >= 400) break;
+    current = new URL(location, current).href;
+  }
+  return jsonResponse({ chain: chain, finalUrl: current, hops: chain.length - 1 });
+}
+
+// ── Uptime Check Handler ──
+async function handleUptimeCheck(url) {
+  let target = url.searchParams.get('url') || '';
+  if (!target) return jsonResponse({ error: 'Missing url parameter' }, 400);
+  if (!/^https?:\/\//i.test(target)) target = 'https://' + target;
+  try { new URL(target); } catch (e) { return jsonResponse({ error: 'Invalid URL' }, 400); }
+
+  const start = Date.now();
+  try {
+    const res = await fetch(target, { method: 'GET', signal: AbortSignal.timeout(8000) });
+    return jsonResponse({ url: target, up: res.status < 500, status: res.status, ms: Date.now() - start });
+  } catch (e) {
+    return jsonResponse({ url: target, up: false, status: null, ms: Date.now() - start, error: 'Unreachable or timed out' });
+  }
+}
+
+// ── SSL Certificate Check Handler ──
+async function handleSslCheck(url) {
+  const domain = url.searchParams.get('domain') || '';
+  if (!domain) return jsonResponse({ error: 'Missing domain parameter' }, 400);
+  try {
+    const res = await fetch('https://crt.sh/?q=' + encodeURIComponent(domain) + '&output=json', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return jsonResponse({ error: 'Certificate lookup failed (crt.sh returned ' + res.status + ')' }, 502);
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return jsonResponse({ error: 'No certificates found for ' + domain }, 404);
+    const latest = data.sort(function (a, b) { return new Date(b.not_before) - new Date(a.not_before); })[0];
+    return jsonResponse({
+      domain: domain,
+      issuer: latest.issuer_name || 'Unknown',
+      notBefore: latest.not_before || '',
+      notAfter: latest.not_after || '',
+      daysUntilExpiry: latest.not_after ? Math.ceil((new Date(latest.not_after) - Date.now()) / 86400000) : 0,
+      serialNumber: latest.serial_number || '',
+    });
+  } catch (e) {
+    return jsonResponse({ error: 'Certificate lookup failed: ' + e.message }, 502);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────

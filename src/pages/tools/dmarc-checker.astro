@@ -1,0 +1,375 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'DMARC Checker';
+const description =
+  'Check DMARC (Domain-based Message Authentication, Reporting and Conformance) records for any domain. ' +
+  'Parse DMARC policies, report addresses, alignment modes, and more. Free DMARC record checker.';
+const intro =
+  'Enter a domain to look up its DMARC record, parse all tags, and understand the email authentication policy.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  {
+    q: 'What is a DMARC record?',
+    a: 'A DMARC (Domain-based Message Authentication, Reporting and Conformance) record is a TXT record published at _dmarc.yourdomain.com in DNS. It tells receiving mail servers what to do with email that fails SPF or DKIM authentication checks. DMARC also provides a mechanism for domain owners to receive reports about authentication results.',
+  },
+  {
+    q: 'What do the DMARC policies mean?',
+    a: 'p=none means take no action against failing email but still receive reports. This is for monitoring only. p=quarantine means deliver suspicious email to the spam or junk folder. p=reject means reject the email outright at the SMTP level — the receiving server refuses to accept it.',
+  },
+  {
+    q: 'What is the difference between adkim and aspf?',
+    a: 'adkim (DKIM alignment mode) controls how strictly the From header domain must match the DKIM signing domain. r (relaxed) allows subdomains to match. s (strict) requires an exact match. aspf (SPF alignment mode) does the same for the SPF-authenticated domain vs the From header domain.',
+  },
+  {
+    q: 'What are rua and ruf in a DMARC record?',
+    a: 'rua (Report URI for Aggregate) specifies where receiving servers send aggregate XML reports summarising all authentication results for a domain. ruf (Report URI for Forensic) specifies where forensic/failure reports are sent — these contain copies of actual failing messages. ruf emails go to the address specified with mailto: syntax.',
+  },
+  {
+    q: 'What is the pct tag in DMARC?',
+    a: 'The pct (percentage) tag specifies what percentage of email messages the DMARC policy should apply to. For example, pct=50 means only half of failing messages get the quarantine or reject action. This allows gradual rollout of DMARC policies to minimise the risk of blocking legitimate email.',
+  },
+  {
+    q: 'How do I start using DMARC?',
+    a: 'Start with a monitoring policy: p=none with rua and ruf pointing to your email. Review the aggregate reports for a few weeks to identify all legitimate senders. Then move to p=quarantine with pct=10, gradually increasing the percentage. Finally move to p=reject once you are confident all legitimate mail is authenticated.',
+  },
+  {
+    q: 'Why is DMARC important?',
+    a: 'DMARC is the only email authentication protocol that gives domain owners control over what happens to unauthenticated email. It also provides visibility through reporting. Without DMARC, anyone can spoof your domain in the From header, and receiving servers have no policy to follow. DMARC is critical for preventing phishing attacks that impersonate your domain.',
+  },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">DMARC Record Lookup</h2>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id="domain"
+          type="text"
+          placeholder="example.com"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+        <button
+          id="lookupBtn"
+          class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          Check DMARC
+        </button>
+      </div>
+      <div id="spinner" class="mt-3 hidden text-sm text-slate-500">Querying DMARC records...</div>
+      <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+      <div id="results" class="mt-4 hidden space-y-4">
+        <div id="rawRecord" class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Raw DMARC Record</h3>
+          <p id="rawValue" class="mt-1 break-all font-mono text-xs text-slate-800"></p>
+        </div>
+        <div id="policyWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Policy (p=)</h3>
+          <p id="policyValue" class="mt-1 text-lg font-bold"></p>
+          <p id="policyDesc" class="mt-1 text-sm text-slate-600"></p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div id="pctWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Percentage (pct=)</h3>
+            <p id="pctValue" class="mt-1 text-lg font-bold text-slate-800"></p>
+            <p id="pctDesc" class="mt-1 text-sm text-slate-600"></p>
+          </div>
+          <div id="spWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Subdomain Policy (sp=)</h3>
+            <p id="spValue" class="mt-1 text-lg font-bold text-slate-800"></p>
+            <p id="spDesc" class="mt-1 text-sm text-slate-600"></p>
+          </div>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div id="adkimWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">DKIM Alignment (adkim=)</h3>
+            <p id="adkimValue" class="mt-1 text-lg font-bold text-slate-800"></p>
+            <p id="adkimDesc" class="mt-1 text-sm text-slate-600"></p>
+          </div>
+          <div id="aspfWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">SPF Alignment (aspf=)</h3>
+            <p id="aspfValue" class="mt-1 text-lg font-bold text-slate-800"></p>
+            <p id="aspfDesc" class="mt-1 text-sm text-slate-600"></p>
+          </div>
+        </div>
+        <div id="reportWrap" class="rounded-lg border border-slate-200 bg-white p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Report Addresses</h3>
+          <div id="reportContent" class="mt-2 space-y-2"></div>
+        </div>
+        <div id="extraTags" class="rounded-lg border border-slate-200 bg-white p-3">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Other DMARC Tags</h3>
+          <div id="extraContent" class="mt-2 space-y-1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How DMARC works in email delivery</h2>
+    <p class="mt-2 text-slate-600">
+      Domain-based Message Authentication, Reporting and Conformance (DMARC) is an email authentication protocol defined in RFC 7489. It builds on SPF and DKIM by adding a policy layer that tells receiving mail servers what to do when email claiming to be from a domain fails authentication checks. DMARC also introduces a reporting mechanism that gives domain owners visibility into who is sending email on their behalf and whether those emails are passing authentication.
+    </p>
+    <p class="mt-3 text-slate-600">
+      DMARC works by publishing a policy record as a TXT record at a specific DNS location: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">_dmarc.example.com</code>. The record contains tags separated by semicolons. The most important tag is <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=</code> which sets the policy: <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">none</code> (monitor only, no action), <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">quarantine</code> (mark as spam), or <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">reject</code> (refuse delivery). The policy applies only when the email fails both SPF and DKIM authentication, or when the authenticated domain does not align with the domain in the From header.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Alignment is a key concept in DMARC. SPF authentication alone checks the envelope sender domain, but DMARC goes further by requiring that the domain in the From header aligns with the domain that passed SPF or DKIM. For SPF alignment, the domain in the From header must match the domain in the envelope sender (Return-Path). For DKIM alignment, the domain in the From header must match the domain in the DKIM signature's <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">d=</code> tag. Alignment can be strict (exact match only) or relaxed (subdomains are allowed to match), controlled by the <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">aspf=</code> and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">adkim=</code> tags respectively.
+    </p>
+    <p class="mt-3 text-slate-600">
+      DMARC also supports a subdomain policy (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">sp=</code>) that applies to all subdomains of the organisational domain, independent of the main domain policy. The <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">pct=</code> tag allows a gradual rollout by applying the policy to only a percentage of failing messages. The <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">rua=</code> and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ruf=</code> tags specify email addresses where receiving servers send aggregate and forensic reports. Aggregate reports contain XML summaries of authentication results across all email received for the domain, while forensic reports contain copies of actual failing messages.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Deploying DMARC is a multi-step process that should be approached carefully. The recommended strategy is to start with a monitoring policy (<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=none</code>) and review aggregate reports for several weeks to identify all legitimate email sources. This ensures that no legitimate email is disrupted when the policy is tightened. Once all authorised senders are identified and authenticated with SPF and DKIM, the policy can be moved to <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=quarantine</code> with a low percentage, gradually increasing to 100 percent. The final step is <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=reject</code>, which provides the strongest protection against domain spoofing. Many organisations stay at <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=reject</code> once they are confident in their email authentication posture.
+    </p>
+    <p class="mt-3 text-slate-600">
+      DMARC reporting is invaluable for security teams. Aggregate reports received via <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">rua</code> include information about the sending IP, the number of messages, the SPF and DKIM authentication results, and the disposition applied. By analysing these reports, domain owners can detect unauthorised use of their domain, identify misconfigured email senders, and verify that their email delivery partners are correctly authenticating messages. Forensic reports received via <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ruf</code> contain full copies of failing messages, which can be used to investigate specific incidents of spoofing or misconfiguration.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" role="img" aria-labelledby="dmarc-flow-title dmarc-flow-desc">
+      <title id="dmarc-flow-title">DMARC Policy Enforcement Flow Diagram</title>
+      <desc id="dmarc-flow-desc">A diagram showing how a receiving mail server evaluates SPF and DKIM results, checks the DMARC policy, and decides whether to pass, quarantine, or reject an email</desc>
+      <defs>
+        <marker id="dmarcArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="25" y="10" width="160" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="105" y="33" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Incoming Email</text>
+      <text x="105" y="48" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">From: user@example.com</text>
+      <line x1="185" y1="35" x2="235" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <rect x="240" y="10" width="140" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="310" y="33" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">SPF Check</text>
+      <text x="310" y="48" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">envelope sender</text>
+      <line x1="310" y1="60" x2="310" y2="95" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="310" y1="95" x2="105" y2="95" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="105" y1="95" x2="105" y2="60" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <text x="208" y="88" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">SPF Result: Pass / Fail</text>
+      <line x1="380" y1="35" x2="430" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <rect x="435" y="10" width="140" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="505" y="33" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">DKIM Check</text>
+      <text x="505" y="48" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">cryptographic sig</text>
+      <line x1="505" y1="60" x2="505" y2="120" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="505" y1="120" x2="310" y2="120" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="310" y1="120" x2="310" y2="95" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <text x="408" y="113" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">DKIM Result: Pass / Fail</text>
+      <line x1="575" y1="35" x2="625" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <rect x="630" y="10" width="150" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="705" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">DMARC Evaluation</text>
+      <text x="705" y="48" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">alignment + policy</text>
+      <line x1="705" y1="60" x2="705" y2="150" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="705" y1="150" x2="105" y2="150" stroke="#cbd5e1" stroke-width="1.5" />
+      <line x1="105" y1="150" x2="105" y2="60" stroke="#6366f1" stroke-width="1.5" marker-end="url(#dmarcArrow)" />
+      <text x="405" y="143" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Pass: accept | Quarantine: spam folder | Reject: refuse delivery</text>
+      <rect x="25" y="175" width="750" height="70" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="40" y="198" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">DMARC Tags:</text>
+      <text x="40" y="218" fill="#64748b" font-family="system-ui, sans-serif" font-size="10.5">p=none (monitor) | p=quarantine (spam) | p=reject (block) | pct= (percentage applied) | rua= (aggregate reports) | ruf= (forensic reports)</text>
+      <text x="40" y="236" fill="#64748b" font-family="system-ui, sans-serif" font-size="10.5">adkim=r/s (DKIM alignment) | aspf=r/s (SPF alignment) | sp= (subdomain policy) | fo= (failure reporting options)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">DMARC policy enforcement flow showing how SPF and DKIM results are combined with the DMARC policy to determine email disposition</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DMARC tags explained</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">p= (Policy)</h3>
+        <p class="mt-1 text-sm text-slate-600"><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">none</code> — take no action against failing email. Used for monitoring. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">quarantine</code> — deliver to spam/junk folder. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">reject</code> — refuse delivery at the SMTP level. This is the required tag in every DMARC record.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">pct= (Percentage)</h3>
+        <p class="mt-1 text-sm text-slate-600">Controls the percentage of messages that get the policy applied. Defaults to 100 if not specified. Use <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">pct=10</code> for gradual rollout — only 10 percent of failing messages are affected.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">rua= and ruf=</h3>
+        <p class="mt-1 text-sm text-slate-600"><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">rua=mailto:dmarc@example.com</code> — aggregate report destination. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ruf=mailto:forensic@example.com</code> — forensic/failure report destination. Multiple addresses are separated by commas.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">adkim= and aspf=</h3>
+        <p class="mt-1 text-sm text-slate-600"><code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">r</code> (relaxed) — subdomain matches are allowed. <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">s</code> (strict) — exact domain match required. Default is <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">r</code> for both. adkim controls DKIM alignment, aspf controls SPF alignment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common DMARC mistakes</h2>
+    <p class="mt-2 text-slate-600">
+      The most common mistake is publishing a <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=reject</code> policy without first verifying that all legitimate email senders are authenticated with SPF and DKIM. This results in legitimate email being rejected, including transactional emails like password resets, order confirmations, and newsletters. Another frequent error is misconfiguring the DMARC record location — the record must be at <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">_dmarc.example.com</code>, not at the apex domain itself. Some administrators also forget to set up DKIM signing before deploying DMARC, meaning no email will pass DKIM checks.
+    </p>
+    <p class="mt-3 text-slate-600">
+      A third common issue is failing to monitor DMARC reports after deployment. Many organisations set up a <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=none</code> policy with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">rua</code> and <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ruf</code> but never check the reports, missing the opportunity to identify unauthorised senders or misconfigured email streams before tightening the policy. It is also common to see syntax errors in DMARC records — missing semicolons, incorrect tag formatting, or <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">mailto:</code> without the colon. Use this DMARC checker to validate your record before publishing.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DMARC best practices</h2>
+    <p class="mt-2 text-slate-600">
+      Start with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=none</code> and monitor aggregate reports for at least two to four weeks. Use a DMARC report analysis tool to parse the XML reports and identify all legitimate sending sources. Ensure every legitimate sender has SPF and DKIM configured correctly. Gradually increase the policy to <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=quarantine</code> with a low <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">pct</code> value, monitor for issues, and increase the percentage over time. Once you are confident that no legitimate email is failing, move to <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">p=reject</code>. Set up <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">rua</code> reporting permanently so you can continuously monitor for new unauthorised senders. Consider implementing a subdomain policy with <code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">sp=reject</code> to protect subdomains that do not send email. Remember that DMARC is only effective when combined with properly configured SPF and DKIM — all three protocols work together as a complete email authentication framework.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7489" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7489 — Domain-based Message Authentication, Reporting, and Conformance (DMARC)</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7208" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7208 — Sender Policy Framework (SPF) for Authorizing Use of Domains in Email</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc6376" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 6376 — DomainKeys Identified Mail (DKIM) Signatures</a></li>
+      <li><a href="https://dmarc.org/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">DMARC.org</a> — official DMARC documentation and resources</li>
+      <li><a href="https://www.dmarcthebook.com/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">DMARC: The Book</a> — comprehensive guide to DMARC deployment</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const domain = document.getElementById('domain');
+    const btn = document.getElementById('lookupBtn');
+    const spinner = document.getElementById('spinner');
+    const errEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const rawValue = document.getElementById('rawValue');
+    const policyValue = document.getElementById('policyValue');
+    const policyDesc = document.getElementById('policyDesc');
+    const policyWrap = document.getElementById('policyWrap');
+    const pctValue = document.getElementById('pctValue');
+    const pctDesc = document.getElementById('pctDesc');
+    const spValue = document.getElementById('spValue');
+    const spDesc = document.getElementById('spDesc');
+    const adkimValue = document.getElementById('adkimValue');
+    const adkimDesc = document.getElementById('adkimDesc');
+    const aspfValue = document.getElementById('aspfValue');
+    const aspfDesc = document.getElementById('aspfDesc');
+    const reportContent = document.getElementById('reportContent');
+    const extraContent = document.getElementById('extraContent');
+    const api = 'https://toolnestr.toolnestr.workers.dev/api/dns-lookup';
+
+    const esc = (s) => {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    };
+
+    const policyInfo = {
+      'none': { label: 'None (Monitoring)', cls: 'text-blue-700', desc: 'No action is taken against failing email. The domain owner only receives reports. This is the safest starting point for DMARC deployment.' },
+      'quarantine': { label: 'Quarantine', cls: 'text-amber-700', desc: 'Email that fails authentication is sent to the recipient\'s spam or junk folder. The recipient may still access it if they check their spam folder.' },
+      'reject': { label: 'Reject', cls: 'text-red-700', desc: 'Email that fails authentication is rejected at the SMTP level. The receiving server refuses to accept it, and the sender receives a bounce. This is the strongest protection.' },
+    };
+
+    const alignInfo = {
+      'r': { label: 'Relaxed (r)', desc: 'Subdomains of the organisational domain are allowed to match. For example, mail.example.com aligns with example.com.' },
+      's': { label: 'Strict (s)', desc: 'Only an exact domain match is accepted. No subdomain alignment is permitted.' },
+    };
+
+    function parseDMARC(record) {
+      const tags = {};
+      const parts = record.split(';');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim().toLowerCase();
+        const value = trimmed.slice(eqIdx + 1).trim();
+        tags[key] = value;
+      }
+      return tags;
+    }
+
+    async function lookup() {
+      const dom = domain.value.trim();
+      if (!dom) { errEl.textContent = 'Please enter a domain name.'; errEl.classList.remove('hidden'); return; }
+      errEl.classList.add('hidden');
+      results.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btn.disabled = true;
+      try {
+        const dmarcDomain = '_dmarc.' + dom;
+        const r = await fetch(api + '?domain=' + encodeURIComponent(dmarcDomain) + '&type=TXT');
+        if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        if (!d.records || d.records.length === 0) throw new Error('No DMARC record found at ' + dmarcDomain + '.');
+
+        const dmarcRecord = d.records.find((rec) => {
+          const data = rec.data || rec.Data || rec.value || rec.Value || '';
+          return data.trim().startsWith('v=DMARC1');
+        });
+
+        if (!dmarcRecord) throw new Error('No DMARC record (v=DMARC1) found at ' + dmarcDomain + '.');
+
+        const raw = dmarcRecord.data || dmarcRecord.Data || dmarcRecord.value || dmarcRecord.Value || '';
+        rawValue.textContent = raw;
+
+        const tags = parseDMARC(raw);
+
+        const policy = tags['p'] || 'none';
+        const pi = policyInfo[policy] || { label: policy, cls: 'text-slate-800', desc: 'Unknown policy value.' };
+        policyValue.textContent = pi.label;
+        policyValue.className = 'mt-1 text-lg font-bold ' + pi.cls;
+        policyDesc.textContent = pi.desc;
+
+        const pct = tags['pct'] || '100';
+        pctValue.textContent = pct + '%';
+        if (parseInt(pct) < 100) {
+          pctDesc.textContent = 'The policy applies to ' + pct + '% of messages. Useful for gradual rollout.';
+        } else {
+          pctDesc.textContent = 'The policy applies to all messages (default when pct is not specified).';
+        }
+
+        if (tags['sp']) {
+          const spi = policyInfo[tags['sp']] || { label: tags['sp'], desc: 'Unknown subdomain policy.' };
+          spValue.textContent = spi.label;
+          spValue.className = 'mt-1 text-lg font-bold ' + (spi.cls || 'text-slate-800');
+          spDesc.textContent = spi.desc;
+        } else {
+          spValue.textContent = 'Not set';
+          spValue.className = 'mt-1 text-lg font-bold text-slate-400';
+          spDesc.textContent = 'Subdomains inherit the main domain policy (p=).';
+        }
+
+        const adkim = tags['adkim'] || 'r';
+        const ai = alignInfo[adkim] || { label: adkim, desc: 'Unknown alignment mode.' };
+        adkimValue.textContent = ai.label;
+        adkimDesc.textContent = ai.desc;
+
+        const aspf = tags['aspf'] || 'r';
+        const asi = alignInfo[aspf] || { label: aspf, desc: 'Unknown alignment mode.' };
+        aspfValue.textContent = asi.label;
+        aspfDesc.textContent = asi.desc;
+
+        let reportHtml = '';
+        if (tags['rua']) {
+          reportHtml += '<div><span class="text-xs font-semibold text-slate-500">rua (Aggregate Reports):</span> <span class="font-mono text-sm text-slate-700 break-all">' + esc(tags['rua']) + '</span></div>';
+        }
+        if (tags['ruf']) {
+          reportHtml += '<div><span class="text-xs font-semibold text-slate-500">ruf (Forensic Reports):</span> <span class="font-mono text-sm text-slate-700 break-all">' + esc(tags['ruf']) + '</span></div>';
+        }
+        if (!reportHtml) {
+          reportHtml = '<p class="text-sm text-slate-500">No report addresses configured. Add rua=mailto: and/or ruf=mailto: to receive DMARC reports.</p>';
+        }
+        reportContent.innerHTML = reportHtml;
+
+        const knownTags = ['v', 'p', 'pct', 'sp', 'adkim', 'aspf', 'rua', 'ruf', 'fo', 'rf', 'ri'];
+        const extra = Object.keys(tags).filter((k) => !knownTags.includes(k));
+        if (extra.length) {
+          extraContent.innerHTML = extra.map((k) =>
+            '<div><span class="font-mono text-xs font-semibold text-slate-500">' + esc(k) + '=</span> <span class="font-mono text-sm text-slate-700">' + esc(tags[k]) + '</span></div>'
+          ).join('');
+        } else {
+          extraContent.innerHTML = '<p class="text-sm text-slate-500">No additional tags found.</p>';
+        }
+
+        results.classList.remove('hidden');
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.classList.remove('hidden');
+      } finally {
+        spinner.classList.add('hidden');
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener('click', lookup);
+    domain.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+  </script>
+</ToolLayout>

@@ -1,0 +1,320 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IPv6 Subnet Calculator';
+const description =
+  'Analyze any IPv6 prefix — compute network address, site/subsite/LAN boundaries, ' +
+  'and the number of /64 subnets available using BigInt for exact arithmetic.';
+const intro =
+  'Enter an IPv6 prefix (e.g. 2001:db8::/32) to see its network address, the ' +
+  'standard hierarchical boundaries (/48 site, /56 subdelegation, /64 LAN), and ' +
+  'how many /64 subnets it can contain.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'Why is /64 the standard subnet size for IPv6?', a: 'RFC 4291 specifies that the interface identifier in IPv6 stateless address autoconfiguration (SLAAC) is 64 bits long, derived from the EUI-64 format or privacy extensions. Since SLAAC requires a full /64, subnets smaller than /64 break SLAAC and many IPv6-only features. Internet standards strongly recommend /64 as the minimum subnet size.' },
+  { q: 'What does a /32 prefix mean in IPv6?', a: 'A /32 prefix is typically assigned by a Regional Internet Registry (RIR) to an ISP. It contains 2^32 /64 subnets — over 4 billion LANs. ISPs further subdivide this into /48 prefixes for individual customers, /56 for smaller sites, and /64 for individual networks.' },
+  { q: 'What is a /48 used for?', a: 'A /48 prefix is the recommended allocation for a general site (RFC 3177). It contains 65,536 /64 subnets, providing enough space for all VLANs, DMZs, guest networks, IoT networks, infrastructure links, and future growth within a single organization or home network.' },
+  { q: 'What is the difference between /48, /56, and /64?', a: 'A /48 contains 65,536 /64 subnets, a /56 contains 256 /64 subnets, and a /64 is a single LAN. The hierarchical structure allows ISPs to allocate /48 to large customers, /56 to small sites or home users, and /64 to individual links.' },
+  { q: 'Why can IPv6 addresses not be calculated with regular JavaScript numbers?', a: 'IPv6 addresses are 128 bits long, and JavaScript numbers are limited to 53 bits of precision (Number.MAX_SAFE_INTEGER). This calculator uses JavaScript BigInt, which supports arbitrary-precision integers and can handle 128-bit address arithmetic without overflow or rounding errors.' },
+  { q: 'How many /64 subnets are in a /32?', a: 'A /32 prefix contains 2^(64 - 32) = 2^32 = 4,294,967,296 /64 subnets. This is over 4 billion individual LANs, which is why IPv6 eliminates the need for NAT — every device can have a globally unique address with plenty of room for growth.' },
+  { q: 'What is the IPv6 address format?', a: 'An IPv6 address is 128 bits written as eight groups of four hexadecimal digits separated by colons, e.g. 2001:0db8:85a3:0000:0000:8a2e:0370:7334. Leading zeros in each group can be omitted, and one contiguous run of zero groups can be replaced with :: (RFC 5952).' },
+  { q: 'Can IPv6 subnets be smaller than /64?', a: 'Technically yes, but it is strongly discouraged. Subnets smaller than /64 break SLAAC, neighbor discovery, and many IPv6 features. RFC 7421 recommends /64 as the minimum. The only exception is point-to-point links, where some operators use /127 (RFC 6164) to avoid neighbor cache exhaustion attacks.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Enter IPv6 prefix</h2>
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-slate-700">
+      <input id="ipv6-input" type="text" placeholder="2001:db8::/32" class="w-72 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono text-sm" />
+      <button id="ipv6-calc-btn" class="rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-600">Analyze</button>
+    </div>
+    <div id="ipv6-output" class="mt-4 hidden space-y-3">
+      <div class="grid gap-2 sm:grid-cols-2">
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Network Address</span><p id="out-net" class="mt-0.5 font-mono text-sm font-semibold text-slate-900 break-all">—</p></div>
+        <div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Prefix Length</span><p id="out-prefix" class="mt-0.5 font-mono text-sm font-semibold text-slate-900">—</p></div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Hierarchical boundaries</h3>
+        <div id="out-boundaries" class="mt-2"></div>
+      </div>
+      <div class="rounded-lg bg-indigo-50 p-4">
+        <span class="text-xs font-medium text-indigo-600">/64 subnets available</span>
+        <p id="out-count" class="mt-0.5 font-mono text-lg font-bold text-indigo-900">—</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Common prefix sizes explained</h3>
+        <table class="mt-2 w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-500">
+              <th class="pb-1.5 pr-3 font-medium">Size</th>
+              <th class="pb-1.5 pr-3 font-medium">Role</th>
+              <th class="pb-1.5 pr-3 font-medium">/64 count</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-700" id="out-common-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="ipv6-error" class="mt-3 hidden text-sm text-red-600"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding IPv6 subnetting</h2>
+    <p class="mt-2 text-slate-600">
+      IPv6 subnetting is fundamentally different from IPv4 subnetting. While IPv4 uses 32-bit addresses and frequently subnets at arbitrary bit boundaries to conserve space, IPv6 uses 128-bit addresses and a hierarchical model that allocates addresses in fixed-size blocks. The standard recommendation from the IETF (RFC 3177, updated by RFC 6177) is to assign /48 prefixes to end sites, which provides 65,536 /64 subnets — enough for any organization. The /64 is the universal minimum subnet size because IPv6 stateless address autoconfiguration (SLAAC), defined in RFC 4862, requires 64 bits for the interface identifier.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The hierarchical design of IPv6 addressing matches how the internet is organized. Regional Internet Registries (RIRs) receive /12 prefixes from the Internet Assigned Numbers Authority (IANA). ISPs receive /32 prefixes from their RIR. Customers receive /48 prefixes from their ISP, and within a customer site, individual LAN segments use /64 prefixes. This hierarchy allows efficient route aggregation at every level, keeping the global routing table manageable despite the enormous address space.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This calculator uses JavaScript BigInt for all address arithmetic. IPv6 addresses are 128-bit integers, far exceeding the 53-bit precision of JavaScript's Number type. BigInt, supported in all modern browsers, provides exact arithmetic for 128-bit values. The calculator expands the compressed IPv6 notation, converts the prefix to a BigInt, masks off the host bits to find the network address, then computes how the prefix fits into the standard IPv6 hierarchy.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="ipv6sub-title ipv6sub-desc">
+      <title id="ipv6sub-title">IPv6 Address Bit Layout with Prefix, Subnet, and Host Parts</title>
+      <desc id="ipv6sub-desc">128-bit IPv6 address divided into global routing prefix, subnet ID, and interface identifier fields for a /48 prefix</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">128-bit IPv6 Address — /48 to /64 Subnetting</text>
+      <rect x="30" y="45" width="555" height="45" rx="4" fill="#6366f1" />
+      <text x="307" y="73" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Global Routing Prefix (48 bits)</text>
+      <rect x="585" y="45" width="92" height="45" rx="4" fill="#818cf8" />
+      <text x="631" y="73" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Subnet ID (16 bits)</text>
+      <rect x="677" y="45" width="93" height="45" rx="4" fill="#cbd5e1" />
+      <text x="723" y="73" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Interface ID (64 bits)</text>
+      <line x1="30" y1="110" x2="770" y2="110" stroke="#cbd5e1" stroke-width="2" />
+      <text x="30" y="135" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Bit 127</text>
+      <text x="307" y="135" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Assigned by RIR / ISP</text>
+      <text x="631" y="135" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Site administrator</text>
+      <text x="723" y="135" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">SLAAC / manual</text>
+      <text x="770" y="135" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Bit 0</text>
+      <polygon points="585,65 578,78 592,78" fill="#6366f1" />
+      <text x="585" y="98" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/48</text>
+      <polygon points="677,65 670,78 684,78" fill="#818cf8" />
+      <text x="677" y="98" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/64</text>
+
+      <rect x="30" y="155" width="185" height="30" rx="4" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="122" y="175" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">2001:0db8:0000</text>
+      <rect x="222" y="155" width="92" height="30" rx="4" fill="#e0e7ff" stroke="#818cf8" stroke-width="1" />
+      <text x="268" y="175" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="11">XXXX</text>
+      <rect x="321" y="155" width="279" height="30" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="460" y="175" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="11">Interface identifier (0000:0000:0000:0001)</text>
+
+      <text x="400" y="215" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">IPv6 address: 2001:db8:XXXX:0000:0000:0000:0000:0001</text>
+      <rect x="100" y="220" width="8" height="8" rx="1" fill="#6366f1" />
+      <text x="112" y="228" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Global routing prefix</text>
+      <rect x="280" y="220" width="8" height="8" rx="1" fill="#818cf8" />
+      <text x="292" y="228" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Subnet ID</text>
+      <rect x="440" y="220" width="8" height="8" rx="1" fill="#cbd5e1" />
+      <text x="452" y="228" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Interface ID</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A /48 IPv6 prefix divides into a 48-bit global routing prefix, a 16-bit subnet ID providing 65,536 /64 subnets, and a 64-bit interface identifier</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IPv6 address structure</h2>
+    <p class="mt-2 text-slate-600">
+      An IPv6 address (RFC 4291) is organized as two 64-bit halves: the network prefix (upper 64 bits) and the interface identifier (lower 64 bits). The network prefix can be further subdivided. The most common allocation pattern is /32 for ISPs, /48 for customer sites, /56 for subdelegated blocks, and /64 for individual LAN segments. Each of these boundaries corresponds to a specific power-of-2 count of /64 subnets.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The mathematics using BigInt is straightforward. The calculator expands the input prefix to a full 128-bit BigInt, creates a mask by shifting 1 left by (128 - prefix) and subtracting 1, then applies the mask to find the network address. It then computes how many /64 subnets exist by raising 2 to the power of (64 - prefix) when prefix is less than 64, or 1 when prefix equals 64. For prefixes longer than /64, the result is a fractional subnet, indicating the prefix is smaller than the recommended minimum subnet size.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common IPv6 prefix sizes and their meanings</h2>
+    <div class="mt-4 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">/32 — ISP allocation</h3>
+        <p class="mt-1 text-sm text-slate-600">Assigned by RIRs to Internet Service Providers. Contains 4,294,967,296 /64 subnets. ISPs further subdivide this into /48 and /56 prefixes for their customers.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">/48 — Site allocation</h3>
+        <p class="mt-1 text-sm text-slate-600">Recommended for general sites (RFC 3177). Contains 65,536 /64 subnets. Suitable for enterprises, universities, data centers, and home networks with multiple VLANs.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">/56 — Subdelegation</h3>
+        <p class="mt-1 text-sm text-slate-600">Often used by ISPs for residential customers. Contains 256 /64 subnets. Provides enough space for isolated guest networks, IoT segments, and personal VLANs.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">/64 — LAN</h3>
+        <p class="mt-1 text-sm text-slate-600">The standard size for a single IPv6 subnet. SLAAC requires a /64 to generate interface identifiers. All IPv6-capable hosts and routers expect /64 as the subnet size.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why BigInt is necessary</h2>
+    <p class="mt-2 text-slate-600">
+      JavaScript's Number type uses IEEE 754 double-precision floating point, which provides exactly 53 bits of integer precision. IPv6 addresses are 128 bits, which is more than double that capacity. Any attempt to compute IPv6 addresses with regular JavaScript numbers would lose precision on the least significant bits, producing incorrect results. BigInt (BigInt) was introduced in ES2020 and supports arbitrary-precision integers. All modern browsers, including Chrome 67+, Firefox 68+, Safari 14+, and Edge 79+, support BigInt.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator parses the IPv6 string into a BigInt by splitting on colons, converting each hex group from base 16, and accumulating the result. The subnet mask is a BigInt with the first N bits set to 1. The network address is computed by bitwise AND of the address and mask. The count of /64 subnets is 2^(64 - prefix), which for a /32 prefix equals 2^32 — over 4 billion. This value cannot be represented accurately in a JavaScript Number, but BigInt handles it with no precision loss.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">IPv6 addressing best practices</h2>
+    <p class="mt-2 text-slate-600">
+      When planning an IPv6 deployment, always use /64 as the subnet size for LAN segments. Avoid using subnets smaller than /64 because SLAAC and neighbor discovery (RFC 4861) rely on the full 64-bit interface identifier. For point-to-point links, /127 (RFC 6164) is acceptable to mitigate neighbor cache exhaustion, but for all other network types, /64 is the standard.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Allocate subnets from the lower bits of the subnet ID space first, leaving the upper bits for future expansion. This is the same principle as VLSM in IPv4, but applied to 16-bit or larger subnet ID fields rather than individual host bits. Document your subnet assignments in an IP address management (IPAM) system to avoid overlaps. Use the site-local prefix fc00::/7 (unique local addresses, RFC 4193) for internal-only services that do not need global reachability, and use global unicast addresses (2000::/3) for publicly accessible services.
+    </p>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const input = el('ipv6-input');
+    const btn = el('ipv6-calc-btn');
+    const output = el('ipv6-output');
+    const error = el('ipv6-error');
+    const outNet = el('out-net');
+    const outPrefix = el('out-prefix');
+    const outBoundaries = el('out-boundaries');
+    const outCount = el('out-count');
+    const outCommon = el('out-common-table');
+
+    function expandIPv6(str) {
+      let s = str.trim();
+      let prefix = null;
+      if (s.includes('/')) {
+        const parts = s.split('/');
+        s = parts[0];
+        prefix = parseInt(parts[1], 10);
+      }
+
+      let groups = s.split(':');
+      if (groups.length > 8) return null;
+
+      const doubleColonIdx = groups.indexOf('');
+      if (doubleColonIdx !== -1) {
+        const before = groups.slice(0, doubleColonIdx);
+        const after = groups.slice(doubleColonIdx + 1).filter(g => g !== '');
+        const missing = 8 - before.length - after.length;
+        if (missing < 1) return null;
+        groups = [...before, ...Array(missing).fill('0'), ...after];
+      }
+
+      if (groups.length !== 8) return null;
+      groups = groups.map(g => g.padStart(4, '0'));
+      if (groups.some(g => !/^[0-9a-fA-F]{4}$/.test(g))) return null;
+
+      return { groups, full: groups.join(':'), prefix };
+    }
+
+    function ipv6ToBigInt(groups) {
+      let result = 0n;
+      for (const g of groups) {
+        result = (result << 16n) + BigInt('0x' + g);
+      }
+      return result;
+    }
+
+    function bigIntToIPv6(n, prefix) {
+      const parts = [];
+      for (let i = 7; i >= 0; i--) {
+        parts.push((n >> BigInt(i * 16)) & 0xFFFFn);
+      }
+      const hex = parts.map(p => p.toString(16).padStart(4, '0')).join(':');
+      return prefix !== null ? hex + '/' + prefix : hex;
+    }
+
+    function compressIPv6(addr) {
+      const groups = addr.split(':');
+      let bestStart = -1, bestLen = 0;
+      let curStart = -1, curLen = 0;
+      for (let i = 0; i < groups.length; i++) {
+        const trimmed = groups[i].replace(/^0+/, '') || '0';
+        groups[i] = trimmed;
+        if (groups[i] === '0') {
+          if (curStart === -1) { curStart = i; curLen = 1; }
+          else curLen++;
+          if (curLen > bestLen) { bestStart = curStart; bestLen = curLen; }
+        } else {
+          curStart = -1; curLen = 0;
+        }
+      }
+      if (bestLen >= 2) {
+        const before = groups.slice(0, bestStart).join(':');
+        const after = groups.slice(bestStart + bestLen).join(':');
+        return (before ? before + '::' : '::') + after;
+      }
+      return groups.join(':');
+    }
+
+    function formatCount(n) {
+      const s = n.toString();
+      if (s.length > 9) return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return Number(n).toLocaleString();
+    }
+
+    function showErrorMsg(msg) {
+      error.textContent = msg;
+      error.classList.remove('hidden');
+      output.classList.add('hidden');
+    }
+
+    const commonSizes = [
+      { prefix: 32, role: 'ISP allocation (RIR to ISP)', count: '2^32 = 4,294,967,296' },
+      { prefix: 40, role: 'ISP suballocation', count: '2^24 = 16,777,216' },
+      { prefix: 48, role: 'Site (enterprise / home)', count: '2^16 = 65,536' },
+      { prefix: 52, role: 'Large subdelegation', count: '2^12 = 4,096' },
+      { prefix: 56, role: 'Subdelegation (residential)', count: '2^8 = 256' },
+      { prefix: 60, role: 'Small subdelegation', count: '2^4 = 16' },
+      { prefix: 64, role: 'LAN subnet (standard)', count: '1' },
+    ];
+
+    function calculate() {
+      error.classList.add('hidden');
+
+      const expanded = expandIPv6(input.value);
+      if (!expanded) { showErrorMsg('Invalid IPv6 address. Use standard notation like 2001:db8::/32'); return; }
+
+      const prefix = expanded.prefix;
+      if (prefix === null || isNaN(prefix) || prefix < 0 || prefix > 128) { showErrorMsg('Enter a prefix length (e.g. /32, /48, /64)'); return; }
+
+      const addrBig = ipv6ToBigInt(expanded.groups);
+      const mask = prefix === 0 ? 0n : ((1n << BigInt(128 - prefix)) - 1n) ^ ((1n << 128n) - 1n);
+      const networkBig = addrBig & mask;
+
+      const fullAddr = bigIntToIPv6(networkBig, null);
+      const compressed = compressIPv6(fullAddr);
+      outNet.textContent = compressed;
+      outPrefix.textContent = '/' + prefix;
+
+      const boundaries = [
+        { label: '/48 site boundary', prefix: 48, desc: 'contains ' + (prefix <= 48 ? formatCount(1n << BigInt(Math.max(0, 64 - Math.max(prefix, 48)))) + ' /64 subnets' : 'smaller than /48') },
+        { label: '/56 subdelegation boundary', prefix: 56, desc: 'contains ' + (prefix <= 56 ? formatCount(1n << BigInt(Math.max(0, 64 - Math.max(prefix, 56)))) + ' /64 subnets' : 'smaller than /56') },
+        { label: '/64 LAN boundary', prefix: 64, desc: prefix <= 64 ? (prefix === 64 ? 'exactly 1 /64 subnet' : 'contains ' + formatCount(1n << BigInt(64 - prefix)) + ' /64 subnets') : 'smaller than /64 (not recommended for LAN)' },
+      ];
+
+      outBoundaries.innerHTML = boundaries.map(b =>
+        '<div class="border-b border-slate-100 py-2 last:border-0">' +
+        '<span class="text-xs font-medium text-slate-500">' + b.label + '</span>' +
+        '<p class="mt-0.5 text-sm text-slate-700">' + b.desc + '</p></div>'
+      ).join('');
+
+      if (prefix <= 64) {
+        const count = 1n << BigInt(64 - prefix);
+        outCount.textContent = formatCount(count) + ' /64 subnets';
+      } else {
+        outCount.textContent = 'Less than one /64 subnet (prefix length > 64)';
+      }
+
+      outCommon.innerHTML = commonSizes.map(c =>
+        '<tr class="border-b border-slate-100">' +
+        '<td class="py-1.5 pr-3 font-mono">/' + c.prefix + '</td>' +
+        '<td class="py-1.5 pr-3">' + c.role + '</td>' +
+        '<td class="py-1.5 pr-3">' + c.count + '</td>' +
+        '</tr>'
+      ).join('');
+
+      output.classList.remove('hidden');
+    }
+
+    btn.addEventListener('click', calculate);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>

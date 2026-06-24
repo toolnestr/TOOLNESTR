@@ -1,0 +1,282 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Bandwidth / Download Time Calculator';
+const description =
+  'Estimate how long a file download or data transfer will take given your connection speed. ' +
+  'Includes bit-vs-byte conversion help and a comparison table at common broadband speeds.';
+const intro =
+  'Enter the file size and your connection speed to get an instant download time estimate. ' +
+  'The calculator handles both bits and bytes — no more confusion between Mbps and MBps.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is the difference between Mbps and MBps?', a: 'Mbps (megabits per second) measures network speed in bits. MBps (megabytes per second) measures data rate in bytes. There are 8 bits in 1 byte, so 100 Mbps equals 12.5 MBps. Confusing the two is the most common mistake when estimating download times — a 100 Mbps connection downloads at roughly 12.5 MBps, not 100 MBps.' },
+  { q: 'Why is my actual download speed slower than my plan speed?', a: 'Several factors cause real-world throughput to be lower than your plan\'s advertised speed: network overhead from TCP/IP headers and retransmissions, Wi-Fi signal loss, router processing limits, congestion on the remote server, and the server\'s own upload capacity. A 10–30% overhead reduction from the raw line rate is normal.' },
+  { q: 'How do I convert file size units?', a: 'File sizes use powers of 1024 (binary) but storage manufacturers often use powers of 1000 (decimal). This calculator uses the binary convention: 1 MB = 1,048,576 bytes (1024 x 1024), 1 GB = 1,073,741,824 bytes, 1 TB = 1,099,511,627,776 bytes. Network speeds always use bits per second.' },
+  { q: 'What is the difference between a megabit and a megabyte?', a: 'A megabit (Mb) is 1,000,000 bits. A megabyte (MB) is 8,000,000 bits (or 8,388,608 bits in binary). Internet plans are sold in megabits per second because the numbers look larger — a 100 Mbps connection sounds faster than 12.5 MBps, even though they are the same throughput.' },
+  { q: 'Does the calculator account for overhead?', a: 'No — this calculator gives the theoretical best-case transfer time at the raw line rate. Real transfers incur protocol overhead (TCP/IP headers, TLS handshakes, HTTP framing) and network contention. As a rule of thumb, add 10–15% to the calculated time for realistic estimates on wired connections and 20–30% for Wi-Fi.' },
+  { q: 'How long does a 50 GB game take to download?', a: 'At 100 Mbps (12.5 MBps), a 50 GB game takes approximately 68 minutes (50,000 MB / 12.5 MBps = 4,000 seconds = 66.7 minutes). At 500 Mbps, it drops to about 13 minutes. At 1 Gbps, roughly 6.7 minutes. These are theoretical times; real downloads will be slower due to server bottlenecks and network congestion.' },
+  { q: 'What is the fastest consumer internet speed available?', a: 'As of 2025, fiber-to-the-home (FTTH) speeds of 1–10 Gbps are available in many urban areas. Some providers offer 2 Gbps, 5 Gbps, or even 10 Gbps symmetric connections. Google Fiber, AT&T, and municipal fiber networks lead in speed offerings. Actual international throughput is often limited by peering agreements and undersea cable capacity.' },
+  { q: 'Is satellite internet fast enough for large downloads?', a: 'Traditional geostationary satellite internet (e.g., HughesNet, Viasat) typically offers 25–50 Mbps with high latency, making large downloads slow but feasible. Starlink\'s low-earth-orbit constellation delivers 50–250 Mbps with much lower latency. Even so, satellite connections face weather-related degradation and data caps that can limit large transfers.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Download time estimator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="block text-xs font-medium text-slate-500" for="file-size">File size</label>
+        <div class="mt-1 flex gap-2">
+          <input id="file-size" type="number" min="0" step="any" value="500" class="w-28 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm" />
+          <select id="file-unit" class="rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="MB">MB</option>
+            <option value="GB" selected>GB</option>
+            <option value="TB">TB</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500" for="speed">Connection speed</label>
+        <div class="mt-1 flex gap-2">
+          <input id="speed" type="number" min="0" step="any" value="100" class="w-28 rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm" />
+          <select id="speed-unit" class="rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="Mbps" selected>Mbps</option>
+            <option value="MBps">MBps</option>
+            <option value="Gbps">Gbps</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="result" class="mt-5 rounded-xl bg-indigo-50 p-4 text-center">
+      <p class="text-xs font-medium text-indigo-500">Estimated download time</p>
+      <p id="time-output" class="mt-1 text-2xl font-bold text-indigo-700">40 seconds</p>
+      <p id="time-note" class="mt-0.5 text-xs text-indigo-400">Theoretical best-case transfer at 100 Mbps</p>
+    </div>
+    <hr class="my-4 border-slate-200" />
+    <h3 class="text-sm font-semibold text-slate-700">Bit vs byte conversion</h3>
+    <div class="mt-2 flex flex-wrap items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+      <span>Your speed:</span>
+      <span id="speed-bits" class="mx-0.5 rounded bg-slate-200 px-1.5 py-0.5 font-mono font-semibold text-slate-800">100 Mbps</span>
+      <span>=</span>
+      <span id="speed-bytes" class="mx-0.5 rounded bg-slate-200 px-1.5 py-0.5 font-mono font-semibold text-slate-800">12.5 MBps</span>
+      <span class="ml-1 text-slate-400">(1 byte = 8 bits)</span>
+    </div>
+    <h3 class="mt-4 text-sm font-semibold text-slate-700">Comparison at common speeds</h3>
+    <div class="mt-2 overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-1.5 pr-2 font-medium">Speed</th>
+            <th class="pb-1.5 pr-2 font-medium">In MBps</th>
+            <th class="pb-1.5 font-medium">Estimated time</th>
+          </tr>
+        </thead>
+        <tbody id="comparison-tbody" class="text-slate-700">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="bw-flow-title bw-flow-desc">
+      <title id="bw-flow-title">Bandwidth Data Flow Diagram</title>
+      <desc id="bw-flow-desc">Diagram showing a file flowing through a network pipe at a given speed to produce a time estimate</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Download Time = File Size / Bandwidth</text>
+
+      <rect x="40" y="55" width="120" height="70" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="100" y="80" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">File</text>
+      <text x="100" y="96" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">5 GB</text>
+
+      <rect x="200" y="65" width="400" height="50" rx="25" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <rect x="200" y="65" width="260" height="50" rx="25" fill="#c7d2fe" opacity="0.5" />
+      <text x="400" y="92" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">100 Mbps</text>
+      <text x="400" y="107" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="10">Network pipe (bandwidth)</text>
+
+      <line x1="160" y1="90" x2="195" y2="90" stroke="#6366f1" stroke-width="2.5" marker-end="url(#bw-arrow)" />
+      <line x1="600" y1="90" x2="635" y2="90" stroke="#6366f1" stroke-width="2.5" marker-end="url(#bw-arrow)" />
+
+      <rect x="640" y="55" width="120" height="70" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="700" y="80" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Time</text>
+      <text x="700" y="96" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">6 min 40 sec</text>
+
+      <defs>
+        <marker id="bw-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A 5 GB file passing through a 100 Mbps network pipe yields a theoretical download time of 6 minutes and 40 seconds</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How download time estimation works</h2>
+    <p class="mt-2 text-slate-600">
+      The fundamental relationship that governs file transfers is simple: time equals file size divided by transfer speed. If you need to download a 500 MB file over a 100 Mbps connection, the math is straightforward once you align the units. The trick is that file sizes are typically given in bytes (MB, GB, TB) while network speeds are almost always quoted in bits per second (Mbps, Gbps). Internet service providers advertise in bits because the numbers are eight times larger and sound more impressive, but this creates endless confusion for consumers trying to estimate how long a download will actually take.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To convert the connection speed from bits to bytes, divide by 8. A 100 Mbps connection delivers 12.5 MBps (megabytes per second) at the theoretical maximum. The file size must also be converted to a consistent byte unit. This calculator uses the binary system where 1 MB = 1,048,576 bytes, 1 GB = 1,073,741,824 bytes, and 1 TB = 1,099,511,627,776 bytes. It then divides the total file bytes by the connection bytes-per-second to arrive at the download time in seconds, which is then formatted into human-readable hours, minutes, and seconds.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This is a best-case calculation. Real-world transfers are slower due to protocol overhead — TCP/IP packet headers consume about 2–3% of bandwidth, TLS encryption adds another 5–10%, and HTTP/2 multiplexing and framing also add overhead. The remote server's upload speed is often the bottleneck: a consumer-grade server with 50 Mbps upload cannot saturate your 500 Mbps download pipe. Network congestion during peak hours, packet loss requiring retransmission, and Wi-Fi signal degradation all add further delays. A practical rule is to expect 60–80% of the advertised speed for real transfers on a well-functioning network.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bits versus bytes: why it matters</h2>
+    <p class="mt-2 text-slate-600">
+      The bit-versus-byte confusion is the single most common source of error in download time estimation. A megabit (Mb) is one million bits, while a megabyte (MB) is eight million bits. Internet plans always advertise in megabits: 100 Mbps, 500 Mbps, 1 Gbps. File sizes and hard drives use bytes: a 50 GB game install, a 2 GB movie, a 500 MB PDF. When someone mistakenly treats a 100 Mbps connection as 100 MBps, they underestimate their download time by a factor of eight. A 50 GB game that would actually take 67 minutes at 100 Mbps would be incorrectly estimated at 8.5 minutes.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The reason for this historical distinction dates to the early days of telecommunications. Data transmission rates were measured in bits per second because serial communication sends one bit at a time. Storage capacity was measured in bytes because memory and disk architectures are byte-addressable. The two conventions persist today across separate industries: networking equipment manufacturers and ISPs use bits, while operating systems and applications report file sizes in bytes. Knowing how to convert between them is essential for anyone who manages downloads, uploads, or data transfers.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The conversion table in the tool above shows how long a given file would take at common broadband speeds. This is useful for quickly comparing internet plans: a jump from 100 Mbps to 500 Mbps cuts download time to one-fifth, while going from 500 Mbps to 1 Gbps only halves it further. For very large transfers, the difference between 100 Mbps and 1 Gbps is the difference between waiting over an hour versus waiting under ten minutes. These comparisons help consumers decide whether a more expensive high-speed plan is worth the cost for their typical usage patterns.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Common transfer scenarios</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 pr-3 font-medium">Scenario</th>
+            <th class="pb-2 pr-3 font-medium">File size</th>
+            <th class="pb-2 pr-3 font-medium">At 100 Mbps</th>
+            <th class="pb-2 pr-3 font-medium">At 500 Mbps</th>
+            <th class="pb-2 font-medium">At 1 Gbps</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3">HD movie (4K stream)</td><td class="py-1.5 pr-3 font-mono">15 GB</td><td class="py-1.5 pr-3">20 min</td><td class="py-1.5 pr-3">4 min</td><td class="py-1.5">2 min</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3">AAA video game</td><td class="py-1.5 pr-3 font-mono">100 GB</td><td class="py-1.5 pr-3">2 hr 13 min</td><td class="py-1.5 pr-3">27 min</td><td class="py-1.5">13 min</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3">Software ISO</td><td class="py-1.5 pr-3 font-mono">4.7 GB</td><td class="py-1.5 pr-3">6 min 16 sec</td><td class="py-1.5 pr-3">1 min 15 sec</td><td class="py-1.5">38 sec</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3">Large PDF document</td><td class="py-1.5 pr-3 font-mono">50 MB</td><td class="py-1.5 pr-3">4 sec</td><td class="py-1.5 pr-3">&lt;1 sec</td><td class="py-1.5">&lt;1 sec</td></tr>
+          <tr><td class="py-1.5 pr-3">High-res photo album</td><td class="py-1.5 pr-3 font-mono">500 MB</td><td class="py-1.5 pr-3">40 sec</td><td class="py-1.5 pr-3">8 sec</td><td class="py-1.5">4 sec</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bandwidth in real-world networking</h2>
+    <p class="mt-2 text-slate-600">
+      Bandwidth is the maximum rate of data transfer across a network path. It is determined by the physical medium: fiber optic cables can carry terabits per second, while copper DSL lines top out in the tens of megabits. But bandwidth is only one part of the performance equation — latency (the time for a packet to travel from source to destination) also matters greatly. A satellite connection might have 50 Mbps bandwidth but 600 ms latency, making web browsing feel sluggish even though large downloads complete reasonably quickly. A fiber connection with the same bandwidth but 10 ms latency feels far more responsive.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The theoretical maximum throughput of any network link is constrained by Shannon's channel capacity theorem, which states that the maximum data rate is a function of the signal bandwidth and the signal-to-noise ratio. In practice, modern Ethernet and Wi-Fi standards approach these theoretical limits through advanced modulation techniques, MIMO antenna arrays, and forward error correction. Wi-Fi 6 (802.11ax) can reach 9.6 Gbps under ideal lab conditions, but real-world throughput is typically 30–50% of that due to interference, distance, and client device limitations.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding bandwidth is critical for network capacity planning. A office with 50 employees each streaming 4K video (25 Mbps each) needs at least 1.25 Gbps of internet bandwidth just for video. Adding video conferencing, cloud backups, and file transfers pushes the requirement higher. Network engineers use tools like this bandwidth calculator to estimate transfer times and plan link capacities, but they also account for simultaneity ratios and quality-of-service policies that prioritize critical traffic over bulk transfers.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator provides theoretical best-case estimates only. It does not account for protocol overhead, network congestion, server-side limitations, Wi-Fi signal degradation, or ISP traffic shaping. The comparison table uses fixed file sizes and speeds for illustration; actual transfer times vary widely based on network conditions. For the most accurate measurements, use a real download speed test tool against the actual server you are transferring data to or from.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator also assumes a constant, uncontested connection speed. In reality, internet connections are shared among all devices on your local network and throttled by your ISP during peak hours. Many ISPs use burstable provisioning where you get full speed for the first few seconds and then settle to a lower sustained rate. Large downloads that run for minutes or hours are affected by this sustained throughput limit, which may be significantly lower than the advertised peak speed.
+    </p>
+  </section>
+
+  <script is:inline>
+    const BYTES_IN_GB = 1073741824;
+    const BYTES_IN_MB = 1048576;
+    const BYTES_IN_TB = 1099511627776;
+
+    const speeds = [
+      { label: '25 Mbps', mbps: 25 },
+      { label: '50 Mbps', mbps: 50 },
+      { label: '100 Mbps', mbps: 100 },
+      { label: '500 Mbps', mbps: 500 },
+      { label: '1 Gbps', mbps: 1000 },
+    ];
+
+    const el = (id) => document.getElementById(id);
+    const fileSize = el('file-size');
+    const fileUnit = el('file-unit');
+    const speed = el('speed');
+    const speedUnit = el('speed-unit');
+    const tbody = el('comparison-tbody');
+
+    function formatTime(seconds) {
+      if (seconds < 1) return '&lt;1 sec';
+      if (seconds < 60) return Math.round(seconds) + ' sec';
+      if (seconds < 3600) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.round(seconds % 60);
+        return m + ' min ' + (s > 0 ? s + ' sec' : '');
+      }
+      const h = Math.floor(seconds / 3600);
+      const rem = seconds % 3600;
+      const m = Math.floor(rem / 60);
+      const s = Math.round(rem % 60);
+      let r = h + ' hr';
+      if (m > 0) r += ' ' + m + ' min';
+      if (s > 0) r += ' ' + s + ' sec';
+      return r;
+    }
+
+    function getBytes(val, unit) {
+      if (unit === 'MB') return val * BYTES_IN_MB;
+      if (unit === 'GB') return val * BYTES_IN_GB;
+      if (unit === 'TB') return val * BYTES_IN_TB;
+      return val;
+    }
+
+    function getSpeedBps(val, unit) {
+      if (unit === 'Mbps') return val * 1000000;
+      if (unit === 'MBps') return val * 8000000;
+      if (unit === 'Gbps') return val * 1000000000;
+      return val;
+    }
+
+    function update() {
+      const fVal = parseFloat(fileSize.value);
+      const fUnit = fileUnit.value;
+      const sVal = parseFloat(speed.value);
+      const sUnit = speedUnit.value;
+
+      if (isNaN(fVal) || fVal <= 0 || isNaN(sVal) || sVal <= 0) {
+        el('time-output').textContent = '--';
+        el('time-note').textContent = 'Enter values above';
+        el('speed-bits').textContent = '--';
+        el('speed-bytes').textContent = '--';
+        tbody.innerHTML = '';
+        return;
+      }
+
+      const bytes = getBytes(fVal, fUnit);
+      const bps = getSpeedBps(sVal, sUnit);
+      const secs = bytes / (bps / 8);
+
+      el('time-output').innerHTML = formatTime(secs);
+      el('time-note').textContent = 'Theoretical best-case transfer at ' + sVal + ' ' + sUnit;
+
+      const bitsDisplay = sUnit === 'Mbps' || sUnit === 'Gbps'
+        ? sVal + ' ' + sUnit
+        : (sUnit === 'MBps' ? (sVal * 8) + ' Mbps' : sVal + ' ' + sUnit);
+      const bytesDisplay = sUnit === 'MBps'
+        ? sVal + ' MBps'
+        : (sUnit === 'Mbps' ? (sVal / 8) + ' MBps' : (sVal * 1000 / 8) + ' MBps');
+
+      el('speed-bits').textContent = bitsDisplay;
+      el('speed-bytes').textContent = bytesDisplay;
+
+      tbody.innerHTML = speeds.map(function (sp) {
+        const s = bytes / ((sp.mbps * 1000000) / 8);
+        return '<tr class="border-b border-slate-100"><td class="py-1 pr-2 font-mono">' + sp.label + '</td><td class="py-1 pr-2 font-mono">' + (sp.mbps / 8).toFixed(1) + ' MBps</td><td class="py-1">' + formatTime(s) + '</td></tr>';
+      }).join('');
+    }
+
+    fileSize.addEventListener('input', update);
+    fileUnit.addEventListener('change', update);
+    speed.addEventListener('input', update);
+    speedUnit.addEventListener('change', update);
+
+    update();
+  </script>
+</ToolLayout>

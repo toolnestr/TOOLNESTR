@@ -94,6 +94,16 @@ export const tools = [
   { slug: 'port-checker', title: 'Port Checker', short: 'Check reachability of common ports on any host.', category: 'networking', emoji: '🔌', enabled: true, status: 'live' },
   { slug: 'email-header-analyzer', title: 'Email Header Analyzer', short: 'Parse email headers to trace route and delays.', category: 'networking', emoji: '📧', enabled: true, status: 'live' },
   { slug: 'ip-distance-calculator', title: 'IP Geolocation Distance Calculator', short: 'Calculate the distance between two IP locations.', category: 'networking', emoji: '📏', enabled: true, status: 'live' },
+  { slug: 'redirect-chain-checker', title: 'Redirect Chain / HTTP Status Tracer', short: 'Trace the full redirect chain from any URL.', category: 'networking', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'uptime-checker', title: 'Website Uptime / Is It Down Checker', short: 'Check if a website is reachable from our network.', category: 'networking', emoji: '💚', enabled: true, status: 'live' },
+  { slug: 'vlsm-calculator', title: 'VLSM Subnet Calculator', short: 'Split a network into variable-length subnets.', category: 'networking', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'ipv6-subnet-calculator', title: 'IPv6 Subnet Calculator', short: 'Calculate IPv6 prefix boundaries and subnet counts.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'ipv6-compressor-expander', title: 'IPv6 Compressor / Expander', short: 'Compress or expand IPv6 addresses to full notation.', category: 'networking', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'spf-checker', title: 'SPF Record Checker', short: 'Parse and validate SPF records for any domain.', category: 'networking', emoji: '📧', enabled: true, status: 'live' },
+  { slug: 'dmarc-checker', title: 'DMARC Record Checker', short: 'Check DMARC policy and parse report addresses.', category: 'networking', emoji: '🛡️', enabled: true, status: 'live' },
+  { slug: 'ssl-certificate-checker', title: 'SSL/TLS Certificate Checker', short: 'Check certificate issuer and expiry date.', category: 'networking', emoji: '🔒', enabled: true, status: 'live' },
+  { slug: 'bandwidth-calculator', title: 'Bandwidth / Download Time Calculator', short: 'Estimate download time from file size and connection speed.', category: 'networking', emoji: '📡', enabled: true, status: 'live' },
+  { slug: 'ip-list-sorter', title: 'IP List Sorter & Deduplicator', short: 'Sort, deduplicate and filter a list of IP addresses.', category: 'networking', emoji: '📋', enabled: true, status: 'live' },
 
   // ── Math ──
   { slug: 'scientific-calculator', title: 'Scientific Calculator', short: 'Full calculator with trig, log, powers & more.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },
