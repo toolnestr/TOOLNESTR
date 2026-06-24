@@ -26,9 +26,20 @@ export default {
         });
       }
 
-      const targetUrl = url.searchParams.get('url');
+      let targetUrl = url.searchParams.get('url');
       if (!targetUrl) {
-        return jsonResponse({ error: 'Missing URL parameter' });
+        return jsonResponse({ error: 'Missing URL parameter' }, 400);
+      }
+
+      targetUrl = targetUrl.trim();
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+
+      try {
+        new URL(targetUrl);
+      } catch (e) {
+        return jsonResponse({ error: 'Invalid URL: ' + targetUrl }, 400);
       }
 
       // CRITICAL: Initialize ALL variables at the start
@@ -162,8 +173,9 @@ export default {
   },
 };
 
-function jsonResponse(data) {
+function jsonResponse(data, status) {
   return new Response(JSON.stringify(data), {
+    status: status || 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
