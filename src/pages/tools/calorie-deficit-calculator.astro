@@ -1,0 +1,227 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Calorie Deficit Calculator';
+const description = 'Calculate daily calories and deficit to reach your goal weight by a target date. Includes a safe-pace check.';
+const intro = 'Find the daily calories and deficit needed to reach your goal weight by a date.';
+const category = { id: 'health', name: 'Health & Fitness' };
+const faqs = [
+  { q: 'How big a deficit is safe?', a: 'Often 500–750 cal/day; going beyond about 1,000 risks muscle loss and is hard to sustain.' },
+  { q: 'Why is the scale not moving?', a: 'Water, food timing, and muscle gain mask fat loss — judge over 2–3 weeks.' },
+  { q: 'Is 7,700 calories really 1 kg?', a: 'It is the common estimate for a kg of body fat; real results vary by person.' },
+  { q: 'What if my goal is unrealistic?', a: 'The tool flags deficits over 1,000/day as too aggressive. Aim for 0.5–1 kg per week.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Maintenance calories (TDEE)</span>
+        <input id="tdee" type="number" step="1" placeholder="e.g. 2500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Current weight (kg)</span>
+        <input id="current-wt" type="number" step="any" placeholder="e.g. 80" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Goal weight (kg)</span>
+        <input id="goal-wt" type="number" step="any" placeholder="e.g. 70" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Weeks to reach goal</span>
+        <input id="weeks" type="number" step="1" placeholder="e.g. 10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <button id="calc-btn" class="mt-5 w-full rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Daily calorie target</div>
+        <div id="r-daily" class="mt-1 text-3xl font-bold">—</div>
+        <div class="mt-1 text-sm opacity-80">calories per day</div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Deficit per day</div>
+          <div id="r-deficit" class="mt-1 text-xl font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Weekly loss</div>
+          <div id="r-weekly" class="mt-1 text-xl font-bold text-slate-800">—</div>
+        </div>
+      </div>
+      <div id="r-mode" class="mt-3 hidden rounded-xl bg-indigo-50 p-4 text-center text-sm font-medium text-indigo-700"></div>
+      <div id="r-warn" class="mt-3 hidden rounded-xl bg-red-50 p-4 text-center text-sm font-medium text-red-700"></div>
+    </div>
+
+    <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter your details and click Calculate.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About the calorie deficit</h2>
+    <p class="mt-2 text-slate-600">
+      A <strong>calorie deficit</strong> happens when you eat fewer calories than your body burns each day (your Total Daily Energy Expenditure, or TDEE). Over time, the body makes up the shortfall by breaking down stored body fat for energy — that is how weight loss happens. This calculator estimates the daily calorie target you need to hit your goal weight in the number of weeks you choose, and checks whether the required deficit is safe and sustainable.
+    </p>
+    <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">&#65039;&#65039; For general information only, not medical advice.</p>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="180" viewBox="0 0 800 180" role="img" aria-labelledby="cd-title cd-desc">
+      <title id="cd-title">Calorie deficit flow diagram</title>
+      <desc id="cd-desc">Flow showing TDEE minus deficit equals daily intake for weight loss.</desc>
+      <rect x="60" y="55" width="200" height="50" rx="8" fill="#6366f1" />
+      <text x="160" y="85" text-anchor="middle" font-size="14" fill="#fff" font-weight="bold">TDEE</text>
+      <text x="160" y="135" text-anchor="middle" font-size="11" fill="#64748b">Total daily burn</text>
+      <text x="290" y="85" text-anchor="middle" font-size="22" fill="#64748b" font-weight="bold">−</text>
+      <rect x="320" y="55" width="200" height="50" rx="8" fill="#ef4444" />
+      <text x="420" y="85" text-anchor="middle" font-size="14" fill="#fff" font-weight="bold">Deficit</text>
+      <text x="420" y="135" text-anchor="middle" font-size="11" fill="#64748b">Calories cut per day</text>
+      <text x="550" y="85" text-anchor="middle" font-size="22" fill="#64748b" font-weight="bold">=</text>
+      <rect x="580" y="55" width="180" height="50" rx="8" fill="#22c55e" />
+      <text x="670" y="85" text-anchor="middle" font-size="14" fill="#fff" font-weight="bold">Daily intake</text>
+      <text x="670" y="135" text-anchor="middle" font-size="11" fill="#64748b">What you eat</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">To lose weight: TDEE minus a calorie deficit equals your target daily intake</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formulas behind the calculator</h2>
+    <p class="mt-2 text-slate-600">
+      The tool uses four linked equations based on the common estimate that <strong>1 kg of body fat</strong> stores about <strong>7,700 calories</strong>.
+    </p>
+    <div class="mt-4 space-y-2 text-sm text-slate-600">
+      <p><strong>Total deficit needed:</strong> (current weight − goal weight) &times; 7,700 cal</p>
+      <p><strong>Daily deficit:</strong> total deficit &divide; (weeks &times; 7)</p>
+      <p><strong>Daily calorie target:</strong> TDEE − daily deficit</p>
+      <p><strong>Expected weekly loss:</strong> (daily deficit &times; 7) &divide; 7,700 kg</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h2 class="font-semibold text-slate-900">Worked example</h2>
+    <p class="mt-1 text-sm text-slate-600">A person with a TDEE of 2,500 cal/day wants to lose 5 kg in 10 weeks.</p>
+    <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+      <div><span class="font-medium text-slate-700">Total deficit:</span> <span class="text-slate-600">5 &times; 7,700 = <strong>38,500 cal</strong></span></div>
+      <div><span class="font-medium text-slate-700">Days:</span> <span class="text-slate-600">10 &times; 7 = 70 days</span></div>
+      <div><span class="font-medium text-slate-700">Daily deficit:</span> <span class="text-slate-600">38,500 / 70 = <strong>550 cal/day</strong></span></div>
+      <div><span class="font-medium text-slate-700">Daily intake:</span> <span class="text-slate-600">2,500 − 550 = <strong>1,950 cal/day</strong></span></div>
+      <div><span class="font-medium text-slate-700">Weekly loss:</span> <span class="text-slate-600">(550 &times; 7) / 7,700 = <strong>0.5 kg/week</strong></span></div>
+      <div><span class="font-medium text-slate-700">Assessment:</span> <span class="text-slate-600 text-green-700">Safe — deficit is under 1,000 cal/day</span></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator is useful whenever you are planning a <strong>weight-loss phase (a "cut")</strong> and need a concrete daily calorie number to aim for. Instead of guessing a random amount (e.g. 1,800 cal) this tool works backwards from your goal: it tells you how much of a deficit you need, and whether that deficit is realistic given your TDEE and timeframe.
+    </p>
+    <p class="mt-3 text-slate-600">
+      <strong>Planning a cut:</strong> If you know your TDEE from a BMR calculator and an activity multiplier, you can plug it in here to get a precise eating target for the duration of your cut.
+    </p>
+    <p class="mt-3 text-slate-600">
+      <strong>Setting daily calories:</strong> Rather than following a one-size-fits-all meal plan, this gives you a personalised daily calorie budget based on <em>your</em> body and schedule.
+    </p>
+    <p class="mt-3 text-slate-600">
+      <strong>Checking a goal date:</strong> If you have an event or deadline (e.g. a holiday in 8 weeks), the tool shows you whether reaching your goal weight by then is feasible without an unsafe deficit.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for a healthy calorie deficit</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Aim for 0.5–1% of body weight per week</h3>
+        <p class="mt-1 text-sm text-slate-600">For most people, losing about 0.5–1% of body weight per week is sustainable and preserves muscle. For an 80 kg person, that is 0.4–0.8 kg per week — which matches a deficit of roughly 440–880 cal/day.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid deficits of 1,000+ calories per day</h3>
+        <p class="mt-1 text-sm text-slate-600">Aggressive deficits may cause rapid muscle loss, hormonal disruptions, fatigue and rebound binge-eating. The tool flags deficits over 1,000 cal/day in red as a warning.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Prioritise protein and strength training</h3>
+        <p class="mt-1 text-sm text-slate-600">Even in a deficit, eating enough protein (around 1.6–2.2 g per kg of body weight) and continuing resistance training helps preserve lean mass so most of the weight lost is fat.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Reassess every 4–6 weeks</h3>
+        <p class="mt-1 text-sm text-slate-600">As you lose weight, your TDEE drops. Recalculate every few weeks so your deficit does not shrink (or grow) unintentionally. A 5 kg lighter body needs about 100–150 fewer calories per day.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/bmr-calculator" class="font-medium text-indigo-600 hover:underline">BMR Calculator</a> — find your resting calorie burn</li>
+      <li><a href="/tools/calorie-calculator" class="font-medium text-indigo-600 hover:underline">Calorie Calculator</a> — estimate your TDEE with activity</li>
+      <li><a href="/tools/ideal-weight" class="font-medium text-indigo-600 hover:underline">Ideal Weight Calculator</a> — healthy weight range for your height</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function calculate() {
+      const tdee = parseFloat(el('tdee').value);
+      const current = parseFloat(el('current-wt').value);
+      const goal = parseFloat(el('goal-wt').value);
+      const weeks = parseFloat(el('weeks').value);
+
+      if (!tdee || !current || !goal || !weeks || tdee <= 0 || current <= 0 || goal <= 0 || weeks <= 0) {
+        el('result').classList.add('hidden');
+        el('hint').classList.remove('hidden');
+        return;
+      }
+
+      if (goal >= current) {
+        const gain = goal - current;
+        const totalSurplus = gain * 7700;
+        const days = weeks * 7;
+        const dailySurplus = Math.round(totalSurplus / days);
+        const dailyTarget = Math.round(tdee + dailySurplus);
+        const weeklyGain = ((dailySurplus * 7) / 7700).toFixed(2);
+        el('r-daily').textContent = dailyTarget.toLocaleString();
+        el('r-deficit').textContent = '+' + dailySurplus.toLocaleString();
+        el('r-weekly').textContent = '+' + weeklyGain + ' kg';
+        el('r-mode').textContent = 'Surplus mode — you need to eat ' + dailyTarget.toLocaleString() +
+          ' cal/day to gain ' + gain + ' kg in ' + weeks + ' weeks.';
+        el('r-mode').classList.remove('hidden');
+        el('r-warn').classList.add('hidden');
+        el('result').classList.remove('hidden');
+        el('hint').classList.add('hidden');
+        return;
+      }
+
+      const loss = current - goal;
+      const totalDeficit = loss * 7700;
+      const days = weeks * 7;
+      const dailyDeficit = Math.round(totalDeficit / days);
+      const dailyTarget = Math.round(tdee - dailyDeficit);
+      const weeklyLoss = Math.round((dailyDeficit * 7) / 7700 * 100) / 100;
+
+      el('r-daily').textContent = dailyTarget.toLocaleString();
+      el('r-deficit').textContent = dailyDeficit.toLocaleString();
+      el('r-weekly').textContent = weeklyLoss.toFixed(2) + ' kg';
+      el('r-mode').classList.add('hidden');
+
+      const warnEl = el('r-warn');
+      if (dailyDeficit > 1000) {
+        warnEl.textContent = 'Too aggressive — deficit of ' + dailyDeficit.toLocaleString() +
+          ' cal/day may cause muscle loss. Consider a longer timeline or smaller goal.';
+        warnEl.classList.remove('hidden');
+      } else {
+        warnEl.classList.add('hidden');
+      }
+
+      el('result').classList.remove('hidden');
+      el('hint').classList.add('hidden');
+    }
+
+    el('calc-btn').addEventListener('click', calculate);
+    el('tdee').addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+    el('current-wt').addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+    el('goal-wt').addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+    el('weeks').addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>

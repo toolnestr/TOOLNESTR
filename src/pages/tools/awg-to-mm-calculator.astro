@@ -1,0 +1,387 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'AWG to mm Calculator';
+const description = 'Convert American Wire Gauge to diameter in mm and cross-section in mm². Also find the nearest gauge from a diameter.';
+const intro = 'Convert American Wire Gauge to diameter (mm) and cross-section (mm²).';
+const category = { id: 'engineering', name: 'Engineering' };
+const faqs = [
+  { q: 'Is a higher AWG thicker or thinner?', a: 'Thinner — AWG 10 is much thicker than AWG 20.' },
+  { q: 'What is AWG 12 in mm?', a: 'About 2.05 mm diameter (~3.31 mm² cross-section).' },
+  { q: 'How much current can a gauge carry?', a: 'It depends on length, insulation, and standards — use an ampacity chart, not gauge alone.' },
+  { q: 'What about AWG 0 or 00?', a: 'AWG 0 (1/0) is ~8.25 mm, 00 (2/0) is ~9.27 mm. This tool supports the standard range including these.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700">Conversion direction</label>
+      <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <button id="dir-awg-mm" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">AWG &rarr; mm</button>
+        <button id="dir-mm-awg" class="flex-1 rounded-lg py-2 text-slate-500">mm &rarr; AWG</button>
+      </div>
+    </div>
+
+    <label class="block"><span class="text-sm font-medium text-slate-700" id="input-label">AWG number</span>
+      <input id="input" type="number" step="any" placeholder="e.g. 12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      <span class="mt-1 block text-xs text-slate-400">Range: -4 (4/0) to 40. Use -1, -2, -3, -4 for 1/0, 2/0, 3/0, 4/0.</span></label>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Diameter</div><div id="r-dia" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Cross-sectional area</div><div id="r-area" class="mt-1 text-2xl font-bold text-emerald-600">&mdash;</div></div>
+    </div>
+    <div id="r-label" class="mt-3 text-center text-sm text-slate-500 hidden"></div>
+    <div id="r-error" class="mt-3 text-center text-sm font-semibold text-red-500 hidden"></div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="awg-title awg-desc">
+      <title id="awg-title">Wire cross-section: diameter to area relationship</title>
+      <desc id="awg-desc">Diagram showing a wire cross-section circle with diameter d and area A = π(d/2)², with an example of AWG 12 at 2.05 mm diameter giving 3.31 mm² area</desc>
+      <g transform="translate(40,10)">
+        <circle cx="160" cy="110" r="70" fill="none" stroke="#6366f1" stroke-width="3"/>
+        <circle cx="160" cy="110" r="45" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+        <line x1="115" y1="110" x2="205" y2="110" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6,3"/>
+        <polygon points="200,106 215,110 200,114" fill="#f59e0b"/>
+        <polygon points="120,106 105,110 120,114" fill="#f59e0b"/>
+        <text x="160" y="135" text-anchor="middle" fill="#d97706" font-size="14" font-weight="bold">d = diameter</text>
+
+        <rect x="360" y="50" width="160" height="120" rx="12" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+        <text x="440" y="85" text-anchor="middle" fill="#4338ca" font-size="15" font-weight="bold">A = &pi;(d/2)&sup2;</text>
+        <text x="440" y="110" text-anchor="middle" fill="#6366f1" font-size="13">Cross-sectional area</text>
+        <text x="440" y="140" text-anchor="middle" fill="#94a3b8" font-size="12">e.g. AWG 12</text>
+
+        <line x1="230" y1="110" x2="355" y2="110" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <polygon points="355,106 362,110 355,114" fill="#cbd5e1"/>
+
+        <line x1="0" y1="200" x2="720" y2="200" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+        <rect x="100" y="210" width="520" height="40" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+        <text x="360" y="235" text-anchor="middle" fill="#475569" font-size="13" font-weight="bold">d = 0.127 &times; 92<![CDATA[^]]>((36 &minus; AWG) / 39) &nbsp;&nbsp; A = &pi;(d/2)&sup2;</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Wire cross-section showing diameter d and area A = &pi;(d/2)&sup2;</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How AWG to mm conversion works</h2>
+    <p class="mt-2 text-slate-600">The American Wire Gauge (AWG) system is a logarithmic scale where each gauge step corresponds to a fixed ratio in diameter. The standard formula for calculating the diameter of an AWG wire in millimetres is:</p>
+    <div class="mt-4 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      d<sub>n</sub> = 0.127 &times; 92<sup>((36 &minus; n) / 39)</sup>
+    </div>
+    <p class="mt-3 text-slate-600">where <em>n</em> is the AWG number. For gauges smaller than 0 (1/0, 2/0, 3/0, 4/0), the formula uses negative values: -1 for 1/0, -2 for 2/0, -3 for 3/0, and -4 for 4/0. The cross-sectional area is then calculated from the diameter:</p>
+    <div class="mt-2 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      A = &pi; &times; (d / 2)&sup2;
+    </div>
+    <p class="mt-3 text-slate-600">The diameter approximately doubles every 6 AWG steps and the area doubles every 3 AWG steps. For example, 10 AWG has about twice the cross-section of 13 AWG, and 4 AWG has about four times the area of 16 AWG. This makes AWG a convenient system for scaling wire sizes in electrical engineering.</p>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked examples</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">AWG 12:</span> <span class="text-slate-600">d = 0.127 &times; 92<sup>(24/39)</sup> &asymp; 2.05 mm</span></div>
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">&pi; &times; (2.05/2)&sup2; &asymp; 3.31 mm&sup2;</span></div>
+        <div><span class="font-medium text-slate-700">AWG 4/0:</span> <span class="text-slate-600">d = 0.127 &times; 92<sup>(40/39)</sup> &asymp; 11.68 mm</span></div>
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">&pi; &times; (11.68/2)&sup2; &asymp; 107 mm&sup2;</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">AWG to mm reference table</h2>
+    <p class="mt-2 text-slate-600">Common AWG sizes and their equivalent diameter in millimetres and cross-sectional area in mm&sup2;.</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">AWG</th><th class="p-3">Diameter (mm)</th><th class="p-3">Area (mm&sup2;)</th><th class="p-3">Typical use</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">4/0 (0000)</td><td class="p-3">11.684</td><td class="p-3">107.2</td><td class="p-3">Service entrance, main feeders</td></tr>
+          <tr><td class="p-3 font-medium">3/0 (000)</td><td class="p-3">10.404</td><td class="p-3">85.0</td><td class="p-3">Large sub-panels</td></tr>
+          <tr><td class="p-3 font-medium">2/0 (00)</td><td class="p-3">9.266</td><td class="p-3">67.4</td><td class="p-3">Heavy equipment feeders</td></tr>
+          <tr><td class="p-3 font-medium">1/0 (0)</td><td class="p-3">8.251</td><td class="p-3">53.5</td><td class="p-3">Large branch circuits</td></tr>
+          <tr><td class="p-3 font-medium">1</td><td class="p-3">7.348</td><td class="p-3">42.4</td><td class="p-3">Range, dryer, sub-panels</td></tr>
+          <tr><td class="p-3 font-medium">2</td><td class="p-3">6.544</td><td class="p-3">33.6</td><td class="p-3">Main service, EV chargers</td></tr>
+          <tr><td class="p-3 font-medium">4</td><td class="p-3">5.189</td><td class="p-3">21.2</td><td class="p-3">Oven, HVAC, large loads</td></tr>
+          <tr><td class="p-3 font-medium">6</td><td class="p-3">4.115</td><td class="p-3">13.3</td><td class="p-3">Cooktop, AC unit</td></tr>
+          <tr><td class="p-3 font-medium">8</td><td class="p-3">3.264</td><td class="p-3">8.37</td><td class="p-3">Range, water heater</td></tr>
+          <tr><td class="p-3 font-medium">10</td><td class="p-3">2.588</td><td class="p-3">5.26</td><td class="p-3">30 A circuits, EV charger</td></tr>
+          <tr><td class="p-3 font-medium">12</td><td class="p-3">2.053</td><td class="p-3">3.31</td><td class="p-3">Lighting, outlets, general</td></tr>
+          <tr><td class="p-3 font-medium">14</td><td class="p-3">1.628</td><td class="p-3">2.08</td><td class="p-3">Lighting, 15 A circuits</td></tr>
+          <tr><td class="p-3 font-medium">16</td><td class="p-3">1.291</td><td class="p-3">1.31</td><td class="p-3">Extension cords, light duty</td></tr>
+          <tr><td class="p-3 font-medium">18</td><td class="p-3">1.024</td><td class="p-3">0.823</td><td class="p-3">Speakers, thermostats</td></tr>
+          <tr><td class="p-3 font-medium">20</td><td class="p-3">0.812</td><td class="p-3">0.518</td><td class="p-3">Low-voltage, signal</td></tr>
+          <tr><td class="p-3 font-medium">22</td><td class="p-3">0.644</td><td class="p-3">0.326</td><td class="p-3">Data cables, control</td></tr>
+          <tr><td class="p-3 font-medium">24</td><td class="p-3">0.511</td><td class="p-3">0.205</td><td class="p-3">Ethernet, sensor wiring</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&larr; &rarr;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Bidirectional conversion</h3>
+      <p class="mt-1 text-sm text-slate-600">Convert AWG to millimetres or enter a diameter in mm to find the nearest standard AWG size. Toggle direction with one click.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Both diameter and area</h3>
+      <p class="mt-1 text-sm text-slate-600">See the wire diameter in millimetres and the cross-sectional area in mm&sup2; simultaneously. Area is calculated from the diameter using the standard circle formula.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electronics projects</h3>
+      <p class="mt-1 text-sm text-slate-600">Hobbyists working with metric components can quickly match US-spec AWG wire to metric terminal blocks, PCB traces, and ferrules.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x26A1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electrical installations</h3>
+      <p class="mt-1 text-sm text-slate-600">Electricians working with both imperial and metric wiring standards can verify wire sizes when substituting or sourcing equivalent conductors.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for AWG to mm conversion</h2>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Matching US wire to metric standards</h3>
+    <p class="mt-1 text-slate-600">While North America uses AWG for almost all electrical wiring, much of the rest of the world specifies conductor sizes directly in square millimetres. When importing equipment, sourcing wire from international suppliers, or working on projects with mixed standards, you need to convert between AWG and mm. For example, a European terminal block rated for 4 mm&sup2; wire accepts conductors equivalent to approximately 10&ndash;12 AWG. Knowing the exact conversion prevents undersizing or oversizing connections, both of which can cause poor contact or mechanical stress on terminals.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Choosing wire for current capacity</h3>
+    <p class="mt-1 text-slate-600">Although ampacity depends on more than just the cross-sectional area — including insulation type, ambient temperature, bundling, and conductor material — the diameter and area of the conductor are the starting point. A 2.5 mm&sup2; wire is roughly 13 AWG and a 6 mm&sup2; wire is roughly 9 AWG. When designing a circuit, you look up the required ampacity in your local code table, then find the AWG or mm&sup2; size that meets or exceeds that current rating. This calculator helps you move between the two sizing systems when comparing tables from different standards.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Electronics and prototyping</h3>
+    <p class="mt-1 text-slate-600">In electronics, breadboard jumpers, prototyping wire, and component leads are often specified in AWG while PCB trace widths are calculated in mm or mm&sup2;. A typical prototyping wire is 22 AWG (0.64 mm), while a 0.1&Prime; header pin is about 0.64 mm square — matching well to 22 AWG. When designing a PCB that carries a few hundred milliamps, you might use a 0.5 mm trace, which is roughly 24 AWG equivalent. Being able to convert between gauge and metric dimensions helps you choose appropriate wire sizes for your prototypes and ensures compatibility with connectors and terminals.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Automotive and marine wiring</h3>
+    <p class="mt-1 text-slate-600">The automotive industry uses a mix of AWG and metric wire sizes depending on the manufacturer and region. A Japanese car might use metric wire sizes while a US car uses AWG. When adding aftermarket accessories or repairing wiring, you need to match the existing wire gauge or choose an appropriate replacement. Battery cables in larger vehicles often use 1/0 or 2/0 AWG (8.25&ndash;9.27 mm), while smaller signal wires might be 18&ndash;22 AWG. Converting to millimetres gives you a physical sense of the wire size that raw AWG numbers do not always convey.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with AWG and mm</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Bigger AWG number = thinner wire</h3>
+        <p class="mt-1 text-sm text-slate-600">This is the most common point of confusion. AWG 22 is much thinner than AWG 10. The scale is inverted: as the gauge number increases, the diameter decreases. A good rule of thumb is that 10 AWG is about the thickness of a typical paperclip, while 22 AWG is about the thickness of a staple wire.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Ampacity depends on more than gauge</h3>
+        <p class="mt-1 text-sm text-slate-600">The diameter and cross-sectional area determine the wire&rsquo;s resistance and thus its heat generation, but the actual current-carrying capacity (ampacity) depends on insulation temperature rating, ambient temperature, number of conductors in a bundle, and installation method. Always consult NEC Table 310.16 or equivalent local standards, not just the wire gauge, for final ampacity values.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the reference table for common sizes</h3>
+        <p class="mt-1 text-sm text-slate-600">The AWG to mm reference table above covers the most common gauges from 4/0 down to 24 AWG. For most residential, commercial, and automotive applications, the sizes in this range are all you need. The formula is useful for less common gauges or when you need precise values beyond the table.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Stranded vs solid wire diameter</h3>
+        <p class="mt-1 text-sm text-slate-600">The diameter given by the AWG formula is for solid wire. Stranded wire has the same cross-sectional area but a slightly larger overall diameter due to the gaps between strands. For stranded wire, the total conductive cross-section matches the solid equivalent, but the physical outer diameter may be 2&ndash;10% larger depending on the stranding construction.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the AWG system</h2>
+    <p class="mt-2 text-slate-600">The American Wire Gauge system was developed in 1857 by J. R. Brown and is based on the number of drawing operations needed to reduce a wire from a standard starting size. Each gauge step represents a reduction in diameter of approximately 26%. The system was standardised so that 36 AWG has a diameter of 0.005 inches (0.127 mm) and 0000 (4/0) AWG has a diameter of 0.460 inches (11.684 mm). Between these endpoints, the 39 gauge steps follow a geometric progression: each step multiplies the diameter by the 39th root of 92.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Why the formula uses 92 and 39</h2>
+    <p class="mt-2 text-slate-600">The AWG formula d = 0.127 &times; 92<sup>((36 &minus; n) / 39)</sup> may look arbitrary, but it derives from two fixed points: the diameter of 36 AWG (0.127 mm) and the diameter of 0000 AWG (11.684 mm, which is 0.127 &times; 92). The exponent (36 &minus; n) / 39 ensures that 36 AWG gives an exponent of 0 (resulting in 0.127 mm) and 0000 AWG (n = &minus;3 or equivalent to n = &minus;4 depending on convention) reaches the 92 factor. The 39 steps between these two reference points create a smooth logarithmic progression where each gauge step multiplies the diameter by 92^(1/39) &asymp; 1.1229, a 12.3% increase for each decrease in gauge number.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Cross-sectional area and current capacity</h2>
+    <p class="mt-2 text-slate-600">The cross-sectional area of a wire is proportional to the square of its diameter, so the area doubles every 3 AWG steps. This means 10 AWG (5.26 mm&sup2;) has roughly twice the area of 13 AWG (2.62 mm&sup2;), and 7 AWG has twice the area of 10 AWG. Since resistance is inversely proportional to area, the resistance halves every 3 AWG sizes. This neat relationship makes mental estimation straightforward: going down 3 gauge numbers doubles the area and halves the resistance, while going up 3 gauge numbers halves the area and doubles the resistance.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the AWG to mm Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the direction</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose AWG &rarr; mm to convert a gauge to metric, or mm &rarr; AWG to find the nearest standard gauge from a diameter.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the value</h3>
+        <p class="mt-1 text-sm text-slate-600">Type an AWG number (e.g. 12) or a diameter in mm (e.g. 2.05). Use negative numbers for 1/0 through 4/0: -1, -2, -3, -4.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the results</h3>
+        <p class="mt-1 text-sm text-slate-600">The conversion updates live as you type. See the diameter in mm and cross-sectional area in mm&sup2; instantly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/kva-to-kw-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4CA;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">kVA to kW Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Convert apparent power to real power with power factor.</p>
+      </a>
+      <a href="/tools/gsm-to-mm-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4D0;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">GSM to mm Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Convert paper weight to thickness in millimetres.</p>
+      </a>
+      <a href="/tools/btu-to-tons-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2744;&#xFE0F;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">BTU to Tons Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Convert HVAC cooling capacity between units.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let direction = 'awg-mm';
+
+    const LOOKUP = [
+      { awg: '4/0', num: -4, dia: 11.684, area: 107.2 },
+      { awg: '3/0', num: -3, dia: 10.404, area: 85.0 },
+      { awg: '2/0', num: -2, dia: 9.266, area: 67.4 },
+      { awg: '1/0', num: -1, dia: 8.251, area: 53.5 },
+      { awg: '1', num: 1, dia: 7.348, area: 42.4 },
+      { awg: '2', num: 2, dia: 6.544, area: 33.6 },
+      { awg: '3', num: 3, dia: 5.827, area: 26.7 },
+      { awg: '4', num: 4, dia: 5.189, area: 21.2 },
+      { awg: '5', num: 5, dia: 4.621, area: 16.8 },
+      { awg: '6', num: 6, dia: 4.115, area: 13.3 },
+      { awg: '7', num: 7, dia: 3.665, area: 10.5 },
+      { awg: '8', num: 8, dia: 3.264, area: 8.37 },
+      { awg: '9', num: 9, dia: 2.906, area: 6.63 },
+      { awg: '10', num: 10, dia: 2.588, area: 5.26 },
+      { awg: '11', num: 11, dia: 2.305, area: 4.17 },
+      { awg: '12', num: 12, dia: 2.053, area: 3.31 },
+      { awg: '13', num: 13, dia: 1.828, area: 2.62 },
+      { awg: '14', num: 14, dia: 1.628, area: 2.08 },
+      { awg: '15', num: 15, dia: 1.450, area: 1.65 },
+      { awg: '16', num: 16, dia: 1.291, area: 1.31 },
+      { awg: '17', num: 17, dia: 1.150, area: 1.04 },
+      { awg: '18', num: 18, dia: 1.024, area: 0.823 },
+      { awg: '19', num: 19, dia: 0.912, area: 0.653 },
+      { awg: '20', num: 20, dia: 0.812, area: 0.518 },
+      { awg: '21', num: 21, dia: 0.723, area: 0.410 },
+      { awg: '22', num: 22, dia: 0.644, area: 0.326 },
+      { awg: '23', num: 23, dia: 0.573, area: 0.258 },
+      { awg: '24', num: 24, dia: 0.511, area: 0.205 },
+      { awg: '25', num: 25, dia: 0.455, area: 0.162 },
+      { awg: '26', num: 26, dia: 0.405, area: 0.129 },
+      { awg: '27', num: 27, dia: 0.361, area: 0.102 },
+      { awg: '28', num: 28, dia: 0.321, area: 0.081 },
+      { awg: '29', num: 29, dia: 0.286, area: 0.064 },
+      { awg: '30', num: 30, dia: 0.255, area: 0.051 },
+      { awg: '31', num: 31, dia: 0.227, area: 0.040 },
+      { awg: '32', num: 32, dia: 0.202, area: 0.032 },
+      { awg: '33', num: 33, dia: 0.180, area: 0.025 },
+      { awg: '34', num: 34, dia: 0.160, area: 0.020 },
+      { awg: '35', num: 35, dia: 0.143, area: 0.016 },
+      { awg: '36', num: 36, dia: 0.127, area: 0.013 },
+      { awg: '37', num: 37, dia: 0.113, area: 0.010 },
+      { awg: '38', num: 38, dia: 0.101, area: 0.008 },
+      { awg: '39', num: 39, dia: 0.090, area: 0.006 },
+      { awg: '40', num: 40, dia: 0.080, area: 0.005 },
+    ];
+
+    function awgToDia(awg) {
+      return 0.127 * Math.pow(92, (36 - awg) / 39);
+    }
+
+    function nearestAwg(diaMm) {
+      let best = LOOKUP[0];
+      let bestDiff = Math.abs(best.dia - diaMm);
+      for (let i = 1; i < LOOKUP.length; i++) {
+        const diff = Math.abs(LOOKUP[i].dia - diaMm);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = LOOKUP[i];
+        }
+      }
+      return best;
+    }
+
+    function getDisplayAwg(num) {
+      if (num === -4) return '4/0 (0000)';
+      if (num === -3) return '3/0 (000)';
+      if (num === -2) return '2/0 (00)';
+      if (num === -1) return '1/0 (0)';
+      return num;
+    }
+
+    function setDirection(dir) {
+      direction = dir;
+      const btnAwgMm = el('dir-awg-mm');
+      const btnMmAwg = el('dir-mm-awg');
+      const inputLabel = el('input-label');
+      const input = el('input');
+
+      if (dir === 'awg-mm') {
+        btnAwgMm.className = 'flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm';
+        btnMmAwg.className = 'flex-1 rounded-lg py-2 text-slate-500';
+        inputLabel.textContent = 'AWG number';
+        input.placeholder = 'e.g. 12';
+      } else {
+        btnMmAwg.className = 'flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm';
+        btnAwgMm.className = 'flex-1 rounded-lg py-2 text-slate-500';
+        inputLabel.textContent = 'Diameter (mm)';
+        input.placeholder = 'e.g. 2.05';
+      }
+      input.value = '';
+      el('r-dia').textContent = '\u2014';
+      el('r-area').textContent = '\u2014';
+      el('r-label').classList.add('hidden');
+      el('r-error').classList.add('hidden');
+    }
+
+    function convert() {
+      const raw = el('input').value.trim();
+      const errorEl = el('r-error');
+      const labelEl = el('r-label');
+      const diaEl = el('r-dia');
+      const areaEl = el('r-area');
+
+      errorEl.classList.add('hidden');
+      labelEl.classList.add('hidden');
+
+      if (raw === '') {
+        diaEl.textContent = '\u2014';
+        areaEl.textContent = '\u2014';
+        return;
+      }
+
+      if (direction === 'awg-mm') {
+        const awg = parseFloat(raw);
+        if (isNaN(awg) || awg < -4 || awg > 40) {
+          diaEl.textContent = '\u2014';
+          areaEl.textContent = '\u2014';
+          errorEl.textContent = 'Enter an AWG number between -4 (4/0) and 40.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        const dia = awgToDia(awg);
+        const area = Math.PI * Math.pow(dia / 2, 2);
+        diaEl.textContent = dia.toFixed(3) + ' mm';
+        areaEl.textContent = area.toFixed(2) + ' mm\u00b2';
+        labelEl.textContent = 'AWG ' + getDisplayAwg(awg);
+        labelEl.classList.remove('hidden');
+      } else {
+        const diaMm = parseFloat(raw);
+        if (isNaN(diaMm) || diaMm <= 0) {
+          diaEl.textContent = '\u2014';
+          areaEl.textContent = '\u2014';
+          errorEl.textContent = 'Enter a positive diameter in millimetres.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        const area = Math.PI * Math.pow(diaMm / 2, 2);
+        const nearest = nearestAwg(diaMm);
+        diaEl.textContent = '(' + nearest.dia.toFixed(3) + ' mm closest)';
+        areaEl.textContent = area.toFixed(2) + ' mm\u00b2';
+        labelEl.textContent = 'Nearest AWG: ' + getDisplayAwg(nearest.num) + ' (d = ' + nearest.dia.toFixed(3) + ' mm)';
+        labelEl.classList.remove('hidden');
+      }
+    }
+
+    el('dir-awg-mm').addEventListener('click', () => setDirection('awg-mm'));
+    el('dir-mm-awg').addEventListener('click', () => setDirection('mm-awg'));
+    el('input').addEventListener('input', convert);
+  </script>
+</ToolLayout>

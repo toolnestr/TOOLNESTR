@@ -273,6 +273,11 @@ export const tools = [
   { slug: 'gsm-to-mm-calculator', title: 'GSM to mm Calculator', short: 'Convert paper GSM to thickness in mm and microns.', category: 'converters', emoji: '📄', enabled: true, status: 'live' },
   { slug: 'lumens-to-lux-calculator', title: 'Lumens to Lux Calculator', short: 'Convert light output to illuminance over any area.', category: 'engineering', emoji: '💡', enabled: true, status: 'live' },
   { slug: 'btu-to-tons-calculator', title: 'BTU to Tons Calculator', short: 'Convert HVAC cooling capacity between BTU/hr, tons, and kW.', category: 'engineering', emoji: '❄️', enabled: true, status: 'live' },
+  { slug: 'awg-to-mm-calculator', title: 'AWG to mm Calculator', short: 'Convert American Wire Gauge to diameter in mm and cross-section in mm².', category: 'engineering', emoji: '⚡', enabled: true, status: 'live' },
+  { slug: 'ppi-calculator', title: 'PPI / DPI Calculator', short: 'Find a screen pixel density from resolution and size.', category: 'images', emoji: '🖥️', enabled: true, status: 'live' },
+  { slug: 'color-contrast-checker', title: 'Color Contrast Checker (WCAG)', short: 'Check if two colors pass WCAG contrast ratios for accessibility.', category: 'images', emoji: '🎨', enabled: true, status: 'live' },
+  { slug: 'calorie-deficit-calculator', title: 'Calorie Deficit Calculator', short: 'How many calories to eat daily to lose weight at your target pace.', category: 'health', emoji: '🔥', enabled: true, status: 'live' },
+  { slug: 'keto-macro-calculator', title: 'Keto Macro Calculator', short: 'Set your daily fat, protein, and carb targets for keto.', category: 'health', emoji: '🥑', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

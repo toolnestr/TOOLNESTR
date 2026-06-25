@@ -1,0 +1,267 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PPI / DPI Calculator';
+const description = 'Find a screen pixel density (PPI) from its resolution and diagonal size. Also get dot pitch and total megapixels.';
+const intro = 'Find a screen pixel density (PPI) from its resolution and size.';
+const category = { id: 'images', name: 'Image Tools' };
+const faqs = [
+  { q: 'What is a good PPI?', a: '~300+ is retina-like for phones; ~200+ is sharp for laptops; ~100 is typical for TVs.' },
+  { q: 'Is higher PPI always better?', a: 'Yes for sharpness, but it also uses more GPU power and battery on mobile devices.' },
+  { q: 'What is the PPI of my 1080p 24-inch?', a: 'Around 92 PPI — typical for a desktop monitor.' },
+  { q: 'What is dot pitch?', a: 'The distance between pixel centres in mm — smaller means a sharper image.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="resW">Horizontal resolution (px)</label>
+        <input id="resW" type="number" step="1" min="1" placeholder="e.g. 1920" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="resH">Vertical resolution (px)</label>
+        <input id="resH" type="number" step="1" min="1" placeholder="e.g. 1080" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="diag">Screen size (inches, diagonal)</label>
+        <input id="diag" type="number" step="any" min="0" placeholder="e.g. 15.6" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+    </div>
+
+    <div id="results" class="mt-5 hidden">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-slate-200 bg-indigo-50 p-4 text-center">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-500">PPI</span>
+          <p id="ppiResult" class="mt-1 text-2xl font-bold text-indigo-700">&mdash;</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-indigo-50 p-4 text-center">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Dot pitch (mm)</span>
+          <p id="dotPitchResult" class="mt-1 text-2xl font-bold text-indigo-700">&mdash;</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-indigo-50 p-4 text-center">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Total megapixels</span>
+          <p id="mpResult" class="mt-1 text-2xl font-bold text-indigo-700">&mdash;</p>
+        </div>
+      </div>
+    </div>
+
+    <p id="hint" class="mt-4 hidden text-center text-sm text-amber-600">
+      Enter the diagonal size to calculate PPI.
+    </p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How PPI works</h2>
+    <p class="mt-2 text-slate-600">Pixels per inch (PPI) measures how many pixels fit into one linear inch of a display. The higher the PPI, the sharper and more detailed the image appears. To calculate it, you need the screen resolution (width and height in pixels) and the diagonal size of the display in inches.</p>
+    <p class="mt-3 text-slate-600">The diagonal pixel count is found using the Pythagorean theorem — treating the width and height as the legs of a right-angled triangle and the diagonal as the hypotenuse. Once you know how many pixels span the diagonal, dividing by the diagonal length in inches gives you the PPI.</p>
+    <div class="mt-6 flex justify-center">
+      <svg viewBox="0 0 360 240" class="w-full max-w-sm">
+        <rect x="20" y="10" width="300" height="180" fill="none" stroke="#6366f1" stroke-width="2" rx="4" />
+        <line x1="20" y1="190" x2="320" y2="10" stroke="#ef4444" stroke-width="2" stroke-dasharray="6,4" />
+        <text x="140" y="110" text-anchor="middle" fill="#ef4444" font-size="12" transform="rotate(30, 140, 110)" class="text-xs font-mono">diagonal px = &radic;(w&sup2; + h&sup2;)</text>
+        <line x1="20" y1="200" x2="320" y2="200" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrow)" />
+        <line x1="330" y1="10" x2="330" y2="190" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrow)" />
+        <text x="130" y="215" text-anchor="middle" fill="#6366f1" font-size="12">Width</text>
+        <text x="345" y="100" text-anchor="middle" fill="#6366f1" font-size="12" transform="rotate(90, 345, 100)">Height</text>
+        <defs>
+          <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#6366f1" />
+          </marker>
+        </defs>
+        <rect x="20" y="10" width="300" height="180" fill="none" stroke="#6366f1" stroke-width="2" rx="4" opacity="0.3" />
+        <!-- pixel dots -->
+        <circle cx="35" cy="25" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="305" cy="25" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="35" cy="175" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="305" cy="175" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="130" cy="80" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="220" cy="120" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="80" cy="140" r="1.5" fill="#6366f1" opacity="0.4" />
+        <circle cx="260" cy="50" r="1.5" fill="#6366f1" opacity="0.4" />
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula</h2>
+    <div class="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold text-slate-900">Diagonal pixels</span> = &radic;(w&sup2; + h&sup2;)</div>
+      <div><span class="font-semibold text-slate-900">PPI</span> = diagonal pixels / diagonal inches</div>
+      <div><span class="font-semibold text-slate-900">Dot pitch</span> = 25.4 / PPI <span class="text-slate-400">(25.4 mm per inch)</span></div>
+      <div><span class="font-semibold text-slate-900">Megapixels</span> = (w &times; h) / 1 000 000</div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-5">
+      <p class="text-sm text-slate-600">Take a standard <span class="font-medium text-slate-900">1920 &times; 1080</span> Full HD laptop with a <span class="font-medium text-slate-900">15.6-inch</span> screen.</p>
+      <div class="mt-3 rounded-lg bg-slate-50 p-4 font-mono text-sm text-slate-700">
+        diagonal px = &radic;(1920&sup2; + 1080&sup2;) = &radic;(3 686 400 + 1 166 400) = &radic;4 852 800 &asymp; 2203<br />
+        PPI = 2203 / 15.6 &asymp; 141.2 &rarr; <span class="font-semibold text-indigo-700">141 PPI</span><br />
+        Dot pitch = 25.4 / 141.2 &asymp; 0.18 mm<br />
+        Megapixels = (1920 &times; 1080) / 1 000 000 = <span class="font-semibold text-indigo-700">2.07 MP</span>
+      </div>
+      <p class="mt-3 text-sm text-slate-600">This is typical for a mid-range laptop. A 13-inch MacBook Pro at 2560&times;1600 clocks in at ~227 PPI — Apple&rsquo;s "Retina" threshold.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common resolutions and their PPI</h2>
+    <p class="mt-2 text-sm text-slate-600">The same resolution gives different PPI at different screen sizes. Here is how common display sizes compare.</p>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Resolution</th><th class="p-3">Size (inches)</th><th class="p-3">PPI</th><th class="p-3">Dot pitch</th><th class="p-3">Notes</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-mono text-xs">1920 &times; 1080</td><td class="p-3">24"</td><td class="p-3 font-mono text-xs">92</td><td class="p-3 font-mono text-xs">0.28 mm</td><td class="p-3">Desktop monitor</td></tr>
+          <tr><td class="p-3 font-mono text-xs">1920 &times; 1080</td><td class="p-3">15.6"</td><td class="p-3 font-mono text-xs">141</td><td class="p-3 font-mono text-xs">0.18 mm</td><td class="p-3">Laptop</td></tr>
+          <tr><td class="p-3 font-mono text-xs">2560 &times; 1440</td><td class="p-3">27"</td><td class="p-3 font-mono text-xs">109</td><td class="p-3 font-mono text-xs">0.23 mm</td><td class="p-3">QHD monitor</td></tr>
+          <tr><td class="p-3 font-mono text-xs">2560 &times; 1600</td><td class="p-3">13.3"</td><td class="p-3 font-mono text-xs">227</td><td class="p-3 font-mono text-xs">0.11 mm</td><td class="p-3">MacBook Pro Retina</td></tr>
+          <tr><td class="p-3 font-mono text-xs">3840 &times; 2160</td><td class="p-3">32"</td><td class="p-3 font-mono text-xs">138</td><td class="p-3 font-mono text-xs">0.18 mm</td><td class="p-3">4K monitor</td></tr>
+          <tr><td class="p-3 font-mono text-xs">3840 &times; 2160</td><td class="p-3">27"</td><td class="p-3 font-mono text-xs">163</td><td class="p-3 font-mono text-xs">0.16 mm</td><td class="p-3">4K small monitor</td></tr>
+          <tr><td class="p-3 font-mono text-xs">3840 &times; 2160</td><td class="p-3">15.6"</td><td class="p-3 font-mono text-xs">282</td><td class="p-3 font-mono text-xs">0.09 mm</td><td class="p-3">4K laptop</td></tr>
+          <tr><td class="p-3 font-mono text-xs">2532 &times; 1170</td><td class="p-3">6.1"</td><td class="p-3 font-mono text-xs">460</td><td class="p-3 font-mono text-xs">0.06 mm</td><td class="p-3">iPhone typical</td></tr>
+          <tr><td class="p-3 font-mono text-xs">2340 &times; 1080</td><td class="p-3">6.4"</td><td class="p-3 font-mono text-xs">403</td><td class="p-3 font-mono text-xs">0.06 mm</td><td class="p-3">Android phone</td></tr>
+          <tr><td class="p-3 font-mono text-xs">1920 &times; 1080</td><td class="p-3">55"</td><td class="p-3 font-mono text-xs">40</td><td class="p-3 font-mono text-xs">0.64 mm</td><td class="p-3">TV</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for PPI</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Comparing screen sharpness</h3>
+        <p class="mt-1 text-sm text-slate-600">PPI gives you an objective number to compare how sharp different displays will look — regardless of their size or resolution. A 6-inch phone at 400 PPI will look noticeably crisper than a 24-inch monitor at 92 PPI, even though the monitor has more total pixels.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Checking retina status</h3>
+        <p class="mt-1 text-sm text-slate-600">Apple&rsquo;s "Retina" branding means the pixel density exceeds what the human eye can distinguish at a typical viewing distance. For phones (~12 inches away) that threshold is ~300 PPI. For laptops (~20 inches) it is ~200 PPI. Use this tool to see if your display qualifies.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Design and print specs</h3>
+        <p class="mt-1 text-sm text-slate-600">When designing for a specific device, knowing its PPI helps you create assets at the right resolution. A UI element that looks crisp on a 72 PPI monitor may be too small or blurry on a 200 PPI laptop. Designers use PPI to scale icons, fonts, and spacing accurately.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Evaluating dot pitch</h3>
+        <p class="mt-1 text-sm text-slate-600">Dot pitch (pixel pitch) is the physical distance between pixel centres. A smaller dot pitch means pixels blend together, producing smoother images — important for photo editing, video production, and reading small text. A dot pitch below 0.2 mm is generally considered very sharp.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for interpreting PPI</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">PPI alone is not everything</h3>
+        <p class="mt-1 text-sm text-slate-600">Perceived sharpness depends heavily on viewing distance. A 55-inch 4K TV at 80 PPI looks perfectly sharp from 8 feet away, while a 24-inch 1080p monitor at 92 PPI may look pixelated from 2 feet. Always factor in how far you sit from the screen.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Higher PPI costs more</h3>
+        <p class="mt-1 text-sm text-slate-600">Higher density displays are more expensive to manufacture and require more GPU power to drive. A 4K laptop screen (282 PPI at 15.6") demands significantly more graphical performance than a 1080p panel (141 PPI) at the same size, which impacts battery life.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">DPI vs PPI</h3>
+        <p class="mt-1 text-sm text-slate-600">DPI (dots per inch) is often used interchangeably with PPI, but strictly speaking PPI refers to pixel displays while DPI refers to print. A 300 DPI print standard means the same thing as 300 PPI on screen — both describe 300 dots or pixels per inch.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Downsampling affects perceived sharpness</h3>
+        <p class="mt-1 text-sm text-slate-600">Some high-PPI displays run at a lower native resolution for compatibility, which can reduce sharpness. macOS uses HiDPI mode (rendering at 2&times; scale) so a Retina display always maps logical pixels to physical pixels 1:2, keeping text razor-sharp.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">PPI across device categories</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Smartphones</h3>
+        <p class="mt-1 text-sm text-slate-600">Modern flagship phones typically land between 400 and 500 PPI. With a viewing distance of 10&ndash;12 inches, text and icons appear completely smooth. Even budget phones rarely dip below 300 PPI, which is the recognised threshold for "retina" quality at typical phone distances.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Laptops</h3>
+        <p class="mt-1 text-sm text-slate-600">Laptop PPI ranges widely — from ~100 PPI on budget 1080p 17-inch models to ~227 PPI on a 13-inch MacBook Pro at 2560&times;1600. The viewing distance is typically 18&ndash;24 inches, so 200+ PPI is generally considered retina-quality for laptops.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Desktop monitors</h3>
+        <p class="mt-1 text-sm text-slate-600">Most desktop monitors sit at 90&ndash;140 PPI depending on resolution and size. A 27-inch 4K monitor (163 PPI) is noticeably sharper than a 24-inch 1080p (92 PPI). For text-heavy work like coding or writing, higher PPI reduces eye strain significantly.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">TVs</h3>
+        <p class="mt-1 text-sm text-slate-600">Televisions typically range from 40&ndash;90 PPI because they are viewed from much farther away. A 55-inch 4K TV is ~80 PPI, but from a 6&ndash;10 foot viewing distance, individual pixels are invisible. Going beyond 4K at typical TV sizes offers diminishing returns at normal seating distances.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why megapixels matters</h2>
+    <p class="mt-2 text-slate-600">Total megapixels (width &times; height / 1 000 000) tells you how many million individual pixels the display contains. This is useful for understanding the sheer amount of detail a screen can show. A 4K display (3840&times;2160) has ~8.3 MP — about four times the 2 MP of a 1080p panel. Higher megapixel counts mean more room for content, sharper video playback, and better photo editing capabilities. However, more pixels also require more powerful graphics hardware to drive smoothly, especially for gaming or video editing.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/aspect-ratio-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700">Aspect Ratio Calculator</a>
+      <a href="/tools/image-resizer" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700">Image Resizer</a>
+      <a href="/tools/color-contrast-checker" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700">Color Contrast Checker</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const resW = document.getElementById('resW');
+    const resH = document.getElementById('resH');
+    const diag = document.getElementById('diag');
+    const results = document.getElementById('results');
+    const ppiResult = document.getElementById('ppiResult');
+    const dotPitchResult = document.getElementById('dotPitchResult');
+    const mpResult = document.getElementById('mpResult');
+    const hint = document.getElementById('hint');
+
+    function compute() {
+      const w = parseFloat(resW.value);
+      const h = parseFloat(resH.value);
+      const d = parseFloat(diag.value);
+
+      const hasRes = !isNaN(w) && !isNaN(h) && w > 0 && h > 0;
+      const hasDiag = !isNaN(d) && d >= 0;
+
+      if (!hasRes) {
+        results.classList.add('hidden');
+        hint.classList.add('hidden');
+        return;
+      }
+
+      if (!hasDiag) {
+        results.classList.add('hidden');
+        hint.classList.add('hidden');
+        return;
+      }
+
+      if (d === 0) {
+        results.classList.add('hidden');
+        hint.classList.remove('hidden');
+        return;
+      }
+
+      hint.classList.add('hidden');
+
+      const diagPx = Math.sqrt(w * w + h * h);
+      const ppi = diagPx / d;
+      const dotPitch = 25.4 / ppi;
+      const mp = (w * h) / 1000000;
+
+      ppiResult.textContent = Math.round(ppi);
+      dotPitchResult.textContent = dotPitch.toFixed(2);
+      mpResult.textContent = mp.toFixed(1);
+
+      results.classList.remove('hidden');
+    }
+
+    resW.addEventListener('input', compute);
+    resH.addEventListener('input', compute);
+    diag.addEventListener('input', compute);
+  </script>
+</ToolLayout>
