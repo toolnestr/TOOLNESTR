@@ -1,0 +1,510 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Resistor Color Code Calculator';
+const description = 'Decode 4, 5, and 6 band resistor colors to find resistance, tolerance, and temperature coefficient. Free resistor calculator.';
+const intro = 'Decode resistor color bands to find resistance and tolerance, or enter a resistance value to see the corresponding color bands.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'How do I read a resistor?', a: 'Hold the resistor with the tolerance band (gold/silver) on the right, then read bands from left to right.' },
+  { q: 'What is a 4-band resistor?', a: 'Two digit bands, one multiplier band, and one tolerance band.' },
+  { q: 'What is a 5-band resistor?', a: 'Three digit bands for higher precision, one multiplier, one tolerance.' },
+  { q: 'What does the 6th band mean?', a: 'The 6th band indicates the temperature coefficient in ppm/K.' },
+  { q: 'What is the resistor color code mnemonic?', a: 'Bad Boys Run Over Yellow Grass But Violet Grey Wins — Black (0), Brown (1), Red (2), Orange (3), Yellow (4), Green (5), Blue (6), Violet (7), Grey (8), White (9).' },
+  { q: 'What is the difference between 4, 5 and 6 band resistors?', a: '4-band gives two significant digits, 5-band gives three significant digits for higher precision, and 6-band adds the temperature coefficient.' },
+  { q: 'Can gold or silver be digit bands?', a: 'No — gold and silver only appear as multiplier or tolerance bands. Only black through white are used for digit values.' },
+  { q: 'What is reverse mode?', a: 'Reverse mode lets you type a resistance value (e.g. 47000 or 4.7k) and the calculator shows the nearest standard color bands.' },
+];
+
+const colors = [
+  { name: 'Black', value: 0, multiplier: 1, tol: '', tcr: '' },
+  { name: 'Brown', value: 1, multiplier: 10, tol: '\u00b11%', tcr: '100 ppm/K' },
+  { name: 'Red', value: 2, multiplier: 100, tol: '\u00b12%', tcr: '50 ppm/K' },
+  { name: 'Orange', value: 3, multiplier: 1000, tol: '', tcr: '15 ppm/K' },
+  { name: 'Yellow', value: 4, multiplier: 10000, tol: '', tcr: '25 ppm/K' },
+  { name: 'Green', value: 5, multiplier: 100000, tol: '\u00b10.5%', tcr: '20 ppm/K' },
+  { name: 'Blue', value: 6, multiplier: 1000000, tol: '\u00b10.25%', tcr: '10 ppm/K' },
+  { name: 'Violet', value: 7, multiplier: 10000000, tol: '\u00b10.10%', tcr: '5 ppm/K' },
+  { name: 'Grey', value: 8, multiplier: 100000000, tol: '\u00b10.05%', tcr: '1 ppm/K' },
+  { name: 'White', value: 9, multiplier: 1000000000, tol: '', tcr: '' },
+  { name: 'Gold', value: -1, multiplier: 0.1, tol: '\u00b15%', tcr: '' },
+  { name: 'Silver', value: -1, multiplier: 0.01, tol: '\u00b110%', tcr: '' },
+];
+
+const hexMap = {
+  Black: '#000000',
+  Brown: '#6d4c2a',
+  Red: '#d32f2f',
+  Orange: '#f57c00',
+  Yellow: '#fbc02d',
+  Green: '#388e3c',
+  Blue: '#1976d2',
+  Violet: '#7b1fa2',
+  Grey: '#616161',
+  White: '#f5f5f5',
+  Gold: '#c9a84c',
+  Silver: '#b0b0b0',
+};
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-3">
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-slate-700">Number of bands</label>
+        <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+          <button id="b-4" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">4 bands</button>
+          <button id="b-5" class="flex-1 rounded-lg py-2 text-slate-500">5 bands</button>
+          <button id="b-6" class="flex-1 rounded-lg py-2 text-slate-500">6 bands</button>
+        </div>
+      </div>
+      <div class="flex-1">
+        <label class="block text-sm font-medium text-slate-700">Mode</label>
+        <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+          <button id="mode-fwd" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">Colors &#8594; Value</button>
+          <button id="mode-rev" class="flex-1 rounded-lg py-2 text-slate-500">Value &#8594; Colors</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fwd-mode" class="space-y-3">
+      <div class="grid grid-cols-6 gap-2" id="band-row-1">
+        <label class="block text-center"><span class="text-xs font-medium text-slate-500">Band 1</span>
+          <select id="band1" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.filter(c => c.value >= 0).map(c => <option value={c.value}>{c.name}</option>)}
+          </select></label>
+        <label class="block text-center"><span class="text-xs font-medium text-slate-500">Band 2</span>
+          <select id="band2" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.filter(c => c.value >= 0).map(c => <option value={c.value}>{c.name}</option>)}
+          </select></label>
+        <label class="block text-center" id="band3-wrap"><span class="text-xs font-medium text-slate-500">Band 3</span>
+          <select id="band3" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.filter(c => c.value >= 0).map(c => <option value={c.value}>{c.name}</option>)}
+          </select></label>
+        <label class="block text-center"><span class="text-xs font-medium text-slate-500">Multiplier</span>
+          <select id="mult" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.map(c => <option value={c.multiplier}>{c.name}</option>)}
+          </select></label>
+        <label class="block text-center"><span class="text-xs font-medium text-slate-500">Tolerance</span>
+          <select id="tol" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.filter(c => c.tol).map(c => <option value={c.tol}>{c.name} ({c.tol})</option>)}
+          </select></label>
+        <label class="block text-center" id="tcr-wrap"><span class="text-xs font-medium text-slate-500">TCR</span>
+          <select id="tcr" class="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400">
+            {colors.filter(c => c.tcr).map(c => <option value={c.tcr}>{c.name} ({c.tcr})</option>)}
+          </select></label>
+      </div>
+
+      <div class="mt-4 flex items-center justify-center gap-1" id="band-visual">
+        <svg width="320" height="60" viewBox="0 0 320 60">
+          <rect x="10" y="10" width="300" height="40" rx="6" fill="#f5d6a8" stroke="#c79a6e" stroke-width="1.5"/>
+          <rect id="sv-b1" x="30" y="10" width="30" height="40" rx="2" fill="#d32f2f"/>
+          <rect id="sv-b2" x="75" y="10" width="30" height="40" rx="2" fill="#1976d2"/>
+          <rect id="sv-b3" x="120" y="10" width="30" height="40" rx="2" fill="#f5f5f5" visibility="hidden"/>
+          <rect id="sv-mult" x="175" y="10" width="30" height="40" rx="2" fill="#f57c00"/>
+          <rect id="sv-tol" x="240" y="10" width="30" height="40" rx="2" fill="#c9a84c"/>
+          <rect id="sv-tcr" x="275" y="10" width="25" height="40" rx="2" fill="#f5f5f5" visibility="hidden"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="rev-mode" class="mt-3 hidden">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Enter resistance value (e.g. 4700, 4.7k, 2.2M)</span>
+        <input id="rev-input" type="text" placeholder="4700" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-4 rounded-xl bg-indigo-600 p-5 text-center text-white">
+      <div class="text-sm opacity-80">Resistance value</div>
+      <div id="r-val" class="mt-1 text-2xl font-bold">&mdash;</div>
+      <div id="r-detail" class="mt-1 text-sm"></div>
+      <div id="r-reverse-colors" class="mt-2 hidden"></div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" role="img" aria-labelledby="rcc-title rcc-desc" xmlns="http://www.w3.org/2000/svg">
+      <title id="rcc-title">Resistor Color Code Diagram</title>
+      <desc id="rcc-desc">Diagram of a resistor body showing colour bands labelled Band 1, Band 2, Multiplier, Tolerance, and TCR for 4, 5 and 6 band resistors</desc>
+      <line x1="60" y1="100" x2="190" y2="100" stroke="#94a3b8" stroke-width="6"/>
+      <rect x="190" y="55" width="420" height="90" rx="10" fill="#f5d6a8" stroke="#c79a6e" stroke-width="2"/>
+      <line x1="610" y1="100" x2="740" y2="100" stroke="#94a3b8" stroke-width="6"/>
+      <rect x="210" y="55" width="45" height="90" fill="#d32f2f" rx="3"/>
+      <rect x="280" y="55" width="45" height="90" fill="#1976d2" rx="3"/>
+      <rect x="350" y="55" width="45" height="90" fill="#f57c00" rx="3"/>
+      <rect x="430" y="55" width="45" height="90" fill="#388e3c" rx="3"/>
+      <rect x="525" y="55" width="45" height="90" fill="#fbc02d" rx="3"/>
+      <text x="232" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#475569">Band 1</text>
+      <text x="302" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#475569">Band 2</text>
+      <text x="372" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#475569">Band 3</text>
+      <text x="452" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#475569">Multiplier</text>
+      <text x="547" y="170" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#475569">Tolerance</text>
+      <text x="232" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#94a3b8">1st digit</text>
+      <text x="302" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#94a3b8">2nd digit</text>
+      <text x="372" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#94a3b8">3rd digit (5/6 band)</text>
+      <text x="452" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#94a3b8">&#215; multiplier</text>
+      <text x="547" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#94a3b8">&plusmn; tolerance</text>
+      <text x="400" y="195" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#64748b">4-band: Red-Violet-Orange-Gold = 27 k&#8486; &plusmn;5% &nbsp;|&nbsp; 5-band: Red-Violet-Black-Red-Brown = 27 k&#8486; &plusmn;1%</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Anatomy of a through-hole resistor with colour bands</figcaption>
+  </figure>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Color</th><th class="p-3">Digit</th><th class="p-3">Multiplier</th><th class="p-3">Tolerance</th><th class="p-3">TCR (ppm/K)</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        {colors.map(c => <tr>
+          <td class="p-3"><span class="inline-block h-4 w-4 rounded-full align-middle" style={`background:${hexMap[c.name]}`}></span> {c.name}</td>
+          <td class="p-3">{c.value >= 0 ? c.value : '\u2014'}</td>
+          <td class="p-3">\u00d7{c.multiplier}{c.multiplier >= 1 ? ' \u03a9' : ''}</td>
+          <td class="p-3">{c.tol || '\u2014'}</td>
+          <td class="p-3">{c.tcr || '\u2014'}</td>
+        </tr>)}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Red-Violet-Orange-Gold (4-band)</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Digits:</span> <span class="text-slate-600">Red=2, Violet=7 &rarr; 27</span></div>
+        <div><span class="font-medium text-slate-700">Multiplier:</span> <span class="text-slate-600">Orange = &times;1,000</span></div>
+        <div><span class="font-medium text-slate-700">Value:</span> <span class="text-slate-600">27 &times; 1,000 = 27,000 &Omega; = 27 k&Omega;</span></div>
+        <div><span class="font-medium text-slate-700">Tolerance:</span> <span class="text-slate-600">Gold = &plusmn;5%</span></div>
+        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">25.65 k&Omega; to 28.35 k&Omega;</span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Brown-Black-Red-Silver (4-band)</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Digits:</span> <span class="text-slate-600">Brown=1, Black=0 &rarr; 10</span></div>
+        <div><span class="font-medium text-slate-700">Multiplier:</span> <span class="text-slate-600">Red = &times;100</span></div>
+        <div><span class="font-medium text-slate-700">Value:</span> <span class="text-slate-600">10 &times; 100 = 1,000 &Omega; = 1 k&Omega;</span></div>
+        <div><span class="font-medium text-slate-700">Tolerance:</span> <span class="text-slate-600">Silver = &plusmn;10%</span></div>
+        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">900 &Omega; to 1,100 &Omega;</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F50C;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Identifying Unknown Resistors</h3>
+      <p class="mt-1 text-sm text-slate-600">When you find an unmarked or loose resistor in your parts bin, match its colour bands against the calculator to determine its resistance value, tolerance, and temperature coefficient instantly.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F527;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Electronics Repair</h3>
+      <p class="mt-1 text-sm text-slate-600">During troubleshooting, quickly verify that a resistor matches its schematic value. A shifted colour band can indicate heat damage or a factory error that causes circuit malfunction.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Education and Learning</h3>
+      <p class="mt-1 text-sm text-slate-600">Students learning electronics can practice reading resistor colour codes, check their manual calculations, and build confidence before working with real components in lab sessions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">BOM Verification</h3>
+      <p class="mt-1 text-sm text-slate-600">When receiving a batch of resistors, spot-check the colour codes against the bill of materials to ensure the correct values were shipped before populating printed circuit boards.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reading resistor colour codes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Gold and silver indicate the right side</h3>
+        <p class="mt-1 text-sm text-slate-600">The tolerance band is usually gold (&plusmn;5%) or silver (&plusmn;10%) and is separated from the other bands by a slightly larger gap. Orient the resistor so this band is on the right, then read left to right.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the mnemonic</h3>
+        <p class="mt-1 text-sm text-slate-600">Bad Boys Run Over Yellow Grass But Violet Grey Wins. Each word&rsquo;s first letter matches a colour: Black, Brown, Red, Orange, Yellow, Green, Blue, Violet, Grey, White. This makes memorising the 0&ndash;9 digit mapping easy.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check with a multimeter</h3>
+        <p class="mt-1 text-sm text-slate-600">When colours are faded or the resistor is very small, measure with a multimeter to confirm. The measured value should fall within the tolerance range of the colour-coded value.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for common confusions</h3>
+        <p class="mt-1 text-sm text-slate-600">Red and orange can look similar in dim light. Violet and blue are also easily confused. Use bright, white lighting or a magnifying lamp to distinguish bands accurately, especially on 5- and 6-band resistors.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Black as a multiplier means &times;1</h3>
+        <p class="mt-1 text-sm text-slate-600">A black multiplier band means multiply by 1, not by 0. For example, Brown-Black-Black-Gold = 10 &times; 1 = 10 &Omega; at &plusmn;5%. This is a very common mistake beginners make.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How resistor colour codes work</h2>
+    <p class="mt-2 text-slate-600">Resistor colour coding was standardised in the early 20th century as a practical way to mark resistance values on small cylindrical components where printing numbers would be illegible. The system is defined by the IEC 60062 international standard and is universally adopted for all through-hole resistors. Each colour corresponds to a specific digit from 0 to 9, with additional colour assignments for multiplier, tolerance, and temperature coefficient.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">4-band vs 5-band vs 6-band resistors</h2>
+    <p class="mt-2 text-slate-600"><strong>4-band resistors</strong> are the most common general-purpose type. The first two bands are significant digits, the third band is the decimal multiplier, and the fourth band is the tolerance. A typical 4-band resistor might be Brown-Black-Red-Gold = 1,000 &Omega; (1 k&Omega;) at &plusmn;5%. These are inexpensive and widely available in the E12 and E24 standard value series.</p>
+    <p class="mt-3 text-slate-600"><strong>5-band resistors</strong> provide higher precision by adding a third significant digit. The first three bands are digits, the fourth is the multiplier, and the fifth is the tolerance. These are typically used in circuits where accuracy matters, such as voltage dividers, measurement equipment, and audio crossovers. A 5-band resistor might read Brown-Black-Black-Brown-Brown = 1,000 &Omega; at &plusmn;1%.</p>
+    <p class="mt-3 text-slate-600"><strong>6-band resistors</strong> extend the 5-band format with a sixth band that indicates the Temperature Coefficient of Resistance (TCR) in parts per million per kelvin (ppm/K). This tells you how much the resistance changes with temperature, which is critical in precision instrumentation, automotive electronics, and aerospace applications where components experience wide temperature swings.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Reading order and orientation</h2>
+    <p class="mt-2 text-slate-600">Always read the resistor from the end closest to the first colour band. The tolerance band is typically separated from the digit and multiplier bands by a larger gap, making it easy to identify which end is the starting point. If the resistor has no visible gap (common on some older or small-bodied components), look for the gold or silver band &mdash; those colours only appear as tolerance or multiplier, never as digit bands, so they help you orient the resistor correctly.</p>
+    <p class="mt-3 text-slate-600">When using the reverse mode of this calculator, you enter a resistance value and the tool finds the nearest standard resistor colour combination. This is useful when designing a circuit and you need to know which colour-coded part to order or pull from inventory.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Common mistakes</h2>
+    <p class="mt-2 text-slate-600">Reading the resistor backwards is the most frequent error &mdash; always place the tolerance band on the right. Confusing red and orange or violet and blue is common under poor lighting. Mistaking the black multiplier band (which means &times;1, not &times;0) can lead to values that are off by a factor of ten. Forgetting that gold and silver can be multipliers (0.1 and 0.01 respectively) as well as tolerance indicators is another pitfall.</p>
+    <p class="mt-3 text-slate-600">Always verify your reading with a second pass or use the calculator&rsquo;s visual band display to confirm each colour matches what you see on the physical component. When in doubt, measuring with a multimeter provides definitive confirmation.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Standard value series (E-series)</h2>
+    <p class="mt-2 text-slate-600">Resistor values are not arbitrary &mdash; they follow standardised decades called E-series. The E12 series (12 values per decade) includes: 10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, and 82. The E24 series adds intermediate values: 11, 13, 16, 20, 24, 30, 36, 43, 51, 62, 75, and 91. Higher precision resistors use E48, E96, or even E192 series with correspondingly tighter tolerances. Using standard values ensures your designs use readily available, low-cost components.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/ohms-law-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:border-indigo-200">&#x26A1; Ohm&rsquo;s Law Calculator</a>
+      <a href="/tools/capacitor-charge-time-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:border-indigo-200">&#x1F50B; Capacitor Charge Time Calculator</a>
+      <a href="/tools/awg-to-mm-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:border-indigo-200">&#x1F4CF; AWG to mm Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    const colorData = [
+      { name: 'Black', value: 0, multiplier: 1 },
+      { name: 'Brown', value: 1, multiplier: 10 },
+      { name: 'Red', value: 2, multiplier: 100 },
+      { name: 'Orange', value: 3, multiplier: 1000 },
+      { name: 'Yellow', value: 4, multiplier: 10000 },
+      { name: 'Green', value: 5, multiplier: 100000 },
+      { name: 'Blue', value: 6, multiplier: 1000000 },
+      { name: 'Violet', value: 7, multiplier: 10000000 },
+      { name: 'Grey', value: 8, multiplier: 100000000 },
+      { name: 'White', value: 9, multiplier: 1000000000 },
+      { name: 'Gold', value: -1, multiplier: 0.1 },
+      { name: 'Silver', value: -1, multiplier: 0.01 },
+    ];
+
+    const hexMap = {
+      Black: '#000000', Brown: '#6d4c2a', Red: '#d32f2f', Orange: '#f57c00',
+      Yellow: '#fbc02d', Green: '#388e3c', Blue: '#1976d2', Violet: '#7b1fa2',
+      Grey: '#616161', White: '#f5f5f5', Gold: '#c9a84c', Silver: '#b0b0b0',
+    };
+
+    const tolColors = {
+      'Brown': '\u00b11%', 'Red': '\u00b12%', 'Gold': '\u00b15%', 'Silver': '\u00b110%',
+      'Green': '\u00b10.5%', 'Blue': '\u00b10.25%', 'Violet': '\u00b10.10%', 'Grey': '\u00b10.05%',
+    };
+
+    const tcrColors = {
+      'Brown': '100 ppm/K', 'Red': '50 ppm/K', 'Orange': '15 ppm/K',
+      'Yellow': '25 ppm/K', 'Green': '20 ppm/K', 'Blue': '10 ppm/K',
+      'Violet': '5 ppm/K', 'Grey': '1 ppm/K',
+    };
+
+    const tolArr = ['Brown','Red','Green','Blue','Violet','Grey','Gold','Silver'];
+    const tcrArr = ['Brown','Red','Orange','Yellow','Green','Blue','Violet','Grey'];
+
+    function getColorNameByValue(v) {
+      const c = colorData.find(c => c.value === v);
+      return c ? c.name : 'Black';
+    }
+
+    function getColorByMultiplier(m) {
+      const c = colorData.find(c => c.multiplier === m);
+      return c ? c.name : 'Black';
+    }
+
+    function getMultiplierValue(name) {
+      const c = colorData.find(c => c.name === name);
+      return c ? c.multiplier : 1;
+    }
+
+    function getDigitValue(name) {
+      const c = colorData.find(c => c.name === name);
+      return c ? c.value : 0;
+    }
+
+    function formatResistance(val) {
+      if (val >= 1000000) return (val / 1000000).toFixed(2) + ' M\u03a9';
+      if (val >= 1000) return (val / 1000).toFixed(2) + ' k\u03a9';
+      return val + ' \u03a9';
+    }
+
+    function getSelectText(id) {
+      const s = el(id);
+      return s ? s.options[s.selectedIndex].text : 'Black';
+    }
+
+    let isReverse = false;
+    let currentBands = 4;
+
+    function setBands(n) {
+      currentBands = n;
+      el('b-4').className = 'flex-1 rounded-lg py-2 ' + (n === 4 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('b-5').className = 'flex-1 rounded-lg py-2 ' + (n === 5 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('b-6').className = 'flex-1 rounded-lg py-2 ' + (n === 6 ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('band3-wrap').style.display = n >= 5 ? 'block' : 'none';
+      el('tcr-wrap').style.display = n === 6 ? 'block' : 'none';
+      if (!isReverse) update();
+    }
+
+    function update() {
+      const nBands = currentBands;
+      let digits = [parseInt(el('band1').value), parseInt(el('band2').value)];
+      if (nBands >= 5) digits.push(parseInt(el('band3').value));
+
+      const mult = parseFloat(el('mult').value);
+      const tolText = el('tol').options[el('tol').selectedIndex].text;
+      const tcrText = nBands === 6 ? el('tcr').options[el('tcr').selectedIndex].text : '';
+
+      if (digits.some(isNaN)) {
+        el('r-val').textContent = '\u2014';
+        el('r-detail').textContent = '';
+        return;
+      }
+
+      const value = parseInt(digits.join('')) * mult;
+      el('r-val').textContent = formatResistance(value);
+      let detail = 'Tolerance: ' + (tolText.split('(')[1] || '').replace(')', '') || tolText;
+      if (tcrText) {
+        const tcrVal = tcrText.split('(')[1] ? tcrText.split('(')[1].replace(')','') : tcrText;
+        detail += ' | TCR: ' + tcrVal;
+      }
+      el('r-detail').textContent = detail;
+
+      const b1 = getSelectText('band1');
+      const b2 = getSelectText('band2');
+      const b3 = nBands >= 5 ? getSelectText('band3') : null;
+      const bm = getSelectText('mult');
+      const bt = getSelectText('tol');
+      const btcr = nBands === 6 ? getSelectText('tcr') : null;
+
+      el('sv-b1').setAttribute('fill', hexMap[b1] || '#000');
+      el('sv-b2').setAttribute('fill', hexMap[b2] || '#000');
+      if (nBands >= 5 && b3) {
+        el('sv-b3').setAttribute('visibility', 'visible');
+        el('sv-b3').setAttribute('fill', hexMap[b3] || '#000');
+      } else {
+        el('sv-b3').setAttribute('visibility', 'hidden');
+      }
+      el('sv-mult').setAttribute('fill', hexMap[bm] || '#000');
+      el('sv-tol').setAttribute('fill', hexMap[bt] || '#000');
+      if (nBands === 6 && btcr) {
+        el('sv-tcr').setAttribute('visibility', 'visible');
+        el('sv-tcr').setAttribute('fill', hexMap[btcr] || '#000');
+      } else {
+        el('sv-tcr').setAttribute('visibility', 'hidden');
+      }
+    }
+
+    function parseResistance(str) {
+      str = str.trim().toUpperCase().replace(/\s/g, '');
+      let mult = 1;
+      if (str.endsWith('M')) { mult = 1000000; str = str.slice(0, -1); }
+      else if (str.endsWith('K')) { mult = 1000; str = str.slice(0, -1); }
+      else if (str.endsWith('R')) { mult = 1; str = str.slice(0, -1); }
+      const val = parseFloat(str);
+      if (isNaN(val) || val <= 0) return NaN;
+      return val * mult;
+    }
+
+    function nearestColorBands(value) {
+      const n = currentBands;
+      let sigDigits = n >= 5 ? 3 : 2;
+
+      let exponent = 0;
+      let temp = value;
+      while (temp >= 10) { temp /= 10; exponent++; }
+      while (temp < 1 && temp > 0) { temp *= 10; exponent--; }
+
+      let mantissa = Math.round(value / Math.pow(10, exponent - sigDigits + 1)) * Math.pow(10, exponent - sigDigits + 1);
+      if (mantissa <= 0) mantissa = Math.round(value);
+
+      let mantStr = mantissa.toString().replace('.', '');
+      while (mantStr.length < sigDigits) mantStr += '0';
+      mantStr = mantStr.slice(0, sigDigits);
+
+      const digits = mantStr.split('').map(Number);
+      const multExponent = exponent - sigDigits + 1;
+      const multValue = Math.pow(10, multExponent);
+
+      const digitColors = digits.map(d => getColorNameByValue(d));
+      const multColor = (function() {
+        for (const c of colorData) {
+          if (Math.abs(c.multiplier - multValue) < 0.001) return c.name;
+        }
+        return 'Black';
+      })();
+
+      return { digitColors, multColor };
+    }
+
+    function updateReverse() {
+      const raw = el('rev-input').value;
+      if (!raw.trim()) {
+        el('r-val').textContent = '\u2014';
+        el('r-detail').textContent = '';
+        el('r-reverse-colors').classList.add('hidden');
+        return;
+      }
+
+      const val = parseResistance(raw);
+      if (isNaN(val)) {
+        el('r-val').textContent = 'Invalid';
+        el('r-detail').textContent = 'Enter a number like 4700, 4.7k, or 2.2M';
+        el('r-reverse-colors').classList.add('hidden');
+        return;
+      }
+
+      el('r-val').textContent = formatResistance(val);
+      const n = currentBands;
+      const result = nearestColorBands(val);
+
+      const tolName = tolArr[Math.floor(Math.random() * tolArr.length)];
+      const tolVal = tolColors[tolName];
+      let tcrPart = '';
+      if (n === 6) {
+        const tcrName = tcrArr[Math.floor(Math.random() * tcrArr.length)];
+        tcrPart = ' | TCR: ' + tcrColors[tcrName];
+      }
+      el('r-detail').textContent = 'Tolerance: ' + tolVal + tcrPart;
+
+      let html = '<span class="inline-flex items-center gap-1.5 mt-2">';
+      for (const c of result.digitColors) {
+        html += '<span class="inline-block h-5 w-8 rounded border border-white/30" style="background:' + hexMap[c] + '"></span>';
+      }
+      html += '<span class="inline-block h-5 w-8 rounded border border-white/30" style="background:' + hexMap[result.multColor] + '"></span>';
+      html += '<span class="inline-block h-5 w-8 rounded border border-white/30" style="background:' + hexMap[tolName] + '"></span>';
+      if (n === 6) {
+        const tcrName = tcrArr[Math.floor(Math.random() * tcrArr.length)];
+        html += '<span class="inline-block h-5 w-8 rounded border border-white/30" style="background:' + hexMap[tcrName] + '"></span>';
+      }
+      html += '</span>';
+
+      el('r-reverse-colors').innerHTML = html;
+      el('r-reverse-colors').classList.remove('hidden');
+    }
+
+    function setMode(fwd) {
+      isReverse = !fwd;
+      el('mode-fwd').className = 'flex-1 rounded-lg py-2 ' + (fwd ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('mode-rev').className = 'flex-1 rounded-lg py-2 ' + (!fwd ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('fwd-mode').classList.toggle('hidden', !fwd);
+      el('rev-mode').classList.toggle('hidden', fwd);
+      if (fwd) update();
+      else updateReverse();
+    }
+
+    el('b-4').addEventListener('click', () => setBands(4));
+    el('b-5').addEventListener('click', () => setBands(5));
+    el('b-6').addEventListener('click', () => setBands(6));
+    el('mode-fwd').addEventListener('click', () => setMode(true));
+    el('mode-rev').addEventListener('click', () => setMode(false));
+    el('rev-input').addEventListener('input', updateReverse);
+
+    ['band1','band2','band3','mult','tol','tcr'].forEach(id => {
+      const elm = document.querySelectorAll('#' + id);
+      if (elm.length) elm[0].addEventListener('change', update);
+    });
+  </script>
+</ToolLayout>

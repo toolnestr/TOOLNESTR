@@ -1,0 +1,349 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Capacitor Charge Time Calculator';
+const description = 'Calculate the RC time constant and charge/discharge time for a capacitor. Find time to reach any % of full charge.';
+const intro = 'Calculate RC time constant and capacitor charge/discharge time.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What is the RC time constant?', a: 'It is \u03c4 = R \u00d7 C, the time to charge a capacitor to ~63.2% of the supply voltage.' },
+  { q: 'How long to fully charge?', a: 'About 5\u03c4 (5 time constants) is considered fully charged (~99.3%).' },
+  { q: 'Does temperature affect it?', a: 'Yes \u2014 component values drift with temperature, so the time constant changes slightly.' },
+  { q: 'What units should I use?', a: 'Enter resistance in ohms and capacitance in farads (or \u03bcF, nF, pF via unit buttons).' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Resistance (&Omega;)</span>
+        <input id="resistance" type="number" step="any" placeholder="1000" value="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Capacitance</span>
+        <div class="mt-1 flex gap-2">
+          <input id="capacitance" type="number" step="any" placeholder="100" value="100" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="capUnit" class="w-20 rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="F">F</option>
+            <option value="uF" selected>&mu;F</option>
+            <option value="nF">nF</option>
+            <option value="pF">pF</option>
+          </select>
+        </div>
+      </label>
+    </div>
+
+    <button id="calcBtn" class="mt-4 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 py-3 font-medium text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+          <div class="text-xs opacity-80">Time Constant (&tau;)</div>
+          <div id="r-tau" class="mt-1 text-xl font-bold">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Time to 99% charge</div>
+          <div id="r-t99" class="mt-1 text-xl font-bold text-emerald-600">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-xl border border-slate-200">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-slate-500">
+            <tr>
+              <th class="p-3">Time Constant</th>
+              <th class="p-3">Time</th>
+              <th class="p-3">% Charge</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700" id="chargeTable">
+            <tr><td class="p-3 font-medium">1&tau;</td><td class="p-3" id="t1">&mdash;</td><td class="p-3" id="pct1">63.2%</td></tr>
+            <tr><td class="p-3 font-medium">2&tau;</td><td class="p-3" id="t2">&mdash;</td><td class="p-3" id="pct2">86.5%</td></tr>
+            <tr><td class="p-3 font-medium">3&tau;</td><td class="p-3" id="t3">&mdash;</td><td class="p-3" id="pct3">95.0%</td></tr>
+            <tr><td class="p-3 font-medium">4&tau;</td><td class="p-3" id="t4">&mdash;</td><td class="p-3" id="pct4">98.2%</td></tr>
+            <tr><td class="p-3 font-medium">5&tau;</td><td class="p-3" id="t5">&mdash;</td><td class="p-3" id="pct5">99.3%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="320" viewBox="0 0 800 320" role="img" aria-labelledby="rc-title rc-desc" xmlns="http://www.w3.org/2000/svg">
+      <title id="rc-title">Capacitor Exponential Charging Curve</title>
+      <desc id="rc-desc">Graph showing the exponential charging curve of a capacitor with the time constant tau marked at 63.2%</desc>
+      <rect x="80" y="20" width="680" height="260" fill="none" stroke="#cbd5e1" stroke-width="1"/>
+      <line x1="80" y1="280" x2="760" y2="280" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="80" y1="20" x2="80" y2="280" stroke="#94a3b8" stroke-width="2"/>
+      <polyline points="
+        80,280
+        90,273
+        100,266
+        110,260
+        120,254
+        130,248
+        140,242
+        150,237
+        160,232
+        170,227
+        180,222
+        190,218
+        200,213
+        210,209
+        220,205
+        230,201
+        240,198
+        250,194
+        260,191
+        270,188
+        280,185
+        290,182
+        300,179
+        310,176
+        320,174
+        330,171
+        340,169
+        350,167
+        360,165
+        370,163
+        380,161
+        390,159
+        400,157
+        410,155
+        420,153
+        430,152
+        440,150
+        450,149
+        460,147
+        470,146
+        480,144
+        490,143
+        500,142
+        510,141
+        520,139
+        530,138
+        540,137
+        550,136
+        560,135
+        570,134
+        580,133
+        590,132
+        600,131
+        610,130
+        620,130
+        630,129
+        640,128
+        650,127
+        660,126
+        670,126
+        680,125
+        690,124
+        700,124
+        710,123
+        720,123
+        730,122
+        740,122
+        750,121
+        760,121
+      " fill="none" stroke="#6366f1" stroke-width="3"/>
+      <line x1="216" y1="280" x2="216" y2="115" stroke="black" stroke-width="1.5" stroke-dasharray="5,3"/>
+      <circle cx="216" cy="115" r="4" fill="#6366f1"/>
+      <text x="216" y="105" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#6366f1" font-weight="bold">63.2%</text>
+      <text x="216" y="298" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#475569">&tau;</text>
+      <text x="395" y="298" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8">2&tau;</text>
+      <text x="570" y="298" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8">3&tau;</text>
+      <text x="740" y="298" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#94a3b8">4&tau;</text>
+      <text x="100" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" fill="#64748b">V<tspan font-size="9" dy="-3">0</tspan><tspan dy="3"></tspan></text>
+      <text x="400" y="14" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#64748b">RC Exponential Charge Curve: V<tspan font-size="10" dy="-3">C</tspan><tspan dy="3"></tspan> = V<tspan font-size="10" dy="-3">0</tspan><tspan dy="3"> (1 &minus; e<tspan font-size="10" dy="-3">&minus;t/&tau;</tspan><tspan dy="3">)</tspan></text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">RC exponential charging curve showing voltage across the capacitor over time</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the RC time constant works</h2>
+    <p class="mt-2 text-slate-600">The RC time constant (<strong>&tau;</strong>) is the fundamental parameter that governs how quickly a capacitor charges or discharges through a resistor. It is the product of resistance and capacitance: <strong>&tau; = R &times; C</strong>. When a capacitor charges through a resistor from a DC voltage source, the voltage across the capacitor follows an exponential curve described by the equation <strong>V<tspan font-size="14" dy="-3">C</tspan><tspan dy="3">(t) = V<tspan font-size="14" dy="-3">0</tspan><tspan dy="3"> &times; (1 &minus; e<tspan font-size="14" dy="-3">&minus;t/&tau;</tspan><tspan dy="3">)</tspan></strong>.</p>
+    <p class="mt-3 text-slate-600">After one time constant (1&tau;), the capacitor reaches approximately 63.2% of the supply voltage. After two time constants (2&tau;), it reaches 86.5%. By the time five time constants (5&tau;) have elapsed, the capacitor is considered fully charged at 99.3% of the supply voltage. The same exponential behavior applies during discharge, where the voltage follows <strong>V<tspan font-size="14" dy="-3">C</tspan><tspan dy="3">(t) = V<tspan font-size="14" dy="-3">0</tspan><tspan dy="3"> &times; e<tspan font-size="14" dy="-3">&minus;t/&tau;</tspan><tspan dy="3"></tspan></strong>.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formulas</h2>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Time constant</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Formula:</span> <span class="font-mono text-slate-600">&tau; = R &times; C</span></div>
+        <div><span class="font-medium text-slate-700">Unit:</span> <span class="text-slate-600">seconds (ohm &times; farad)</span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Charge equation</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Charging:</span> <span class="font-mono text-slate-600">V<sub>C</sub>(t) = V<sub>0</sub> &times; (1 &minus; e<sup>&minus;t/&tau;</sup>)</span></div>
+        <div><span class="font-medium text-slate-700">Discharging:</span> <span class="font-mono text-slate-600">V<sub>C</sub>(t) = V<sub>0</sub> &times; e<sup>&minus;t/&tau;</sup></span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Percentage of full charge</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-5">
+        <div><span class="font-medium text-slate-700">1&tau;:</span> <span class="text-slate-600">63.2%</span></div>
+        <div><span class="font-medium text-slate-700">2&tau;:</span> <span class="text-slate-600">86.5%</span></div>
+        <div><span class="font-medium text-slate-700">3&tau;:</span> <span class="text-slate-600">95.0%</span></div>
+        <div><span class="font-medium text-slate-700">4&tau;:</span> <span class="text-slate-600">98.2%</span></div>
+        <div><span class="font-medium text-slate-700">5&tau;:</span> <span class="text-slate-600">99.3%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <div class="grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Given:</span> <span class="text-slate-600">R = 1 k&Omega;, C = 100 &mu;F</span></div>
+        <div><span class="font-medium text-slate-700">Time constant:</span> <span class="text-slate-600">&tau; = 1000 &times; 0.0001 = 0.1 s (100 ms)</span></div>
+        <div><span class="font-medium text-slate-700">1&tau; charge:</span> <span class="text-slate-600">63.2% after 0.1 s</span></div>
+        <div><span class="font-medium text-slate-700">5&tau; full charge:</span> <span class="text-slate-600">99.3% after 0.5 s</span></div>
+        <div><span class="font-medium text-slate-700">Example application:</span> <span class="text-slate-600">A 1 k&Omega; resistor and 100 &mu;F capacitor form a 100 ms timing circuit ideal for a 0.5 s power-on delay.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for RC time constant calculations</h2>
+    <p class="mt-2 text-slate-600">The RC time constant is one of the most widely used calculations in electronics. It appears in circuit timing, filter design, signal processing, and power supply design. Understanding the relationship between resistance, capacitance, and time is essential for any engineer or hobbyist working with analog circuits.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x23F1;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Circuit timing</h3>
+        <p class="mt-1 text-sm text-slate-600">Monostable multivibrators, 555 timer circuits, and delay circuits all rely on RC time constants to set precise timing intervals from microseconds to minutes.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F3B6;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Filter design</h3>
+        <p class="mt-1 text-sm text-slate-600">Low-pass and high-pass RC filters have a cutoff frequency f<sub>c</sub> = 1 / (2&pi;RC). Selecting the right R and C values determines the frequency range that passes through.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x26A1;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Power supply smoothing</h3>
+        <p class="mt-1 text-sm text-slate-600">Rectifier circuits use reservoir capacitors to smooth voltage ripples. The RC discharge time between AC peaks determines the ripple voltage magnitude and the required capacitor size.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F50C;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Signal coupling &amp; debouncing</h3>
+        <p class="mt-1 text-sm text-slate-600">AC-coupled amplifier stages use series capacitors to block DC while passing AC signals. RC debounce circuits filter out mechanical switch chatter with a carefully chosen time constant.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with RC circuits</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">The 5&tau; rule of thumb</h3>
+        <p class="mt-1 text-sm text-slate-600">Always use the 5&tau; guideline when designing timing circuits. If you need a capacitor to reach a certain voltage within a specific time, calculate the required R and C such that the time budget is at least 5&tau; for full charge or discharge. For example, a 10 ms timing pulse needs R &times; C &le; 2 ms to charge fully within the pulse width.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Electrolytic capacitor tolerance</h3>
+        <p class="mt-1 text-sm text-slate-600">Electrolytic capacitors typically have wide tolerances of &plusmn;20% or even &minus;20% / +80%. If your timing circuit requires precision, use film or ceramic capacitors with tighter tolerances, or include a trim potentiometer in series with R to adjust the time constant.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch leakage current</h3>
+        <p class="mt-1 text-sm text-slate-600">Large electrolytic capacitors can have significant leakage current, which effectively acts as a parallel resistor. For very long time constants (minutes or hours), leakage may prevent the capacitor from ever reaching full charge. Choose low-leakage types or use a lower-value capacitor with a higher-value resistor.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">AC signals and impedance</h3>
+        <p class="mt-1 text-sm text-slate-600">In AC circuits, a capacitor presents a frequency-dependent impedance X<sub>C</sub> = 1 / (2&pi;fC). The RC time constant determines the cutoff frequency of filters and the phase shift in oscillator circuits. At the cutoff frequency, the capacitive reactance equals the resistance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the charging curve works in detail</h2>
+    <p class="mt-2 text-slate-600">When a DC voltage is applied to an RC series circuit, the capacitor initially acts as a short circuit (zero voltage across it), and the full voltage appears across the resistor. As the capacitor charges, the voltage across it rises exponentially while the current through the resistor decays exponentially. The rate of change is fastest at the beginning and slows down as the capacitor approaches the supply voltage.</p>
+    <p class="mt-3 text-slate-600">Mathematically, the charge curve is described by the differential equation dV/dt = (V<sub>0</sub> &minus; V) / RC, which has the exponential solution given above. The initial rate of change (dV/dt at t = 0) equals V<sub>0</sub> / &tau;, meaning the capacitor would reach full voltage in exactly one time constant if the rate stayed constant. However, because the rate decreases exponentially, it actually takes much longer to reach 100%.</p>
+    <p class="mt-3 text-slate-600">During discharge, the process is reversed. The charged capacitor acts like a temporary voltage source, and the current flows in the opposite direction through the resistor. The voltage decays exponentially toward zero, following the same time constant but with a decreasing exponential. After 1&tau; of discharge, the voltage drops to 36.8% of its initial value; after 5&tau;, it is effectively zero (below 1%).</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common RC configurations and their time constants</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500">
+          <tr>
+            <th class="p-3">Configuration</th>
+            <th class="p-3">Time constant formula</th>
+            <th class="p-3">Circuit type</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Series R + C</td><td class="font-mono p-3">&tau; = R &times; C</td><td class="p-3">Basic charge/discharge</td></tr>
+          <tr><td class="p-3 font-medium">Parallel RC</td><td class="font-mono p-3">&tau; = R &times; C</td><td class="p-3">Low-pass filter</td></tr>
+          <tr><td class="p-3 font-medium">Series RC (output across R)</td><td class="font-mono p-3">&tau; = R &times; C</td><td class="p-3">High-pass filter</td></tr>
+          <tr><td class="p-3 font-medium">Multiple R in series + C</td><td class="font-mono p-3">&tau; = (R<sub>1</sub> + R<sub>2</sub>) &times; C</td><td class="p-3">Adjustable timing</td></tr>
+          <tr><td class="p-3 font-medium">R + multiple C in parallel</td><td class="font-mono p-3">&tau; = R &times; (C<sub>1</sub> + C<sub>2</sub>)</td><td class="p-3">Larger capacitance</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/ohms-law-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Ohm's Law Calculator</a>
+      <a href="/tools/resistor-color-code-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Resistor Color Code Calculator</a>
+      <a href="/tools/three-phase-power-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Three-Phase Power Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    function fmtTime(seconds) {
+      if (seconds < 1e-9) return (seconds * 1e12).toFixed(2) + ' ps';
+      if (seconds < 1e-6) return (seconds * 1e9).toFixed(2) + ' ns';
+      if (seconds < 1e-3) return (seconds * 1e6).toFixed(2) + ' \u00b5s';
+      if (seconds < 1) return (seconds * 1e3).toFixed(2) + ' ms';
+      if (seconds < 60) return seconds.toFixed(3) + ' s';
+      if (seconds < 3600) return (seconds / 60).toFixed(2) + ' min';
+      return (seconds / 3600).toFixed(2) + ' hr';
+    }
+
+    function calculate() {
+      const R = parseFloat(document.getElementById('resistance').value);
+      const Cval = parseFloat(document.getElementById('capacitance').value);
+      const unit = document.getElementById('capUnit').value;
+
+      if (isNaN(R) || isNaN(Cval) || R <= 0 || Cval <= 0) {
+        document.getElementById('results').classList.add('hidden');
+        return;
+      }
+
+      let C = Cval;
+      if (unit === 'uF') C = Cval * 1e-6;
+      else if (unit === 'nF') C = Cval * 1e-9;
+      else if (unit === 'pF') C = Cval * 1e-12;
+
+      const tau = R * C;
+
+      document.getElementById('r-tau').textContent = fmtTime(tau);
+      document.getElementById('r-t99').textContent = fmtTime(tau * 4.605);
+
+      const tc = [1, 2, 3, 4, 5];
+      const chargePct = tc.map(n => (1 - Math.exp(-n)) * 100);
+
+      for (let i = 0; i < 5; i++) {
+        document.getElementById('t' + (i + 1)).textContent = fmtTime(tau * (i + 1));
+        document.getElementById('pct' + (i + 1)).textContent = chargePct[i].toFixed(1) + '%';
+      }
+
+      document.getElementById('results').classList.remove('hidden');
+    }
+
+    document.getElementById('calcBtn').addEventListener('click', calculate);
+
+    document.getElementById('resistance').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') calculate();
+    });
+    document.getElementById('capacitance').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') calculate();
+    });
+    document.getElementById('capUnit').addEventListener('change', calculate);
+  </script>
+</ToolLayout>

@@ -286,6 +286,9 @@ export const tools = [
   { slug: 'jwt-decoder', title: 'JWT Decoder', short: 'Decode a JSON Web Token to read its header and payload.', category: 'developers', emoji: '🔐', enabled: true, status: 'live' },
   { slug: 'htaccess-redirect-generator', title: '.htaccess Redirect Generator', short: 'Generate 301/302 redirect rules without learning the syntax.', category: 'developers', emoji: '🔗', enabled: true, status: 'live' },
   { slug: 'open-graph-generator', title: 'Open Graph & Meta Tag Generator', short: 'Generate SEO and social-share meta tags with a live preview.', category: 'developers', emoji: '📋', enabled: true, status: 'live' },
+  // ── Part B: Engineering ──
+  { slug: 'capacitor-charge-time-calculator', title: 'Capacitor Charge Time Calculator', short: 'Calculate RC time constant and capacitor charge/discharge time.', category: 'engineering', emoji: '🔋', enabled: true, status: 'live' },
+  { slug: 'resistor-color-code-calculator', title: 'Resistor Color Code Calculator', short: 'Decode 4/5/6 band resistor colors to resistance and tolerance.', category: 'engineering', emoji: '🌈', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages
