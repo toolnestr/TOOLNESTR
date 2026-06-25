@@ -278,6 +278,11 @@ export const tools = [
   { slug: 'color-contrast-checker', title: 'Color Contrast Checker (WCAG)', short: 'Check if two colors pass WCAG contrast ratios for accessibility.', category: 'images', emoji: '🎨', enabled: true, status: 'live' },
   { slug: 'calorie-deficit-calculator', title: 'Calorie Deficit Calculator', short: 'How many calories to eat daily to lose weight at your target pace.', category: 'health', emoji: '🔥', enabled: true, status: 'live' },
   { slug: 'keto-macro-calculator', title: 'Keto Macro Calculator', short: 'Set your daily fat, protein, and carb targets for keto.', category: 'health', emoji: '🥑', enabled: true, status: 'live' },
+  { slug: 'water-intake-calculator', title: 'Daily Water Intake Calculator', short: 'Estimate daily water intake from weight, exercise, and climate.', category: 'health', emoji: '💧', enabled: true, status: 'live' },
+  { slug: 'ovulation-calculator', title: 'Ovulation Calculator', short: 'Estimate your fertile window and ovulation day from your cycle.', category: 'health', emoji: '🌸', enabled: true, status: 'live' },
+  { slug: 'ivf-due-date-calculator', title: 'IVF Due Date Calculator', short: 'Estimate your due date from your IVF embryo transfer date.', category: 'health', emoji: '👶', enabled: true, status: 'live' },
+  { slug: 'cron-expression-generator', title: 'Cron Expression Generator', short: 'Build cron schedules with dropdowns — no syntax needed.', category: 'developers', emoji: '⏰', enabled: true, status: 'live' },
+  { slug: 'crontab-to-human', title: 'Crontab to Human-Readable', short: 'Convert cron expressions into plain-English schedule descriptions.', category: 'developers', emoji: '📆', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages
