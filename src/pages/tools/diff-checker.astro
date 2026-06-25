@@ -1,0 +1,336 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Diff Checker';
+const description = 'Compare two texts side by side with line-level diff highlighting. See additions, deletions, and changes.';
+const intro = 'Compare two texts side by side with line-level diff highlighting.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'How does the diff algorithm work?', a: 'It uses a variant of the longest common subsequence (LCS) algorithm, similar to Git\'s diff.' },
+  { q: 'Can I compare code files?', a: 'Yes — works with any text including code, JSON, HTML, or plain text.' },
+  { q: 'Is there a size limit?', a: 'Texts up to ~500 lines each work well. Larger texts may be slow on older devices.' },
+  { q: 'Is my data uploaded?', a: 'No — everything runs in your browser. Nothing is sent anywhere.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <button id="compare-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Compare</button>
+        <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" id="view-toggle" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+        <span>Unified view</span>
+      </label>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label for="original-text" class="block text-sm font-medium text-slate-700">Original</label>
+        <textarea
+          id="original-text"
+          rows="12"
+          spellcheck="false"
+          placeholder="Paste the original text here..."
+          class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        ></textarea>
+      </div>
+      <div>
+        <label for="modified-text" class="block text-sm font-medium text-slate-700">Modified</label>
+        <textarea
+          id="modified-text"
+          rows="12"
+          spellcheck="false"
+          placeholder="Paste the modified text here..."
+          class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        ></textarea>
+      </div>
+    </div>
+
+    <div id="stats" class="mt-3 hidden text-sm text-slate-500"></div>
+
+    <div id="result" class="mt-4 hidden overflow-x-auto rounded-xl border border-slate-200"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How diff checking works</h2>
+    <p class="mt-2 text-slate-600">A diff tool compares two texts line by line, identifying what was added, removed, or changed between them. The algorithm behind it is based on the longest common subsequence (LCS) problem, a classic computer science technique also used in version control systems like Git.</p>
+    <p class="mt-3 text-slate-600">The LCS algorithm finds the longest sequence of lines that appear in both texts in the same order. Lines in the original that are not part of this common subsequence are marked as removed. Lines in the modified text that are not in the common subsequence are marked as added. When a removed line is followed by an added line at the same logical position, the pair is displayed as a changed line, shown in yellow to indicate that the content was modified rather than inserted or deleted entirely.</p>
+    <p class="mt-3 text-slate-600">The computational cost of the LCS algorithm is proportional to the product of the two text lengths (O(n*m)). For most practical comparisons under 500 lines, this completes in milliseconds. The algorithm is deterministic and objective — the same pair of texts always produces the same diff, making it a reliable tool for reviewing changes in code, prose, configuration files, and structured data formats.</p>
+
+    <figure class="mt-6">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="diff-title diff-desc" class="w-full max-w-2xl mx-auto">
+        <title id="diff-title">Diff comparison diagram</title>
+        <desc id="diff-desc">Three panels: original text on the left, diff arrows in the center, modified text on the right with colored change indicators</desc>
+
+        <rect x="30" y="20" width="220" height="180" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5" />
+        <text x="140" y="46" text-anchor="middle" fill="#334155" font-family="sans-serif" font-size="13" font-weight="600">Original</text>
+        <rect x="46" y="56" width="188" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <text x="56" y="71" fill="#64748b" font-family="monospace, sans-serif" font-size="11">function greet(name) &#123;</text>
+        <rect x="46" y="82" width="188" height="22" rx="4" fill="#f8d7da" stroke="#f5c2c7" />
+        <text x="56" y="97" fill="#842029" font-family="monospace, sans-serif" font-size="11">  return "Hello, " + name;</text>
+        <rect x="46" y="108" width="188" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <text x="56" y="123" fill="#64748b" font-family="monospace, sans-serif" font-size="11">  console.log(msg);</text>
+        <rect x="46" y="134" width="188" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <text x="56" y="149" fill="#64748b" font-family="monospace, sans-serif" font-size="11">&#125;</text>
+
+        <line x1="260" y1="65" x2="310" y2="65" stroke="#f97316" stroke-width="2" marker-end="url(#arrowOrange)" />
+        <line x1="260" y1="93" x2="310" y2="93" stroke="#ef4444" stroke-width="2" marker-end="url(#arrowRed)" />
+        <line x1="260" y1="120" x2="310" y2="120" stroke="#22c55e" stroke-width="2" marker-end="url(#arrowGreen)" />
+        <line x1="260" y1="146" x2="310" y2="146" stroke="#cbd5e1" stroke-width="2" marker-end="url(#arrowGrey)" />
+
+        <defs>
+          <marker id="arrowOrange" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0l10 5-10 5Z" fill="#f97316" /></marker>
+          <marker id="arrowRed" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0l10 5-10 5Z" fill="#ef4444" /></marker>
+          <marker id="arrowGreen" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0l10 5-10 5Z" fill="#22c55e" /></marker>
+          <marker id="arrowGrey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0l10 5-10 5Z" fill="#cbd5e1" /></marker>
+        </defs>
+
+        <rect x="330" y="20" width="44" height="180" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+        <text x="352" y="46" text-anchor="middle" fill="#334155" font-family="sans-serif" font-size="11" font-weight="600">LCS</text>
+        <rect x="340" y="56" width="24" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <rect x="340" y="82" width="24" height="48" rx="4" fill="#fff3cd" stroke="#ffc107" />
+        <text x="352" y="113" text-anchor="middle" fill="#856404" font-family="sans-serif" font-size="9">chg</text>
+        <rect x="340" y="134" width="24" height="22" rx="4" fill="#d4edda" stroke="#c3e6cb" />
+
+        <rect x="550" y="20" width="220" height="180" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5" />
+        <text x="660" y="46" text-anchor="middle" fill="#334155" font-family="sans-serif" font-size="13" font-weight="600">Modified</text>
+        <rect x="566" y="56" width="188" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <text x="576" y="71" fill="#64748b" font-family="monospace, sans-serif" font-size="11">function greet(name) &#123;</text>
+        <rect x="566" y="82" width="188" height="22" rx="4" fill="#fff3cd" stroke="#ffc107" />
+        <text x="576" y="97" fill="#856404" font-family="monospace, sans-serif" font-size="11">  return `Hello, $&#123;name&#125;`;</text>
+        <rect x="566" y="108" width="188" height="22" rx="4" fill="#d4edda" stroke="#c3e6cb" />
+        <text x="576" y="123" fill="#155724" font-family="monospace, sans-serif" font-size="11">  console.log(greeting);</text>
+        <rect x="566" y="134" width="188" height="22" rx="4" fill="#fff" stroke="#e2e8f0" />
+        <text x="576" y="149" fill="#64748b" font-family="monospace, sans-serif" font-size="11">&#125;</text>
+      </svg>
+      <figcaption class="mt-2 text-center text-sm text-slate-500">The LCS algorithm identifies unchanged lines, then marks the rest as added (green), removed (red), or changed (yellow)</figcaption>
+    </figure>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases for diff checking</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F50D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Code review</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare two versions of a source file to see exactly what changed before approving a pull request. Reviewers can spot unintended changes, missing fixes, or formatting drift at a glance.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4C4;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Document editing</h3>
+        <p class="mt-1 text-sm text-slate-600">Track edits made to articles, specifications, or legal documents. A diff shows every insertion and deletion, making it easy to verify that only intended changes were applied.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F30D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Plagiarism detection</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare a suspicious submission against the original source. Even when wording is rearranged, the line-level diff reveals copied sections and modified passages.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4CA;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Configuration comparison</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare JSON, YAML, or INI configuration files between environments. A diff quickly highlights missing keys, changed values, or added sections that could cause deployment issues.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for effective diffing</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always diff before merging</h3>
+        <p class="mt-1 text-sm text-slate-600">Before merging a branch, run the file through a diff tool to catch accidental changes, merge artifacts, or unintended modifications. A diff review is the last line of defence before code enters the main branch.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use diff to track edits</h3>
+        <p class="mt-1 text-sm text-slate-600">When editing a document or configuration file, keep a copy of the original and diff it against the revised version afterward. This gives you a clear audit trail of every change made during the editing session.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Works well with version control</h3>
+        <p class="mt-1 text-sm text-slate-600">The diff algorithm used here is the same LCS-based approach that Git and other version control systems use. Understanding how line-level diffs work helps you interpret <span class="font-mono text-indigo-600 text-xs">git diff</span> output more accurately and resolve merge conflicts with confidence.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Trim whitespace for cleaner diffs</h3>
+        <p class="mt-1 text-sm text-slate-600">Trailing whitespace and indentation changes can create noisy diffs that obscure the real changes. Many code editors offer a "trim trailing whitespace on save" option that keeps diffs clean and focused on semantic changes.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why line-level diffing matters</h2>
+    <p class="mt-2 text-slate-600">Line-level diffing is the foundation of modern version control and code review workflows. Every time you run <span class="font-mono text-indigo-600 text-xs">git diff</span>, open a pull request on GitHub, or compare revisions in an editor, you are relying on a diff algorithm to present the changes in a human-readable format. Understanding how this works makes you a more effective developer and reviewer.</p>
+    <p class="mt-3 text-slate-600">The core insight is that a diff is not just a list of which lines changed — it is a structured representation of the edit operations needed to transform one text into another. By identifying lines that stayed the same (the longest common subsequence), the algorithm can present a minimal, readable set of insertions and deletions. This is far more useful than a simple character-by-character comparison, which would highlight every typo fix but miss structural changes like moved blocks or refactored functions.</p>
+    <p class="mt-3 text-slate-600">Diff tools are especially valuable when working with code that has been reformatted. If a team adopts a new code style and runs a formatter across the entire codebase, a naive comparison would show every line as changed. A good diff tool, combined with a "ignore whitespace" option, can show that the only real change was the formatting configuration itself, not the logic of the code. This saves hours of review time and prevents unnecessary back-and-forth on pull requests.</p>
+    <p class="mt-3 text-slate-600">For non-programmers, diff tools provide a transparent way to review edits in collaborative writing, legal document markup, and data entry validation. Any scenario where two versions of a text need to be compared benefits from the structured, color-coded output that a diff tool provides. The green, red, and yellow highlighting convention is now so widely recognised that it has become a universal visual language for change tracking across software tools and platforms.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-slate-600">Explore more developer tools that complement text comparison and transformation workflows.</p>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/sql-formatter" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">SQL Formatter</a>
+      <a href="/tools/markdown-to-html" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">Markdown to HTML</a>
+      <a href="/tools/regex-tester" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600">Regex Tester</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const originalTextarea = document.getElementById('original-text');
+    const modifiedTextarea = document.getElementById('modified-text');
+    const compareBtn = document.getElementById('compare-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const resultDiv = document.getElementById('result');
+    const statsDiv = document.getElementById('stats');
+    const viewToggle = document.getElementById('view-toggle');
+
+    function lcsDiff(oldLines, newLines) {
+      const m = oldLines.length;
+      const n = newLines.length;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (oldLines[i - 1] === newLines[j - 1]) {
+            dp[i][j] = dp[i - 1][j - 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+      }
+
+      const ops = [];
+      let i = m, j = n;
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+          ops.push({ type: 'unchanged', line: oldLines[i - 1], oldNum: i, newNum: j });
+          i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+          ops.push({ type: 'added', line: newLines[j - 1], oldNum: null, newNum: j });
+          j--;
+        } else {
+          ops.push({ type: 'removed', line: oldLines[i - 1], oldNum: i, newNum: null });
+          i--;
+        }
+      }
+      ops.reverse();
+
+      const result = [];
+      for (let k = 0; k < ops.length; k++) {
+        const op = ops[k];
+        if (op.type === 'removed' && k + 1 < ops.length && ops[k + 1].type === 'added') {
+          result.push({ type: 'changed', oldLine: op.line, newLine: ops[k + 1].line, oldNum: op.oldNum, newNum: ops[k + 1].newNum });
+          k++;
+        } else {
+          result.push(op);
+        }
+      }
+      return result;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function renderDiff(ops, unified) {
+      if (ops.length === 0) {
+        return '<p class="p-4 text-sm text-slate-500">No differences found — the texts are identical.</p>';
+      }
+
+      let html = '';
+
+      if (unified) {
+        html = '<table class="w-full text-left text-sm font-mono"><tbody>';
+        for (const op of ops) {
+          if (op.type === 'unchanged') {
+            html += '<tr class="diff-unchanged"><td class="pl-4 pr-2 text-right text-slate-400 select-none w-10">' + op.oldNum + '</td><td class="pr-4 py-0.5 whitespace-pre-wrap">' + escapeHtml(op.line) + '</td></tr>';
+          } else if (op.type === 'removed') {
+            html += '<tr class="diff-removed"><td class="pl-4 pr-2 text-right text-slate-400 select-none w-10">' + op.oldNum + '</td><td class="pr-4 py-0.5 whitespace-pre-wrap">' + escapeHtml(op.line) + '</td></tr>';
+          } else if (op.type === 'added') {
+            html += '<tr class="diff-added"><td class="pl-4 pr-2 text-right text-slate-400 select-none w-10">' + op.newNum + '</td><td class="pr-4 py-0.5 whitespace-pre-wrap">' + escapeHtml(op.line) + '</td></tr>';
+          } else if (op.type === 'changed') {
+            html += '<tr class="diff-removed"><td class="pl-4 pr-2 text-right text-slate-400 select-none w-10">' + op.oldNum + '</td><td class="pr-4 py-0.5 whitespace-pre-wrap">' + escapeHtml(op.oldLine) + '</td></tr>';
+            html += '<tr class="diff-added"><td class="pl-4 pr-2 text-right text-slate-400 select-none w-10">' + op.newNum + '</td><td class="pr-4 py-0.5 whitespace-pre-wrap">' + escapeHtml(op.newLine) + '</td></tr>';
+          }
+        }
+        html += '</tbody></table>';
+      } else {
+        html = '<table class="w-full text-left text-sm font-mono"><thead class="bg-slate-50 text-xs font-medium text-slate-500"><tr><th class="w-1/2 p-2 pl-4 border-r border-slate-200">Original</th><th class="w-1/2 p-2 pl-4">Modified</th></tr></thead><tbody>';
+        for (const op of ops) {
+          if (op.type === 'unchanged') {
+            html += '<tr class="diff-unchanged"><td class="pl-4 pr-2 py-0.5 border-r border-slate-100 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.oldNum + '</span>' + escapeHtml(op.line) + '</td><td class="pl-4 pr-2 py-0.5 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.newNum + '</span>' + escapeHtml(op.line) + '</td></tr>';
+          } else if (op.type === 'removed') {
+            html += '<tr class="diff-removed"><td class="pl-4 pr-2 py-0.5 border-r border-slate-100 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.oldNum + '</span>' + escapeHtml(op.line) + '</td><td class="pl-4 pr-2 py-0.5 bg-slate-50 text-slate-300 whitespace-pre-wrap"></td></tr>';
+          } else if (op.type === 'added') {
+            html += '<tr class="diff-added"><td class="pl-4 pr-2 py-0.5 border-r border-slate-100 bg-slate-50 text-slate-300 whitespace-pre-wrap"></td><td class="pl-4 pr-2 py-0.5 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.newNum + '</span>' + escapeHtml(op.line) + '</td></tr>';
+          } else if (op.type === 'changed') {
+            html += '<tr class="diff-changed"><td class="pl-4 pr-2 py-0.5 border-r border-slate-100 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.oldNum + '</span>' + escapeHtml(op.oldLine) + '</td><td class="pl-4 pr-2 py-0.5 whitespace-pre-wrap"><span class="text-slate-400 select-none mr-2">' + op.newNum + '</span>' + escapeHtml(op.newLine) + '</td></tr>';
+          }
+        }
+        html += '</tbody></table>';
+      }
+      return html;
+    }
+
+    function runDiff() {
+      const original = originalTextarea.value;
+      const modified = modifiedTextarea.value;
+
+      if (!original && !modified) {
+        resultDiv.classList.add('hidden');
+        statsDiv.classList.add('hidden');
+        return;
+      }
+
+      const oldLines = original.split('\n');
+      const newLines = modified.split('\n');
+      const ops = lcsDiff(oldLines, newLines);
+
+      const added = ops.filter(function(o) { return o.type === 'added' || o.type === 'changed'; }).length;
+      const removed = ops.filter(function(o) { return o.type === 'removed' || o.type === 'changed'; }).length;
+      const unchanged = ops.filter(function(o) { return o.type === 'unchanged'; }).length;
+      const changed = ops.filter(function(o) { return o.type === 'changed'; }).length;
+
+      const totalChanges = added + removed - changed;
+      statsDiv.classList.remove('hidden');
+
+      if (added === 0 && removed === 0) {
+        statsDiv.innerHTML = 'No differences found — the texts are identical.';
+      } else {
+        statsDiv.innerHTML = '<span class="font-medium">' + totalChanges + ' change' + (totalChanges !== 1 ? 's' : '') + '</span> &middot; <span class="text-green-600">+' + added + '</span> <span class="text-red-600">-' + removed + '</span> <span class="text-amber-600">~' + changed + '</span> &middot; ' + unchanged + ' line' + (unchanged !== 1 ? 's' : '') + ' unchanged &middot; ' + oldLines.length + ' original / ' + newLines.length + ' modified';
+      }
+
+      const unified = viewToggle.checked;
+      resultDiv.innerHTML = renderDiff(ops, unified);
+      resultDiv.classList.remove('hidden');
+    }
+
+    compareBtn.addEventListener('click', runDiff);
+
+    [originalTextarea, modifiedTextarea].forEach(function(el) {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          runDiff();
+        }
+      });
+    });
+
+    clearBtn.addEventListener('click', function() {
+      originalTextarea.value = '';
+      modifiedTextarea.value = '';
+      resultDiv.classList.add('hidden');
+      statsDiv.classList.add('hidden');
+      originalTextarea.focus();
+    });
+
+    viewToggle.addEventListener('change', function() {
+      if (!resultDiv.classList.contains('hidden')) {
+        runDiff();
+      }
+    });
+  </script>
+</ToolLayout>

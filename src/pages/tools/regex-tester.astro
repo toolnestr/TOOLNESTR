@@ -1,0 +1,294 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Regex Tester';
+const description = 'Test regular expressions in real-time with match highlighting, capture groups, and flags.';
+const intro = 'Test regular expressions in real-time with match highlighting and groups.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'What regex engine is used?', a: 'JavaScript\'s built-in RegExp engine — matches ECMAScript regex syntax.' },
+  { q: 'What flags are available?', a: 'g (global), i (case-insensitive), m (multiline), s (dotall), u (unicode), y (sticky).' },
+  { q: 'Does it support lookahead/lookbehind?', a: 'Yes — JS supports both positive/negative lookahead (?=) and lookbehind (?<=).' },
+  { q: 'Can I test against multiple lines?', a: 'Yes — paste multi-line text and use the m flag for ^/$ per-line matching.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div>
+      <label for="pattern" class="block text-sm font-medium text-slate-700">Regex pattern</label>
+      <input id="pattern" type="text" placeholder="e.g. \d+ or \b\w{5}\b" value="\b\w{5}\b" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      <div id="error-msg" class="mt-1 hidden rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700"></div>
+    </div>
+
+    <fieldset>
+      <legend class="text-sm font-medium text-slate-700">Flags</legend>
+      <div class="mt-1 flex flex-wrap gap-3">
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="g" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> g</label>
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="i" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> i</label>
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="m" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> m</label>
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="s" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> s</label>
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="u" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> u</label>
+        <label class="flex items-center gap-1.5 text-sm text-slate-600"><input type="checkbox" name="flags" value="y" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" /> y</label>
+      </div>
+    </fieldset>
+
+    <div>
+      <label for="test-string" class="block text-sm font-medium text-slate-700">Test string</label>
+      <textarea id="test-string" rows="5" placeholder="Paste or type the text to search against…" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">The quick brown fox jumps over the lazy dog</textarea>
+    </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="flex items-baseline justify-between">
+        <h3 class="text-sm font-medium text-slate-700">Matches</h3>
+        <span id="match-count" class="text-xs text-slate-400">0 matches</span>
+      </div>
+      <div id="highlighted" class="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 font-mono text-sm leading-relaxed text-slate-800"></div>
+    </div>
+
+    <div id="results-list" class="space-y-2"></div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="regex-svg-title regex-svg-desc">
+      <title id="regex-svg-title">Regex matching diagram</title>
+      <desc id="regex-svg-desc">The pattern \b\w&#123;5&#125;\b is shown above sample text, with arrows pointing to the matched five-letter words "quick" and "jumps"</desc>
+      <rect x="50" y="12" width="700" height="36" rx="8" fill="#eef2ff" stroke="#818cf8" stroke-width="1.5" />
+      <text x="400" y="36" text-anchor="middle" fill="#4338ca" font-family="monospace, sans-serif" font-size="15" font-weight="600">\b \w &#123; 5 &#125; \b</text>
+
+      <text x="120" y="85" font-family="monospace, sans-serif" font-size="14" fill="#64748b">The <tspan fill="#d97706" font-weight="700">quick</tspan> brown <tspan fill="#d97706" font-weight="700">jumps</tspan> over the lazy dog</text>
+
+      <line x1="160" y1="90" x2="160" y2="110" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="258" y1="90" x2="258" y2="110" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="320" y1="90" x2="320" y2="110" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="420" y1="90" x2="420" y2="110" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="4,3" />
+
+      <rect x="135" y="112" width="50" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1" />
+      <text x="160" y="127" text-anchor="middle" fill="#92400e" font-family="monospace, sans-serif" font-size="11">quick</text>
+      <rect x="395" y="112" width="50" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1" />
+      <text x="420" y="127" text-anchor="middle" fill="#92400e" font-family="monospace, sans-serif" font-size="11">jumps</text>
+
+      <line x1="160" y1="134" x2="160" y2="150" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="420" y1="134" x2="420" y2="150" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="160" y1="150" x2="420" y2="150" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,3" />
+      <line x1="290" y1="150" x2="290" y2="160" stroke="#cbd5e1" stroke-width="1" />
+
+      <rect x="245" y="160" width="90" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="290" y="176" text-anchor="middle" fill="#64748b" font-family="monospace, sans-serif" font-size="11">match index 0</text>
+
+      <rect x="545" y="160" width="100" height="24" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <text x="595" y="176" text-anchor="middle" fill="#64748b" font-family="monospace, sans-serif" font-size="11">match index 1</text>
+      <line x1="420" y1="134" x2="595" y2="160" stroke="#cbd5e1" stroke-width="1" />
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Pattern <code class="font-mono text-xs">\b\w&#123;5&#125;\b</code> matches five-letter words in the input</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How regex patterns work</h2>
+    <p class="mt-2 text-slate-600">Regular expressions are patterns used to match character combinations in strings. A pattern consists of literal characters and metacharacters that describe what to search for. Literal characters like <code class="font-mono text-xs">a</code>, <code class="font-mono text-xs">1</code>, or <code class="font-mono text-xs">hello</code> match themselves exactly — they are the simplest form of a regex pattern. Metacharacters add matching power: <code class="font-mono text-xs">.</code> matches any single character, <code class="font-mono text-xs">\d</code> matches any digit, <code class="font-mono text-xs">\w</code> matches any word character (letter, digit, or underscore), and <code class="font-mono text-xs">\s</code> matches any whitespace character (space, tab, newline).</p>
+    <p class="mt-3 text-slate-600">Anchors let you specify position within the string: <code class="font-mono text-xs">^</code> matches the start of a string (or line with the m flag), <code class="font-mono text-xs">$</code> matches the end, and <code class="font-mono text-xs">\b</code> matches a word boundary — the position between a word character and a non-word character. Quantifiers control repetition: <code class="font-mono text-xs">+</code> means one or more, <code class="font-mono text-xs">*</code> means zero or more, <code class="font-mono text-xs">?</code> means zero or one, and <code class="font-mono text-xs">&#123;n,m&#125;</code> specifies an exact range. Combining these building blocks lets you express a wide variety of text patterns concisely.</p>
+    <p class="mt-3 text-slate-600">Groups and character classes add further precision. A character class like <code class="font-mono text-xs">[aeiou]</code> matches any single vowel, while <code class="font-mono text-xs">[^aeiou]</code> matches any non-vowel. Parentheses <code class="font-mono text-xs">(...)</code> create capturing groups that extract the matched portion for later use, and <code class="font-mono text-xs">(?:...)</code> creates non-capturing groups that group without capturing. Alternation with <code class="font-mono text-xs">|</code> lets you match one of several patterns — <code class="font-mono text-xs">cat|dog</code> matches either "cat" or "dog".</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked examples</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm"><span class="font-medium text-slate-700">Pattern:</span> <code class="ml-1 font-mono text-xs text-indigo-700">\b\w&#123;5&#125;\b</code></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Input:</span> <span class="text-slate-600">"The quick brown fox jumps over the lazy dog"</span></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Matches:</span> <span class="text-slate-600">"quick" (index 4), "jumps" (index 26) — two 5-letter words</span></div>
+        <p class="mt-2 text-xs text-slate-500"><code class="font-mono">\b</code> matches a word boundary, <code class="font-mono">\w&#123;5&#125;</code> matches exactly five word characters, and the second <code class="font-mono">\b</code> ensures the match ends at a boundary. This finds all five-letter words in the text.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm"><span class="font-medium text-slate-700">Pattern:</span> <code class="ml-1 font-mono text-xs text-indigo-700">\d&#123;3&#125;-\d&#123;4&#125;</code></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Input:</span> <span class="text-slate-600">"Call 555-1234 or 888-5678 for support"</span></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Matches:</span> <span class="text-slate-600">"555-1234" (index 5), "888-5678" (index 20) — phone number fragments</span></div>
+        <p class="mt-2 text-xs text-slate-500"><code class="font-mono">\d&#123;3&#125;</code> matches exactly three digits, the hyphen is a literal character, and <code class="font-mono">\d&#123;4&#125;</code> matches exactly four digits. This pattern matches phone number trailing portions in the format XXX-XXXX.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-sm"><span class="font-medium text-slate-700">Pattern:</span> <code class="ml-1 font-mono text-xs text-indigo-700">^[A-Z].*\.$</code></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Input:</span> <span class="text-slate-600">"Hello world. this is a test sentence."</span></div>
+        <div class="mt-1 text-sm"><span class="font-medium text-slate-700">Match:</span> <span class="text-slate-600">"Hello world." — a sentence starting with a capital letter and ending with a period</span></div>
+        <p class="mt-2 text-xs text-slate-500">The <code class="font-mono">^</code> anchor requires the match to start at the beginning of the string, <code class="font-mono">[A-Z]</code> matches an uppercase letter, <code class="font-mono">.*</code> matches any characters in between, and <code class="font-mono">\.$</code> requires the string to end with a literal period.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for regex</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F50D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Form validation</h3>
+        <p class="mt-1 text-sm text-slate-600">Validate user input like email addresses, phone numbers, ZIP codes, and passwords on the client side before submission. Regex provides instant feedback without a round trip to the server.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F4CB;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Log parsing</h3>
+        <p class="mt-1 text-sm text-slate-600">Extract structured data from unstructured log files — timestamps, IP addresses, HTTP status codes, error messages, and stack traces. Regex is the standard tool for ad-hoc log analysis.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F504;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Find and replace</h3>
+        <p class="mt-1 text-sm text-slate-600">Transform text across large codebases or documents. Rename variables, normalize date formats, fix whitespace issues, or restructure data using regex capture groups in the replacement pattern.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F4CA;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Data extraction</h3>
+        <p class="mt-1 text-sm text-slate-600">Scrape or extract specific data from HTML, JSON, CSV, or plain text. Extract all URLs from a page, pull out phone numbers from a document, or grab specific fields from structured text.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for writing robust regex</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Beware of catastrophic backtracking</h3>
+        <p class="mt-1 text-sm text-slate-600">Nested quantifiers like <code class="font-mono text-xs">(a+)+b</code> can cause exponential backtracking when applied to strings that nearly match but fail. On input like "aaaaaaaaac", the engine tries every possible way to split the "a"s between the inner and outer <code class="font-mono text-xs">+</code> before giving up. This can freeze your browser or crash your application. Use atomic groups <code class="font-mono text-xs">(?>...)</code> or possessive quantifiers where supported, or rewrite the pattern to be unambiguous.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Test edge cases</h3>
+        <p class="mt-1 text-sm text-slate-600">Always test your regex against edge cases: empty strings, very long strings, strings with special characters, strings that almost match but fail at the last character, and strings with multiple possible matches. What looks correct intuitively may fail on unexpected input. Keep a small set of test cases that exercise boundaries.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Think in terms of delimiters</h3>
+        <p class="mt-1 text-sm text-slate-600">When constructing a regex pattern mentally, imagine it between two forward slashes <code class="font-mono text-xs">/pattern/flags</code>. The pattern itself contains only the matching logic — no quotes, no escape sequences for the host language. Backslashes in the pattern are part of the regex syntax, not JavaScript string escapes. Use raw strings or double-escape when writing regex in code strings.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Start simple and iterate</h3>
+        <p class="mt-1 text-sm text-slate-600">Begin with the simplest pattern that captures your data, then add constraints incrementally. Test each addition against all your test cases. Complex regex built in one pass is almost always wrong. Build up from a solid foundation and verify each step.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Regular expression flag reference</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Flag</th><th class="p-3">Name</th><th class="p-3">Effect</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">g</td><td class="p-3">Global</td><td class="p-3">Find all matches instead of stopping at the first</td></tr>
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">i</td><td class="p-3">Case-insensitive</td><td class="p-3">Ignore case when matching letters — "A" matches "a"</td></tr>
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">m</td><td class="p-3">Multiline</td><td class="p-3">^ and $ match the start/end of each line, not just the string</td></tr>
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">s</td><td class="p-3">Dotall</td><td class="p-3">The . metacharacter matches newline characters as well</td></tr>
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">u</td><td class="p-3">Unicode</td><td class="p-3">Enable Unicode features — treat source as a sequence of Unicode code points</td></tr>
+          <tr><td class="p-3 font-mono font-medium text-indigo-700">y</td><td class="p-3">Sticky</td><td class="p-3">Match only from the lastIndex position (used with global for incremental scanning)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-indigo-50 p-6">
+    <h2 class="text-xl font-bold text-indigo-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/yaml-validator" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F4C4; YAML Validator</a>
+      <a href="/tools/sql-formatter" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F4DD; SQL Formatter</a>
+      <a href="/tools/diff-checker" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F500; Diff Checker</a>
+    </div>
+  </section>
+</ToolLayout>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const pattern = document.getElementById('pattern');
+    const testStr = document.getElementById('test-string');
+    const flags = document.querySelectorAll('input[name="flags"]');
+    const errorMsg = document.getElementById('error-msg');
+    const matchCount = document.getElementById('match-count');
+    const highlighted = document.getElementById('highlighted');
+    const resultsList = document.getElementById('results-list');
+
+    function getFlags() {
+      let s = '';
+      for (const cb of flags) {
+        if (cb.checked) s += cb.value;
+      }
+      return s;
+    }
+
+    function htmlEncode(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function update() {
+      const pat = pattern.value;
+      const text = testStr.value;
+      const flagStr = getFlags();
+
+      errorMsg.classList.add('hidden');
+      highlighted.innerHTML = '';
+      resultsList.innerHTML = '';
+      matchCount.textContent = '0 matches';
+
+      if (!pat || !text) return;
+
+      let re;
+      try {
+        re = new RegExp(pat, flagStr.includes('g') ? flagStr : flagStr + 'g');
+      } catch (e) {
+        errorMsg.textContent = e.message;
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      const matches = [];
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        const groups = [];
+        for (let i = 1; i < m.length; i++) {
+          groups.push({ index: i, value: m[i] });
+        }
+        matches.push({ full: m[0], index: m.index, groups });
+        if (!re.global) break;
+      }
+
+      matchCount.textContent = matches.length + ' match' + (matches.length !== 1 ? 'es' : '');
+
+      if (matches.length === 0) {
+        highlighted.innerHTML = '<span class="text-slate-400">No matches found</span>';
+        return;
+      }
+
+      let html = '';
+      let last = 0;
+      for (const match of matches) {
+        if (match.index > last) {
+          html += htmlEncode(text.slice(last, match.index));
+        }
+        html += '<mark class="bg-yellow-200 rounded px-0.5">' + htmlEncode(match.full) + '</mark>';
+        last = match.index + match.full.length;
+      }
+      if (last < text.length) {
+        html += htmlEncode(text.slice(last));
+      }
+      highlighted.innerHTML = html;
+
+      let listHtml = '';
+      for (let i = 0; i < matches.length; i++) {
+        const m = matches[i];
+        listHtml += '<div class="rounded-lg border border-slate-100 bg-white p-3 text-sm">';
+        listHtml += '<div class="flex items-baseline gap-2"><span class="font-medium text-indigo-700">#' + (i + 1) + '</span>';
+        listHtml += '<span class="font-mono text-xs text-slate-400">index ' + m.index + '</span></div>';
+        listHtml += '<div class="mt-1 font-mono text-sm text-slate-800">' + htmlEncode(m.full) + '</div>';
+        if (m.groups.length > 0) {
+          listHtml += '<div class="mt-1 space-y-0.5">';
+          for (const g of m.groups) {
+            listHtml += '<div class="text-xs text-slate-500">Group ' + g.index + ': <span class="font-mono text-slate-700">' + (g.value !== null ? htmlEncode(g.value) : '<span class="text-slate-400">undefined</span>') + '</span></div>';
+          }
+          listHtml += '</div>';
+        }
+        listHtml += '</div>';
+      }
+      resultsList.innerHTML = listHtml;
+    }
+
+    pattern.addEventListener('input', update);
+    testStr.addEventListener('input', update);
+    for (const cb of flags) {
+      cb.addEventListener('change', update);
+    }
+
+    update();
+  });
+</script>

@@ -1,0 +1,790 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'SQL Formatter — Format SQL Queries Online Free';
+const description = 'Format SQL queries with customizable indentation and keyword case. Free online SQL formatter for MySQL, PostgreSQL, and more.';
+const intro = 'Paste your SQL query, choose your formatting options, and get clean, indented SQL in seconds.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'What SQL dialects are supported?', a: 'Standard SQL with support for MySQL, PostgreSQL, SQLite, and BigQuery syntax.' },
+  { q: 'Can I change keyword case?', a: 'Yes — toggle between UPPERCASE (SELECT), lowercase (select), or Capitalized (Select).' },
+  { q: 'Does it handle subqueries?', a: 'Yes — subqueries are indented and wrapped in parentheses with proper nesting.' },
+  { q: 'Is indentation customizable?', a: 'Yes — choose between 2-space, 4-space, or tab indentation.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="format-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Format</button>
+
+      <label class="ml-2 flex items-center gap-1 text-sm text-slate-500">
+        Keyword Case
+        <select id="keyword-case" class="rounded-md border border-slate-300 px-2 py-1 text-sm">
+          <option value="upper">UPPER</option>
+          <option value="lower">lower</option>
+          <option value="capitalize">Capitalize</option>
+        </select>
+      </label>
+
+      <label class="flex items-center gap-1 text-sm text-slate-500">
+        Indent
+        <select id="indent" class="rounded-md border border-slate-300 px-2 py-1 text-sm">
+          <option value="2">2 spaces</option>
+          <option value="4">4 spaces</option>
+          <option value="tab">Tab</option>
+        </select>
+      </label>
+
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <textarea
+      id="sql-input"
+      rows="10"
+      spellcheck="false"
+      placeholder={'SELECT id, name FROM users WHERE age > 18 ORDER BY name'}
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+      <div id="input-stats">Lines: 0 &middot; Chars: 0</div>
+    </div>
+
+    <textarea
+      id="sql-output"
+      rows="10"
+      readonly
+      spellcheck="false"
+      placeholder="Formatted SQL will appear here..."
+      class="mt-3 w-full resize-y rounded-xl border border-slate-300 bg-slate-50 p-4 font-mono text-sm leading-relaxed text-slate-700 outline-none"
+    ></textarea>
+
+    <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+      <div id="output-stats">Lines: 0 &middot; Chars: 0</div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How SQL formatting works</h2>
+    <p class="mt-2 text-slate-600">SQL formatting rearranges your query by splitting it into tokens (keywords, identifiers, operators, strings, and parentheses), then reconstructing it with consistent line breaks and indentation. The formatter recognises SQL keywords and places each major clause on its own line, making the query structure immediately visible. Subqueries inside parentheses receive an additional level of indentation, creating a clear visual hierarchy that mirrors the logical nesting of your query.</p>
+    <p class="mt-3 text-slate-600">The tool applies line breaks before keywords such as SELECT, FROM, WHERE, JOIN, ON, AND, OR, ORDER BY, GROUP BY, HAVING, and LIMIT. Each clause is indented relative to its nesting depth, with keywords aligned at the current level and column names indented further. Parentheses trigger an indent increase when opened and a decrease when closed, so subqueries and nested expressions remain properly nested. String literals and comments are preserved exactly as written, regardless of the keyword case setting.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A single-line query reformatted with 2-space indentation and uppercase keywords.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Input:</span> <span class="text-slate-600 font-mono text-xs">SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id WHERE o.total &gt; 100 ORDER BY o.total DESC</span></div>
+        <div><span class="font-medium text-slate-700">Output:</span> <span class="text-slate-600 font-mono text-xs whitespace-pre">SELECT&#10;  u.name,&#10;  o.total&#10;FROM&#10;  users u&#10;  JOIN orders o ON u.id = o.user_id&#10;WHERE&#10;  o.total &gt; 100&#10;ORDER BY&#10;  o.total DESC</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="sql-title sql-desc">
+      <title id="sql-title">SQL Formatter Flow Diagram</title>
+      <desc id="sql-desc">A flow diagram showing a messy one-line SQL query being fed into a formatter and emerging as clean indented multi-line SQL</desc>
+      <rect x="40" y="30" width="200" height="120" rx="10" fill="#fef2f2" stroke="#f87171" stroke-width="2"/>
+      <text x="140" y="55" font-family="sans-serif" font-size="12" fill="#991b1b" text-anchor="middle" font-weight="bold">Messy SQL</text>
+      <text x="140" y="72" font-family="monospace" font-size="9" fill="#b91c1c" text-anchor="middle">SELECT id,name FROM</text>
+      <text x="140" y="85" font-family="monospace" font-size="9" fill="#b91c1c" text-anchor="middle">users WHERE age&gt;18</text>
+      <text x="140" y="98" font-family="monospace" font-size="9" fill="#b91c1c" text-anchor="middle">ORDER BY name LIMIT</text>
+      <text x="140" y="111" font-family="monospace" font-size="9" fill="#b91c1c" text-anchor="middle">10;</text>
+      <text x="140" y="132" font-family="sans-serif" font-size="9" fill="#ef4444" text-anchor="middle">single line, hard to read</text>
+      <line x1="240" y1="90" x2="290" y2="90" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="6 3"/>
+      <polygon points="290,85 305,90 290,95" fill="#6366f1"/>
+      <rect x="310" y="40" width="180" height="100" rx="12" fill="#6366f1"/>
+      <text x="400" y="65" font-family="sans-serif" font-size="13" fill="#ffffff" text-anchor="middle" font-weight="bold">Formatter</text>
+      <line x1="350" y1="78" x2="450" y2="78" stroke="#c7d2fe" stroke-width="1"/>
+      <text x="400" y="93" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">tokenize</text>
+      <text x="400" y="107" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">indent by nesting</text>
+      <text x="400" y="121" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">apply keyword case</text>
+      <line x1="490" y1="90" x2="540" y2="90" stroke="#6366f1" stroke-width="2.5"/>
+      <polygon points="540,85 555,90 540,95" fill="#6366f1"/>
+      <rect x="560" y="30" width="200" height="120" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+      <text x="660" y="55" font-family="sans-serif" font-size="12" fill="#166534" text-anchor="middle" font-weight="bold">Clean SQL</text>
+      <text x="660" y="73" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">SELECT</text>
+      <text x="660" y="86" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">  id,</text>
+      <text x="660" y="99" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">  name</text>
+      <text x="660" y="112" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">FROM</text>
+      <text x="660" y="125" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">  users</text>
+      <text x="660" y="138" font-family="monospace" font-size="9" fill="#16a34a" text-anchor="middle">WHERE age &gt; 18</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The formatter transforms a single-line SQL query into an indented, readable multi-line statement</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Supported SQL statements</h2>
+    <p class="mt-2 text-slate-600">The formatter handles all major SQL statement types used in modern database systems. Each statement is parsed for its structural keywords and formatted with appropriate line breaks and indentation. The tool recognises the following statement types and formats them according to their specific clause structure.</p>
+    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">SELECT queries</h3>
+        <p class="mt-1 text-sm text-slate-600">SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, JOIN, ON, AND, OR, IN, EXISTS, BETWEEN, LIKE, IS NULL, AS, DISTINCT, UNION, INTERSECT, EXCEPT, WITH (CTEs), subqueries.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">INSERT statements</h3>
+        <p class="mt-1 text-sm text-slate-600">INSERT INTO, VALUES, SELECT (subquery insert), ON DUPLICATE KEY UPDATE, RETURNING, INSERT with multiple row values each on their own line.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">UPDATE statements</h3>
+        <p class="mt-1 text-sm text-slate-600">UPDATE, SET (each assignment on its own line with comma), FROM, WHERE, JOIN in UPDATE, RETURNING, ORDER BY, LIMIT.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">DELETE statements</h3>
+        <p class="mt-1 text-sm text-slate-600">DELETE FROM, USING, WHERE, JOIN in DELETE, RETURNING, ORDER BY, LIMIT, TRUNCATE.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">CREATE / ALTER / DROP</h3>
+        <p class="mt-1 text-sm text-slate-600">CREATE TABLE, CREATE INDEX, CREATE VIEW, ALTER TABLE (ADD, DROP, MODIFY columns), DROP TABLE, DROP INDEX, DROP VIEW, column definitions and constraints.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Additional SQL constructs</h3>
+        <p class="mt-1 text-sm text-slate-600">MERGE, REPLACE, CASE WHEN, window functions (OVER, PARTITION BY, ROW_NUMBER, RANK), CTEs (WITH), UNION, INTERSECT, EXCEPT, EXISTS, and correlated subqueries.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Keyword</th><th class="p-3">Formatting Rule</th><th class="p-3">Example Placement</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">SELECT</td><td class="p-3">New line, indent columns</td><td class="p-3 font-mono text-xs">\nSELECT\n  col1,\n  col2</td></tr>
+        <tr><td class="p-3 font-medium">FROM</td><td class="p-3">New line, same level as SELECT</td><td class="p-3 font-mono text-xs">\nFROM\n  table</td></tr>
+        <tr><td class="p-3 font-medium">WHERE</td><td class="p-3">New line, indent conditions</td><td class="p-3 font-mono text-xs">\nWHERE\n  col &gt; 1</td></tr>
+        <tr><td class="p-3 font-medium">JOIN / ON</td><td class="p-3">New line before JOIN, ON after</td><td class="p-3 font-mono text-xs">\n  JOIN t2 ON t1.id = t2.id</td></tr>
+        <tr><td class="p-3 font-medium">ORDER BY</td><td class="p-3">New line, indent columns</td><td class="p-3 font-mono text-xs">\nORDER BY\n  col DESC</td></tr>
+        <tr><td class="p-3 font-medium">GROUP BY</td><td class="p-3">New line, indent columns</td><td class="p-3 font-mono text-xs">\nGROUP BY\n  col</td></tr>
+        <tr><td class="p-3 font-medium">AND / OR</td><td class="p-3">New line in WHERE/HAVING/ON</td><td class="p-3 font-mono text-xs">\n  AND col = 2</td></tr>
+        <tr><td class="p-3 font-medium">SET</td><td class="p-3">New line, indent assignments</td><td class="p-3 font-mono text-xs">\nSET\n  col = 1,</td></tr>
+        <tr><td class="p-3 font-medium">VALUES</td><td class="p-3">New line, indent row tuples</td><td class="p-3 font-mono text-xs">\nVALUES\n  (1, 'a'),</td></tr>
+        <tr><td class="p-3 font-medium">( ... )</td><td class="p-3">Increase / decrease indent</td><td class="p-3 font-mono text-xs">(\n  subquery\n)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for SQL formatting</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Reviewing team pull requests</h3>
+        <p class="mt-1 text-sm text-slate-600">Code reviews involving SQL changes are significantly faster when queries are consistently formatted. A well-indented query lets reviewers immediately see the query structure, spot missing joins, incorrect WHERE conditions, or misplaced GROUP BY clauses without having to mentally parse a single-line query. Formatting SQL before submitting a PR is a courtesy to your reviewers and reduces the back-and-forth of review comments about readability. Many teams include SQL formatting as part of their coding standards checklist, and running a query through this formatter before commit ensures compliance without requiring a database connection.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Debugging complex queries</h3>
+        <p class="mt-1 text-sm text-slate-600">When a query returns unexpected results or runs slowly, the first debugging step is understanding what the query actually does. Formatting reveals the logical structure: which tables are joined, what conditions filter the data, how aggregation is applied, and what ordering is used. A formatted query makes it easy to trace through the execution mentally or to explain the query to a colleague. Performance issues such as missing WHERE clauses, unintended Cartesian joins, or inefficient subqueries become obvious when the query is laid out clearly. Developers frequently paste an unreadable production query into the formatter as the first step in investigating a bug report.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Improving query readability in documentation</h3>
+        <p class="mt-1 text-sm text-slate-600">Technical documentation, tutorials, blog posts, and database schema documentation all benefit from cleanly formatted SQL examples. A formatted query is easier for readers to understand and follow, especially for beginners who are still learning SQL syntax. When writing documentation that includes SQL examples, run each query through the formatter first to ensure consistent presentation. This improves the professional quality of your documentation and reduces confusion for readers who may try to run the examples in their own database.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Preparing queries for sharing</h3>
+        <p class="mt-1 text-sm text-slate-600">When sharing SQL queries on Stack Overflow, in GitHub issues, in Slack messages, or in database forum posts, formatting makes your question clearer and increases the likelihood of getting helpful answers. A well-formatted query shows that you have put effort into presenting the problem clearly. It also helps respondents quickly identify syntax errors, logical mistakes, or optimisation opportunities. Format your SQL before copying it into a support ticket or community question to get better, faster responses from the community.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sarah Chen</h3>
+      <p class="mt-1 text-sm text-slate-600">Backend developer who formats SQL queries before committing them to the shared repository so team members can review changes quickly without parsing messy one-liners.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F468;&#x200D;&#x1F4BC;</span>
+      <h3 class="mt-2 font-semibold text-slate-600">Marcus Johnson</h3>
+      <p class="mt-1 text-sm text-slate-600">Data analyst who formats complex reporting queries to verify joins and aggregations before scheduling them in the ETL pipeline to run daily.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F9D1;&#x200D;&#x1F527;</span>
+      <h3 class="mt-2 font-semibold text-slate-600">Priya Patel</h3>
+      <p class="mt-1 text-sm text-slate-600">Database administrator who formats ad-hoc queries from developers to understand and optimise slow-running queries in production databases.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-600">Alex Kowalski</h3>
+      <p class="mt-1 text-sm text-slate-600">Computer science student who formats SQL assignment queries to check syntax and better understand the relationship between clauses and subqueries.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for writing readable SQL</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Format before sharing</h3>
+        <p class="mt-1 text-sm text-slate-600">Always format your SQL before pasting it into a code review, documentation, or a support question. A formatted query communicates that you care about clarity and respect your reader's time. In team environments, establish a consistent formatting standard and use this tool to enforce it without requiring a database connection or IDE plugin.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consistent style helps debugging</h3>
+        <p class="mt-1 text-sm text-slate-600">Adopting a consistent SQL style across your projects reduces cognitive load when switching between different queries or databases. When every query follows the same indentation and case conventions, you can focus on the logic rather than parsing the formatting. Debugging a formatted query is faster because the structure is immediately visible: you can trace the FROM clause, check the JOIN conditions, verify the WHERE filters, and confirm the ORDER BY columns without scrolling horizontally or mentally inserting line breaks.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Subqueries auto-indent</h3>
+        <p class="mt-1 text-sm text-slate-600">Subqueries are automatically indented one level deeper than their parent query, making it easy to distinguish outer query clauses from inner query clauses. Each opening parenthesis increases the indent level and each closing parenthesis decreases it, so deeply nested subqueries remain readable up to any practical nesting depth.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Use meaningful aliases</h3>
+        <p class="mt-1 text-sm text-slate-600">Table and column aliases should be meaningful and concise. Avoid single-letter aliases like a, b, c in queries with more than a few tables. Use descriptive aliases like ord for orders, cust for customers, or prod for products. Good aliases combined with clean formatting make queries self-documenting and reduce the need for inline comments explaining what each table represents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why SQL formatting matters</h2>
+    <p class="mt-2 text-slate-600">SQL formatting is not just about aesthetics — it directly impacts developer productivity, code review quality, and the maintainability of database code. In professional software engineering environments, SQL queries can span hundreds of lines with multiple joins, subqueries, CTEs, and complex WHERE conditions. Without consistent formatting, these queries become difficult to read, error-prone to modify, and time-consuming to review. A formatted query reveals its logical structure at a glance, allowing developers to understand what data is being requested and how it is being transformed without reading every token.</p>
+    <p class="mt-3 text-slate-600">Code reviews benefit immensely from formatted SQL. When a pull request contains SQL changes, reviewers need to verify that the query logic is correct, that joins are properly conditioned, that aggregations make sense, and that the query will perform efficiently. An unformatted query forces the reviewer to spend mental energy on parsing the text itself rather than evaluating the logic. Formatting eliminates this overhead, making reviews faster, more thorough, and less frustrating. Teams that adopt SQL formatting standards report fewer review cycles per PR and higher confidence in SQL-related changes.</p>
+    <p class="mt-3 text-slate-600">Query debugging and troubleshooting are another area where formatting pays dividends. When a production incident involves a slow or incorrect query, the first thing an engineer does is look at the query text. A formatted query allows the engineer to quickly identify which tables are involved, what filters are applied, and what sorting or aggregation is happening. This rapid comprehension can shave minutes off the mean time to resolution (MTTR) for database-related incidents. In high-traffic production environments where every minute of downtime costs significant revenue, these minutes add up quickly.</p>
+    <p class="mt-3 text-slate-600">SQL formatting also plays a role in knowledge sharing and team onboarding. New team members who are learning the database schema benefit from seeing well-formatted example queries that clearly show how tables relate to each other and how data flows through the query. Consistent formatting reduces the learning curve for new hires and helps them become productive contributors more quickly. When all queries in a codebase follow the same formatting conventions, the codebase as a whole is more approachable and easier to maintain over time.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the SQL formatter handles different SQL constructs</h2>
+    <p class="mt-2 text-slate-600">The formatter processes SQL by tokenising the input string and rebuilding it with formatting rules applied at the token level. Comments (both single-line -- and multi-line /* */) are preserved verbatim without reformatting. String literals wrapped in single quotes, double quotes, or backticks are treated as atomic tokens and left unchanged. Numeric literals, operators, and punctuation are handled according to their context within the query structure.</p>
+    <p class="mt-3 text-slate-600">Parentheses are tracked with a nesting stack. Each opening parenthesis increases the current indent level, and each closing parenthesis decreases it. The opening parenthesis is placed at the end of the current line, and the content inside is indented by one additional level. This ensures that subqueries, inline views, and expression groupings are visually distinct. Commas in SELECT lists and SET clauses trigger a line break so each column or assignment appears on its own line. Keywords such as AND and OR are placed at the start of a new line within WHERE, HAVING, and ON clauses, making the logical chain of conditions easy to follow.</p>
+    <p class="mt-3 text-slate-600">The keyword case setting is applied after the formatting structure is determined. Uppercase mode converts all recognised SQL keywords to uppercase, lowercase mode converts them to lowercase, and capitalize mode capitalises the first letter of each keyword. Identifiers, aliases, string literals, and comments are never modified by the case setting, preserving the original casing of table names, column names, and user-supplied text. This means you can use the formatter to standardise keyword casing across a team without worrying about accidentally changing the meaning of database identifiers.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">SQL formatter implementation approach</h2>
+    <p class="mt-3 text-slate-600">Unlike JSON or XML formatters that rely on a structured parser, an SQL formatter works at the lexical level by recognising keywords and structural tokens. The implementation first splits the input SQL into individual tokens, where each token is either a keyword, an identifier, a string literal, a number, an operator, a parenthesis, or a comment. Tokens are identified by scanning the input character by character, grouping characters into tokens based on SQL lexical rules.</p>
+    <p class="mt-3 text-slate-600">Once tokenised, the formatter walks through the token list and builds the formatted output line by line. When it encounters a major keyword (SELECT, FROM, WHERE, etc.), it emits a newline and the current indent level before the keyword. When it encounters a comma at a clause boundary, it emits a newline with an extra indent. Parentheses trigger indent level changes and appropriate line breaks. The result is a query that mirrors the structural decisions a human would make when formatting SQL by hand, but applied consistently and without errors.</p>
+    <p class="mt-3 text-slate-600">The formatter handles edge cases such as leading/trailing whitespace, multiple consecutive spaces, empty input, and semicolons. It does not attempt to validate the SQL — it will format any text that looks like SQL, leaving validation to the database engine. This means you can format incomplete queries or queries with syntax errors during development, and the formatter will still produce readable output that helps you spot the mistake.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Security and privacy</h2>
+    <p class="mt-2 text-slate-600">This SQL formatter processes all data entirely within your browser. Your SQL queries are never sent to any server, stored in any database, or logged in any system. The formatting logic runs locally using JavaScript's string processing capabilities, ensuring that sensitive data such as customer information in queries, proprietary database schemas, or business-critical query logic never leaves your device.</p>
+    <p class="mt-3 text-slate-600">Because all processing is local, there are no data retention policies, server logs, or third-party analytics to track your queries. The tool does not use cookies, tracking scripts, or external services in connection with its core functionality. You can confidently format queries containing confidential data, production database names, or internal business logic without risk of exposure or data leakage.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-indigo-50 p-6">
+    <h2 class="text-xl font-bold text-indigo-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/json-formatter" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F4CB; JSON Formatter</a>
+      <a href="/tools/yaml-validator" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F4C4; YAML Validator</a>
+      <a href="/tools/text-diff-checker" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F504; Diff Checker</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var el = function (id) { return document.getElementById(id); };
+
+      var input = el('sql-input');
+      var output = el('sql-output');
+      var status = el('status');
+      var formatBtn = el('format-btn');
+      var copyBtn = el('copy-btn');
+      var clearBtn = el('clear-btn');
+      var keywordCase = el('keyword-case');
+      var indentSel = el('indent');
+      var inputStats = el('input-stats');
+      var outputStats = el('output-stats');
+
+      var majorKeywords = [
+        'SELECT', 'FROM', 'WHERE', 'SET', 'VALUES',
+        'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET',
+        'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'FULL OUTER JOIN',
+        'LEFT OUTER JOIN', 'RIGHT OUTER JOIN', 'CROSS JOIN', 'NATURAL JOIN',
+        'ON', 'AND', 'OR',
+        'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
+        'RETURNING', 'USING',
+      ];
+
+      var clauseStarters = [
+        'SELECT', 'FROM', 'WHERE', 'SET', 'VALUES',
+        'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET',
+        'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'FULL OUTER JOIN',
+        'LEFT OUTER JOIN', 'RIGHT OUTER JOIN', 'CROSS JOIN', 'NATURAL JOIN',
+        'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
+        'RETURNING', 'USING',
+      ];
+
+      var keywordsAndClauses = [
+        'SELECT', 'FROM', 'WHERE', 'SET', 'VALUES',
+        'ORDER BY', 'GROUP BY', 'HAVING', 'LIMIT', 'OFFSET',
+        'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'FULL OUTER JOIN',
+        'LEFT OUTER JOIN', 'RIGHT OUTER JOIN', 'CROSS JOIN', 'NATURAL JOIN',
+        'ON', 'AS', 'AND', 'OR', 'IN', 'NOT IN', 'EXISTS', 'NOT EXISTS',
+        'BETWEEN', 'LIKE', 'ILIKE', 'IS NULL', 'IS NOT NULL', 'IS',
+        'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
+        'RETURNING', 'USING', 'DISTINCT', 'ALL',
+        'ASC', 'DESC', 'NULLS FIRST', 'NULLS LAST',
+        'INSERT INTO', 'UPDATE', 'DELETE FROM', 'TRUNCATE', 'CREATE TABLE',
+        'CREATE INDEX', 'CREATE VIEW', 'CREATE', 'ALTER TABLE', 'ALTER',
+        'DROP TABLE', 'DROP INDEX', 'DROP VIEW', 'DROP',
+        'ADD', 'MODIFY', 'COLUMN', 'CONSTRAINT', 'PRIMARY KEY',
+        'FOREIGN KEY', 'REFERENCES', 'UNIQUE', 'CHECK', 'DEFAULT',
+        'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+        'OVER', 'PARTITION BY', 'ROW_NUMBER', 'RANK', 'DENSE_RANK',
+        'LEAD', 'LAG', 'FIRST_VALUE', 'LAST_VALUE',
+        'MERGE', 'REPLACE', 'WITH', 'RECURSIVE',
+      ];
+
+      var allKeywords = keywordsAndClauses.slice();
+
+      function getIndentStr() {
+        var v = indentSel.value;
+        if (v === 'tab') return '\t';
+        return new Array(Number(v) + 1).join(' ');
+      }
+
+      function applyCase(word) {
+        var mode = keywordCase.value;
+        if (mode === 'upper') return word.toUpperCase();
+        if (mode === 'lower') return word.toLowerCase();
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }
+
+      function showStatus(msg, ok) {
+        status.textContent = msg;
+        status.className =
+          'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' +
+          (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+        status.classList.remove('hidden');
+      }
+
+      function updateStats() {
+        var inText = input.value;
+        inputStats.textContent = 'Lines: ' + (inText ? inText.split('\n').length : 0) + ' \u00B7 Chars: ' + inText.length;
+        var outText = output.value;
+        outputStats.textContent = 'Lines: ' + (outText ? outText.split('\n').length : 0) + ' \u00B7 Chars: ' + outText.length;
+      }
+
+      input.addEventListener('input', function () {
+        updateStats();
+        if (status.classList.contains('hidden') === false) {
+          status.classList.add('hidden');
+        }
+      });
+
+      function tokenize(sql) {
+        var tokens = [];
+        var i = 0;
+        var len = sql.length;
+
+        while (i < len) {
+          var ch = sql[i];
+
+          if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+            var ws = '';
+            while (i < len && (sql[i] === ' ' || sql[i] === '\t' || sql[i] === '\n' || sql[i] === '\r')) {
+              ws += sql[i];
+              i++;
+            }
+            tokens.push({ type: 'whitespace', value: ws });
+            continue;
+          }
+
+          if (ch === '-' && i + 1 < len && sql[i + 1] === '-') {
+            var comment = '';
+            while (i < len && sql[i] !== '\n') {
+              comment += sql[i];
+              i++;
+            }
+            tokens.push({ type: 'comment', value: comment });
+            continue;
+          }
+
+          if (ch === '/' && i + 1 < len && sql[i + 1] === '*') {
+            var blockComment = '/*';
+            i += 2;
+            while (i + 1 < len && !(sql[i] === '*' && sql[i + 1] === '/')) {
+              blockComment += sql[i];
+              i++;
+            }
+            if (i + 1 < len) {
+              blockComment += '*/';
+              i += 2;
+            }
+            tokens.push({ type: 'comment', value: blockComment });
+            continue;
+          }
+
+          if (ch === "'" || ch === '"' || ch === '`') {
+            var quote = ch;
+            var str = quote;
+            i++;
+            while (i < len) {
+              if (sql[i] === '\\' && i + 1 < len) {
+                str += sql[i] + sql[i + 1];
+                i += 2;
+                continue;
+              }
+              if (sql[i] === quote) {
+                if (i + 1 < len && sql[i + 1] === quote) {
+                  str += sql[i] + sql[i + 1];
+                  i += 2;
+                  continue;
+                }
+                str += quote;
+                i++;
+                break;
+              }
+              str += sql[i];
+              i++;
+            }
+            tokens.push({ type: 'string', value: str });
+            continue;
+          }
+
+          if (ch === '(' || ch === ')') {
+            tokens.push({ type: 'paren', value: ch });
+            i++;
+            continue;
+          }
+
+          if (ch === ';') {
+            tokens.push({ type: 'semicolon', value: ';' });
+            i++;
+            continue;
+          }
+
+          if (ch === ',') {
+            tokens.push({ type: 'comma', value: ',' });
+            i++;
+            continue;
+          }
+
+          if (ch === '.' || ch === '*' || ch === '=' || ch === '!' || ch === '<' || ch === '>' || ch === '+' || ch === '-' || ch === '/' || ch === '%') {
+            var op = ch;
+            i++;
+            if ((ch === '!' || ch === '<' || ch === '>' || ch === '=') && i < len && sql[i] === '=') {
+              op += '=';
+              i++;
+            }
+            tokens.push({ type: 'operator', value: op });
+            continue;
+          }
+
+          if (/[0-9]/.test(ch) || (ch === '-' && i + 1 < len && /[0-9]/.test(sql[i + 1]))) {
+            var num = '';
+            if (ch === '-') { num += '-'; i++; }
+            while (i < len && (/[0-9.]/.test(sql[i]) || sql[i].toLowerCase() === 'e')) {
+              num += sql[i];
+              i++;
+            }
+            tokens.push({ type: 'number', value: num });
+            continue;
+          }
+
+          var word = '';
+          while (i < len && /[a-zA-Z0-9_]/.test(sql[i])) {
+            word += sql[i];
+            i++;
+          }
+
+          if (word) {
+            var upper = word.toUpperCase();
+            tokens.push({ type: 'word', value: word, upper: upper });
+            continue;
+          }
+
+          tokens.push({ type: 'other', value: ch });
+          i++;
+        }
+
+        return tokens;
+      }
+
+      function mergeMultiWordKeywords(tokens) {
+        var merged = [];
+        var i = 0;
+        while (i < tokens.length) {
+          if (tokens[i].type === 'word' && tokens[i + 1] && tokens[i + 1].type === 'whitespace' && tokens[i + 2] && tokens[i + 2].type === 'word') {
+            var combined = tokens[i].upper + ' ' + tokens[i + 2].upper;
+            if (keywordsAndClauses.indexOf(combined) !== -1) {
+              merged.push({ type: 'word', value: tokens[i].value + tokens[i + 1].value + tokens[i + 2].value, upper: combined, multi: true });
+              i += 3;
+              continue;
+            }
+          }
+          if (tokens[i].type === 'word' && tokens[i + 1] && tokens[i + 1].type === 'whitespace' && tokens[i + 2] && tokens[i + 2].type === 'word' && tokens[i + 3] && tokens[i + 3].type === 'whitespace' && tokens[i + 4] && tokens[i + 4].type === 'word') {
+            var combined3 = tokens[i].upper + ' ' + tokens[i + 2].upper + ' ' + tokens[i + 4].upper;
+            if (keywordsAndClauses.indexOf(combined3) !== -1) {
+              merged.push({ type: 'word', value: tokens[i].value + tokens[i + 1].value + tokens[i + 2].value + tokens[i + 3].value + tokens[i + 4].value, upper: combined3, multi: true });
+              i += 5;
+              continue;
+            }
+          }
+          merged.push(tokens[i]);
+          i++;
+        }
+        return merged;
+      }
+
+      function isKeyword(upper) {
+        return allKeywords.indexOf(upper) !== -1;
+      }
+
+      function isClauseStarter(upper) {
+        return clauseStarters.indexOf(upper) !== -1;
+      }
+
+      function formatSql(sql) {
+        if (!sql.trim()) return '';
+
+        var tokens = tokenize(sql);
+        tokens = mergeMultiWordKeywords(tokens);
+
+        var indentStr = getIndentStr();
+        var indentLevel = 0;
+        var result = '';
+        var needNewline = false;
+        var needIndent = false;
+        var inSelectList = false;
+        var inSetClause = false;
+        var inValues = false;
+        var parenDepth = 0;
+        var prevToken = null;
+        var isOnLine = false;
+        var afterOpenParen = false;
+
+        var i = 0;
+        while (i < tokens.length) {
+          var tok = tokens[i];
+
+          if (tok.type === 'whitespace') {
+            if (!afterOpenParen) {
+              i++;
+              continue;
+            }
+            result += tok.value;
+            i++;
+            continue;
+          }
+
+          if (tok.type === 'comment') {
+            if (needNewline) {
+              result += '\n';
+              needNewline = false;
+            }
+            if (needIndent) {
+              for (var k = 0; k < indentLevel; k++) result += indentStr;
+              needIndent = false;
+            }
+            result += tok.value;
+            if (tok.value.indexOf('\n') === -1) {
+              result += '\n';
+              needIndent = true;
+            }
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          if (tok.type === 'paren') {
+            if (tok.value === '(') {
+              if (needNewline) {
+                result += '\n';
+                needNewline = false;
+              }
+              if (needIndent) {
+                for (var k = 0; k < indentLevel; k++) result += indentStr;
+                needIndent = false;
+              }
+              if (result.length > 0 && result[result.length - 1] !== '\n' && result[result.length - 1] !== ' ' && result.length > 0) {
+                result += ' ';
+              }
+              result += '(';
+              indentLevel++;
+              parenDepth++;
+              afterOpenParen = true;
+              needNewline = true;
+              needIndent = true;
+            } else {
+              indentLevel = Math.max(0, indentLevel - 1);
+              parenDepth = Math.max(0, parenDepth - 1);
+              if (result.length > 0 && result[result.length - 1] !== '\n') {
+                result += '\n';
+              }
+              for (var k = 0; k < indentLevel; k++) result += indentStr;
+              result += ')';
+              needNewline = false;
+              needIndent = false;
+              afterOpenParen = false;
+            }
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          afterOpenParen = false;
+
+          if (tok.type === 'semicolon') {
+            if (result.length > 0 && result[result.length - 1] !== '\n') {
+            }
+            result += ';';
+            needNewline = false;
+            needIndent = false;
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          if (tok.type === 'comma') {
+            result += ',';
+            if (!inValues) {
+              needNewline = true;
+              needIndent = true;
+            }
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          if (tok.type === 'word' && isKeyword(tok.upper)) {
+            var upper = tok.upper;
+            var formattedKeyword = tok.multi
+              ? tok.value.split(/(\s+)/).map(function (w, idx) { return idx % 2 === 0 ? applyCase(w) : w; }).join('')
+              : applyCase(tok.value);
+
+            if (upper === 'ON' && !isOnLine) {
+              isOnLine = true;
+              if (needNewline) {
+                result += '\n';
+                needNewline = false;
+              }
+              if (needIndent) {
+                for (var k = 0; k < indentLevel; k++) result += indentStr;
+                needIndent = false;
+              }
+              if (result.length > 0 && result[result.length - 1] !== '\n' && result[result.length - 1] !== ' ') {
+                result += ' ';
+              }
+              result += formattedKeyword;
+              prevToken = tok;
+              i++;
+              continue;
+            }
+
+            if (isClauseStarter(upper)) {
+              if (upper === 'AND' || upper === 'OR') {
+                if (result.length > 0) {
+                  result += '\n';
+                  for (var k = 0; k < indentLevel + 1; k++) result += indentStr;
+                }
+                result += formattedKeyword;
+                needNewline = false;
+                needIndent = false;
+              } else {
+                if (result.length > 0) {
+                  result += '\n';
+                }
+                for (var k = 0; k < indentLevel; k++) result += indentStr;
+                result += formattedKeyword;
+                needNewline = false;
+                needIndent = true;
+
+                if (upper === 'SELECT') {
+                  inSelectList = true;
+                } else {
+                  inSelectList = false;
+                }
+                if (upper === 'SET') {
+                  inSetClause = true;
+                } else {
+                  inSetClause = false;
+                }
+                if (upper === 'VALUES') {
+                  inValues = true;
+                  needNewline = true;
+                  needIndent = true;
+                } else {
+                  inValues = false;
+                }
+              }
+            } else {
+              if (needNewline) {
+                result += '\n';
+                needNewline = false;
+              }
+              if (needIndent) {
+                for (var k = 0; k < indentLevel + 1; k++) result += indentStr;
+                needIndent = false;
+              } else if (result.length > 0 && result[result.length - 1] !== '\n' && result[result.length - 1] !== ' ' && result[result.length - 1] !== '(') {
+                result += ' ';
+              }
+              result += formattedKeyword;
+            }
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          if (tok.type === 'word') {
+            if (needNewline) {
+              result += '\n';
+              needNewline = false;
+            }
+            if (needIndent) {
+              for (var k = 0; k < indentLevel + 1; k++) result += indentStr;
+              needIndent = false;
+            } else if (result.length > 0 && result[result.length - 1] !== '\n' && result[result.length - 1] !== ' ' && result[result.length - 1] !== '(' && result[result.length - 1] !== ')') {
+              result += ' ';
+            }
+            result += tok.value;
+            prevToken = tok;
+            i++;
+            continue;
+          }
+
+          if (needNewline) {
+            result += '\n';
+            needNewline = false;
+          }
+          if (needIndent) {
+            for (var k = 0; k < indentLevel + 1; k++) result += indentStr;
+            needIndent = false;
+          } else if (result.length > 0 && result[result.length - 1] !== '\n' && result[result.length - 1] !== ' ' && result[result.length - 1] !== '(') {
+            result += ' ';
+          }
+          result += tok.value;
+          prevToken = tok;
+          i++;
+        }
+
+        return result;
+      }
+
+      formatBtn.addEventListener('click', function () {
+        var text = input.value;
+        if (!text.trim()) {
+          showStatus('Nothing to format — paste some SQL first.', false);
+          return;
+        }
+        try {
+          var formatted = formatSql(text);
+          output.value = formatted;
+          updateStats();
+          showStatus('SQL formatted successfully.', true);
+        } catch (e) {
+          showStatus('Error formatting SQL: ' + e.message, false);
+        }
+      });
+
+      copyBtn.addEventListener('click', async function () {
+        if (!output.value) return;
+        try {
+          await navigator.clipboard.writeText(output.value);
+          var original = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () { copyBtn.textContent = original; }, 1500);
+        } catch (e) {}
+      });
+
+      clearBtn.addEventListener('click', function () {
+        input.value = '';
+        output.value = '';
+        status.classList.add('hidden');
+        inputStats.textContent = 'Lines: 0 \u00B7 Chars: 0';
+        outputStats.textContent = 'Lines: 0 \u00B7 Chars: 0';
+        input.focus();
+      });
+
+      updateStats();
+    })();
+  </script>
+</ToolLayout>

@@ -1,0 +1,392 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'YAML Validator';
+const description = 'Validate YAML syntax with error highlighting and line numbers. All in your browser.';
+const intro = 'Validate and lint YAML syntax with error highlighting.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'Is my data sent anywhere?', a: 'No — all validation happens in your browser using js-yaml.' },
+  { q: 'What YAML version is supported?', a: 'YAML 1.2, with some YAML 1.1 features for backward compatibility.' },
+  { q: 'Can it detect duplicate keys?', a: 'Yes — the validator warns about duplicate keys in the same mapping.' },
+  { q: 'Does it support anchors and aliases?', a: 'Yes — anchors (&) and aliases (*) are fully supported.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="validate-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Validate</button>
+      <label class="flex items-center gap-1.5 text-sm text-slate-600">
+        <input id="live-toggle" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-indigo-600" /> Validate as you type
+      </label>
+      <button id="copy-btn" class="ml-auto rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+
+    <div id="editor-wrap" class="mt-3 flex overflow-hidden rounded-xl border border-slate-300">
+      <div id="line-nums" class="select-none border-r border-slate-200 bg-slate-50 px-3 py-4 text-right font-mono text-xs leading-relaxed text-slate-400" aria-hidden="true">1</div>
+      <textarea
+        id="yaml-input"
+        rows="16"
+        spellcheck="false"
+        placeholder="Paste your YAML here, e.g.&#10;name: ToolNest&#10;version: 1.0&#10;tags:&#10;  - web&#10;  - tools"
+        class="w-full resize-y p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+      ></textarea>
+    </div>
+
+    <div id="json-output-wrap" class="mt-4 hidden">
+      <label class="text-sm font-medium text-slate-700">Parsed JSON</label>
+      <pre id="json-output" class="mt-1 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700"></pre>
+    </div>
+  </div>
+
+  <div class="mt-6 flex flex-wrap gap-2">
+    <button class="yaml-sample rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">Kubernetes Pod</button>
+    <button class="yaml-sample rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">CI/CD Pipeline</button>
+    <button class="yaml-sample rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">Ansible Playbook</button>
+    <button class="yaml-sample rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">Docker Compose</button>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How YAML validation works</h2>
+    <p class="mt-2 text-slate-600">YAML is a human-readable data serialization language that relies on indentation to define structure. The validator parses your YAML input using the <span class="font-mono text-indigo-600">js-yaml</span> library — a full YAML 1.2 parser ported from PyYAML. If the document conforms to the YAML specification, the parser returns a JavaScript object equivalent. If there is a syntax error, the parser throws an exception with the line number and column where parsing failed.</p>
+    <p class="mt-3 text-slate-600">The validator then displays either a green confirmation with a preview of the parsed data or a red error message pinpointing the exact location of the problem. You can also toggle the JSON output to inspect the parsed result, which helps verify that your YAML structure matches your intent.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Validating a simple configuration block with proper and broken syntax.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Valid YAML:</span> <span class="text-slate-600 font-mono text-xs">key: value → parses successfully</span></div>
+        <div><span class="font-medium text-slate-700">Invalid YAML:</span> <span class="text-slate-600 font-mono text-xs">key:value → missing space after colon</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="yaml-title yaml-desc">
+      <title id="yaml-title">YAML Document Validation Flow</title>
+      <desc id="yaml-desc">Flow diagram showing a YAML document being processed by the YAML parser — if valid it shows the data; if invalid it returns the error with line and column</desc>
+      <rect x="20" y="55" width="160" height="60" rx="8" fill="#e2e8f0" />
+      <text x="100" y="82" font-family="sans-serif" font-size="13" fill="#475569" text-anchor="middle" font-weight="bold">YAML Document</text>
+      <text x="100" y="100" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">name: ToolNest</text>
+      <line x1="180" y1="85" x2="240" y2="85" stroke="#6366f1" stroke-width="2" />
+      <polygon points="240,80 255,85 240,90" fill="#6366f1" />
+      <rect x="260" y="35" width="220" height="100" rx="8" fill="#6366f1" />
+      <text x="370" y="58" font-family="sans-serif" font-size="13" fill="#fff" text-anchor="middle" font-weight="bold">YAML Parser</text>
+      <text x="370" y="78" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">js-yaml 4.1.0</text>
+      <text x="370" y="93" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">Indentation-based structure</text>
+      <text x="370" y="108" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">Scalars / mappings / sequences</text>
+      <text x="370" y="123" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">YAML 1.2 compliant</text>
+      <line x1="480" y1="60" x2="540" y2="60" stroke="#22c55e" stroke-width="2" />
+      <polygon points="540,55 555,60 540,65" fill="#22c55e" />
+      <line x1="480" y1="110" x2="540" y2="110" stroke="#ef4444" stroke-width="2" />
+      <polygon points="540,105 555,110 540,115" fill="#ef4444" />
+      <rect x="560" y="30" width="220" height="60" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1" />
+      <text x="670" y="52" font-family="sans-serif" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="bold">Valid YAML</text>
+      <text x="670" y="70" font-family="monospace" font-size="10" fill="#1e293b" text-anchor="middle">Parsed object displayed as JSON</text>
+      <rect x="560" y="110" width="220" height="60" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="1" />
+      <text x="670" y="132" font-family="sans-serif" font-size="13" fill="#dc2626" text-anchor="middle" font-weight="bold">Syntax Error</text>
+      <text x="670" y="150" font-family="monospace" font-size="10" fill="#1e293b" text-anchor="middle">Line 3, column 12: …</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">YAML validation flow: the document is parsed, then either accepted as valid or rejected with a precise error location</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common YAML errors</h2>
+    <p class="mt-2 text-slate-600">Most YAML syntax errors fall into a handful of categories. Knowing them will help you debug faster.</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Error</th><th class="p-3">Example</th><th class="p-3">Fix</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Incorrect indentation</td><td class="p-3 font-mono text-xs">name:<br/>&nbsp;John</td><td class="p-3">Align values at the same level consistently</td></tr>
+          <tr><td class="p-3 font-medium">Tab character used</td><td class="p-3 font-mono text-xs">→name: John</td><td class="p-3">YAML allows only spaces, never tabs</td></tr>
+          <tr><td class="p-3 font-medium">Missing colon space</td><td class="p-3 font-mono text-xs">name:John</td><td class="p-3">Add a space after the colon: <span class="font-mono">name: John</span></td></tr>
+          <tr><td class="p-3 font-medium">Unclosed quotes</td><td class="p-3 font-mono text-xs">title: 'hello</td><td class="p-3">Close the string: <span class="font-mono">title: 'hello'</span></td></tr>
+          <tr><td class="p-3 font-medium">Duplicate key</td><td class="p-3 font-mono text-xs">name: A<br/>name: B</td><td class="p-3">Remove or rename the duplicate key</td></tr>
+          <tr><td class="p-3 font-medium">Bad list indent</td><td class="p-3 font-mono text-xs">items:<br/>-&nbsp;&nbsp;one</td><td class="p-3">Align list items at the same indent level</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">YAML use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">☸️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Kubernetes configs</h3>
+        <p class="mt-1 text-sm text-slate-600">Kubernetes uses YAML to define Pods, Deployments, Services, and ConfigMaps. A single malformed indentation can prevent a resource from being created, making validation essential before running <span class="font-mono">kubectl apply</span>.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔁</span>
+        <h3 class="mt-2 font-semibold text-slate-900">CI/CD pipelines</h3>
+        <p class="mt-1 text-sm text-slate-600">GitHub Actions, GitLab CI, and CircleCI all use YAML to define pipeline steps, triggers, and environment variables. Validate your workflow files before pushing to avoid wasted runner minutes.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📜</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Ansible playbooks</h3>
+        <p class="mt-1 text-sm text-slate-600">Ansible automates infrastructure using YAML playbooks. Tasks, handlers, and variables are defined in YAML, and a syntax error can cause an entire automation run to fail halfway through.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🐳</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Docker Compose</h3>
+        <p class="mt-1 text-sm text-slate-600">Docker Compose files define multi-container applications in YAML. Services, volumes, networks, and environment variables are all expressed in YAML syntax that must be validated before deployment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How YAML structure works</h2>
+    <p class="mt-2 text-slate-600">YAML uses indentation-based structure with keys, values, lists, and nested mappings. A YAML document is a tree of nodes where each node is a scalar (string, number, boolean), a sequence (list), or a mapping (key-value pairs). Indentation determines parent-child relationships — deeper indentation means the node is a child of the node above it at a shallower level.</p>
+    <p class="mt-3 text-slate-600">Sequences are marked with a dash and space (<span class="font-mono">- item</span>), mappings use a colon and space (<span class="font-mono">key: value</span>), and both can be nested arbitrarily deep. YAML also supports block scalars (<span class="font-mono">|</span> for literal, <span class="font-mono">&gt;</span> for folded), anchors and aliases (<span class="font-mono">&amp;anchor</span> and <span class="font-mono">*alias</span>), and tags for explicit typing. This expressive syntax makes YAML a favorite for configuration files, but it also demands careful formatting — one stray tab or missing space breaks the entire document.</p>
+    <p class="mt-3 text-slate-600">YAML is a superset of JSON in practice — every JSON file is valid YAML. This means you can paste JSON into this validator and it will parse successfully. However, YAML offers features JSON lacks: comments, anchors, multi-line strings without escaping, and custom data types. Understanding when to use each format depends on your use case — YAML for human-edited configuration, JSON for machine-to-machine data exchange.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">YAML data types</h3>
+      <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Type</th><th class="p-3">YAML example</th><th class="p-3">Parsed as</th></tr></thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            <tr><td class="p-3 font-medium">String</td><td class="p-3 font-mono text-xs">name: Alice</td><td class="p-3">JavaScript string</td></tr>
+            <tr><td class="p-3 font-medium">Number</td><td class="p-3 font-mono text-xs">count: 42</td><td class="p-3">JavaScript number</td></tr>
+            <tr><td class="p-3 font-medium">Boolean</td><td class="p-3 font-mono text-xs">enabled: true</td><td class="p-3">JavaScript boolean</td></tr>
+            <tr><td class="p-3 font-medium">Null</td><td class="p-3 font-mono text-xs">value: ~</td><td class="p-3">JavaScript null</td></tr>
+            <tr><td class="p-3 font-medium">Sequence</td><td class="p-3 font-mono text-xs">- a<br/>- b</td><td class="p-3">JavaScript array</td></tr>
+            <tr><td class="p-3 font-medium">Mapping</td><td class="p-3 font-mono text-xs">key: val</td><td class="p-3">JavaScript object</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👩‍💻</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Platform Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Writes Kubernetes manifests and CI/CD pipelines daily. Validates YAML before every commit to catch indentation typos that would otherwise block deployments.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧑‍🔧</span>
+      <h3 class="mt-2 font-semibold text-slate-900">DevOps Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Maintains Ansible playbooks across hundreds of servers. Relies on YAML validation to spot missing colons and misaligned lists before running automation at scale.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧑‍💻</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Full-Stack Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Configures Docker Compose for local development environments. Uses the validator to verify syntax before rebuilding containers.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👩‍🎓</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Learning infrastructure-as-code concepts. Uses the validator to understand YAML structure and debug syntax errors in coursework.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the YAML Validator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Paste your YAML</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy any YAML document from your editor, a config file, or a pipeline definition and paste it into the editor area. The validator supports all common YAML constructs.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Validate automatically</h3>
+        <p class="mt-1 text-sm text-slate-600">With "Validate as you type" enabled, validation runs on every keystroke. Disable it for large documents and click the Validate button manually when you are ready.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Fix errors or inspect output</h3>
+        <p class="mt-1 text-sm text-slate-600">If validation fails, the exact line and column are shown. Toggle the JSON output to see the parsed object and verify your YAML structure is correct.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with YAML</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use spaces, never tabs</h3>
+        <p class="mt-1 text-sm text-slate-600">YAML does not allow tab characters for indentation. Configure your editor to convert tabs to spaces when editing YAML files. Most code editors have an option in their settings to handle this automatically for <span class="font-mono">.yaml</span> and <span class="font-mono">.yml</span> files.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Stick to 2-space indentation</h3>
+        <p class="mt-1 text-sm text-slate-600">Two spaces per indentation level is the community standard for YAML. It keeps files compact while still clearly showing nesting. Avoid deeper indentation widths — they lead to lines that wrap awkwardly and increase the risk of misalignment.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Always validate before deploying</h3>
+        <p class="mt-1 text-sm text-slate-600">A single YAML syntax error can block a CI pipeline, prevent a Kubernetes resource from being created, or cause an Ansible run to fail midway. Make validation a habit before committing or applying any YAML file to a production environment.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Quote strings with special characters</h3>
+        <p class="mt-1 text-sm text-slate-600">Values containing colons, hashes, brackets, or other special YAML characters should be wrapped in single or double quotes. For example, <span class="font-mono">time: '12:30'</span> prevents the colon from being misinterpreted as a mapping separator.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why YAML validation matters</h2>
+    <p class="mt-2 text-slate-600">YAML validation is essential in modern software development because YAML has become the de facto standard for configuration across the entire infrastructure and DevOps toolchain. Kubernetes manifests, CI/CD pipelines, Ansible playbooks, Docker Compose files, Helm charts, and GitHub Actions workflows all use YAML as their configuration language. Unlike JSON or XML, YAML's indentation-based syntax is particularly error-prone because visual alignment is meaningful — a single misplaced space changes the structure of the document silently, often with no warning until the tooling rejects the file at runtime.</p>
+    <p class="mt-3 text-slate-600">The consequences of invalid YAML vary by context. In Kubernetes, an indentation error in a Deployment manifest causes <span class="font-mono">kubectl apply</span> to fail with a cryptic parsing error, forcing developers to debug visual alignment issues rather than logic problems. In CI/CD pipelines, a malformed GitHub Actions workflow file causes the entire pipeline to fail at the validation stage, wasting runner minutes and delaying deployments. In Ansible, a syntax error in a playbook can cause the automation to fail partway through execution, leaving infrastructure in an inconsistent state that requires manual cleanup. Validating YAML before it reaches these systems prevents all these failure modes with almost zero effort.</p>
+    <p class="mt-3 text-slate-600">Beyond catching syntax errors, validation also serves as a teaching tool for developers new to YAML. The error messages produced by a YAML parser tell you exactly which line and column failed and why, helping you build a mental model of how YAML indentation works. Over time, regular validation reduces the frequency of syntax errors as you internalize the rules — but even experienced YAML writers make mistakes, and a quick validation check remains the fastest way to catch them before they cause real problems.</p>
+    <p class="mt-3 text-slate-600">YAML validation also protects against more subtle issues like duplicate keys. While YAML itself does not prohibit duplicate keys, most applications that consume YAML (Kubernetes, Ansible, etc.) silently use the last value when a key appears twice, which can introduce hard-to-find bugs. A validator that warns about duplicate keys helps you catch these before they cause data loss or unexpected behaviour. Similarly, the option to view the parsed JSON output lets you verify that the document structure matches your expectations — especially useful when working with deeply nested mappings or complex anchor and alias patterns.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">YAML vs other data formats</h2>
+    <p class="mt-2 text-slate-600">Understanding the tradeoffs between YAML, JSON, and TOML helps you choose the right format for each task.</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Feature</th><th class="p-3">YAML</th><th class="p-3">JSON</th><th class="p-3">TOML</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Readability</td><td class="p-3">Excellent</td><td class="p-3">Moderate</td><td class="p-3">Good</td></tr>
+          <tr><td class="p-3 font-medium">Comments</td><td class="p-3">Yes (<span class="font-mono">#</span>)</td><td class="p-3">No</td><td class="p-3">Yes (<span class="font-mono">#</span>)</td></tr>
+          <tr><td class="p-3 font-medium">Anchors / aliases</td><td class="p-3">Yes</td><td class="p-3">No</td><td class="p-3">No</td></tr>
+          <tr><td class="p-3 font-medium">Multi-line strings</td><td class="p-3">Excellent (<span class="font-mono">|</span> / <span class="font-mono">&gt;</span>)</td><td class="p-3">Poor (<span class="font-mono">\n</span>)</td><td class="p-3">Good (<span class="font-mono">"""</span>)</td></tr>
+          <tr><td class="p-3 font-medium">Indentation rules</td><td class="p-3">Strict — error-prone</td><td class="p-3">None</td><td class="p-3">None</td></tr>
+          <tr><td class="p-3 font-medium">Machine parsing</td><td class="p-3">Slower, needs library</td><td class="p-3">Fast, native</td><td class="p-3">Fast, needs library</td></tr>
+          <tr><td class="p-3 font-medium">Best for</td><td class="p-3">Config files</td><td class="p-3">API data</td><td class="p-3">Config files</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-slate-600">If you work with YAML, these related tools might help you.</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/json-formatter" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">🧩 JSON Formatter &amp; Validator</a>
+      <a href="/tools/regex-tester" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">🔍 Regex Tester</a>
+      <a href="/tools/sql-formatter" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">🗄️ SQL Formatter</a>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Security and privacy</h2>
+    <p class="mt-2 text-slate-600">This YAML validator processes all data entirely within your browser. Your YAML input is never sent to any server, stored in any database, or logged in any system. The validation logic runs locally using the <span class="font-mono text-indigo-600">js-yaml</span> library loaded dynamically from esm.sh, ensuring that sensitive configuration data such as API keys, database credentials, authentication tokens, or proprietary infrastructure definitions never leave your device.</p>
+    <p class="mt-3 text-slate-600">Because all processing is local, there are no data retention policies, server logs, or third-party analytics to worry about. The tool does not use cookies, tracking scripts, or external services in connection with its core functionality. You can confidently paste production Kubernetes manifests, CI/CD pipeline definitions, and Ansible playbooks containing sensitive variables without risk of exposure.</p>
+    <p class="mt-3 text-slate-600">There are practical security considerations to keep in mind nonetheless. Paste only the YAML data you need to validate — avoid copying entire configuration directories or credential files into the input area. If you are working with highly sensitive information, consider running the tool in a private browsing window and clear the text area before closing the tab. The browser's clipboard history may retain pasted content, so clear your clipboard after copying the validated output.</p>
+  </section>
+
+  <script is:inline>
+    var input = document.getElementById('yaml-input');
+    var lineNums = document.getElementById('line-nums');
+    var status = document.getElementById('status');
+    var validateBtn = document.getElementById('validate-btn');
+    var liveToggle = document.getElementById('live-toggle');
+    var jsonOutputWrap = document.getElementById('json-output-wrap');
+    var jsonOutput = document.getElementById('json-output');
+    var editorWrap = document.getElementById('editor-wrap');
+
+    function updateLineNumbers() {
+      var lines = input.value.split('\n').length;
+      var html = '';
+      for (var i = 1; i <= lines; i++) {
+        html += i + '\n';
+      }
+      lineNums.textContent = html;
+    }
+
+    function showStatus(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function validate() {
+      var text = input.value.trim();
+      if (!text) {
+        showStatus('Nothing to validate — paste some YAML first.', false);
+        jsonOutputWrap.classList.add('hidden');
+        return;
+      }
+      import('https://esm.sh/js-yaml@4.1.0').then(function (yaml) {
+        try {
+          var parsed = yaml.load(text);
+          showStatus('Valid YAML', true);
+          jsonOutput.textContent = JSON.stringify(parsed, null, 2);
+          jsonOutputWrap.classList.remove('hidden');
+        } catch (e) {
+          var msg = e.message || 'Unknown error';
+          var match = msg.match(/at line (\d+), column (\d+)/);
+          if (match) {
+            showStatus('Error at line ' + match[1] + ', column ' + match[2] + ': ' + msg, false);
+          } else {
+            showStatus('Invalid YAML: ' + msg, false);
+          }
+          jsonOutputWrap.classList.add('hidden');
+        }
+      }).catch(function () {
+        showStatus('Failed to load YAML parser library from CDN. Please check your internet connection and try again.', false);
+      });
+    }
+
+    function debounce(fn, ms) {
+      var timer;
+      return function () {
+        clearTimeout(timer);
+        timer = setTimeout(fn, ms);
+      };
+    }
+
+    var liveValidate = debounce(validate, 400);
+
+    input.addEventListener('input', function () {
+      updateLineNumbers();
+      if (liveToggle.checked) {
+        liveValidate();
+      }
+    });
+
+    validateBtn.addEventListener('click', validate);
+
+    input.addEventListener('scroll', function () {
+      lineNums.scrollTop = input.scrollTop;
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', function () {
+      input.value = '';
+      updateLineNumbers();
+      status.classList.add('hidden');
+      jsonOutputWrap.classList.add('hidden');
+      input.focus();
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', async function () {
+      if (!input.value) return;
+      try {
+        await navigator.clipboard.writeText(input.value);
+        var btn = document.getElementById('copy-btn');
+        var orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = orig; }, 1200);
+      } catch (e) {}
+    });
+
+    // Sample YAML templates
+    var samples = {
+      'Kubernetes Pod': 'apiVersion: v1\nkind: Pod\nmetadata:\n  name: nginx\n  labels:\n    app: nginx\nspec:\n  containers:\n    - name: nginx\n      image: nginx:1.25\n      ports:\n        - containerPort: 80',
+      'CI/CD Pipeline': 'name: CI\non:\n  push:\n    branches: [main]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Install deps\n        run: npm ci\n      - name: Run tests\n        run: npm test',
+      'Ansible Playbook': '---\n- name: Configure web server\n  hosts: webservers\n  become: yes\n  tasks:\n    - name: Install nginx\n      apt:\n        name: nginx\n        state: present\n    - name: Start service\n      service:\n        name: nginx\n        state: started',
+      'Docker Compose': 'version: "3.8"\nservices:\n  web:\n    image: nginx:1.25\n    ports:\n      - "80:80"\n  db:\n    image: postgres:15\n    environment:\n      POSTGRES_DB: myapp\n      POSTGRES_PASSWORD: secret',
+    };
+
+    document.querySelectorAll('.yaml-sample').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        input.value = samples[btn.textContent] || '';
+        updateLineNumbers();
+        if (liveToggle.checked) {
+          validate();
+        } else {
+          status.classList.add('hidden');
+          jsonOutputWrap.classList.add('hidden');
+        }
+      });
+    });
+
+    // Initialise line numbers
+    updateLineNumbers();
+  </script>
+</ToolLayout>

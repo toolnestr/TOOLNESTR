@@ -1,0 +1,526 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'cURL Command Generator';
+const description =
+  'Build cURL commands with a visual form — URL, method, headers, body, and authentication. ' +
+  'Free online cURL command generator for API testing and automation.';
+const intro =
+  'Build cURL commands with a form — URL, method, headers, body, auth.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  {
+    q: 'What HTTP methods are supported?',
+    a: 'GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS. GET and HEAD include -G flag for data.',
+  },
+  {
+    q: 'Can I add custom headers?',
+    a: 'Yes — add any number of headers with key-value pairs.',
+  },
+  {
+    q: 'Does it support authentication?',
+    a: 'Yes — Basic auth (-u user:pass) and Bearer token (-H "Authorization: Bearer ...").',
+  },
+  {
+    q: 'Can I upload files?',
+    a: 'Yes — use the file upload option which generates -F or --form flags.',
+  },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">cURL Command Builder</h2>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="url">URL</label>
+          <input
+            id="url"
+            type="url"
+            placeholder="https://api.example.com/resource"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="method">Method</label>
+          <select
+            id="method"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="GET">GET</option>
+            <option value="POST">POST</option>
+            <option value="PUT">PUT</option>
+            <option value="PATCH">PATCH</option>
+            <option value="DELETE">DELETE</option>
+            <option value="HEAD">HEAD</option>
+            <option value="OPTIONS">OPTIONS</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-slate-700">Headers</label>
+            <button
+              id="add-header"
+              type="button"
+              class="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+            >+ Add header</button>
+          </div>
+          <div id="headers-list" class="mt-2 space-y-2"></div>
+        </div>
+
+        <div id="body-section">
+          <label class="text-sm font-medium text-slate-700" for="body">Body</label>
+          <textarea
+            id="body"
+            rows="4"
+            placeholder='{"key": "value"}'
+            class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="contentType">Content Type</label>
+          <select
+            id="contentType"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="application/json">application/json</option>
+            <option value="form-data">form-data (multipart)</option>
+            <option value="text/plain">text/plain</option>
+            <option value="">None</option>
+          </select>
+        </div>
+
+        <div>
+          <span class="text-sm font-medium text-slate-700">Authentication</span>
+          <div class="mt-2 space-y-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="authType" value="none" checked class="accent-indigo-600" />
+              None
+            </label>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="authType" value="basic" class="accent-indigo-600" />
+              Basic
+            </label>
+            <div id="basic-fields" class="ml-6 hidden space-y-2">
+              <input
+                id="authUser"
+                type="text"
+                placeholder="Username"
+                class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              />
+              <input
+                id="authPass"
+                type="password"
+                placeholder="Password"
+                class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="authType" value="bearer" class="accent-indigo-600" />
+              Bearer Token
+            </label>
+            <div id="bearer-field" class="ml-6 hidden">
+              <input
+                id="authBearer"
+                type="text"
+                placeholder="Bearer token"
+                class="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-slate-700">Query Parameters</label>
+            <button
+              id="add-query"
+              type="button"
+              class="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+            >+ Add param</button>
+          </div>
+          <div id="query-list" class="mt-2 space-y-2"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-slate-700" for="output">Generated cURL Command</label>
+            <button
+              id="copy-btn"
+              type="button"
+              class="rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+            >Copy</button>
+          </div>
+          <textarea
+            id="output"
+            rows="5"
+            readonly
+            placeholder="curl command will appear here..."
+            class="mt-1 w-full resize-y rounded-xl border border-slate-300 bg-slate-50 p-4 font-mono text-xs text-slate-800 outline-none"
+          ></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="curl-title curl-desc">
+      <title id="curl-title">cURL Command Construction Flow</title>
+      <desc id="curl-desc">Flow diagram showing URL, HTTP method, headers, body and authentication inputs being combined into a single cURL command string</desc>
+      <defs>
+        <marker id="curlar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10 Z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect x="10" y="15" width="130" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="75" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">URL</text>
+      <text x="75" y="46" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">https://api…</text>
+      <line x1="140" y1="35" x2="185" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+
+      <rect x="190" y="15" width="100" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="240" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Method</text>
+      <text x="240" y="46" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">-X POST</text>
+      <line x1="290" y1="35" x2="335" y2="35" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+
+      <rect x="340" y="15" width="130" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="405" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Headers</text>
+      <text x="405" y="46" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">-H "Key: Val"</text>
+
+      <rect x="10" y="75" width="130" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="75" y="88" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Body</text>
+      <text x="75" y="106" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">-d '&#123;"k":"v"&#125;'</text>
+
+      <rect x="190" y="75" width="130" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="255" y="88" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Auth</text>
+      <text x="255" y="106" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">-u user:pass</text>
+
+      <rect x="490" y="15" width="130" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="555" y="28" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="700">Query Params</text>
+      <text x="555" y="46" text-anchor="middle" fill="#6366f1" font-family="monospace" font-size="9">?key=value</text>
+
+      <rect x="650" y="10" width="140" height="120" rx="10" fill="#d1fae5" stroke="#6ee7b7" stroke-width="2" />
+      <text x="720" y="36" text-anchor="middle" fill="#065f46" font-family="system-ui, sans-serif" font-size="13" font-weight="700">cURL Command</text>
+      <text x="720" y="54" text-anchor="middle" fill="#16a34a" font-family="monospace" font-size="9">curl -X POST</text>
+      <text x="720" y="68" text-anchor="middle" fill="#16a34a" font-family="monospace" font-size="9">-H "Content-Type"</text>
+      <text x="720" y="82" text-anchor="middle" fill="#16a34a" font-family="monospace" font-size="9">-u user:pass</text>
+      <text x="720" y="96" text-anchor="middle" fill="#16a34a" font-family="monospace" font-size="9">-d '&#123;"k":"v"&#125;'</text>
+      <text x="720" y="114" text-anchor="middle" fill="#16a34a" font-family="monospace" font-size="9">"https://api…"</text>
+
+      <line x1="405" y1="55" x2="555" y2="55" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+      <line x1="470" y1="55" x2="555" y2="55" stroke="#6366f1" stroke-width="1.5" />
+      <line x1="470" y1="35" x2="490" y2="35" stroke="#6366f1" stroke-width="1.5" />
+      <line x1="320" y1="95" x2="555" y2="75" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+      <line x1="140" y1="95" x2="190" y2="95" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+      <line x1="555" y1="55" x2="650" y2="40" stroke="#6366f1" stroke-width="1.5" marker-end="url(#curlar)" />
+      <line x1="555" y1="75" x2="650" y2="60" stroke="#6366f1" stroke-width="1.5" />
+      <line x1="555" y1="95" x2="650" y2="80" stroke="#6366f1" stroke-width="1.5" />
+
+      <rect x="10" y="140" width="780" height="30" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" />
+      <text x="400" y="160" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Form inputs are combined into a valid cURL command string, ready to paste into your terminal</text>
+      <line x1="400" y1="135" x2="400" y2="140" stroke="#cbd5e1" stroke-width="1" />
+      <line x1="400" y1="170" x2="400" y2="175" stroke="#cbd5e1" stroke-width="1" />
+      <rect x="310" y="175" width="180" height="24" rx="12" fill="#e0e7ff" stroke="#818cf8" stroke-width="1" />
+      <text x="400" y="192" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Click Copy → paste in terminal</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">
+      The form combines URL, method, headers, body, authentication, and query parameters into a single cURL command string
+    </figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is cURL?</h2>
+    <p class="mt-2 text-slate-600">
+      cURL (Client URL) is a command-line tool and library for transferring data using URL syntax. It supports a wide range of protocols including HTTP, HTTPS, FTP, SFTP, SCP, LDAP, SMTP, POP3, and IMAP. Since its first release in 1997 by Daniel Stenberg, cURL has become one of the most widely used tools in software development — it ships with every major operating system and is the backbone of countless API testing workflows, CI/CD pipelines, and automation scripts.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The tool works by taking a URL and a set of options (flags) that control how the request is made. You can specify the HTTP method, add headers, include a request body, authenticate with credentials, follow redirects, handle cookies, and much more. The cURL command syntax is straightforward but can become verbose when you need many options &mdash; that is where this generator helps. Instead of memorizing flag names and worrying about quoting, you fill out a form and get a ready-to-run command.
+    </p>
+    <p class="mt-3 text-slate-600">
+      cURL uses libcurl, a portable URL transfer library that powers thousands of applications and devices. It is available in over 40 programming languages through bindings, making it a universal choice for HTTP interactions. The command-line interface (CLI) is the most common way developers interact with cURL, and a single well-formed cURL command can replace an entire API client for quick testing and debugging.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use Cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">API Testing</h3>
+        <p class="mt-1 text-sm text-slate-600">Quickly test REST or GraphQL endpoints during development. Verify status codes, response bodies, and headers without leaving the terminal. cURL gives you full control over every aspect of the request.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Automation Scripts</h3>
+        <p class="mt-1 text-sm text-slate-600">Incorporate cURL commands into shell scripts, CI/CD pipelines, and cron jobs. Automate health checks, data ingestion, webhook notifications, and deployment triggers with minimal dependencies.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Debugging Web Services</h3>
+        <p class="mt-1 text-sm text-slate-600">Diagnose issues with web servers, reverse proxies, and CDNs. Inspect response headers, test redirect chains, verify SSL certificates, and compare behaviour across different HTTP versions.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips &amp; Best Practices</h2>
+    <ul class="mt-3 space-y-3 text-sm text-slate-600">
+      <li><strong>Use <code class="rounded bg-indigo-100 px-1 text-indigo-700">-i</code> to include response headers</strong> — the <code>-i</code> flag tells cURL to print the HTTP response headers alongside the body. This is essential for debugging because you can see the status line, content type, caching directives, and any custom headers returned by the server. Without <code>-i</code>, cURL only shows the response body.</li>
+      <li><strong>Use <code class="rounded bg-indigo-100 px-1 text-indigo-700">-v</code> for verbose output</strong> — the <code>-v</code> (verbose) flag makes cURL print everything: the request being sent (method, URL, headers), the response headers, SSL/TLS handshake details, and connection timing. This is the single most useful flag when something is not working and you need to understand what the client and server are actually exchanging.</li>
+      <li><strong>Use <code class="rounded bg-indigo-100 px-1 text-indigo-700">-k</code> to skip SSL verification</strong> — the <code>-k</code> (or <code>--insecure</code>) flag tells cURL to ignore SSL certificate validation errors. Use this only for testing against servers with self-signed certificates or internal development environments. Never use <code>-k</code> in production scripts that communicate over the open internet.</li>
+      <li><strong>Quote URLs and values properly</strong> — always wrap URLs and header values in quotes when they contain special characters like <code>&amp;</code>, <code>?</code>, <code>$</code>, or spaces. Single quotes prevent shell variable expansion; double quotes still let the shell expand variables and backslashes.</li>
+      <li><strong>Use <code class="rounded bg-indigo-100 px-1 text-indigo-700">-L</code> to follow redirects</strong> — many servers return a 301 or 302 redirect. Add <code>-L</code> (or <code>--location</code>) to tell cURL to automatically follow the redirect and fetch the final destination.</li>
+      <li><strong>Time out your requests</strong> — add <code>--connect-timeout 10</code> and <code>--max-time 30</code> to prevent cURL from hanging indefinitely when a server is unreachable or unresponsive. This is especially important in automated scripts.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the cURL Command Builder Works</h2>
+    <p class="mt-2 text-slate-600">
+      The builder on this page takes each section of the form and maps it to the corresponding cURL flag. The URL is inserted as the final positional argument. The method dropdown generates the <code>-X METHOD</code> flag (omitted for GET, which is the default). Each header in the dynamic list becomes a <code>-H "Key: Value"</code> flag. Body content is passed with <code>-d</code> for JSON or plain text, or <code>-F</code> for form-data. Authentication is rendered either as <code>-u user:pass</code> for Basic auth or as an additional <code>-H "Authorization: Bearer &lt;token&gt;"</code> header for Bearer tokens.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Query parameters are appended to the URL string with proper URL encoding. When GET or HEAD is selected and body data or query parameters are present, the builder adds the <code>-G</code> flag so the data is sent as query parameters rather than as a request body. The generated command updates in real time as you type or change any field, so you can iterate quickly and see exactly how each form input affects the final output.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Example cURL Commands</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">GET request with headers</p>
+        <pre class="mt-2 overflow-x-auto text-xs text-slate-700">curl -H "Accept: application/json" -H "User-Agent: MyApp/1.0" "https://api.example.com/users"</pre>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">POST with JSON body</p>
+        <pre class="mt-2 overflow-x-auto text-xs text-slate-700">curl -X POST -H "Content-Type: application/json" -d '&#123;"name":"Alice","email":"alice@example.com"&#125;' "https://api.example.com/users"</pre>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Bearer token authentication</p>
+        <pre class="mt-2 overflow-x-auto text-xs text-slate-700">curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" "https://api.example.com/protected"</pre>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">File upload with form-data</p>
+        <pre class="mt-2 overflow-x-auto text-xs text-slate-700">curl -X POST -F "file=@/path/to/document.pdf" -F "description=Annual report" "https://api.example.com/upload"</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/http-status-code-lookup" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">HTTP Status Code Lookup</a>
+      <a href="/tools/json-formatter" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">JSON Formatter</a>
+      <a href="/tools/regex-tester" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Regex Tester</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlInput = document.getElementById('url');
+      const methodInput = document.getElementById('method');
+      const bodyInput = document.getElementById('body');
+      const contentTypeInput = document.getElementById('contentType');
+      const outputEl = document.getElementById('output');
+      const copyBtn = document.getElementById('copy-btn');
+      const headersList = document.getElementById('headers-list');
+      const queryList = document.getElementById('query-list');
+      const bodySection = document.getElementById('body-section');
+      const basicFields = document.getElementById('basic-fields');
+      const bearerField = document.getElementById('bearer-field');
+      const authRadios = document.querySelectorAll('input[name="authType"]');
+
+      function escShell(s) {
+        return "'" + s.replace(/'/g, "'\\''") + "'";
+      }
+
+      function addHeaderRow(key, val) {
+        const div = document.createElement('div');
+        div.className = 'header-row flex gap-2';
+        div.innerHTML =
+          '<input type="text" placeholder="Key" value="' + (key || '') + '" class="header-key min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />' +
+          '<input type="text" placeholder="Value" value="' + (val || '') + '" class="header-value min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />' +
+          '<button type="button" class="remove-header shrink-0 rounded-lg px-2 text-sm text-red-500 hover:bg-red-50 hover:text-red-700">&times;</button>';
+        div.querySelector('.remove-header').addEventListener('click', function () {
+          div.remove();
+          rebuild();
+        });
+        div.querySelectorAll('input').forEach(function (el) {
+          el.addEventListener('input', rebuild);
+        });
+        headersList.appendChild(div);
+        rebuild();
+      }
+
+      function addQueryRow(key, val) {
+        const div = document.createElement('div');
+        div.className = 'query-row flex gap-2';
+        div.innerHTML =
+          '<input type="text" placeholder="Key" value="' + (key || '') + '" class="query-key min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />' +
+          '<input type="text" placeholder="Value" value="' + (val || '') + '" class="query-value min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />' +
+          '<button type="button" class="remove-query shrink-0 rounded-lg px-2 text-sm text-red-500 hover:bg-red-50 hover:text-red-700">&times;</button>';
+        div.querySelector('.remove-query').addEventListener('click', function () {
+          div.remove();
+          rebuild();
+        });
+        div.querySelectorAll('input').forEach(function (el) {
+          el.addEventListener('input', rebuild);
+        });
+        queryList.appendChild(div);
+        rebuild();
+      }
+
+      document.getElementById('add-header').addEventListener('click', function () {
+        addHeaderRow('', '');
+      });
+
+      document.getElementById('add-query').addEventListener('click', function () {
+        addQueryRow('', '');
+      });
+
+      function toggleBody() {
+        var method = methodInput.value;
+        var show = ['POST', 'PUT', 'PATCH'].indexOf(method) !== -1;
+        bodySection.style.display = show ? 'block' : 'none';
+      }
+
+      function toggleAuth() {
+        var val = '';
+        authRadios.forEach(function (r) {
+          if (r.checked) val = r.value;
+        });
+        basicFields.classList.toggle('hidden', val !== 'basic');
+        bearerField.classList.toggle('hidden', val !== 'bearer');
+      }
+
+      authRadios.forEach(function (r) {
+        r.addEventListener('change', function () {
+          toggleAuth();
+          rebuild();
+        });
+      });
+
+      methodInput.addEventListener('change', function () {
+        toggleBody();
+        rebuild();
+      });
+
+      var inputs = [urlInput, methodInput, bodyInput, contentTypeInput,
+        document.getElementById('authUser'),
+        document.getElementById('authPass'),
+        document.getElementById('authBearer')
+      ];
+      inputs.forEach(function (el) {
+        if (el) el.addEventListener('input', rebuild);
+      });
+      contentTypeInput.addEventListener('change', rebuild);
+
+      function rebuild() {
+        var url = urlInput.value.trim();
+        var method = methodInput.value;
+        var body = bodyInput.value;
+        var contentType = contentTypeInput.value;
+
+        var headers = [];
+        headersList.querySelectorAll('.header-row').forEach(function (row) {
+          var k = row.querySelector('.header-key').value.trim();
+          var v = row.querySelector('.header-value').value.trim();
+          if (k && v) headers.push({ key: k, val: v });
+        });
+
+        var params = [];
+        queryList.querySelectorAll('.query-row').forEach(function (row) {
+          var k = row.querySelector('.query-key').value.trim();
+          var v = row.querySelector('.query-value').value.trim();
+          if (k && v) params.push({ key: k, val: encodeURIComponent(v) });
+        });
+
+        var authType = 'none';
+        authRadios.forEach(function (r) {
+          if (r.checked) authType = r.value;
+        });
+        var authUser = document.getElementById('authUser').value.trim();
+        var authPass = document.getElementById('authPass').value.trim();
+        var authBearer = document.getElementById('authBearer').value.trim();
+
+        if (!url) {
+          outputEl.value = '';
+          return;
+        }
+
+        var parts = ['curl'];
+
+        var noDataMethods = ['GET', 'HEAD'];
+        var hasData = body.trim().length > 0 || params.length > 0;
+
+        if (noDataMethods.indexOf(method) === -1) {
+          parts.push('-X ' + method);
+        }
+
+        headers.forEach(function (h) {
+          parts.push('-H ' + escShell(h.key + ': ' + h.val));
+        });
+
+        if (authType === 'basic' && authUser && authPass) {
+          parts.push('-u ' + escShell(authUser + ':' + authPass));
+        } else if (authType === 'bearer' && authBearer) {
+          parts.push('-H ' + escShell('Authorization: Bearer ' + authBearer));
+        }
+
+        var finalUrl = url;
+        if (params.length > 0) {
+          var qs = params.map(function (p) { return p.key + '=' + p.val; }).join('&');
+          finalUrl += (finalUrl.indexOf('?') !== -1 ? '&' : '?') + qs;
+        }
+
+        if (noDataMethods.indexOf(method) !== -1 && hasData) {
+          parts.push('-G');
+        }
+
+        parts.push(escShell(finalUrl));
+
+        if (body.trim() && noDataMethods.indexOf(method) === -1) {
+          if (contentType === 'form-data') {
+            var lines = body.split('\n').filter(function (l) { return l.trim(); });
+            lines.forEach(function (line) {
+              var eqIdx = line.indexOf('=');
+              if (eqIdx !== -1) {
+                parts.push('-F ' + escShell(line.substring(0, eqIdx) + '=' + line.substring(eqIdx + 1)));
+              } else {
+                parts.push('-F ' + escShell(line));
+              }
+            });
+          } else {
+            parts.push('-d ' + escShell(body));
+          }
+        }
+
+        outputEl.value = parts.join(' ');
+      }
+
+      copyBtn.addEventListener('click', function () {
+        var text = outputEl.value;
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(function () {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+        }).catch(function () {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+      });
+
+      addHeaderRow('Content-Type', 'application/json');
+      toggleBody();
+      toggleAuth();
+      rebuild();
+    });
+  </script>
+</ToolLayout>

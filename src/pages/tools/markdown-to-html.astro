@@ -1,0 +1,305 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Markdown to HTML Converter';
+const description =
+  'Convert Markdown to HTML with live preview and GitHub-Flavored Markdown support. Free online converter.';
+const intro =
+  'Convert Markdown to HTML with live preview and GitHub-style rendering. Copy the result.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'What Markdown flavor is supported?', a: 'GitHub-Flavored Markdown (GFM) including tables, task lists, and code fences.' },
+  { q: 'Can I see both input and output?', a: 'Yes — side-by-side editor and preview, or toggle to HTML source view.' },
+  { q: 'Is there a size limit?', a: 'Large documents may cause slow preview updates. A debounced input helps performance.' },
+  { q: 'Does it support HTML in Markdown?', a: 'Yes — inline HTML is passed through and rendered as-is in the output.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} appCategory="DeveloperApplication">
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 lg:grid-cols-2">
+      <div>
+        <label for="md-input" class="mb-1.5 block text-sm font-medium text-slate-700">Markdown Input</label>
+        <textarea
+          id="md-input"
+          rows="16"
+          spellcheck="false"
+          placeholder={'# Hello World\n\nThis is **bold** and *italic*.\n\n- List item 1\n- List item 2\n\n```js\nconsole.log("hello");\n```'}
+          class="w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        ></textarea>
+      </div>
+      <div>
+        <div class="mb-1.5 flex items-center justify-between">
+          <span class="text-sm font-medium text-slate-700">Output</span>
+          <div class="flex items-center gap-2">
+            <div class="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+              <button id="preview-tab" class="rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white">Preview</button>
+              <button id="source-tab" class="rounded-md px-3 py-1 text-xs font-medium text-slate-600 hover:text-slate-800">HTML Source</button>
+            </div>
+            <button id="copy-btn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">Copy HTML</button>
+          </div>
+        </div>
+        <div id="preview-panel" class="min-h-[400px] w-full resize-y overflow-auto rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed prose prose-slate max-w-none"></div>
+        <textarea
+          id="source-panel"
+          rows="16"
+          readonly
+          placeholder="HTML output appears here…"
+          class="hidden w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="md-title md-desc">
+      <title id="md-title">Markdown to HTML Conversion Process</title>
+      <desc id="md-desc">Flow diagram showing Markdown text being parsed into an AST, then rendered as HTML in a browser</desc>
+      <rect x="40" y="65" width="120" height="50" rx="8" fill="#6366f1" />
+      <text x="100" y="94" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Markdown Text</text>
+      <text x="100" y="112" text-anchor="middle" fill="#c7d2fe" font-family="monospace, sans-serif" font-size="10"># Hello</text>
+      <polygon points="165,90 185,82 185,98" fill="#94a3b8" />
+      <rect x="190" y="65" width="160" height="50" rx="8" fill="#e0e7ff" stroke="#818cf8" stroke-width="2" />
+      <text x="270" y="86" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">marked Parser</text>
+      <text x="270" y="102" text-anchor="middle" fill="#4338ca" font-family="monospace, sans-serif" font-size="10">AST / Tokens</text>
+      <polygon points="355,90 375,82 375,98" fill="#94a3b8" />
+      <rect x="380" y="65" width="160" height="50" rx="8" fill="#e0e7ff" stroke="#818cf8" stroke-width="2" />
+      <text x="460" y="86" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">HTML Renderer</text>
+      <text x="460" y="102" text-anchor="middle" fill="#4338ca" font-family="monospace, sans-serif" font-size="10">&lt;h1&gt;Hello&lt;/h1&gt;</text>
+      <polygon points="545,90 565,82 565,98" fill="#94a3b8" />
+      <rect x="570" y="65" width="140" height="50" rx="8" fill="#6366f1" />
+      <text x="640" y="94" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Rendered Page</text>
+      <text x="100" y="178" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">The marked library parses Markdown into tokens, then renders those tokens as HTML elements</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The conversion pipeline: Markdown text → tokenized AST → HTML output → rendered preview</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Markdown-to-HTML conversion works</h2>
+    <p class="mt-2 text-slate-600">Markdown is a lightweight markup language created by John Gruber in 2004. It is designed to be easy to read and write in its raw form while converting cleanly to structurally valid HTML. A Markdown document uses simple punctuation characters to indicate formatting — asterisks for emphasis, hash symbols for headings, dashes for lists — making it possible to write formatted content without ever leaving the keyboard.</p>
+    <p class="mt-3 text-slate-600">This tool uses the <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-indigo-600">marked</code> library, one of the most widely used Markdown parsers in the JavaScript ecosystem. The library first tokenizes the raw Markdown text into an abstract syntax tree (AST) where each element — heading, paragraph, list, code block — becomes a typed token. The renderer then walks this tree and emits the corresponding HTML tags, handling nesting, attributes, and edge cases like escaped characters automatically.</p>
+    <p class="mt-3 text-slate-600">GitHub-Flavored Markdown (GFM) extends the original Markdown specification with several important features: fenced code blocks with language annotation and syntax highlighting, tables with alignment, task lists with checkable items, strikethrough text, autolinks, and emoji shortcodes. The <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-indigo-600">marked</code> library supports GFM when the <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-indigo-600">gfm: true</code> option is set, enabling these extended features while remaining backward-compatible with standard Markdown documents.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Converting a simple Markdown heading and paragraph into HTML.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Markdown input:</span> <span class="text-slate-600 font-mono text-xs"># Welcome / This is **bold** text.</span></div>
+        <div><span class="font-medium text-slate-700">HTML output:</span> <span class="text-slate-600 font-mono text-xs">&lt;h1&gt;Welcome&lt;/h1&gt; / &lt;p&gt;This is &lt;strong&gt;bold&lt;/strong&gt; text.&lt;/p&gt;</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases for Markdown</h2>
+    <p class="mt-2 text-slate-600">Where Markdown is used most frequently across software development and content creation.</p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">README files</span><span class="text-slate-400">92% of developers</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:92%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Documentation</span><span class="text-slate-400">85%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:85%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Blog posts / articles</span><span class="text-slate-400">67%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-500" style="width:67%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Forum posts / comments</span><span class="text-slate-400">58%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-500" style="width:58%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Issue tracking / PRs</span><span class="text-slate-400">52%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-500" style="width:52%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Notetaking / knowledge bases</span><span class="text-slate-400">44%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-slate-400" style="width:44%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Open-source maintainer</h3>
+      <p class="mt-1 text-sm text-slate-600">Writes README files, contribution guides, and changelogs in Markdown. Converts to HTML for project documentation sites and package registries.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x270D;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Technical writer</h3>
+      <p class="mt-1 text-sm text-slate-600">Authors documentation in Markdown for static site generators like Jekyll, Hugo, and Astro. Converts to HTML for preview before publishing.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4AC;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Community manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Drafts forum posts, announcements, and newsletter content in Markdown. Uses live preview to ensure formatting renders correctly before posting.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Takes class notes in Markdown using editors like Obsidian or Notion. Converts formatted notes to HTML for submission or sharing.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Element</th><th class="p-3">Markdown</th><th class="p-3">HTML Output</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Heading 1</td><td class="p-3 font-mono text-xs"># Title</td><td class="p-3 font-mono text-xs">&lt;h1&gt;Title&lt;/h1&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Bold</td><td class="p-3 font-mono text-xs">**text**</td><td class="p-3 font-mono text-xs">&lt;strong&gt;text&lt;/strong&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Italic</td><td class="p-3 font-mono text-xs">*text*</td><td class="p-3 font-mono text-xs">&lt;em&gt;text&lt;/em&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Link</td><td class="p-3 font-mono text-xs">[text](url)</td><td class="p-3 font-mono text-xs">&lt;a href="url"&gt;text&lt;/a&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Image</td><td class="p-3 font-mono text-xs">![alt](src)</td><td class="p-3 font-mono text-xs">&lt;img src="src" alt="alt" /&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Code block</td><td class="p-3 font-mono text-xs">```lang … ```</td><td class="p-3 font-mono text-xs">&lt;pre&gt;&lt;code&gt;…&lt;/code&gt;&lt;/pre&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Unordered list</td><td class="p-3 font-mono text-xs">- item</td><td class="p-3 font-mono text-xs">&lt;ul&gt;&lt;li&gt;item&lt;/li&gt;&lt;/ul&gt;</td></tr>
+        <tr><td class="p-3 font-medium">Table</td><td class="p-3 font-mono text-xs">| A | B |</td><td class="p-3 font-mono text-xs">&lt;table&gt;&lt;tr&gt;&lt;td&gt;…</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Markdown to HTML Converter</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Type or paste Markdown</h3>
+        <p class="mt-1 text-sm text-slate-600">Write or paste your Markdown content into the left editor panel. The preview updates automatically as you type.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review the live preview</h3>
+        <p class="mt-1 text-sm text-slate-600">See the rendered HTML on the right panel as you type. Switch between visual Preview and HTML Source views using the tabs.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy the HTML output</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Copy HTML to grab the rendered source code and paste it into your website, CMS, email, or documentation platform.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with Markdown</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the preview to check formatting</h3>
+        <p class="mt-1 text-sm text-slate-600">Always review the live preview panel before publishing your content. Small syntax errors — like a missing space after the hash in a heading or an unclosed code fence — can break the rendering. The preview catches these instantly so you can fix them before they reach your audience.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Copy HTML for embedding</h3>
+        <p class="mt-1 text-sm text-slate-600">Many platforms accept raw HTML but not Markdown directly. Use the Copy HTML button to get clean, rendered HTML that you can paste into content management systems, email templates, forum posts, and custom web pages that do not have a Markdown renderer built in.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Markdown is portable</h3>
+        <p class="mt-1 text-sm text-slate-600">One of the biggest advantages of Markdown is that it is plain text. You can open, edit, and version-control Markdown files with any tool on any platform. Unlike proprietary document formats, Markdown works seamlessly with Git, diff tools, and code editors. Write once in Markdown and convert to HTML, PDF, LaTeX, or any other format as needed.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use GFM features for richer documents</h3>
+        <p class="mt-1 text-sm text-slate-600">GitHub-Flavored Markdown adds tables, task lists, strikethrough, and fenced code blocks with syntax highlighting. These features make your documents more expressive without sacrificing readability. Try writing a table with pipe characters or a task list with checkboxes to see them render in real time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why Markdown matters for content creation</h2>
+    <p class="mt-2 text-slate-600">Markdown has become the de facto standard for formatted plain-text writing on the web. Its adoption spans every corner of the software industry — from GitHub README files and Stack Overflow answers to static site generators and internal documentation wikis. The reason for this widespread adoption is simple: Markdown removes the friction between writing and formatting, allowing authors to focus on content rather than markup.</p>
+    <p class="mt-3 text-slate-600">For developers, Markdown is especially valuable because it integrates naturally with the tools they already use. Code repositories render Markdown files automatically, issue trackers accept Markdown in comments and descriptions, and package registries like npm and PyPI display Markdown README files on package pages. Learning Markdown is effectively learning the lingua franca of developer communication, and tools like this converter make it easy to bridge between Markdown source and HTML output when needed.</p>
+    <p class="mt-3 text-slate-600">Content creators benefit from Markdown's simplicity and portability. Blog posts written in Markdown can be published through static site generators like Hugo, Jekyll, Eleventy, or Astro — the very framework this site is built on. Writers can draft entire articles in a plain-text editor, preview the formatting with this tool, and then commit the Markdown file to a repository where it is automatically built into HTML. This workflow is fast, reliable, and version-controlled, making it vastly superior to writing directly in a WYSIWYG editor.</p>
+    <p class="mt-3 text-slate-600">The educational sector has also embraced Markdown. Students write lab reports, research notes, and collaborative documents using Markdown editors like Obsidian, Logseq, and Notion. Converting these notes to HTML allows them to submit formatted work without learning a complex publishing tool. Teachers can provide feedback directly in Markdown, and the entire exchange remains in a simple, portable format that does not lock anyone into a specific software ecosystem. As more educational institutions adopt open-source tools and workflows, Markdown literacy is becoming as fundamental as spreadsheet proficiency for students in technical fields.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Privacy and security</h2>
+    <p class="mt-2 text-slate-600">This Markdown converter processes all data entirely within your browser. The <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-indigo-600">marked</code> library is loaded dynamically from a CDN and runs client-side — your Markdown content and the resulting HTML never leave your device. There are no server-side processing endpoints, no data logging, and no analytics tracking associated with the conversion functionality. This local-processing approach ensures that sensitive content such as draft documentation, proprietary code snippets, or unpublished writing remains private.</p>
+    <p class="mt-3 text-slate-600">Because all rendering happens in your browser, the tool works offline once the library has been cached by your browser. You can disconnect from the internet and continue converting Markdown to HTML without interruption. This makes the tool suitable for use in air-gapped environments, during travel, or in any situation where network connectivity is unreliable or restricted.</p>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/json-formatter" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">JSON Formatter &amp; Validator</a>
+      <a href="/tools/sql-formatter" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">SQL Formatter</a>
+      <a href="/tools/diff-checker" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Diff Checker</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('md-input');
+      const previewPanel = document.getElementById('preview-panel');
+      const sourcePanel = document.getElementById('source-panel');
+      const previewTab = document.getElementById('preview-tab');
+      const sourceTab = document.getElementById('source-tab');
+      const copyBtn = document.getElementById('copy-btn');
+
+      let debounceTimer;
+      let marked;
+
+      async function ensureMarked() {
+        if (marked) return;
+        const mod = await import('https://esm.sh/marked@12.0.2');
+        marked = mod.marked;
+        marked.setOptions({ gfm: true, breaks: true });
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      async function render() {
+        await ensureMarked();
+        const raw = input.value;
+        let html;
+        try {
+          html = marked.parse(raw);
+        } catch {
+          html = '<p class="text-red-500">Error rendering Markdown</p>';
+        }
+        previewPanel.innerHTML = html;
+        sourcePanel.value = html;
+      }
+
+      function debounceRender() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(render, 300);
+      }
+
+      input.addEventListener('input', debounceRender);
+
+      previewTab.addEventListener('click', () => {
+        previewTab.className = 'rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white';
+        sourceTab.className = 'rounded-md px-3 py-1 text-xs font-medium text-slate-600 hover:text-slate-800';
+        previewPanel.classList.remove('hidden');
+        sourcePanel.classList.add('hidden');
+      });
+
+      sourceTab.addEventListener('click', () => {
+        sourceTab.className = 'rounded-md bg-indigo-600 px-3 py-1 text-xs font-medium text-white';
+        previewTab.className = 'rounded-md px-3 py-1 text-xs font-medium text-slate-600 hover:text-slate-800';
+        sourcePanel.classList.remove('hidden');
+        previewPanel.classList.add('hidden');
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        const text = sourcePanel.value;
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const orig = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          copyBtn.classList.add('bg-green-50', 'text-green-700');
+          setTimeout(() => {
+            copyBtn.textContent = orig;
+            copyBtn.classList.remove('bg-green-50', 'text-green-700');
+          }, 1500);
+        } catch {}
+      });
+
+      render();
+    });
+  </script>
+</ToolLayout>

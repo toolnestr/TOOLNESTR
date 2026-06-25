@@ -1,0 +1,376 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'HTTP Status Code Lookup';
+const description = 'Look up any HTTP status code with its description, category, and common use cases. Complete HTTP status code reference.';
+const intro = 'Look up any HTTP status code with description and common use cases.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'How many status codes are there?', a: 'Over 60 standard codes across 5 classes (1xx–5xx).' },
+  { q: 'What is the most common status code?', a: '200 OK (success) and 404 Not Found (resource missing) are the most common.' },
+  { q: 'What is 418?', a: '418 I\'m a Teapot — an April Fools\' joke from the HTCPCP protocol.' },
+  { q: 'Why does 429 matter?', a: '429 Too Many Requests — indicates rate limiting, important for API clients.' },
+];
+const seoTitle = 'HTTP Status Code Lookup — HTTP Status Codes Reference';
+const seoDesc = 'Look up any HTTP status code with description, category, and common use cases. Complete HTTP status code reference.';
+---
+
+<ToolLayout title={seoTitle} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-col gap-3 sm:flex-row">
+      <input id="search-input" type="text" placeholder="Search by code or description..." class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      <input id="code-input" type="number" min="100" max="599" placeholder="Code" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 sm:w-32" />
+    </div>
+
+    <div id="category-tabs" class="mt-4 flex flex-wrap gap-1.5">
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="all">All</button>
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="1xx">1xx Info</button>
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="2xx">2xx Success</button>
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="3xx">3xx Redirect</button>
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="4xx">4xx Client Error</button>
+      <button class="tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition" data-cat="5xx">5xx Server Error</button>
+    </div>
+
+    <div id="results-count" class="mt-2 text-xs text-slate-400"></div>
+
+    <div id="results" class="mt-3 space-y-2"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How HTTP status codes work</h2>
+    <p class="mt-2 text-slate-600">HTTP status codes are three-digit numbers returned by a server in response to a client's request. They indicate the result of the HTTP transaction — whether it succeeded, failed, or needs further action. Every web developer, system administrator, and API designer encounters them daily.</p>
+
+    <div class="mt-6 overflow-x-auto">
+      <svg viewBox="0 0 800 180" class="w-full max-w-2xl" role="img" aria-label="HTTP request-response timeline showing status code classes">
+        <rect x="10" y="10" width="780" height="160" rx="12" fill="#f1f5f9" />
+        <text x="400" y="35" text-anchor="middle" font-size="14" font-weight="bold" fill="#334155">HTTP Request → Response Timeline</text>
+        <line x1="60" y1="60" x2="740" y2="60" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6,4" />
+        <polygon points="740,55 750,60 740,65" fill="#cbd5e1" />
+        <rect x="80" y="72" width="120" height="36" rx="8" fill="#dbeafe" />
+        <text x="140" y="95" text-anchor="middle" font-size="12" fill="#1e40af">Client Request</text>
+        <rect x="290" y="72" width="100" height="36" rx="8" fill="#e0e7ff" />
+        <text x="340" y="95" text-anchor="middle" font-size="12" fill="#3730a3">Processing</text>
+        <rect x="490" y="72" width="200" height="36" rx="8" fill="#fef3c7" />
+        <text x="590" y="95" text-anchor="middle" font-size="12" fill="#92400e">Server Response</text>
+        <rect x="520" y="118" width="50" height="22" rx="6" fill="#bbf7d0" />
+        <text x="545" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">1xx</text>
+        <rect x="575" y="118" width="50" height="22" rx="6" fill="#86efac" />
+        <text x="600" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#166534">2xx</text>
+        <rect x="630" y="118" width="50" height="22" rx="6" fill="#fde68a" />
+        <text x="655" y="133" text-anchor="middle" font-size="10" font-weight="bold" fill="#854d0e">3xx</text>
+        <rect x="520" y="145" width="50" height="22" rx="6" fill="#fecaca" />
+        <text x="545" y="160" text-anchor="middle" font-size="10" font-weight="bold" fill="#991b1b">4xx</text>
+        <rect x="575" y="145" width="50" height="22" rx="6" fill="#fed7aa" />
+        <text x="600" y="160" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">5xx</text>
+        <text x="400" y="178" text-anchor="middle" font-size="10" fill="#64748b">Status code appears in the response line</text>
+      </svg>
+    </div>
+
+    <p class="mt-4 text-slate-600">When a client (browser, API consumer, or tool like cURL) sends an HTTP request, the server processes it and returns a response. The first line of the response includes the HTTP version, the status code, and a reason phrase. The status code is the key piece of information — it tells the client what happened in a machine-readable way.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Status code classes</h2>
+    <p class="mt-2 text-slate-600">HTTP status codes are grouped into five classes, identified by the first digit. Memorizing these five categories helps you narrow down any issue immediately.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-5">
+      <div class="rounded-xl border border-green-200 bg-green-50 p-4">
+        <h3 class="font-bold text-green-800">1xx</h3>
+        <p class="mt-1 text-xs text-green-700">Informational</p>
+        <p class="mt-1 text-xs text-green-600">Request received, continuing.</p>
+      </div>
+      <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <h3 class="font-bold text-emerald-800">2xx</h3>
+        <p class="mt-1 text-xs text-emerald-700">Success</p>
+        <p class="mt-1 text-xs text-emerald-600">Request received and accepted.</p>
+      </div>
+      <div class="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+        <h3 class="font-bold text-yellow-800">3xx</h3>
+        <p class="mt-1 text-xs text-yellow-700">Redirection</p>
+        <p class="mt-1 text-xs text-yellow-600">Further action needed.</p>
+      </div>
+      <div class="rounded-xl border border-red-200 bg-red-50 p-4">
+        <h3 class="font-bold text-red-800">4xx</h3>
+        <p class="mt-1 text-xs text-red-700">Client Error</p>
+        <p class="mt-1 text-xs text-red-600">Request has bad syntax.</p>
+      </div>
+      <div class="rounded-xl border border-orange-200 bg-orange-50 p-4">
+        <h3 class="font-bold text-orange-800">5xx</h3>
+        <p class="mt-1 text-xs text-orange-700">Server Error</p>
+        <p class="mt-1 text-xs text-orange-600">Server failed to fulfill.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Most important status codes</h2>
+    <p class="mt-2 text-slate-600">While there are many standard status codes, these 13 codes account for the vast majority of what you will encounter in practice:</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-xs font-bold text-emerald-700">200</span><span class="font-medium text-slate-900">OK</span></span>
+        <p class="mt-1 text-xs text-slate-500">Standard success response.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-xs font-bold text-emerald-700">201</span><span class="font-medium text-slate-900">Created</span></span>
+        <p class="mt-1 text-xs text-slate-500">Resource created (POST/PUT).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-xs font-bold text-emerald-700">204</span><span class="font-medium text-slate-900">No Content</span></span>
+        <p class="mt-1 text-xs text-slate-500">Success, no body (DELETE).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-yellow-100 px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-700">301</span><span class="font-medium text-slate-900">Moved Permanently</span></span>
+        <p class="mt-1 text-xs text-slate-500">Resource has new URL.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-yellow-100 px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-700">302</span><span class="font-medium text-slate-900">Found</span></span>
+        <p class="mt-1 text-xs text-slate-500">Temporary redirect.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-yellow-100 px-1.5 py-0.5 font-mono text-xs font-bold text-yellow-700">304</span><span class="font-medium text-slate-900">Not Modified</span></span>
+        <p class="mt-1 text-xs text-slate-500">Use cached version.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-red-100 px-1.5 py-0.5 font-mono text-xs font-bold text-red-700">400</span><span class="font-medium text-slate-900">Bad Request</span></span>
+        <p class="mt-1 text-xs text-slate-500">Malformed request syntax.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-red-100 px-1.5 py-0.5 font-mono text-xs font-bold text-red-700">401</span><span class="font-medium text-slate-900">Unauthorized</span></span>
+        <p class="mt-1 text-xs text-slate-500">Authentication required.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-red-100 px-1.5 py-0.5 font-mono text-xs font-bold text-red-700">403</span><span class="font-medium text-slate-900">Forbidden</span></span>
+        <p class="mt-1 text-xs text-slate-500">No permission, even with auth.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-red-100 px-1.5 py-0.5 font-mono text-xs font-bold text-red-700">404</span><span class="font-medium text-slate-900">Not Found</span></span>
+        <p class="mt-1 text-xs text-slate-500">Resource does not exist.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-orange-100 px-1.5 py-0.5 font-mono text-xs font-bold text-orange-700">500</span><span class="font-medium text-slate-900">Internal Server Error</span></span>
+        <p class="mt-1 text-xs text-slate-500">Generic server failure.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-orange-100 px-1.5 py-0.5 font-mono text-xs font-bold text-orange-700">502</span><span class="font-medium text-slate-900">Bad Gateway</span></span>
+        <p class="mt-1 text-xs text-slate-500">Upstream server invalid.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="inline-flex items-center gap-1.5"><span class="rounded bg-orange-100 px-1.5 py-0.5 font-mono text-xs font-bold text-orange-700">503</span><span class="font-medium text-slate-900">Service Unavailable</span></span>
+        <p class="mt-1 text-xs text-slate-500">Server overloaded or down.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F50D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">API Debugging</h3>
+        <p class="mt-1 text-sm text-slate-600">When an API call fails, the status code is the first clue. 400 means fix the request. 401/403 means fix the auth. 5xx means the server is the problem.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F527;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Server Troubleshooting</h3>
+        <p class="mt-1 text-sm text-slate-600">Monitoring tools report status codes. A surge in 5xx responses signals an outage. A spike in 429s indicates rate limiting is being hit.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">&#x1F4DA;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Learning HTTP</h3>
+        <p class="mt-1 text-sm text-slate-600">Understanding status codes is fundamental to web development. They appear in browser dev tools, server logs, and every HTTP library.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using HTTP status codes</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-900">Memorize the five classes</h3>
+        <p class="mt-1 text-sm text-slate-600">The first digit of any status code tells you its category. When you see 4xx, you know the client made a mistake. 5xx means the server is failing. This narrows down the debugging process immediately.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Don't confuse 401 and 403</h3>
+        <p class="mt-1 text-sm text-slate-600">401 Unauthorized means "provide credentials" (you haven't authenticated). 403 Forbidden means "your credentials don't have access" (you're authenticated but not authorized).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for redirect loops</h3>
+        <p class="mt-1 text-sm text-slate-600">3xx codes cause browsers to follow the Location header. If A redirects to B which redirects back to A, you get a redirect loop. Browser dev tools show this clearly in the Network tab.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Rate limiting (429) is becoming common</h3>
+        <p class="mt-1 text-sm text-slate-600">Many APIs return 429 Too Many Requests when you exceed their rate limit. Check the Retry-After header to see when you can retry. Implement exponential backoff in your clients.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/curl-command-generator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">cURL Command Generator</a>
+      <a href="/tools/json-formatter" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">JSON Formatter</a>
+      <a href="/tools/regex-tester" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">Regex Tester</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      var codes = [
+        { code: 100, title: 'Continue', cat: '1xx', desc: 'The server has received the request headers and the client should proceed to send the body.', when: 'Used to avoid sending large bodies before the server is ready. The client should continue with the request.' },
+        { code: 101, title: 'Switching Protocols', cat: '1xx', desc: 'The server is switching protocols as requested by the client via the Upgrade header.', when: 'Commonly seen during WebSocket upgrades. The server agrees to switch from HTTP to WebSocket protocol.' },
+        { code: 102, title: 'Processing', cat: '1xx', desc: 'The server has received and is processing the request, but no response is available yet.', when: 'Used in WebDAV to prevent the client from timing out when processing large requests.' },
+        { code: 103, title: 'Early Hints', cat: '1xx', desc: 'The server can return some response headers before the final response.', when: 'Used to preload resources (like CSS/JS) while the main response is still being generated. Improves page load performance.' },
+        { code: 200, title: 'OK', cat: '2xx', desc: 'The request succeeded. The meaning depends on the HTTP method: GET (resource fetched), POST (action processed), PUT (resource updated), etc.', when: 'The most common and welcome status code. Everything worked as expected.' },
+        { code: 201, title: 'Created', cat: '2xx', desc: 'The request succeeded and a new resource was created.', when: 'Returned by POST or PUT endpoints after creating a resource. The Location header usually contains the URL of the new resource.' },
+        { code: 202, title: 'Accepted', cat: '2xx', desc: 'The request has been accepted for processing, but the processing has not been completed.', when: 'Used for asynchronous operations. The client should poll another endpoint to check the status.' },
+        { code: 203, title: 'Non-Authoritative Information', cat: '2xx', desc: 'The returned metadata is not exactly the same as from the origin server.', when: 'Returned by a proxy that modifies the response. The response may be from a third party.' },
+        { code: 204, title: 'No Content', cat: '2xx', desc: 'The request succeeded but there is no content to return.', when: 'Commonly used for DELETE operations, or for PUT updates where no response body is needed.' },
+        { code: 205, title: 'Reset Content', cat: '2xx', desc: 'The server fulfilled the request and asks the client to reset the document view.', when: 'Used in form submission flows to clear the form after a successful submission.' },
+        { code: 206, title: 'Partial Content', cat: '2xx', desc: 'The server is delivering only part of the resource, as requested by a Range header.', when: 'Used for video streaming, resume downloads, and large file transfers where the client requests specific byte ranges.' },
+        { code: 207, title: 'Multi-Status', cat: '2xx', desc: 'Provides status for multiple independent operations.', when: 'Used in WebDAV to report multiple operation results in a single response.' },
+        { code: 208, title: 'Already Reported', cat: '2xx', desc: 'The members of a DAV binding have already been enumerated.', when: 'Used in WebDAV to avoid enumerating members of a binding multiple times.' },
+        { code: 226, title: 'IM Used', cat: '2xx', desc: 'The server has fulfilled a GET request and the response is a delta encoding.', when: 'Used with delta encoding (RFC 3229) to return only changes since a previous version.' },
+        { code: 300, title: 'Multiple Choices', cat: '3xx', desc: 'The requested resource has multiple representations. The client should choose one.', when: 'Rarely used. The server provides a list of available options, and the client should pick the best one.' },
+        { code: 301, title: 'Moved Permanently', cat: '3xx', desc: 'The requested resource has been permanently moved to a new URL.', when: 'Used for URL restructuring. Browsers and search engines update their bookmarks and indexes. The new URL is in the Location header.' },
+        { code: 302, title: 'Found', cat: '3xx', desc: 'The requested resource is temporarily at a different URL.', when: 'Used for temporary redirects. The client should continue using the original URL for future requests. Common after form submissions.' },
+        { code: 303, title: 'See Other', cat: '3xx', desc: 'The response can be found at another URL using GET.', when: 'Used after POST/PUT to redirect the client to a different page. Forces a GET request to the new URL.' },
+        { code: 304, title: 'Not Modified', cat: '3xx', desc: 'The resource has not been modified since the last request.', when: 'Used for caching. The client sends If-Modified-Since or If-None-Match headers and gets 304 if the cached version is still fresh.' },
+        { code: 305, title: 'Use Proxy', cat: '3xx', desc: 'The requested resource must be accessed through a proxy.', when: 'Deprecated due to security concerns. The proxy URL is provided in the Location header.' },
+        { code: 306, title: 'Switch Proxy', cat: '3xx', desc: 'No longer used. Originally meant "subsequent requests should use the specified proxy."', when: 'Reserved. This status code was used in a previous version of the HTTP spec but is no longer in use.' },
+        { code: 307, title: 'Temporary Redirect', cat: '3xx', desc: 'The request should be repeated with another URL, but the method must not change.', when: 'Like 302 but guarantees that the same HTTP method (POST stays POST) is used for the redirect.' },
+        { code: 308, title: 'Permanent Redirect', cat: '3xx', desc: 'The resource has been permanently moved. The method and body must not change.', when: 'Like 301 but guarantees the same HTTP method is preserved. Useful for API endpoints with POST bodies.' },
+        { code: 400, title: 'Bad Request', cat: '4xx', desc: 'The server cannot process the request due to malformed syntax or invalid request message framing.', when: 'The client sent something the server could not understand — bad JSON, malformed headers, or invalid query parameters.' },
+        { code: 401, title: 'Unauthorized', cat: '4xx', desc: 'The request requires user authentication. The response must include a WWW-Authenticate header.', when: 'You tried to access a protected resource without valid credentials. Provide authentication via Authorization header.' },
+        { code: 402, title: 'Payment Required', cat: '4xx', desc: 'Reserved for future use. Originally intended for digital payment systems.', when: 'Rarely used in practice. Some APIs use it for paywalled content or when payment is required to proceed.' },
+        { code: 403, title: 'Forbidden', cat: '4xx', desc: 'The server understood the request but refuses to authorize it.', when: 'You are authenticated but do not have permission. Unlike 401, re-authenticating will not help — your access level is insufficient.' },
+        { code: 404, title: 'Not Found', cat: '4xx', desc: 'The server cannot find the requested resource.', when: 'The URL does not map to any resource. Either the path is wrong or the resource has been deleted. The most recognized status code on the web.' },
+        { code: 405, title: 'Method Not Allowed', cat: '4xx', desc: 'The HTTP method is not supported for the requested resource.', when: 'You tried POST on a GET-only endpoint, or vice versa. The Allow header lists which methods are permitted.' },
+        { code: 406, title: 'Not Acceptable', cat: '4xx', desc: 'The server cannot produce a response matching the Accept headers.', when: 'The client requested a specific content type (via Accept header) that the server cannot provide.' },
+        { code: 407, title: 'Proxy Authentication Required', cat: '4xx', desc: 'The client must authenticate with a proxy before proceeding.', when: 'Similar to 401 but for proxy authentication. The proxy returns a Proxy-Authenticate header.' },
+        { code: 408, title: 'Request Timeout', cat: '4xx', desc: 'The server timed out waiting for the request.', when: 'The client took too long to send the request. Usually seen in long-lived connections or slow client uploads.' },
+        { code: 409, title: 'Conflict', cat: '4xx', desc: 'The request conflicts with the current state of the server.', when: 'Common with PUT/PATCH when there is a version conflict, such as trying to update a resource that was modified by someone else.' },
+        { code: 410, title: 'Gone', cat: '4xx', desc: 'The requested resource is permanently gone and will not be available again.', when: 'The resource has been intentionally deleted. Unlike 404 which is temporary, 410 is permanent. Useful for removed content.' },
+        { code: 411, title: 'Length Required', cat: '4xx', desc: 'The server requires a Content-Length header in the request.', when: 'The request body size was not specified. Add the Content-Length header before sending the body.' },
+        { code: 412, title: 'Precondition Failed', cat: '4xx', desc: 'One or more preconditions given in the request headers evaluated to false.', when: 'Used with conditional requests (If-Match, If-None-Match). The resource has changed since you last checked.' },
+        { code: 413, title: 'Content Too Large', cat: '4xx', desc: 'The request body is larger than the server is willing to process.', when: 'You tried to upload a file that exceeds the server limit. Check your upload size limits and the server configuration.' },
+        { code: 414, title: 'URI Too Long', cat: '4xx', desc: 'The request URI is longer than the server is willing to interpret.', when: 'Usually caused by excessively long query strings or deeply nested paths. Use POST for large payloads.' },
+        { code: 415, title: 'Unsupported Media Type', cat: '4xx', desc: 'The request body format is not supported by the server.', when: 'You posted JSON to a server expecting XML, or uploaded a file type the server does not accept.' },
+        { code: 416, title: 'Range Not Satisfiable', cat: '4xx', desc: 'The byte range specified in the Range header cannot be satisfied.', when: 'The client requested a byte range that exceeds the file size. The Content-Range header indicates the valid range.' },
+        { code: 417, title: 'Expectation Failed', cat: '4xx', desc: 'The server cannot meet the requirements of the Expect request header.', when: 'The client sent an Expect: 100-continue header but the server cannot comply with what was expected.' },
+        { code: 418, title: 'I\'m a Teapot', cat: '4xx', desc: 'The server refuses to brew coffee because it is a teapot.', when: 'An April Fools\' joke from RFC 2324 (HTCPCP). Used in some systems as an Easter egg or for testing.' },
+        { code: 421, title: 'Misdirected Request', cat: '4xx', desc: 'The request was directed at a server that cannot produce a response.', when: 'Used when requests are sent to a server that is not configured to handle them, often in load-balanced setups.' },
+        { code: 422, title: 'Unprocessable Content', cat: '4xx', desc: 'The request body contains semantic errors and cannot be processed.', when: 'The request is syntactically correct (valid JSON/XML) but semantically invalid — missing required fields or invalid values.' },
+        { code: 423, title: 'Locked', cat: '4xx', desc: 'The resource being accessed is locked.', when: 'Used in WebDAV when the resource is locked by another user. The client should retry after the lock expires.' },
+        { code: 424, title: 'Failed Dependency', cat: '4xx', desc: 'The request failed because a previous request in the chain failed.', when: 'Used in WebDAV transactions where multiple operations depend on each other. One failure triggers 424.' },
+        { code: 425, title: 'Too Early', cat: '4xx', desc: 'The server is unwilling to risk processing a request that might be replayed.', when: 'Part of the HTTP replay protection. Used when the server cannot guarantee the request is not a replay.' },
+        { code: 426, title: 'Upgrade Required', cat: '4xx', desc: 'The server refuses to use the current protocol and requires an upgrade.', when: 'The client must upgrade to a different protocol (usually TLS/1.0 to TLS/1.2+). The Upgrade header lists the required protocol.' },
+        { code: 428, title: 'Precondition Required', cat: '4xx', desc: 'The server requires the request to be conditional to prevent the lost update problem.', when: 'The server insists on If-Match or If-None-Match headers to prevent concurrent modification conflicts.' },
+        { code: 429, title: 'Too Many Requests', cat: '4xx', desc: 'The client has sent too many requests in a given time period.', when: 'Rate limit exceeded. The Retry-After header tells you how long to wait before retrying. Implement exponential backoff.' },
+        { code: 431, title: 'Request Header Fields Too Large', cat: '4xx', desc: 'The request headers are too large for the server to process.', when: 'Too many or too large headers. Common with oversized cookies or overly complex authorization headers.' },
+        { code: 451, title: 'Unavailable For Legal Reasons', cat: '4xx', desc: 'The resource cannot be accessed for legal reasons.', when: 'Content blocked due to court order, censorship, or copyright claims. Named after Fahrenheit 451.' },
+        { code: 500, title: 'Internal Server Error', cat: '5xx', desc: 'The server encountered an unexpected condition that prevented it from fulfilling the request.', when: 'A generic server error. Check server logs for stack traces, unhandled exceptions, or misconfigurations.' },
+        { code: 501, title: 'Not Implemented', cat: '5xx', desc: 'The server does not support the functionality required to fulfill the request.', when: 'The HTTP method or feature is not implemented on the server. Common with unsupported HTTP extensions.' },
+        { code: 502, title: 'Bad Gateway', cat: '5xx', desc: 'The server, while acting as a gateway or proxy, received an invalid response from an upstream server.', when: 'A proxy or load balancer received an invalid response from the backend. Common in reverse proxy setups with nginx or Cloudflare.' },
+        { code: 503, title: 'Service Unavailable', cat: '5xx', desc: 'The server is temporarily unable to handle the request, usually due to maintenance or overload.', when: 'The server is down for maintenance or overwhelmed. Retry-After header may indicate when the service will be back. Common during deployments.' },
+        { code: 504, title: 'Gateway Timeout', cat: '5xx', desc: 'The server, while acting as a gateway, did not receive a timely response from an upstream server.', when: 'The upstream server timed out. The proxy/gateway gave up waiting. Common when backend services are slow or unresponsive.' },
+        { code: 505, title: 'HTTP Version Not Supported', cat: '5xx', desc: 'The server does not support the HTTP protocol version used in the request.', when: 'The client sent a request using an HTTP version the server does not support (e.g., HTTP/3 on a server that only supports HTTP/1.1).' },
+        { code: 506, title: 'Variant Also Negotiates', cat: '5xx', desc: 'The server has an internal configuration error where the chosen variant is itself configured to engage in content negotiation.', when: 'A rare configuration error in transparent content negotiation where the chosen variant creates a circular reference.' },
+        { code: 507, title: 'Insufficient Storage', cat: '5xx', desc: 'The server cannot store the representation needed to complete the request.', when: 'The server has run out of disk space or storage quota. Used in WebDAV when a PUT request cannot be completed.' },
+        { code: 508, title: 'Loop Detected', cat: '5xx', desc: 'The server detected an infinite loop while processing the request.', when: 'The server detected a circular dependency or infinite redirect chain in its own processing logic.' },
+        { code: 510, title: 'Not Extended', cat: '5xx', desc: 'The server requires further extensions to fulfill the request.', when: 'The client must extend its request with policies listed in the response. Defined by RFC 2774 for HTTP Extension Framework.' },
+        { code: 511, title: 'Network Authentication Required', cat: '5xx', desc: 'The client needs to authenticate to gain network access.', when: 'Returned by captive portals (hotspot login pages). The browser intercepts this and shows a login page. Common on public Wi-Fi.' },
+      ];
+
+      var searchInput = document.getElementById('search-input');
+      var codeInput = document.getElementById('code-input');
+      var resultsEl = document.getElementById('results');
+      var countEl = document.getElementById('results-count');
+      var tabBtns = document.querySelectorAll('.tab-btn');
+      var activeCat = 'all';
+
+      function getCat(code) {
+        if (code < 200) return '1xx';
+        if (code < 300) return '2xx';
+        if (code < 400) return '3xx';
+        if (code < 500) return '4xx';
+        return '5xx';
+      }
+
+      function getColor(cat) {
+        if (cat === '1xx') return 'bg-green-100 text-green-700';
+        if (cat === '2xx') return 'bg-emerald-100 text-emerald-700';
+        if (cat === '3xx') return 'bg-yellow-100 text-yellow-700';
+        if (cat === '4xx') return 'bg-red-100 text-red-700';
+        return 'bg-orange-100 text-orange-700';
+      }
+
+      function render() {
+        var query = searchInput.value.toLowerCase().trim();
+        var codeVal = codeInput.value.trim();
+
+        var filtered = codes.filter(function (c) {
+          if (activeCat !== 'all' && c.cat !== activeCat) return false;
+          if (codeVal) return c.code === parseInt(codeVal, 10);
+          if (query) {
+            var codeStr = String(c.code);
+            return codeStr.indexOf(query) !== -1 || c.title.toLowerCase().indexOf(query) !== -1 || c.desc.toLowerCase().indexOf(query) !== -1;
+          }
+          return true;
+        });
+
+        countEl.textContent = filtered.length + ' of ' + codes.length + ' status codes';
+
+        if (filtered.length === 0) {
+          resultsEl.innerHTML = '<div class="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">No status codes match your search. Try a different query.</div>';
+          return;
+        }
+
+        var html = '';
+        for (var i = 0; i < filtered.length; i++) {
+          var c = filtered[i];
+          var color = getColor(c.cat);
+          html += '<div class="group rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm">';
+          html += '<button class="flex w-full items-center justify-between px-4 py-3 text-left" onclick="var n=this.nextElementSibling; n.classList.toggle(\'hidden\'); this.querySelector(\'.chevron\').classList.toggle(\'rotate-180\');">';
+          html += '<span class="flex items-center gap-3"><span class="inline-flex items-center gap-1.5"><span class="rounded px-2 py-0.5 font-mono text-xs font-bold ' + color + '">' + c.code + '</span><span class="text-sm font-medium text-slate-900">' + c.title + '</span></span><span class="hidden text-xs text-slate-400 sm:inline">' + c.cat + '</span></span>';
+          html += '<svg class="chevron h-4 w-4 shrink-0 text-slate-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>';
+          html += '</button>';
+          html += '<div class="hidden border-t border-slate-100 px-4 py-3">';
+          html += '<p class="text-sm text-slate-600">' + c.desc + '</p>';
+          html += '<div class="mt-2 rounded-lg bg-slate-50 px-3 py-2"><span class="text-xs font-medium text-slate-500">When it happens: </span><span class="text-xs text-slate-600">' + c.when + '</span></div>';
+          html += '</div>';
+          html += '</div>';
+        }
+        resultsEl.innerHTML = html;
+      }
+
+      function setActiveTab(cat) {
+        activeCat = cat;
+        for (var i = 0; i < tabBtns.length; i++) {
+          var btn = tabBtns[i];
+          if (btn.dataset.cat === cat) {
+            btn.className = 'tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition bg-indigo-600 text-white';
+          } else {
+            btn.className = 'tab-btn rounded-lg px-3 py-1.5 text-xs font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+          }
+        }
+        render();
+      }
+
+      for (var j = 0; j < tabBtns.length; j++) {
+        tabBtns[j].addEventListener('click', function () {
+          setActiveTab(this.dataset.cat);
+        });
+      }
+
+      searchInput.addEventListener('input', function () {
+        codeInput.value = '';
+        render();
+      });
+
+      codeInput.addEventListener('input', function () {
+        searchInput.value = '';
+        render();
+      });
+
+      setActiveTab('all');
+    });
+  </script>
+</ToolLayout>

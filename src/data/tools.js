@@ -319,6 +319,16 @@ export const tools = [
   { slug: 'rsa-key-generator', title: 'RSA Key Generator', short: 'Generate a 2048-bit RSA public/private key pair in PEM or JWK format.', category: 'security', emoji: '🗝️', enabled: true, status: 'live' },
   { slug: 'bcrypt-checker', title: 'Bcrypt Hash Checker', short: 'Generate bcrypt hashes and verify plaintext against existing hashes.', category: 'security', emoji: '🔑', enabled: true, status: 'live' },
   { slug: 'qr-code-generator', title: 'QR Code Generator', short: 'Generate QR codes from any URL or text and download as PNG.', category: 'security', emoji: '📱', enabled: true, status: 'live' },
+  // ── Part B: Developers ──
+  { slug: 'regex-tester', title: 'Regex Tester', short: 'Test regular expressions in real-time with match highlighting and groups.', category: 'developers', emoji: '🔍', enabled: true, status: 'live' },
+  { slug: 'yaml-validator', title: 'YAML Validator', short: 'Validate and lint YAML syntax with error highlighting.', category: 'developers', emoji: '📋', enabled: true, status: 'live' },
+  { slug: 'sql-formatter', title: 'SQL Formatter', short: 'Format SQL queries with customizable indentation and case style.', category: 'developers', emoji: '🗄️', enabled: true, status: 'live' },
+  { slug: 'diff-checker', title: 'Diff Checker', short: 'Compare two texts side by side with line-level diff highlighting.', category: 'developers', emoji: '📑', enabled: true, status: 'live' },
+  { slug: 'markdown-to-html', title: 'Markdown to HTML', short: 'Convert Markdown to HTML with live preview and GitHub-style rendering.', category: 'developers', emoji: '📝', enabled: true, status: 'live' },
+  { slug: 'curl-command-generator', title: 'cURL Command Generator', short: 'Build cURL commands with a form — URL, method, headers, body, auth.', category: 'developers', emoji: '🔧', enabled: true, status: 'live' },
+  { slug: 'http-status-code-lookup', title: 'HTTP Status Code Lookup', short: 'Look up any HTTP status code with description and common use cases.', category: 'developers', emoji: '🌐', enabled: true, status: 'live' },
+  // ── Part B: Automotive ──
+  { slug: 'ev-vs-gas-break-even-calculator', title: 'EV vs Gas Break-Even', short: 'Compare EV and gas car costs to find your break-even mileage.', category: 'automotive', emoji: '⚡', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages
