@@ -24,7 +24,8 @@ const faqs = [
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 
   <style is:inline>
     :root {
@@ -287,7 +288,7 @@ const faqs = [
   </div>
 
   <!-- ── Hidden PDF Template ── -->
-  <div id="pdfTemplate" style="position:absolute;left:-9999px;top:0;width:794px;font-family:'Inter',sans-serif;">
+  <div id="pdfTemplate" style="position:fixed;left:0;top:0;width:794px;z-index:-9999;pointer-events:none;font-family:'Inter',sans-serif;">
     <style>
       .pdf-page { width: 764px; padding: 40px 50px; font-family: 'Inter', sans-serif; color: #1e293b; page-break-after: always; position: relative; box-sizing: border-box; }
       .pdf-cover { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 1050px; }
@@ -311,7 +312,8 @@ const faqs = [
       .pdf-issue.low { border-left-color: #94a3b8; background: #f8fafc; }
       .pdf-issue h4 { margin: 0 0 6px; font-size: 11pt; color: #1e293b; }
       .pdf-issue p { margin: 3px 0; font-size: 9pt; color: #475569; line-height: 1.4; }
-      .pdf-issue code { display: block; background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 6px; font-size: 8pt; margin: 8px 0 0; white-space: pre-wrap; word-break: break-word; }
+      .pdf-issue code { display: block; background: #1e293b; color: #e2e8f0; padding: 10px; font-size: 8pt; margin: 8px 0 0; font-family: 'Courier New', Courier, monospace; }
+      #pdfTemplate code { font-family: 'Courier New', Courier, monospace; }
       .pdf-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
       .pdf-stat-box { text-align: center; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
       .pdf-stat-box .n { font-size: 16pt; font-weight: 700; color: #6366f1; }
@@ -1440,20 +1442,42 @@ const faqs = [
         }
         socialContainer.innerHTML = socialHtml || '<p style="font-size:9pt;color:#64748b;">No social meta data available.</p>';
 
-        // Generate PDF from the hidden template
-        if (typeof html2pdf === 'undefined') {
+        // Generate PDF by rendering each report section as its own page (avoids
+        // html2pdf's auto-pagination, which silently truncates trailing pages on
+        // tall, variable-length reports).
+        if (typeof html2canvas === 'undefined' || typeof jspdf === 'undefined') {
           alert('PDF export library is loading. Please try again in a moment.');
           return;
         }
-        var element = document.getElementById('pdfTemplate');
-        html2pdf().set({
-          margin: [0, 0, 0, 0],
-          filename: filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          enableLinks: false,
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-          jsPDF: { unit: 'px', format: 'a4', orientation: 'portrait' }
-        }).from(element).save();
+        var template = document.getElementById('pdfTemplate');
+        var sections = Array.prototype.slice.call(template.querySelectorAll('.pdf-page'));
+        var pdf = new jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        var pageWidthMm = pdf.internal.pageSize.getWidth();
+        var pageHeightMm = pdf.internal.pageSize.getHeight();
+
+        var renderSection = function (index) {
+          var section = sections[index];
+          return html2canvas(section, { scale: 2, useCORS: true, letterRendering: true }).then(function (canvas) {
+            var imgData = canvas.toDataURL('image/jpeg', 0.98);
+            var imgWidthMm = pageWidthMm;
+            var imgHeightMm = (canvas.height / canvas.width) * imgWidthMm;
+            var heightLeft = imgHeightMm;
+            var position = 0;
+            if (index > 0) pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, imgWidthMm, imgHeightMm);
+            heightLeft -= pageHeightMm;
+            while (heightLeft > 0) {
+              position = heightLeft - imgHeightMm;
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', 0, position, imgWidthMm, imgHeightMm);
+              heightLeft -= pageHeightMm;
+            }
+          });
+        };
+
+        var chain = Promise.resolve();
+        sections.forEach(function (_, i) { chain = chain.then(function () { return renderSection(i); }); });
+        chain.then(function () { pdf.save(filename); });
       },
 
       exportPDF: function () {
