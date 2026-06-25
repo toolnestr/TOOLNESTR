@@ -1,0 +1,249 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Savings Goal Calculator';
+const description = 'Find how long to reach a savings goal at your current pace, or how much to save monthly to hit a deadline. Optional interest included.';
+const intro = 'Find out how long it takes to reach a savings goal — or how much to save each month to hit a deadline.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'Does it include interest?', a: 'Optionally — leave the rate at 0 for plain saving, or add a rate to include growth.' },
+  { q: 'What if I cannot save a fixed amount?', a: 'Use the average you expect; re-run it when your situation changes.' },
+  { q: 'Should my emergency fund earn interest?', a: 'Ideally keep it accessible (e.g. a high-yield savings account) rather than locked away.' },
+  { q: 'How does interest affect my timeline?', a: 'Even a small rate shortens the timeline because your existing balance and monthly contributions both grow.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2 rounded-xl bg-slate-100 p-1">
+      <button id="mode-time" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition">How long will it take?</button>
+      <button id="mode-monthly" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition">How much per month?</button>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Savings goal</span>
+        <input id="goal" type="number" step="any" min="0" placeholder="e.g. 10000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Amount saved so far</span>
+        <input id="current" type="number" step="any" min="0" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="monthly-label" class="block"><span class="text-sm font-medium text-slate-700">Monthly saving</span>
+        <input id="monthly" type="number" step="any" min="0" placeholder="e.g. 400" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="months-label" class="block hidden"><span class="text-sm font-medium text-slate-700">Months to reach goal</span>
+        <input id="months" type="number" step="any" min="1" placeholder="e.g. 24" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual interest (%) optional</span>
+        <input id="rate" type="number" step="any" min="0" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <button id="calc-btn" class="mt-4 w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-4"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How a savings goal is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      Without interest the formula is simple: <span class="font-mono">months = (goal − current) ÷ monthly</span>.
+      For example, if you need $10,000, already have $2,000 and save $400 a month, it will take
+      <span class="font-mono">(10000 − 2000) ÷ 400 = 20</span> months to reach your goal.
+    </p>
+    <p class="mt-3 text-slate-600">
+      When you add interest, we use the future value of a series formula:
+      <span class="font-mono">FV = P(1 + r)^t + PMT × ((1 + r)^t − 1) ÷ r</span>, where
+      <span class="font-mono">r</span> is the monthly rate (annual ÷ 12), <span class="font-mono">t</span> is
+      months, <span class="font-mono">P</span> is the starting balance and <span class="font-mono">PMT</span> is
+      your monthly contribution. We solve for <span class="font-mono">t</span> iteratively since the equation
+      does not have a closed-form solution. Even a small interest rate can meaningfully shorten your timeline.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Goal: $10,000. Saved: $2,000. Monthly: $400. Interest: 0%.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Savings goal:</span> <span class="text-slate-600">$10,000</span></div>
+        <div><span class="font-medium text-slate-700">Amount saved so far:</span> <span class="text-slate-600">$2,000</span></div>
+        <div><span class="font-medium text-slate-700">Monthly saving:</span> <span class="text-slate-600">$400</span></div>
+        <div><span class="font-medium text-slate-700">Months needed:</span> <span class="text-slate-600">(10000 − 2000) ÷ 400 = 20 months (~1 year 8 months)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Savings goal thermometer filling over time">
+      <title>Savings Goal Progress</title>
+      <desc>A thermometer-style bar showing savings progress from current amount toward the goal, with segments representing 25% increments.</desc>
+      <line x1="60" y1="175" x2="740" y2="175" stroke="#e2e8f0" stroke-width="2"/>
+      <line x1="60" y1="175" x2="60" y2="35" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="60" y1="175" x2="740" y2="175" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="100" y="35" width="600" height="140" rx="10" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="2"/>
+      <rect x="100" y="140" width="600" height="35" rx="10" fill="#6366f1"/>
+      <rect x="100" y="105" width="450" height="35" fill="#6366f1"/>
+      <rect x="100" y="70" width="300" height="35" rx="10" fill="#4f46e5"/>
+      <text x="400" y="162" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">25% — $2,500</text>
+      <text x="325" y="127" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">50% — $5,000</text>
+      <text x="325" y="92" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="bold">75% — $7,500</text>
+      <text x="400" y="195" text-anchor="middle" fill="#64748b" font-size="14">Savings progress toward goal</text>
+      <text x="20" y="105" text-anchor="middle" fill="#64748b" font-size="14" transform="rotate(-90 20 105)">Amount saved</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">The savings thermometer fills up as you get closer to your target</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use a savings goal calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">House deposit</h3>
+        <p class="mt-1 text-sm text-slate-600">Working out how much to save each month for a down payment on a home. A housing deposit is often the biggest savings goal people take on, and knowing the monthly amount needed makes it feel achievable.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💍</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Wedding planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Budget reverse-planning — set your wedding budget and see how much you need to put aside each month or how long it will take at your current savings rate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🆘</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Emergency fund</h3>
+        <p class="mt-1 text-sm text-slate-600">Build a 3–6 month expenses safety net. Use the calculator to turn that abstract target into a concrete monthly savings plan you can track.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔄</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Budget reverse-planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Flip the question: if you have a deadline, how much must you save each month? This is one of the most practical approaches to goal-oriented budgeting.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reaching your savings goal faster</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Automate your transfers</h3>
+        <p class="mt-1 text-sm text-slate-600">Set up an automatic transfer on payday so the money moves to your savings account before you can spend it. Automating removes the temptation to skip a month and turns saving into a habit you do not have to think about.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Let your savings earn something</h3>
+        <p class="mt-1 text-sm text-slate-600">Even a modest interest rate on a high-yield savings account can shave weeks or months off your timeline. The effect is small in absolute terms but every bit helps, and it costs you nothing extra.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Re-run the numbers when life changes</h3>
+        <p class="mt-1 text-sm text-slate-600">A raise, a side hustle, or trimming a subscription can increase your monthly saving rate. Conversely, an unexpected expense might slow you down. Re-running the calculator keeps your plan realistic and honest.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the other mode to reverse-plan</h3>
+        <p class="mt-1 text-sm text-slate-600">If you have a fixed deadline (a wedding date, a down payment target), switch to "How much per month?" mode. This tells you the exact saving rate needed, which you can then compare against your actual budget to see if the timeline is feasible.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h2 class="text-xl font-bold text-slate-900">About this savings goal calculator</h2>
+    <p class="mt-2 text-slate-600">
+      Setting a goal is the first step, but knowing the path to get there is what turns intention into action.
+      This calculator bridges the gap between "I want to save $X" and "here is exactly what I need to do."
+      Whether you are saving for a house deposit, a wedding, an emergency fund, or a big purchase,
+      the math is the same — and seeing the numbers removes the guesswork.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Unlike a generic compound interest calculator, this tool focuses on the <em>goal</em> rather than the
+      <em>end balance</em>. You tell it where you want to be, and it works backwards (or forward) to give you
+      a monthly action plan. Pair it with our <a href="/tools/compound-interest" class="font-medium text-indigo-600 hover:underline">Compound Interest Calculator</a>
+      for a deeper look at how interest accelerates your savings,
+      the <a href="/tools/inflation-calculator" class="font-medium text-indigo-600 hover:underline">Inflation Calculator</a>
+      to understand how rising prices affect your target, and the
+      <a href="/tools/discount-calculator" class="font-medium text-indigo-600 hover:underline">Discount Calculator</a>
+      to spot savings on the things you buy.
+    </p>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const modeTime = $('mode-time');
+    const modeMonthly = $('mode-monthly');
+    const monthlyLabel = $('monthly-label');
+    const monthsLabel = $('months-label');
+    const resultEl = $('result');
+
+    let mode = 'time';
+
+    function fmt(n) {
+      return '$' + Math.round(n).toLocaleString();
+    }
+
+    function setMode(m) {
+      mode = m;
+      if (m === 'time') {
+        modeTime.className = 'flex-1 rounded-lg px-4 py-2 text-sm font-medium bg-white text-indigo-700 shadow-sm';
+        modeMonthly.className = 'flex-1 rounded-lg px-4 py-2 text-sm font-medium text-slate-500';
+        monthlyLabel.classList.remove('hidden');
+        monthsLabel.classList.add('hidden');
+      } else {
+        modeTime.className = 'flex-1 rounded-lg px-4 py-2 text-sm font-medium text-slate-500';
+        modeMonthly.className = 'flex-1 rounded-lg px-4 py-2 text-sm font-medium bg-white text-indigo-700 shadow-sm';
+        monthlyLabel.classList.add('hidden');
+        monthsLabel.classList.remove('hidden');
+      }
+    }
+
+    modeTime.addEventListener('click', () => setMode('time'));
+    modeMonthly.addEventListener('click', () => setMode('monthly'));
+
+    function compute() {
+      const goal = Math.max(0, parseFloat($('goal').value) || 0);
+      const current = Math.max(0, parseFloat($('current').value) || 0);
+      const rate = Math.max(0, parseFloat($('rate').value) || 0);
+      const mr = rate / 100 / 12;
+
+      if (current >= goal) {
+        resultEl.innerHTML = '<div class="rounded-xl bg-emerald-50 p-4 text-center text-emerald-800 font-bold">Goal already reached! 🎉</div>';
+        return;
+      }
+
+      if (mode === 'time') {
+        const monthly = Math.max(0, parseFloat($('monthly').value) || 0);
+        if (monthly <= 0 && mr <= 0) {
+          resultEl.innerHTML = '<div class="rounded-xl bg-amber-50 p-4 text-center text-amber-800 font-bold">You won\'t reach the goal with $0 monthly saving and 0% interest.</div>';
+          return;
+        }
+
+        let months;
+        const needed = goal - current;
+        if (mr <= 0) {
+          months = Math.ceil(needed / monthly);
+        } else {
+          // Iteratively find months needed
+          let guess = Math.ceil(needed / (monthly || 1));
+          let maxIter = 1200;
+          while (maxIter-- > 0) {
+            const fv = current * Math.pow(1 + mr, guess) + (mr > 0 ? monthly * ((Math.pow(1 + mr, guess) - 1) / mr) : monthly * guess);
+            if (fv >= goal) break;
+            guess++;
+          }
+          months = Math.max(1, guess);
+        }
+
+        const years = Math.floor(months / 12);
+        const remMonths = months % 12;
+        let timeStr;
+        if (years > 0 && remMonths > 0) timeStr = years + ' year' + (years > 1 ? 's' : '') + ' and ' + remMonths + ' month' + (remMonths > 1 ? 's' : '');
+        else if (years > 0) timeStr = years + ' year' + (years > 1 ? 's' : '');
+        else timeStr = months + ' month' + (months > 1 ? 's' : '');
+
+        resultEl.innerHTML = '<div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">You will reach ' + fmt(goal) + ' in</div><div class="mt-1 text-2xl font-bold">' + months + ' months</div><div class="mt-0.5 text-sm opacity-80">(~' + timeStr + ')</div></div>';
+      } else {
+        const months = Math.max(1, Math.floor(Math.max(1, parseFloat($('months').value) || 0)));
+        const needed = goal - current;
+
+        let monthlySave;
+        if (mr <= 0) {
+          monthlySave = needed / months;
+        } else {
+          monthlySave = (goal - current * Math.pow(1 + mr, months)) * mr / (Math.pow(1 + mr, months) - 1);
+        }
+
+        monthlySave = Math.max(0, monthlySave);
+
+        resultEl.innerHTML = '<div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Save</div><div class="mt-1 text-2xl font-bold">' + fmt(monthlySave) + '/month</div><div class="mt-0.5 text-sm opacity-80">to reach ' + fmt(goal) + ' in ' + months + ' month' + (months > 1 ? 's' : '') + '</div></div>';
+      }
+    }
+
+    $('calc-btn').addEventListener('click', compute);
+  </script>
+</ToolLayout>

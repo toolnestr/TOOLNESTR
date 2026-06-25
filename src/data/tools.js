@@ -260,6 +260,9 @@ export const tools = [
   { slug: 'token-counter', title: 'Prompt Token Counter', short: 'Paste any text to estimate its token, word and character count.', category: 'developers', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'context-window-checker', title: 'AI Context Window Checker', short: 'See if your prompt fits a model context window.', category: 'developers', emoji: '📐', enabled: true, status: 'live' },
   { slug: 'reading-time-calculator', title: 'Reading Time Calculator', short: 'Estimate reading and speaking time for any text.', category: 'text', emoji: '⏱️', enabled: true, status: 'live' },
+  { slug: 'aspect-ratio-calculator', title: 'Aspect Ratio Calculator', short: 'Resize width or height while maintaining the aspect ratio.', category: 'images', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'invoice-late-fee-calculator', title: 'Invoice Late Fee Calculator', short: 'Work out the late fee and total due on an overdue invoice.', category: 'finance', emoji: '📄', enabled: true, status: 'live' },
+  { slug: 'savings-goal-calculator', title: 'Savings Goal Calculator', short: 'How long to reach a savings goal — or how much to save monthly.', category: 'finance', emoji: '🎯', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

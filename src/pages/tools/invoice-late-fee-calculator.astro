@@ -1,0 +1,347 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Invoice Late Fee Calculator';
+const description = 'Work out the late fee and total now owed on an overdue invoice. Supports percentage and flat fees, per month or per day.';
+const intro = 'Work out the late fee and total now owed on an overdue invoice.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is a typical late fee?', a: 'Commonly 1–2% of the invoice per month, or a small flat fee — but it must be stated in your terms.' },
+  { q: 'Is a late fee legal?', a: 'Usually yes if stated in your contract or invoice, but many jurisdictions cap the rate — check local rules.' },
+  { q: 'Does the fee compound?', a: 'This tool charges simple interest on the original amount; it does not compound the fee on the fee.' },
+  { q: 'Should I charge per day or per month?', a: 'Per month is more common and feels fairer; per day adds up faster for long delays.' },
+  { q: 'What if my client never pays?', a: 'Late fees encourage prompt payment. For chronic non-payment, consider a collections process or legal action.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Invoice amount</span>
+        <input id="amount" type="number" min="0" step="any" placeholder="e.g. 1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Days overdue</span>
+        <input id="days" type="number" min="0" step="1" placeholder="e.g. 30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Late fee type</span>
+      <div class="mt-1 flex gap-2">
+        <button id="type-percent" class="fee-type active rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition">Percentage</button>
+        <button id="type-flat" class="fee-type rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-400">Flat fee</button>
+      </div>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block" id="rate-wrap">
+        <span class="text-sm font-medium text-slate-700">Late fee rate (%)</span>
+        <input id="rate" type="number" min="0" step="any" placeholder="e.g. 1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block hidden" id="flat-wrap">
+        <span class="text-sm font-medium text-slate-700">Flat fee amount</span>
+        <input id="flat" type="number" min="0" step="any" placeholder="e.g. 25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Charged</span>
+        <select id="charge" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="one-time">One-time</option>
+          <option value="per-month">Per month</option>
+          <option value="per-day">Per day</option>
+        </select>
+      </label>
+    </div>
+
+    <button id="calc" class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">Calculate late fee</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Late fee amount</div>
+          <div id="r-fee" class="mt-1 text-xl font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+          <div class="text-sm opacity-80">Total now due</div>
+          <div id="r-total" class="mt-1 text-2xl font-bold">&mdash;</div>
+        </div>
+      </div>
+      <p id="r-breakdown" class="mt-3 text-center text-sm text-slate-500"></p>
+    </div>
+
+    <p id="warn" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></p>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="fee-flow-title fee-flow-desc">
+      <title id="fee-flow-title">Late fee calculation flow</title>
+      <desc id="fee-flow-desc">Flow diagram: Invoice amount enters the process, is delayed by days overdue, goes through fee calculation, and produces the total due amount</desc>
+      <rect x="40" y="70" width="160" height="50" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="120" y="99" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Invoice</text>
+      <text x="120" y="114" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="12">$1,000</text>
+
+      <path d="M200 95 L240 95" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#94a3b8" /></marker></defs>
+
+      <rect x="250" y="70" width="140" height="50" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="320" y="95" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="13" font-weight="600">30 days overdue</text>
+      <text x="320" y="112" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="11">1.5 % / month</text>
+
+      <path d="M390 95 L430 95" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+      <rect x="440" y="70" width="150" height="50" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2" />
+      <text x="515" y="95" text-anchor="middle" fill="#6d28d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Fee = $1,000 x 1.5%</text>
+      <text x="515" y="112" text-anchor="middle" fill="#7c3aed" font-family="system-ui, sans-serif" font-size="11">= $15.00</text>
+
+      <path d="M590 95 L630 95" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+      <rect x="640" y="70" width="140" height="50" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2" />
+      <text x="710" y="95" text-anchor="middle" fill="#065f46" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Total due</text>
+      <text x="710" y="112" text-anchor="middle" fill="#047857" font-family="system-ui, sans-serif" font-size="12">$1,015.00</text>
+
+      <line x1="40" y1="165" x2="780" y2="165" stroke="#cbd5e1" stroke-width="1" />
+      <text x="410" y="185" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">The late fee is added to the original invoice to get the total amount due</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The late fee is calculated based on the invoice amount, fee rate, and overdue period, then added to the original invoice.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Late fee formulas</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator supports five common late-fee structures. Which formula applies depends on whether you charge a percentage or a flat fee, and whether the fee is applied once, per month, or per day.
+    </p>
+
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Percentage &mdash; one-time</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">Late Fee = Invoice Amount &times; (Rate / 100)</p>
+        <p class="mt-1 text-xs text-slate-400">A single percentage charge applied once regardless of how late the payment is.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Percentage &mdash; per month</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">Late Fee = Invoice Amount &times; (Rate / 100) &times; (Days Overdue / 30)</p>
+        <p class="mt-1 text-xs text-slate-400">A monthly percentage prorated by the number of days overdue. Each 30-day block incurs a full month's fee.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Percentage &mdash; per day</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">Late Fee = Invoice Amount &times; (Rate / 100) &times; Days Overdue</p>
+        <p class="mt-1 text-xs text-slate-400">A daily percentage that accumulates linearly over each day the invoice is late. Adds up quickly for long delays.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Flat fee &mdash; one-time</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">Late Fee = Flat Fee Amount</p>
+        <p class="mt-1 text-xs text-slate-400">A single fixed charge applied once, regardless of how overdue the invoice is.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Flat fee &mdash; per day</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">Late Fee = Flat Fee Amount &times; Days Overdue</p>
+        <p class="mt-1 text-xs text-slate-400">A fixed amount charged per day that the invoice remains unpaid. The total fee grows with each passing day.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Invoice amount: <strong>$1,000</strong> &nbsp;|&nbsp; Fee: <strong>1.5% per month</strong> &nbsp;|&nbsp; Days overdue: <strong>30</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Fee rate per month:</span> <span class="text-slate-600">1.5%</span></div>
+        <div><span class="font-medium text-slate-700">Prorated months:</span> <span class="text-slate-600">30 &divide; 30 = 1 month</span></div>
+        <div><span class="font-medium text-slate-700">Late fee:</span> <span class="text-slate-600">$1,000 &times; 1.5% &times; 1 = $15.00</span></div>
+        <div><span class="font-medium text-slate-700">Total now due:</span> <span class="text-slate-600">$1,000 + $15.00 = $1,015.00</span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Same invoice with a <strong>$25 flat fee</strong> charged <strong>per day</strong> for <strong>10 days</strong>:</p>
+      <div class="mt-2 grid gap-1 text-sm">
+        <div><span class="font-medium text-slate-700">Late fee:</span> <span class="text-slate-600">$25 &times; 10 = $250.00</span></div>
+        <div><span class="font-medium text-slate-700">Total now due:</span> <span class="text-slate-600">$1,000 + $250.00 = $1,250.00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🧑‍💻</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelancers chasing invoices</h3>
+        <p class="mt-1 text-sm text-slate-600">If you invoice clients on net-30 or net-60 terms, a late fee policy encourages prompt payment. Use this calculator to determine the exact fee before sending a reminder or an updated invoice — it gives you a confident number to reference.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏢</span>
+        <h3 class="mt-2 font-semibold text-slate-600">Small businesses setting policy</h3>
+        <p class="mt-1 text-sm text-slate-600">When drafting your payment terms, compare different fee structures side by side. A 1.5% monthly fee versus a $10 flat fee per day may look similar on paper but produce wildly different totals depending on the invoice amount and delay length.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔍</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Verifying vendor charges</h3>
+        <p class="mt-1 text-sm text-slate-600">Received an invoice from a supplier that includes a late fee line item? Plug the numbers into this calculator to verify their math. A surprising number of errors come from miscalculated prorated periods or incorrect fee type application.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚖️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Dispute resolution</h3>
+        <p class="mt-1 text-sm text-slate-600">When a client disputes a late fee, a clear breakdown of the calculation helps resolve the disagreement. Show the formula, the inputs, and the resulting fee — transparency goes a long way toward maintaining the business relationship.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for charging late fees</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Check local legal caps</h3>
+        <p class="mt-1 text-sm text-slate-600">Many jurisdictions cap the maximum late fee you can charge. In the US, usury laws vary by state — some cap interest at 10–12% per year, while others allow higher rates for commercial invoices. Research your local regulations before setting a rate to ensure your fee is enforceable.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">State the policy up front on the invoice</h3>
+        <p class="mt-1 text-sm text-slate-600">A late fee is only enforceable if the client agreed to it beforehand. Include a clear line item on every invoice: "Late payment: 1.5% per month on amounts overdue beyond 30 days." This makes the fee a contractual term rather than a surprise penalty.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Be consistent but reasonable</h3>
+        <p class="mt-1 text-sm text-slate-600">Apply the fee consistently to all clients to avoid claims of unfair treatment. At the same time, consider waiving the fee once as a courtesy for long-standing clients who made an honest mistake — preserving the relationship is often worth more than a single late fee.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Send a reminder before charging</h3>
+        <p class="mt-1 text-sm text-slate-600">A polite reminder email a day or two after the due date is often enough to collect payment without ever needing to apply the fee. Set the expectation that fees will be applied automatically after a grace period, and most clients will pay on time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/savings-goal-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">🎯</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Savings Goal Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">How long to reach a savings goal — or how much to save monthly.</p>
+      </a>
+      <a href="/tools/compound-interest" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">📈</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Compound Interest Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">See how savings grow with compounding returns over time.</p>
+      </a>
+      <a href="/tools/discount-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">🏷️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Discount Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Final price and savings after a percentage off.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const amount = el('amount');
+    const days = el('days');
+    const rate = el('rate');
+    const flat = el('flat');
+    const charge = el('charge');
+    const calcBtn = el('calc');
+    const result = el('result');
+    const warn = el('warn');
+    const rFee = el('r-fee');
+    const rTotal = el('r-total');
+    const rBreakdown = el('r-breakdown');
+
+    let feeType = 'percent'; // 'percent' or 'flat'
+
+    document.querySelectorAll('.fee-type').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fee-type').forEach((b) => {
+          b.classList.remove('active', 'border-indigo-300', 'bg-indigo-50', 'text-indigo-700');
+          b.classList.add('border-slate-300', 'bg-white', 'text-slate-600');
+        });
+        btn.classList.add('active', 'border-indigo-300', 'bg-indigo-50', 'text-indigo-700');
+        btn.classList.remove('border-slate-300', 'bg-white', 'text-slate-600');
+
+        feeType = btn.id === 'type-percent' ? 'percent' : 'flat';
+
+        if (feeType === 'percent') {
+          el('rate-wrap').classList.remove('hidden');
+          el('flat-wrap').classList.add('hidden');
+          rate.placeholder = 'e.g. 1.5';
+        } else {
+          el('rate-wrap').classList.add('hidden');
+          el('flat-wrap').classList.remove('hidden');
+          flat.placeholder = 'e.g. 25';
+        }
+      });
+    });
+
+    function fmt(n) {
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculate() {
+      const amt = parseFloat(amount.value);
+      const d = parseInt(days.value, 10) || 0;
+      const chargeMode = charge.value;
+
+      if (isNaN(amt) || amt <= 0) {
+        result.classList.add('hidden');
+        warn.classList.add('hidden');
+        return;
+      }
+
+      if (d === 0) {
+        rFee.textContent = fmt(0);
+        rTotal.textContent = fmt(amt);
+        rBreakdown.textContent = 'No days overdue — no late fee applies.';
+        result.classList.remove('hidden');
+        warn.classList.add('hidden');
+        return;
+      }
+
+      let fee = 0;
+      let breakdown = '';
+
+      if (feeType === 'percent') {
+        const pct = parseFloat(rate.value) || 0;
+
+        if (pct > 100) {
+          warn.textContent = '⚠️ That is unusually high. Check that the percentage is correct.';
+          warn.classList.remove('hidden');
+        } else {
+          warn.classList.add('hidden');
+        }
+
+        if (chargeMode === 'one-time') {
+          fee = amt * (pct / 100);
+          breakdown = `One-time ${pct}% fee on ${fmt(amt)}`;
+        } else if (chargeMode === 'per-month') {
+          const months = d / 30;
+          fee = amt * (pct / 100) * months;
+          breakdown = `${pct}% × ${d} days (${months.toFixed(2)} months) on ${fmt(amt)}`;
+        } else {
+          fee = amt * (pct / 100) * d;
+          breakdown = `${pct}% per day × ${d} days on ${fmt(amt)}`;
+        }
+      } else {
+        const flatAmt = parseFloat(flat.value) || 0;
+        warn.classList.add('hidden');
+
+        if (chargeMode === 'per-day') {
+          fee = flatAmt * d;
+          breakdown = `$${flatAmt.toFixed(2)} flat fee × ${d} days`;
+        } else {
+          fee = flatAmt;
+          breakdown = `One-time flat fee of $${flatAmt.toFixed(2)}`;
+        }
+      }
+
+      const total = amt + fee;
+
+      if (chargeMode === 'per-day' && d > 30) {
+        fee = Math.round(fee * 100) / 100;
+      }
+
+      rFee.textContent = fmt(fee);
+      rTotal.textContent = fmt(total);
+      rBreakdown.textContent = `${fmt(fee)} late fee + ${fmt(amt)} invoice = ${fmt(total)} total`;
+      result.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+  </script>
+</ToolLayout>
