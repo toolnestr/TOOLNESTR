@@ -254,6 +254,12 @@ export const tools = [
   { slug: 'histogram-generator', title: 'Histogram Generator', short: 'Create frequency distribution histograms from raw data.', category: 'charts', emoji: '📶', enabled: true, status: 'live' },
   { slug: 'gauge-chart', title: 'Gauge / Speedometer Chart', short: 'Create a radial gauge chart for single value display.', category: 'charts', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'percentage-bar-chart', title: 'Percentage Bar Chart', short: 'Create 100% stacked bar charts showing composition.', category: 'charts', emoji: '📊', enabled: true, status: 'live' },
+  // ── AI / Dev Tools (expansion batch) ──
+  { slug: 'ai-api-cost-calculator', title: 'AI API Cost Calculator', short: 'Estimate OpenAI & Anthropic API costs by input/output tokens.', category: 'developers', emoji: '🤖', enabled: true, status: 'live' },
+  { slug: 'tokens-to-words', title: 'Tokens to Words Calculator', short: 'Convert between AI tokens and English words instantly.', category: 'developers', emoji: '🔤', enabled: true, status: 'live' },
+  { slug: 'token-counter', title: 'Prompt Token Counter', short: 'Paste any text to estimate its token, word and character count.', category: 'developers', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'context-window-checker', title: 'AI Context Window Checker', short: 'See if your prompt fits a model context window.', category: 'developers', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'reading-time-calculator', title: 'Reading Time Calculator', short: 'Estimate reading and speaking time for any text.', category: 'text', emoji: '⏱️', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

@@ -1,0 +1,231 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'AI Context Window Checker';
+const description = 'Check whether your prompt fits a model\'s context window and see how many tokens are left. Supports GPT, Claude, and other LLMs.';
+const intro = 'See whether your prompt fits a model\'s context window — and how much room is left.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'What is a context window?', a: 'The maximum number of tokens (input + output) a model can process in one request.' },
+  { q: 'Does the reply count toward the limit?', a: 'Yes — reserve space for the model\'s output, or it may get cut off.' },
+  { q: 'What happens if I exceed it?', a: 'The API returns an error or silently truncates your input — either way you lose information.' },
+  { q: 'How do I find my token count?', a: 'Use the Prompt Token Counter, then enter the number here.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Select Model</span>
+      <select id="model" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="128000">GPT-4o / GPT-4o-mini — 128K context</option>
+        <option value="200000">Claude Sonnet 4 / Claude Haiku 3.5 — 200K context</option>
+        <option value="2097152">Gemini Pro — 2M context</option>
+      </select>
+    </label>
+    <label class="mt-4 block">
+      <span class="text-sm font-medium text-slate-700">Your Prompt Tokens</span>
+      <input id="tokens" type="number" min="0" placeholder="e.g. 8000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    </label>
+    <button id="check-btn" class="mt-4 w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Check Fit</button>
+    <div id="result" class="mt-5 hidden"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Context window sizes compared</h2>
+    <p class="mt-2 text-sm text-slate-600">Each model family offers a different context window. This chart shows how they stack up.</p>
+    <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+      <svg viewBox="0 0 600 220" class="w-full max-w-lg mx-auto" role="img" aria-label="Horizontal bar chart comparing LLM context window sizes">
+        <text x="0" y="24" font-size="13" font-weight="700" fill="#0f172a">Gemini Pro</text>
+        <rect x="130" y="10" width="440" height="18" rx="4" fill="#8b5cf6" />
+        <text x="575" y="24" font-size="11" fill="#475569">2,097,152</text>
+
+        <text x="0" y="58" font-size="13" font-weight="700" fill="#0f172a">Claude Sonnet 4</text>
+        <rect x="130" y="44" width="42" height="18" rx="4" fill="#f59e0b" />
+        <text x="177" y="58" font-size="11" fill="#475569">200,000</text>
+
+        <text x="0" y="92" font-size="13" font-weight="700" fill="#0f172a">Claude Haiku 3.5</text>
+        <rect x="130" y="78" width="42" height="18" rx="4" fill="#f59e0b" />
+        <text x="177" y="92" font-size="11" fill="#475569">200,000</text>
+
+        <text x="0" y="126" font-size="13" font-weight="700" fill="#0f172a">GPT-4o</text>
+        <rect x="130" y="112" width="27" height="18" rx="4" fill="#3b82f6" />
+        <text x="162" y="126" font-size="11" fill="#475569">128,000</text>
+
+        <text x="0" y="160" font-size="13" font-weight="700" fill="#0f172a">GPT-4o-mini</text>
+        <rect x="130" y="146" width="27" height="18" rx="4" fill="#3b82f6" />
+        <text x="162" y="160" font-size="11" fill="#475569">128,000</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the check works</h2>
+    <p class="mt-2 text-slate-600">
+      The tool compares your prompt's token count against the selected model's maximum context window. The formula is simple:
+    </p>
+    <div class="mt-3 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-800">
+      percentUsed = (yourTokens / contextLimit) &times; 100
+    </div>
+    <p class="mt-3 text-slate-600">
+      If the result is 100% or less, your prompt fits. Anything above means you need to trim tokens before sending the request.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <div class="grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Prompt tokens:</span> <span class="text-slate-600">8,000</span></div>
+        <div><span class="font-medium text-slate-700">Model context:</span> <span class="text-slate-600">128,000 (GPT-4o)</span></div>
+        <div><span class="font-medium text-slate-700">Percent used:</span> <span class="text-slate-600">6.25%</span></div>
+        <div><span class="font-medium text-slate-700">Result:</span> <span class="text-emerald-700 font-medium">&#x2705; Fits with 120,000 tokens to spare</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the context window checker</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4C4;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Pasting long documents</h3>
+        <p class="mt-1 text-sm text-slate-600">Before pasting an entire research paper, codebase file, or legal contract into a chat interface, check whether it will fit. Long documents can silently exceed the context limit and get truncated without warning, causing the model to miss critical information in the middle or end of the text. The checker tells you upfront whether the document will fit entirely within the model's window.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F916;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Choosing the right model</h3>
+        <p class="mt-1 text-sm text-slate-600">When you have a large prompt, you need a model with a large enough context window. Comparing Gemini Pro's 2M context against GPT-4o's 128K might save you from a costly API error. The checker helps you decide whether your prompt fits a cheaper model or whether you need to upgrade to a larger-window model for that specific task.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F41B;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Debugging API errors</h3>
+        <p class="mt-1 text-sm text-slate-600">Many API error messages simply say "context length exceeded" without telling you how much you went over. By subtracting the model's limit from your token count, the checker tells you exactly how many tokens you need to trim. This turns a vague error into a concrete action item and helps you iterate faster on prompt engineering.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4AD;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Building AI-powered products</h3>
+        <p class="mt-1 text-sm text-slate-600">If you are building an application on top of an LLM API, you need to handle context window limits gracefully. Use the checker during development to understand the constraints of each model, then build trimming logic or model-switching logic into your application. Knowing the exact headroom helps you design better user experiences that avoid frustrating truncation errors.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with context windows</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">The window is shared between prompt and reply</h3>
+        <p class="mt-1 text-sm text-slate-600">The context window covers everything: your system prompt, conversation history, user message, and the model's response. If your input uses 110,000 tokens out of a 128,000 window, only 18,000 tokens are left for the model's reply. If the reply tries to exceed that, the model will either stop early or truncate its output. Always leave enough headroom for the response you expect.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Chat histories accumulate quickly</h3>
+        <p class="mt-1 text-sm text-slate-600">Every message in a conversation gets added to the context window. A long back-and-forth with the model can consume tens of thousands of tokens before you even type your latest question. Many chat applications silently truncate old messages when the window fills up, which can cause the model to "forget" earlier parts of the conversation. If you notice the model losing context, it is likely because earlier messages are being dropped from the window.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Trim strategically, not blindly</h3>
+        <p class="mt-1 text-sm text-slate-600">When you need to reduce token count, focus on removing redundant context, shortening verbose instructions, and removing irrelevant conversation history. Avoid trimming the most recent or most important content. The checker shows you exactly how many tokens to cut, so you can make informed decisions about what to remove. Use the Prompt Token Counter to iteratively measure as you trim.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common context window sizes</h2>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Model</th><th class="p-3">Context Window</th><th class="p-3">Typical Use Case</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">GPT-4o</td><td class="p-3">128,000 tokens</td><td class="p-3">General-purpose chat, coding, analysis</td></tr>
+          <tr><td class="p-3 font-medium">GPT-4o-mini</td><td class="p-3">128,000 tokens</td><td class="p-3">Lightweight tasks, classification, extraction</td></tr>
+          <tr><td class="p-3 font-medium">Claude Sonnet 4</td><td class="p-3">200,000 tokens</td><td class="p-3">Long-form analysis, document review</td></tr>
+          <tr><td class="p-3 font-medium">Claude Haiku 3.5</td><td class="p-3">200,000 tokens</td><td class="p-3">Fast responses, moderate context needs</td></tr>
+          <tr><td class="p-3 font-medium">Gemini Pro</td><td class="p-3">2,097,152 tokens</td><td class="p-3">Very large documents, codebases, datasets</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What to do when your prompt does not fit</h2>
+    <p class="mt-3 text-slate-600">
+      If the checker tells you that your prompt exceeds the model's context window, you have several options. The simplest is to choose a model with a larger context window — switching from GPT-4o's 128K limit to Claude Sonnet 4's 200K limit, for example, or all the way up to Gemini Pro's 2 million tokens. If swapping models is not an option, you need to reduce the size of your prompt.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Start by identifying the largest contributor to your token count. If you are including a long document, consider whether the entire document is necessary or whether a summary or excerpt would suffice. If your system prompt has grown over time with examples and instructions, review each section and remove anything that is not essential. In chat applications, consider starting a fresh conversation when the history becomes too long, or manually prune older messages that are no longer relevant to the current task.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Some API providers also offer token-budget parameters that let you set a maximum output token count. Setting this appropriately ensures the model does not attempt to generate a reply larger than the remaining space in the window. The checker helps you understand exactly how much room is left after your input, so you can set this parameter with confidence and avoid runtime errors from exceeding the total context limit.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How context windows affect model performance</h2>
+    <p class="mt-3 text-slate-600">
+      Context windows do more than just set a hard limit — they also influence model quality. Research has shown that many models perform worse on information in the middle of long contexts compared to content near the beginning or end. This phenomenon, sometimes called the "lost in the middle" problem, means that even if your prompt fits within the window, the model may not use all of it equally well. For critical information, place it at the very start or very end of your prompt to maximise the chance the model attends to it.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Longer context windows also require more computational resources. Models with 200K or 2M token windows are slower and more expensive to run than their shorter-context counterparts. The attention mechanism that powers modern transformers scales quadratically with input length, meaning a 200K token prompt is not just 50% more expensive than a 128K prompt — it can be several times more expensive in practice. Use the largest context window you need, but do not default to it for every request.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <a href="/tools/token-counter" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Prompt Token Counter</a>
+      <a href="/tools/tokens-to-words" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Tokens to Words Calculator</a>
+      <a href="/tools/ai-api-cost-calculator" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">AI API Cost Calculator</a>
+      <a href="/tools/reading-time-calculator" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Reading Time Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    var el = function(id) { return document.getElementById(id); };
+
+    function formatNum(n) {
+      return n.toLocaleString('en-US');
+    }
+
+    function checkFit() {
+      var modelLimit = parseInt(el('model').value, 10);
+      var tokens = parseInt(el('tokens').value, 10);
+      var resultEl = el('result');
+
+      if (!tokens || tokens < 0 || isNaN(tokens)) {
+        resultEl.className = 'mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 text-center';
+        resultEl.innerHTML = 'Enter a valid number of tokens to check.';
+        resultEl.classList.remove('hidden');
+        return;
+      }
+
+      var pct = (tokens / modelLimit) * 100;
+      var remaining = modelLimit - tokens;
+      var fits = tokens <= modelLimit;
+      var barColor = fits ? 'bg-emerald-500' : 'bg-red-500';
+      var statusClass = fits ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200';
+      var icon = fits ? '\u2705' : '\u274C';
+      var label = fits ? 'Fits' : 'Doesn\'t fit';
+
+      var trimMsg = '';
+      if (!fits) {
+        var excess = tokens - modelLimit;
+        trimMsg = '<p class="mt-2 text-sm text-red-700">Trim <strong>~' + formatNum(excess) + '</strong> token' + (excess !== 1 ? 's' : '') + ' to fit within this model.</p>';
+      }
+
+      resultEl.className = 'mt-5 rounded-xl border ' + statusClass + ' p-4';
+      resultEl.innerHTML =
+        '<div class="flex items-center gap-2 text-lg font-bold ' + (fits ? 'text-emerald-800' : 'text-red-800') + '">' +
+          '<span>' + icon + '</span>' +
+          '<span>' + label + '</span>' +
+        '</div>' +
+        '<p class="mt-1 text-sm text-slate-600">Used ' + formatNum(tokens) + ' of ' + formatNum(modelLimit) + ' tokens <span class="font-medium">(' + pct.toFixed(1) + '% full)</span></p>' +
+        '<div class="mt-3 h-4 w-full overflow-hidden rounded-full bg-slate-200">' +
+          '<div class="h-full rounded-full ' + barColor + ' transition-all duration-300" style="width:' + Math.min(pct, 100) + '%"></div>' +
+        '</div>' +
+        trimMsg;
+    }
+
+    el('check-btn').addEventListener('click', checkFit);
+    el('tokens').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') checkFit();
+    });
+  </script>
+</ToolLayout>
