@@ -1,0 +1,265 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'GSM to mm Calculator';
+const description = 'Convert paper GSM (grams per square metre) to thickness in millimetres and microns. Adjustable paper density for accuracy.';
+const intro = 'Estimate paper thickness in mm/microns from its GSM weight.';
+const category = { id: 'converters', name: 'Converters' };
+const faqs = [
+  { q: 'Is GSM the same as thickness?', a: 'No — GSM is weight per area; thickness also depends on the paper density or bulk.' },
+  { q: 'What density should I use?', a: 'Around 0.8 g/cm³ is typical for office paper; coated or specialty papers differ.' },
+  { q: 'What is 300 GSM in mm?', a: 'Roughly 0.375 mm at standard density — common for business cards.' },
+  { q: 'Why do I need density?', a: 'Different paper types (coated, uncoated, cardstock) have different densities, so the same GSM can give different thicknesses.' },
+  { q: 'What is the difference between mm and microns?', a: '1 mm = 1000 microns (µm). Paper thickness is often expressed in microns for thinner papers and in mm for cardstock.' },
+  { q: 'Can I convert thickness back to GSM?', a: 'Yes — multiply the thickness in mm by the density and 1000 to get the equivalent GSM.' },
+  { q: 'Does paper density vary a lot?', a: 'Yes. Office paper is ~0.8 g/cm³, coated paper ~1.0 g/cm³, and cardstock ~0.7 g/cm³. Always check the manufacturer spec for precision.' },
+  { q: 'Why does this matter for printing?', a: 'Knowing the thickness helps you choose the right paper for your printer, avoid jams, and meet mailing or folding requirements.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700">Conversion direction</label>
+      <div class="mt-1 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+        <button id="dir-gsm-mm" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">GSM &rarr; mm</button>
+        <button id="dir-mm-gsm" class="flex-1 rounded-lg py-2 text-slate-500">mm &rarr; GSM</button>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700" id="input-label">Paper weight (GSM)</span>
+        <input id="input" type="number" step="any" min="0" placeholder="e.g. 300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Paper density (g/cm&sup3;)</span>
+        <input id="density" type="number" step="any" min="0" value="0.8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <span class="mt-1 block text-xs text-slate-400">varies by paper type</span></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Thickness</div><div id="r-mm" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Microns (&micro;m)</div><div id="r-microns" class="mt-1 text-2xl font-bold text-slate-800">&mdash;</div></div>
+    </div>
+    <div id="r-error" class="mt-3 text-center text-sm font-semibold text-red-500 hidden"></div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="240" viewBox="0 0 800 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gsm-title gsm-desc">
+      <title id="gsm-title">GSM to thickness conversion formula diagram</title>
+      <desc id="gsm-desc">GSM divided by density times 1000 equals thickness in millimetres, with a worked example of 300 GSM at 0.8 g/cm³ giving 0.375 mm</desc>
+      <g transform="translate(40,20)">
+        <rect x="0" y="0" width="160" height="100" rx="12" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+        <text x="80" y="35" text-anchor="middle" fill="#4338ca" font-size="13" font-weight="bold">GSM</text>
+        <text x="80" y="55" text-anchor="middle" fill="#6366f1" font-size="12">(g/m&sup2;)</text>
+        <text x="80" y="80" text-anchor="middle" fill="#94a3b8" font-size="11">e.g. 300 g/m&sup2;</text>
+
+        <text x="195" y="55" fill="#64748b" font-size="22" font-weight="bold">&divide;</text>
+
+        <rect x="225" y="0" width="220" height="100" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+        <text x="335" y="35" text-anchor="middle" fill="#d97706" font-size="13" font-weight="bold">Density &times; 1000</text>
+        <text x="335" y="55" text-anchor="middle" fill="#f59e0b" font-size="12">(&rho; in g/cm&sup3; &times; 1000)</text>
+        <text x="335" y="80" text-anchor="middle" fill="#94a3b8" font-size="11">e.g. 0.8 &times; 1000 = 800</text>
+
+        <text x="480" y="55" fill="#64748b" font-size="22" font-weight="bold">=</text>
+
+        <rect x="520" y="0" width="200" height="100" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+        <text x="620" y="35" text-anchor="middle" fill="#059669" font-size="13" font-weight="bold">Thickness (mm)</text>
+        <text x="620" y="55" text-anchor="middle" fill="#10b981" font-size="12">millimetres</text>
+        <text x="620" y="80" text-anchor="middle" fill="#94a3b8" font-size="11">e.g. 300 / 800 = 0.375 mm</text>
+
+        <line x1="0" y1="125" x2="720" y2="125" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+        <rect x="100" y="140" width="520" height="70" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="360" y="165" text-anchor="middle" fill="#475569" font-size="14" font-weight="bold">Worked example</text>
+        <text x="360" y="190" text-anchor="middle" fill="#64748b" font-size="12">300 GSM &divide; (0.8 g/cm&sup3; &times; 1000) = 0.375 mm (375 &micro;m)</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">GSM ÷ (density × 1000) = thickness in millimetres</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Conversion formulas</h2>
+    <p class="mt-2 text-slate-600">The relationship between GSM (grams per square metre) and paper thickness depends on the paper&rsquo;s density (or bulk). The core formula for converting GSM to millimetres is:</p>
+    <div class="mt-4 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      thickness<sub>mm</sub> = GSM / (density &times; 1000)
+    </div>
+    <p class="mt-3 text-slate-600">To get microns (&micro;m), simply multiply the result by 1000:</p>
+    <div class="mt-2 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      thickness<sub>&micro;m</sub> = thickness<sub>mm</sub> &times; 1000
+    </div>
+    <p class="mt-3 text-slate-600">For the reverse conversion (thickness to GSM):</p>
+    <div class="mt-2 rounded-xl bg-slate-50 p-5 font-mono text-sm text-slate-700">
+      GSM = thickness<sub>mm</sub> &times; density &times; 1000
+    </div>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Paper:</span> <span class="text-slate-600">300 GSM</span></div>
+        <div><span class="font-medium text-slate-700">Density:</span> <span class="text-slate-600">0.8 g/cm&sup3; (typical office paper)</span></div>
+        <div><span class="font-medium text-slate-700">Calculation:</span> <span class="text-slate-600">300 / (0.8 &times; 1000) = 0.375 mm</span></div>
+        <div><span class="font-medium text-slate-700">Microns:</span> <span class="text-slate-600">0.375 &times; 1000 = 375 &micro;m</span></div>
+        <div><span class="font-medium text-slate-700">Usage:</span> <span class="text-slate-600">Common for business cards &amp; postcards</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Density reference table</h2>
+    <p class="mt-2 text-slate-600">Paper density varies by type and finish. Use this table as a starting point for common paper categories.</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Paper type</th><th class="p-3">Density (g/cm&sup3;)</th><th class="p-3">Typical GSM range</th><th class="p-3">Typical mm range</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Office / copy paper</td><td class="p-3">~0.8</td><td class="p-3">70 &ndash; 120</td><td class="p-3">0.088 &ndash; 0.150</td></tr>
+          <tr><td class="p-3 font-medium">Coated paper (gloss/matt)</td><td class="p-3">~1.0</td><td class="p-3">100 &ndash; 350</td><td class="p-3">0.100 &ndash; 0.350</td></tr>
+          <tr><td class="p-3 font-medium">Cardstock / cover stock</td><td class="p-3">~0.7</td><td class="p-3">200 &ndash; 400</td><td class="p-3">0.286 &ndash; 0.571</td></tr>
+          <tr><td class="p-3 font-medium">Uncoated bond / letterhead</td><td class="p-3">~0.75</td><td class="p-3">60 &ndash; 120</td><td class="p-3">0.080 &ndash; 0.160</td></tr>
+          <tr><td class="p-3 font-medium">Kraft / packaging board</td><td class="p-3">~0.65</td><td class="p-3">150 &ndash; 400</td><td class="p-3">0.231 &ndash; 0.615</td></tr>
+          <tr><td class="p-3 font-medium">Tissue / lightweight</td><td class="p-3">~0.5</td><td class="p-3">15 &ndash; 40</td><td class="p-3">0.030 &ndash; 0.080</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&larr; &rarr;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Bidirectional conversion</h3>
+      <p class="mt-1 text-sm text-slate-600">Work in either direction — enter GSM to get thickness or enter thickness to find the equivalent GSM. Toggle with one click.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x2697;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Adjustable density</h3>
+      <p class="mt-1 text-sm text-slate-600">Use the density input to match your specific paper type. Calibrate using manufacturer specs for the most accurate results.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Print jobs</h3>
+      <p class="mt-1 text-sm text-slate-600">Determine if your printer can handle a given paper weight. Many printers have a maximum thickness specification in mm.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Packaging</h3>
+      <p class="mt-1 text-sm text-slate-600">Specify boxboard, corrugated, or wrapping paper thickness from GSM and density. Critical for structural and cost planning.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for GSM to thickness conversion</h2>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Print production planning</h3>
+    <p class="mt-1 text-slate-600">Commercial printers routinely work with GSM specifications from designers. Converting to millimetres helps determine whether the paper will feed through the press, fold cleanly, or fit inside a saddle-stitched booklet. A 170 GSM coated paper at density 1.0 yields 0.17 mm — well within the range for most offset presses, while 400 GSM cardstock at 0.7 density gives 0.57 mm, which may require score lines for folding.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Business card and invitation design</h3>
+    <p class="mt-1 text-slate-600">Business cards are typically printed on 300&ndash;400 GSM stock. The thickness translates to roughly 0.38&ndash;0.57 mm depending on the paper type. A luxury finish may use a coated paper at higher density, producing a thinner but stiffer card. Invitation suites often combine multiple GSM weights — a heavy outer card (350 GSM) with a lighter inner sheet (120 GSM) — and knowing the thickness of each layer is essential for envelope sizing and postage.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Packaging and structural design</h3>
+    <p class="mt-1 text-slate-600">Corrugated board, cartonboard, and wrapping paper are specified in GSM but their end use depends on thickness. A cereal box might use 250 GSM board at 0.65 density (0.38 mm), while a heavy-duty shipping carton could be 400 GSM at 0.6 density (0.67 mm). The stacking strength, puncture resistance, and fold quality all correlate more directly with thickness than with GSM alone.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Mailing and postage calculations</h3>
+    <p class="mt-1 text-slate-600">Postal services often have thickness limits for automated sorting machines. A postcard mailed at standard rate in many countries must be between 0.18 mm and 0.50 mm thick. Converting GSM to mm lets you verify compliance before printing. Similarly, window envelopes have maximum fill thicknesses — knowing the paper stack height avoids jams and rejected mail.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate conversion</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Density differs by paper type</h3>
+        <p class="mt-1 text-sm text-slate-600">The density of paper is not a universal constant. Coated papers have fillers that increase density (closer to 1.0 g/cm&sup3;), while uncoated and bulky papers are less dense (0.6&ndash;0.8 g/cm&sup3;). Cardstock and cover stock are often less dense because they contain more air between fibres, giving them a thicker feel for the same GSM.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check manufacturer specifications</h3>
+        <p class="mt-1 text-sm text-slate-600">For critical applications — such as fitting a specific envelope, meeting postal regulations, or matching an existing print run — always verify the actual thickness with a micrometer or consult the paper manufacturer&rsquo;s technical datasheet. The calculated value is an estimate based on generic density assumptions.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Caliper vs bulk</h3>
+        <p class="mt-1 text-sm text-slate-600">In the paper industry, &ldquo;caliper&rdquo; refers to thickness (measured in microns or points) and &ldquo;bulk&rdquo; is the inverse of density — the volume per unit mass. A high-bulk paper has lower density and greater thickness for the same GSM. Tissue and newsprint have high bulk, while coated papers have low bulk.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Moisture affects thickness</h3>
+        <p class="mt-1 text-sm text-slate-600">Paper is hygroscopic and its dimensions change with humidity. High moisture content can increase thickness slightly. For precision work, condition paper in the printing environment for 24&ndash;48 hours before measuring.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How paper density affects thickness</h2>
+    <p class="mt-2 text-slate-600">Paper density, measured in grams per cubic centimetre (g/cm&sup3;), describes how tightly the paper fibres and fillers are packed together. A sheet of 300 GSM at density 0.7 (cardstock) will be significantly thicker than the same 300 GSM at density 1.0 (coated paper). The formula thickness = GSM / (density &times; 1000) captures this relationship: a lower density yields a thicker sheet for the same weight.</p>
+    <p class="mt-3 text-slate-600">The factor of 1000 in the formula converts the density units (g/cm&sup3;) to grams per cubic metre per millimetre, giving a result in millimetres. Without this factor, the units would not cancel correctly. This is why a density of 0.8 produces a denominator of 800, and 300 GSM divided by 800 equals 0.375 mm.</p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">GSM vs micron vs point</h2>
+    <p class="mt-2 text-slate-600">Different industries use different units for paper thickness. In North America, paper thickness is often measured in &ldquo;points&rdquo; (thousandths of an inch, where 1 point = 0.001 inch &asymp; 25.4 &micro;m). In Europe and most of the world, microns (&micro;m) or millimetres are standard. GSM is universal but describes weight, not thickness. This calculator bridges the gap by converting GSM to both mm and microns, and works in reverse when you need to determine the GSM from a known thickness.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/ppi-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">PPI Calculator</a>
+      <a href="/tools/aspect-ratio-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Aspect Ratio Calculator</a>
+      <a href="/tools/cost-per-unit-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Cost Per Unit Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let direction = 'gsm-mm';
+
+    function convert() {
+      const input = parseFloat(el('input').value);
+      const density = parseFloat(el('density').value);
+      const errorEl = el('r-error');
+
+      if (!density || density <= 0) {
+        el('r-mm').textContent = '\u2014';
+        el('r-microns').textContent = '\u2014';
+        errorEl.textContent = 'Please enter a valid density greater than 0';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      errorEl.classList.add('hidden');
+
+      if (isNaN(input) || input < 0) {
+        el('r-mm').textContent = '\u2014';
+        el('r-microns').textContent = '\u2014';
+        return;
+      }
+
+      if (direction === 'gsm-mm') {
+        const mm = input / (density * 1000);
+        const microns = mm * 1000;
+        el('r-mm').textContent = mm.toFixed(4) + ' mm';
+        el('r-microns').textContent = microns.toFixed(1) + ' \u00b5m';
+      } else {
+        const gsm = input * density * 1000;
+        el('r-mm').textContent = input.toFixed(4) + ' mm';
+        el('r-microns').textContent = (input * 1000).toFixed(1) + ' \u00b5m';
+        el('r-mm').innerHTML = '<span class="text-xs opacity-60">GSM: </span>' + gsm.toFixed(1);
+      }
+    }
+
+    function setDirection(dir) {
+      direction = dir;
+      const btnGsmMm = el('dir-gsm-mm');
+      const btnMmGsm = el('dir-mm-gsm');
+      const inputLabel = el('input-label');
+
+      if (dir === 'gsm-mm') {
+        btnGsmMm.className = 'flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm';
+        btnMmGsm.className = 'flex-1 rounded-lg py-2 text-slate-500';
+        inputLabel.textContent = 'Paper weight (GSM)';
+        el('input').placeholder = 'e.g. 300';
+      } else {
+        btnMmGsm.className = 'flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm';
+        btnGsmMm.className = 'flex-1 rounded-lg py-2 text-slate-500';
+        inputLabel.textContent = 'Paper thickness (mm)';
+        el('input').placeholder = 'e.g. 0.375';
+      }
+      convert();
+    }
+
+    el('dir-gsm-mm').addEventListener('click', () => setDirection('gsm-mm'));
+    el('dir-mm-gsm').addEventListener('click', () => setDirection('mm-gsm'));
+    el('input').addEventListener('input', convert);
+    el('density').addEventListener('input', convert);
+  </script>
+</ToolLayout>

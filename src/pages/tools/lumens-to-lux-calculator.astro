@@ -1,0 +1,294 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Lumens to Lux Calculator';
+const description = 'Convert light output (lumens) to illuminance (lux) over any area, or find the lumens needed for a target lux.';
+const intro = 'Convert light output (lumens) to illuminance (lux) over an area — and back.';
+const category = { id: 'engineering', name: 'Engineering' };
+const faqs = [
+  { q: 'What is the difference between lumens and lux?', a: 'Lumens measure total light emitted; lux measures light per square metre on a surface.' },
+  { q: 'How many lux for an office?', a: 'Commonly 300–500 lux for general office work.' },
+  { q: 'Does distance matter?', a: 'Yes — the same lumens spread over a larger area gives fewer lux.' },
+  { q: 'What is a typical living room lux?', a: 'Around 100–300 lux for ambient lighting, 300–750 for task lighting.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Calculator</h2>
+    <div class="mt-4 flex items-center gap-3">
+      <span id="toggle-label-l" class="text-sm font-medium text-slate-700">Lumens → Lux</span>
+      <button id="toggle-btn" type="button" class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-indigo-600 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" role="switch" aria-checked="false">
+        <span id="toggle-knob" class="pointer-events-none inline-block h-5 w-5 translate-x-0 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+      </button>
+      <span id="toggle-label-r" class="text-sm font-medium text-slate-400">Lux → Lumens</span>
+    </div>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span id="input-label" class="text-sm font-medium text-slate-700">Luminous flux (lumens)</span>
+        <input id="input-val" type="number" min="0" step="any" placeholder="e.g. 2000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Area</span>
+        <div class="mt-1 flex gap-2">
+          <input id="area-val" type="number" min="0" step="any" placeholder="e.g. 10" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="area-unit" class="rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="m2">m²</option>
+            <option value="ft2">ft²</option>
+          </select>
+        </div>
+      </label>
+    </div>
+    <div id="result" class="mt-5 rounded-xl bg-indigo-50 p-4 text-center">
+      <p id="result-label" class="text-xs font-medium text-indigo-500">Illuminance</p>
+      <p id="result-val" class="mt-1 text-2xl font-bold text-indigo-700">—</p>
+      <p id="result-hint" class="mt-0.5 text-xs text-indigo-400">&nbsp;</p>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" role="img" aria-labelledby="lux-diagram-title lux-diagram-desc" xmlns="http://www.w3.org/2000/svg">
+      <title id="lux-diagram-title">Lumens to lux diagram showing a light beam spreading over an area</title>
+      <desc id="lux-diagram-desc">A light source emits a beam of total lumens that spreads over a floor area; the illuminance in lux equals lumens divided by area in square metres.</desc>
+      <defs>
+        <radialGradient id="beam-grad" cx="50%" cy="0%" r="80%">
+          <stop offset="0%" stop-color="#e0e7ff" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#e0e7ff" stop-opacity="0"/>
+        </radialGradient>
+        <marker id="lux-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1"/>
+        </marker>
+      </defs>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui,sans-serif" font-size="15" font-weight="700">Lux = Lumens / Area</text>
+      <text x="400" y="42" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="12">Lumens are total light; lux is light per square metre</text>
+
+      <polygon points="400,55 100,210 700,210" fill="url(#beam-grad)" stroke="#a5b4fc" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <circle cx="400" cy="55" r="18" fill="#6366f1"/>
+      <text x="400" y="61" text-anchor="middle" fill="#fff" font-family="system-ui,sans-serif" font-size="11" font-weight="bold">Lm</text>
+      <text x="400" y="82" text-anchor="middle" fill="#4338ca" font-family="system-ui,sans-serif" font-size="11" font-weight="600">2,000 lumens</text>
+
+      <rect x="150" y="160" width="500" height="50" rx="4" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+      <text x="400" y="180" text-anchor="middle" fill="#4338ca" font-family="system-ui,sans-serif" font-size="13" font-weight="600">10 m²</text>
+      <text x="400" y="196" text-anchor="middle" fill="#6366f1" font-family="system-ui,sans-serif" font-size="12">200 lux</text>
+
+      <line x1="190" y1="140" x2="190" y2="158" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="610" y1="140" x2="610" y2="158" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,2"/>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">2,000 lumens spread evenly over 10 m² produces 200 lux of illuminance</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula</h2>
+    <p class="mt-2 text-slate-600">The relationship between luminous flux and illuminance is straightforward:</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+        <p class="text-sm font-semibold text-slate-700">Lux = Lumens ÷ Area (m²)</p>
+        <p class="mt-1 text-xs text-slate-500">Calculates illuminance from total light output</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+        <p class="text-sm font-semibold text-slate-700">Lumens = Lux × Area (m²)</p>
+        <p class="mt-1 text-xs text-slate-500">Finds required light output for a target lux</p>
+      </div>
+    </div>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Worked example</h3>
+    <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+      <p class="text-slate-600">A room measures 10 m² and you install a light bulb that produces 2,000 lumens. The illuminance at the floor (assuming even distribution) is:</p>
+      <p class="mt-2 font-mono text-indigo-700">lux = 2,000 lm ÷ 10 m² = <strong>200 lux</strong></p>
+      <p class="mt-2 text-slate-600">Conversely, if you need 300 lux in a 15 m² living room, the required light output is:</p>
+      <p class="mt-2 font-mono text-indigo-700">lumens = 300 lux × 15 m² = <strong>4,500 lm</strong></p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🪟</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Room lighting design</h3>
+        <p class="mt-1 text-sm text-slate-600">Determine how many lumens you need from bulbs to achieve comfortable illuminance for living rooms, kitchens, bedrooms, and hallways. Plan the total wattage and number of fixtures required.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📷</span>
+        <h3 class="mt-2 font-semibold text-slate-600">Photography & video</h3>
+        <p class="mt-1 text-sm text-slate-600">Studio lighting requires specific lux levels for correct exposure. Use the calculator to determine how many lumens your strobes or continuous lights must produce at a given distance.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔦</span>
+        <h3 class="mt-2 font-semibold text-slate-600">Flashlight / torch performance</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare flashlights by converting their lumen rating into useful lux at a typical working distance. A 1,000-lumen light spread over 5 m² gives only 200 lux.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏢</span>
+        <h3 class="mt-2 font-semibold text-slate-600">Workplace compliance</h3>
+        <p class="mt-1 text-sm text-slate-600">Health and safety regulations specify minimum lux for offices, workshops, and warehouses. Use the tool to verify your lighting installation meets required standards.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500">
+        <tr><th class="p-3">Space / task</th><th class="p-3">Recommended lux</th><th class="p-3">Example lumens (20 m²)</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Warehouse / storage</td><td class="p-3">100–200</td><td class="p-3">2,000–4,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Living room (ambient)</td><td class="p-3">100–300</td><td class="p-3">2,000–6,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Living room (task)</td><td class="p-3">300–750</td><td class="p-3">6,000–15,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Office / classroom</td><td class="p-3">300–500</td><td class="p-3">6,000–10,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Workshop / garage</td><td class="p-3">500–1,000</td><td class="p-3">10,000–20,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Surgical / operating room</td><td class="p-3">10,000–20,000</td><td class="p-3">200,000–400,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Photography studio</td><td class="p-3">1,000–5,000</td><td class="p-3">20,000–100,000 lm</td></tr>
+        <tr><td class="p-3 font-medium">Outdoor / street lighting</td><td class="p-3">10–50</td><td class="p-3">200–1,000 lm</td></tr>
+      </tbody>
+    </table>
+    <p class="p-3 text-xs text-slate-400">Lumen estimates assume even light distribution over 20 m². Actual requirements vary with ceiling height, wall colour, and fixture placement.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How lighting calculations work</h2>
+    <p class="mt-2 text-slate-600">Lumens (lm) measure the total amount of visible light emitted by a source — this is the "light output" you see on bulb packaging. Lux (lx) measures illuminance, or how much of that light actually lands on a one-square-metre surface. One lux equals one lumen per square metre. The distinction is critical: a 2,000-lumen bulb will produce very different lux depending on whether it lights a compact desk or a large warehouse.</p>
+    <p class="mt-3 text-slate-600">In the simplest case — a point light source with uniform distribution — illuminance follows the inverse-square law. Doubling the distance from the source quarters the lux value because the same total lumens now spread over four times the area. Real rooms with reflective walls, directional fixtures, and multiple light sources are more complex, but the fundamental relationship remains: the lux you experience is always the total lumens reaching that surface divided by its area.</p>
+    <p class="mt-3 text-slate-600">The calculator uses the formula <strong>lux = lumens ÷ area</strong> when working in square metres. When you toggle to the reverse direction, it uses <strong>lumens = lux × area</strong> to tell you how many lumens a bulb or fixture must produce to hit your target illuminance. This is the same calculation lighting designers perform when specifying fixtures for offices, retail spaces, and studios.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for planning room lighting</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Lux drops with distance</h3>
+        <p class="mt-1 text-sm text-slate-600">Illuminance follows the inverse-square law. If a pendant light is 2 m above the floor, moving it to 4 m reduces the lux at floor level to one-quarter. Always consider mounting height when planning lumens.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Different tasks need different lux</h3>
+        <p class="mt-1 text-sm text-slate-600">Fine assembly work needs 750–1,500 lux, while a hallway needs only 50–100 lux. Layer your lighting — ambient (general), task (focused), and accent (decorative) — so each area gets the right level without over-lighting the whole room.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Account for light loss</h3>
+        <p class="mt-1 text-sm text-slate-600">Lumen output drops over a bulb's life (lumen depreciation), and dirt on lenses and walls reduces reflected light. Design for 20–30% more lumens than the bare calculation suggests to maintain adequate lux over time.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use multiple sources</h3>
+        <p class="mt-1 text-sm text-slate-600">A single ceiling fixture creates harsh shadows and uneven lux distribution. Spread the required lumens across several lamps — floor lamps, wall washers, and overhead fixtures — for softer, more uniform illuminance.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check bulb packaging</h3>
+        <p class="mt-1 text-sm text-slate-600">Modern LED bulbs list both lumens and an equivalent wattage. A typical 800-lm LED bulb replaces a 60 W incandescent. Use the calculator to decide how many bulbs you need rather than relying on wattage alone.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Lux reference by space type</h2>
+    <p class="mt-2 text-slate-600">Recommended illuminance levels vary widely depending on the activity. The table above lists common guidelines from lighting standards such as the IES (Illuminating Engineering Society) and CIBSE (Chartered Institution of Building Services Engineers). These values are measured at the work plane — typically desk height (0.75 m) for offices and floor level for general areas.</p>
+    <p class="mt-3 text-slate-600">For precision tasks like jewellery making, electronics assembly, or medical examination, lux levels of 1,500–3,000 are common. For circulation spaces like corridors and stairwells, 50–100 lux is usually sufficient. Designers use the lumen method to calculate the number of fixtures needed: total required lumens divided by the lumens per fixture, adjusted for a utilisation factor (0.5–0.8) that accounts for light lost to walls, ceilings, and absorption.</p>
+    <p class="mt-3 text-slate-600">Colour temperature (measured in Kelvin) also affects how bright a space feels. A 4,000 K cool-white light at 500 lux will appear brighter than a 2,700 K warm-white light at the same lux because the human eye is more sensitive to blue-green wavelengths. When planning lighting, consider both lux level and colour temperature to create comfortable, effective illumination.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/btu-to-tons-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+        <span class="font-semibold">BTU to Tons Calculator</span>
+        <p class="mt-1 text-slate-500">Convert HVAC cooling capacity between BTU/hr, tons, and kW.</p>
+      </a>
+      <a href="/tools/kva-to-kw-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+        <span class="font-semibold">kVA to kW Calculator</span>
+        <p class="mt-1 text-slate-500">Convert apparent power to real power with power factor.</p>
+      </a>
+      <a href="/tools/aspect-ratio-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">
+        <span class="font-semibold">Aspect Ratio Calculator</span>
+        <p class="mt-1 text-slate-500">Calculate aspect ratios for images, video, and screens.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var inputVal = document.getElementById('input-val');
+      var areaVal = document.getElementById('area-val');
+      var areaUnit = document.getElementById('area-unit');
+      var toggleBtn = document.getElementById('toggle-btn');
+      var toggleKnob = document.getElementById('toggle-knob');
+      var inputLabel = document.getElementById('input-label');
+      var resultLabel = document.getElementById('result-label');
+      var resultVal = document.getElementById('result-val');
+      var resultHint = document.getElementById('result-hint');
+      var toggleLabelL = document.getElementById('toggle-label-l');
+      var toggleLabelR = document.getElementById('toggle-label-r');
+
+      var reversed = false;
+
+      function fmt(n) {
+        if (isNaN(n) || !isFinite(n)) return '\u2014';
+        return n.toFixed(1);
+      }
+
+      function toSqMeters(val, unit) {
+        return unit === 'ft2' ? val * 0.092903 : val;
+      }
+
+      function update() {
+        var raw = parseFloat(inputVal.value);
+        var areaRaw = parseFloat(areaVal.value);
+        var areaSqM = toSqMeters(areaRaw, areaUnit.value);
+
+        if (isNaN(raw) || raw < 0) raw = NaN;
+        if (isNaN(areaRaw) || areaRaw <= 0) areaRaw = NaN;
+
+        if (isNaN(raw) || isNaN(areaRaw)) {
+          resultVal.textContent = '\u2014';
+          resultHint.innerHTML = '&nbsp;';
+          return;
+        }
+
+        if (areaRaw <= 0) {
+          resultVal.textContent = '\u2014';
+          resultHint.textContent = 'Enter an area greater than 0';
+          return;
+        }
+
+        if (!reversed) {
+          var lux = raw / areaSqM;
+          resultVal.textContent = fmt(lux) + ' lux';
+          resultHint.textContent = raw + ' lm over ' + areaRaw + ' ' + areaUnit.value;
+        } else {
+          var required = raw * areaSqM;
+          resultVal.textContent = fmt(required) + ' lm';
+          resultHint.textContent = raw + ' lux over ' + areaRaw + ' ' + areaUnit.value;
+        }
+      }
+
+      function toggleDirection() {
+        reversed = !reversed;
+        toggleBtn.setAttribute('aria-checked', reversed);
+        toggleKnob.classList.toggle('translate-x-5', reversed);
+        toggleKnob.classList.toggle('translate-x-0', !reversed);
+
+        if (reversed) {
+          inputLabel.textContent = 'Target illuminance (lux)';
+          resultLabel.textContent = 'Required light output';
+          toggleLabelL.classList.remove('text-slate-700');
+          toggleLabelL.classList.add('text-slate-400');
+          toggleLabelR.classList.remove('text-slate-400');
+          toggleLabelR.classList.add('text-slate-700');
+          inputVal.placeholder = 'e.g. 300';
+        } else {
+          inputLabel.textContent = 'Luminous flux (lumens)';
+          resultLabel.textContent = 'Illuminance';
+          toggleLabelL.classList.remove('text-slate-400');
+          toggleLabelL.classList.add('text-slate-700');
+          toggleLabelR.classList.remove('text-slate-700');
+          toggleLabelR.classList.add('text-slate-400');
+          inputVal.placeholder = 'e.g. 2000';
+        }
+        update();
+      }
+
+      toggleBtn.addEventListener('click', toggleDirection);
+      inputVal.addEventListener('input', update);
+      areaVal.addEventListener('input', update);
+      areaUnit.addEventListener('change', update);
+    })();
+  </script>
+</ToolLayout>

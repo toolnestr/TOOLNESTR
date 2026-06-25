@@ -1,0 +1,263 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Severance Pay Calculator';
+const description = 'Estimate severance or redundancy pay from your monthly salary and years of service using a weeks-per-year formula.';
+const intro = 'Estimate severance/redundancy pay from your salary and years of service.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'Is severance taxed?', a: 'Often partly tax-free up to a limit, then taxed — rules vary by country.' },
+  { q: 'Do I qualify?', a: 'Usually you need a minimum service period; below that, statutory severance may be zero.' },
+  { q: 'Is this the legal minimum?', a: 'It estimates the statutory formula; your contract may entitle you to more.' },
+  { q: 'How is severance typically calculated?', a: 'A common formula is: weekly pay × weeks per year of service × years worked.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Monthly salary</span>
+        <input id="salary" type="number" min="0" step="any" placeholder="e.g. 4000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Years of service</span>
+        <input id="years" type="number" min="0" step="any" placeholder="e.g. 5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Weeks per year of service</span>
+        <input id="wpy" type="number" min="0" step="any" value="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Minimum qualifying years</span>
+        <input id="minYrs" type="number" min="0" step="any" value="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block sm:col-span-2">
+        <span class="text-sm font-medium text-slate-700">Max weeks of pay cap <span class="font-normal text-slate-400">(0 = no cap)</span></span>
+        <input id="cap" type="number" min="0" step="any" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <button id="calc" class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">Estimate severance</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="rounded-xl bg-indigo-600 p-6 text-center text-white">
+        <div class="text-sm opacity-80">Estimated severance</div>
+        <div id="r-total" class="mt-1 text-3xl font-bold">&mdash;</div>
+      </div>
+      <p id="r-summary" class="mt-3 text-center text-sm text-slate-500"></p>
+    </div>
+
+    <p id="warn" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></p>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Severance pay calculation flow diagram">
+      <title>Severance pay calculation flow</title>
+      <desc>Flow diagram: Monthly salary is converted to weekly pay, multiplied by years and weeks per year, then capped to give the final severance amount.</desc>
+      <rect x="30" y="60" width="130" height="50" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="95" y="84" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Monthly salary</text>
+      <text x="95" y="100" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">$4,000</text>
+      <path d="M160 85 L200 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#94a3b8" /></marker></defs>
+      <rect x="210" y="60" width="130" height="50" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="275" y="84" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Weekly pay</text>
+      <text x="275" y="100" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="11">$4,000&times;12/52</text>
+      <text x="275" y="115" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">= $923.08</text>
+      <path d="M340 85 L380 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="390" y="40" width="150" height="50" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2" />
+      <text x="465" y="64" text-anchor="middle" fill="#6d28d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600">&times; Years &times; Wks/yr</text>
+      <text x="465" y="80" text-anchor="middle" fill="#7c3aed" font-family="system-ui, sans-serif" font-size="11">5 yrs &times; 2 = 10 wks</text>
+      <rect x="390" y="105" width="150" height="40" rx="10" fill="#fce7f3" stroke="#ec4899" stroke-width="2" />
+      <text x="465" y="124" text-anchor="middle" fill="#be185d" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Gross severance</text>
+      <text x="465" y="138" text-anchor="middle" fill="#db2777" font-family="system-ui, sans-serif" font-size="11">$923.08 &times; 10 = $9,230.77</text>
+      <path d="M540 85 L580 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="590" y="60" width="170" height="50" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2" />
+      <text x="675" y="84" text-anchor="middle" fill="#065f46" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Severance</text>
+      <text x="675" y="100" text-anchor="middle" fill="#047857" font-family="system-ui, sans-serif" font-size="12">$9,230.77 (if no cap)</text>
+      <line x1="30" y1="170" x2="770" y2="170" stroke="#cbd5e1" stroke-width="1" />
+      <text x="400" y="188" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">A cap on weeks of pay may reduce the final amount</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">How monthly salary is converted to weekly pay, multiplied by service years and weeks per year, then capped if applicable</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Severance pay formulas</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator uses a standard statutory formula to estimate your severance entitlement. All figures are pre-tax — your actual payout may differ based on local tax rules and any contractual enhancements.
+    </p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Weekly pay</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">weeklyPay = monthlySalary &times; 12 / 52</p>
+        <p class="mt-1 text-xs text-slate-400">Your monthly salary is annualised (multiplied by 12) and divided by 52 weeks to get your weekly pay. This is the base unit for severance calculations.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Gross severance (uncapped)</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">severance = weeksPerYear &times; years &times; weeklyPay</p>
+        <p class="mt-1 text-xs text-slate-400">The total weeks of pay is your years of service multiplied by the weeks-per-year factor (commonly 2 in the US/UK). Multiplying by your weekly pay gives the gross severance amount.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Capped severance</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">severance = min(grossSeverance, capWeeks &times; weeklyPay)</p>
+        <p class="mt-1 text-xs text-slate-400">If a cap on weeks of pay applies, the total weeks used in the calculation is limited to the cap. A cap of 0 means no limit — the gross severance is paid in full.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Monthly salary: <strong>$4,000</strong> &nbsp;|&nbsp; Years of service: <strong>5</strong> &nbsp;|&nbsp; Weeks/year: <strong>2</strong> &nbsp;|&nbsp; Cap: <strong>None</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Annual salary:</span> <span class="text-slate-600">$4,000 &times; 12 = $48,000</span></div>
+        <div><span class="font-medium text-slate-700">Weekly pay:</span> <span class="text-slate-600">$48,000 / 52 = $923.08</span></div>
+        <div><span class="font-medium text-slate-700">Weeks of severance:</span> <span class="text-slate-600">5 yrs &times; 2 wks/yr = 10 weeks</span></div>
+        <div><span class="font-medium text-slate-700">Estimated severance:</span> <span class="text-slate-600">10 wks &times; $923.08 = <strong>$9,230.77</strong></span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Capped example &mdash; salary: <strong>$6,000/month</strong>, years: <strong>10</strong>, weeks/year: <strong>2</strong>, cap: <strong>20 weeks</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Weekly pay:</span> <span class="text-slate-600">$6,000 &times; 12 / 52 = $1,384.62</span></div>
+        <div><span class="font-medium text-slate-700">Uncapped weeks:</span> <span class="text-slate-600">10 &times; 2 = 20 weeks</span></div>
+        <div><span class="font-medium text-slate-700">Applied weeks:</span> <span class="text-slate-600">min(20, 20) = 20 weeks</span></div>
+        <div><span class="font-medium text-slate-700">Capped severance:</span> <span class="text-slate-600">20 &times; $1,384.62 = <strong>$27,692.31</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔍</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Understanding redundancy entitlement</h3>
+        <p class="mt-1 text-sm text-slate-600">If your employer has announced layoffs or a restructuring, use this calculator to estimate the statutory minimum severance you may be entitled to based on your salary and years of service. Knowing the baseline helps you understand what to expect and flags any discrepancies if the offered package seems low.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🤝</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Negotiating an exit package</h3>
+        <p class="mt-1 text-sm text-slate-600">When leaving a role voluntarily through a mutual agreement or settlement, severance is often negotiable. Start from the statutory formula and build your case for a higher package by highlighting your contributions, length of service, and any non-compete or notice period obligations you are waiving.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">✅</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Checking an employer offer</h3>
+        <p class="mt-1 text-sm text-slate-600">Received a severance proposal from your employer? Plug the numbers in to see how it compares to the statutory baseline. If the offer is below what the formula produces, you have a clear basis to ask for a revision. Many employers offer more than the legal minimum to avoid disputes.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Budgeting during transition</h3>
+        <p class="mt-1 text-sm text-slate-600">A severance payout can bridge the gap between jobs. Use the estimate to plan your finances — calculate how many months of expenses it covers, factor in any tax liability, and determine how long you can afford to search for your next role before your savings need to kick in.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for severance pay</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Contractual may exceed statutory</h3>
+        <p class="mt-1 text-sm text-slate-600">Your employment contract or company redundancy policy may offer more generous severance than the statutory minimum. Common enhancements include additional weeks per year of service, a higher cap, or bonus inclusion in the salary calculation. Always check your contract first before relying on the statutory baseline.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Caps often apply</h3>
+        <p class="mt-1 text-sm text-slate-600">Many jurisdictions limit the total weeks of pay that can be claimed. For example, the UK caps statutory redundancy pay at 20 years of service, and some US company policies cap at 26 or 52 weeks. The calculator lets you set a custom cap so you can model different policy scenarios and see how the cap impacts your final figure.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check local laws</h3>
+        <p class="mt-1 text-sm text-slate-600">Severance rules vary significantly by country and even by state or province. Some regions require severance for any dismissal without cause, while others only mandate it for mass layoffs. Research the employment standards in your jurisdiction to understand exactly what you are entitled to. A local employment lawyer can provide definitive guidance for your specific situation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand the tax treatment</h3>
+        <p class="mt-1 text-sm text-slate-600">Severance pay is often subject to income tax, though many countries offer partial tax relief on statutory redundancy payments. In some jurisdictions, the first portion of severance is tax-free up to a threshold. Consult a tax professional to understand how much of your estimated severance you will actually take home after tax.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/overtime-pay-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">⏰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Overtime Pay Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate overtime wages at time-and-a-half or double-time.</p>
+      </a>
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">💰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Convert between hourly, daily, weekly, monthly, and yearly pay.</p>
+      </a>
+      <a href="/tools/invoice-late-fee-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Invoice Late Fee Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate late fees on overdue invoices by percentage or flat fee.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const salary = el('salary');
+    const years = el('years');
+    const wpy = el('wpy');
+    const minYrs = el('minYrs');
+    const cap = el('cap');
+    const calcBtn = el('calc');
+    const result = el('result');
+    const warn = el('warn');
+    const rTotal = el('r-total');
+    const rSummary = el('r-summary');
+
+    function fmt(n) {
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculate() {
+      warn.classList.add('hidden');
+      result.classList.add('hidden');
+
+      const monthly = parseFloat(salary.value);
+      const yrs = parseFloat(years.value);
+      const wpyVal = parseFloat(wpy.value);
+      const minVal = parseFloat(minYrs.value);
+      const capVal = parseFloat(cap.value);
+
+      if (isNaN(monthly) || monthly <= 0 || isNaN(yrs) || yrs <= 0) {
+        return;
+      }
+
+      if (isNaN(minVal) || minVal < 0 || isNaN(wpyVal) || wpyVal <= 0 || isNaN(capVal) || capVal < 0) {
+        return;
+      }
+
+      if (yrs < minVal) {
+        warn.textContent = 'Less than minimum qualifying period \u2014 you may not be entitled to severance.';
+        warn.classList.remove('hidden');
+        return;
+      }
+
+      const weeklyPay = monthly * 12 / 52;
+      const totalWeeks = yrs * wpyVal;
+      let appliedWeeks = totalWeeks;
+      let capNote = '';
+
+      if (capVal > 0) {
+        if (totalWeeks > capVal) {
+          appliedWeeks = capVal;
+          capNote = ` (capped at ${capVal} weeks)`;
+        }
+      } else {
+        capNote = ' (no cap applied)';
+      }
+
+      const severance = appliedWeeks * weeklyPay;
+
+      rTotal.textContent = fmt(severance);
+      rSummary.textContent = `${yrs} years at ${wpyVal} weeks/year = ${appliedWeeks} weeks \u00d7 ${fmt(weeklyPay)}/wk = ${fmt(severance)}${capNote}`;
+      result.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+  </script>
+</ToolLayout>

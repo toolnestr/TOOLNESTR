@@ -1,0 +1,600 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Fuel Cost Calculator';
+const description =
+  'Estimate the fuel cost of any trip from distance, efficiency, and price. Supports km/miles, ' +
+  'L/100km, km/L, and mpg.';
+const intro =
+  'Estimate the fuel cost of any trip from distance, fuel efficiency, and fuel price.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  {
+    q: 'Where do I find my car fuel efficiency?',
+    a: 'The manual or onboard computer; or track litres used over a known distance.',
+  },
+  {
+    q: 'Does it work in mpg?',
+    a: 'Yes — switch the efficiency unit and it converts internally.',
+  },
+  {
+    q: 'Does it include tolls or parking?',
+    a: 'No — fuel only; add those separately.',
+  },
+  {
+    q: 'How accurate is the estimate?',
+    a: 'Real-world efficiency is usually ~10% worse than the brochure figure — pad it for accuracy.',
+  },
+];
+---
+
+<ToolLayout
+  title={title}
+  description={description}
+  intro={intro}
+  category={category}
+  faqs={faqs}
+>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Trip distance</span>
+        <input
+          id="dist"
+          type="number"
+          step="any"
+          min="0"
+          placeholder="e.g. 300"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Distance unit</span>
+        <div class="mt-1 flex overflow-hidden rounded-xl border border-slate-300">
+          <button
+            id="unit-km"
+            class="dist-unit flex-1 py-3 text-sm font-medium transition"
+          >km</button>
+          <button
+            id="unit-mi"
+            class="dist-unit flex-1 py-3 text-sm font-medium transition"
+          >miles</button>
+        </div>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Fuel efficiency</span>
+        <input
+          id="eff"
+          type="number"
+          step="any"
+          min="0"
+          placeholder="e.g. 7"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Efficiency unit</span>
+        <select
+          id="eff-unit"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="lp100k">L/100km</option>
+          <option value="kmpl">km/L</option>
+          <option value="mpg">mpg</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Fuel price</span>
+        <input
+          id="price"
+          type="number"
+          step="any"
+          min="0"
+          placeholder="e.g. 1.80"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Price unit</span>
+        <div
+          id="price-unit-label"
+          class="mt-1 flex h-12 items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-600"
+        >per litre</div>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Split between <span class="text-xs text-slate-400">(optional)</span></span>
+        <input
+          id="split"
+          type="number"
+          step="1"
+          min="0"
+          value="1"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+    </div>
+
+    <button
+      id="calcBtn"
+      class="mt-5 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+    >Calculate</button>
+
+    <div id="result" class="mt-6 hidden grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-4 text-center">
+        <div class="text-sm text-slate-500">Fuel needed</div>
+        <div id="r-fuel" class="mt-1 text-xl font-bold text-slate-800">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+        <div class="text-sm opacity-80">Total cost</div>
+        <div id="r-cost" class="mt-1 text-xl font-bold">—</div>
+      </div>
+      <div class="rounded-xl bg-emerald-50 p-4 text-center">
+        <div class="text-sm text-slate-500">Cost per person</div>
+        <div id="r-pp" class="mt-1 text-xl font-bold text-emerald-700">—</div>
+      </div>
+    </div>
+
+    <div
+      id="hint"
+      class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-800"
+    >⚠️ Efficiency cannot be zero. Enter a value greater than 0.</div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg
+      width="800"
+      height="200"
+      viewBox="0 0 800 200"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-labelledby="fuel-flow-title fuel-flow-desc"
+    >
+      <title id="fuel-flow-title">Fuel cost calculation flow</title>
+      <desc id="fuel-flow-desc">Diagram showing distance divided by efficiency times price equals total cost</desc>
+      <rect x="30" y="40" width="130" height="56" rx="8" fill="#6366f1" />
+      <text x="95" y="72" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Distance</text>
+      <text x="95" y="86" text-anchor="middle" fill="#c7d2fe" font-size="11">km or miles</text>
+      <path d="M160 68 L200 68" stroke="#94a3b8" stroke-width="2" marker-end="url(#fa)" />
+      <rect x="200" y="40" width="50" height="56" rx="8" fill="#f97316" />
+      <text x="225" y="72" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">÷</text>
+      <text x="225" y="86" text-anchor="middle" fill="#fff" font-size="11">efficiency</text>
+      <path d="M250 68 L290 68" stroke="#94a3b8" stroke-width="2" />
+      <rect x="290" y="40" width="130" height="56" rx="8" fill="#10b981" />
+      <text x="355" y="72" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Fuel needed</text>
+      <text x="355" y="86" text-anchor="middle" fill="#d1fae5" font-size="11">litres or gallons</text>
+      <path d="M420 68 L460 68" stroke="#94a3b8" stroke-width="2" />
+      <rect x="460" y="40" width="50" height="56" rx="8" fill="#f97316" />
+      <text x="485" y="72" text-anchor="middle" fill="#fff" font-size="16" font-weight="bold">×</text>
+      <text x="485" y="86" text-anchor="middle" fill="#fff" font-size="11">fuel price</text>
+      <path d="M510 68 L550 68" stroke="#94a3b8" stroke-width="2" />
+      <rect x="550" y="40" width="150" height="56" rx="8" fill="#ef4444" />
+      <text x="625" y="72" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Total cost</text>
+      <text x="625" y="86" text-anchor="middle" fill="#fecaca" font-size="11">fuel × price</text>
+      <rect x="550" y="120" width="150" height="56" rx="8" fill="#f59e0b" />
+      <text x="625" y="154" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Cost / person</text>
+      <text x="625" y="168" text-anchor="middle" fill="#fef3c7" font-size="11">total ÷ people</text>
+      <path d="M625 96 L625 120" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#fa)" />
+      <text x="520" y="115" text-anchor="middle" fill="#64748b" font-size="12">÷ people</text>
+      <defs>
+        <marker id="fa" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10" fill="#94a3b8" />
+        </marker>
+      </defs>
+      <text
+        x="400"
+        y="196"
+        text-anchor="middle"
+        fill="#64748b"
+        font-size="13"
+      >Distance ÷ efficiency × price = cost, then ÷ people for per-person share</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">
+      The fuel cost formula: distance, efficiency and price combine to give the total, then split by passengers
+    </figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How fuel cost is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator converts all inputs to a common internal base — kilometres for distance,
+      L/100km for fuel efficiency, and dollars per litre for fuel price. From there the math is
+      simple:
+    </p>
+    <div class="mt-3 space-y-1 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">Litres used</span> = Distance(km) ÷ 100 × Consumption(L/100km)</div>
+      <div><span class="font-semibold">Total cost</span> = Litres used × Price per litre</div>
+      <div><span class="font-semibold">Cost per person</span> = Total cost ÷ Number of people</div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        You drive <strong>300 km</strong> in a car that averages <strong>7 L/100km</strong>.
+        Fuel costs <strong>$1.80/litre</strong>. You share the trip with <strong>3 people</strong>.
+      </p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Fuel needed:</span> <span class="text-slate-600">300 ÷ 100 × 7 = 21 litres</span></div>
+        <div><span class="font-medium text-slate-700">Total cost:</span> <span class="text-slate-600">21 × $1.80 = $37.80</span></div>
+        <div><span class="font-medium text-slate-700">Cost per person:</span> <span class="text-slate-600">$37.80 ÷ 3 = $12.60</span></div>
+        <div><span class="font-medium text-slate-700">In mpg:</span> <span class="text-slate-600">7 L/100km ≈ 33.6 mpg</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Unit conversions explained</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator handles four efficiency units and two distance units seamlessly. Here is how
+      each conversion works under the hood.
+    </p>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+            <th class="px-4 py-3">Input unit</th>
+            <th class="px-4 py-3">Conversion to base</th>
+            <th class="px-4 py-3">Example</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr>
+            <td class="px-4 py-3 font-medium">L/100km</td>
+            <td class="px-4 py-3">Already base</td>
+            <td class="px-4 py-3">7 L/100km</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">km/L</td>
+            <td class="px-4 py-3">100 ÷ km/L</td>
+            <td class="px-4 py-3">14.3 km/L = 7 L/100km</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">mpg</td>
+            <td class="px-4 py-3">235.215 ÷ mpg</td>
+            <td class="px-4 py-3">33.6 mpg = 7 L/100km</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">miles → km</td>
+            <td class="px-4 py-3">miles × 1.609</td>
+            <td class="px-4 py-3">186 miles = 300 km</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-medium">$/gal → $/L</td>
+            <td class="px-4 py-3">$/gal ÷ 3.785</td>
+            <td class="px-4 py-3">$6.80/gal = $1.80/L</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-slate-600">
+      When you select <strong>mpg</strong>, the fuel price switches to dollars per gallon and is
+      automatically converted to dollars per litre internally. When you select <strong>miles</strong>,
+      the distance is converted to kilometres. The result for fuel needed changes accordingly —
+      litres for metric units, gallons for imperial.
+    </p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚗</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Road Trip Budgeting</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Plan the fuel budget for your next road trip. Enter the total distance, your car's efficiency,
+        and the local fuel price to know how much to set aside before you hit the road.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👥</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Splitting with Carpoolers</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        When you drive colleagues or friends, use the split feature to divide the fuel cost fairly.
+        Everyone pays exactly their share based on the total trip cost.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚆</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Compare vs Other Transport</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Compare the fuel cost of driving against train, bus, or plane tickets. Factor in additional
+        passengers to see when driving becomes the more economical choice for your group.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💰</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Vehicle Comparison</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Compare two vehicles side by side. See how much you would save annually by switching to a
+        more efficient car based on your typical monthly mileage and local fuel prices.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the fuel cost calculator</h2>
+    <p class="mt-2 text-slate-600">
+      The fuel cost calculator is useful in a wide range of real-world situations. For long road
+      trips, you can estimate the total fuel cost before you leave, helping you budget for the
+      journey and decide whether to split costs with travel companions. Simply enter the total
+      distance, your vehicle's average fuel consumption, and the current price per litre at the
+      pump — the calculator handles the rest, including converting between kilometres and miles,
+      and between L/100km, km/L, and mpg.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For daily commuting, the calculator helps you understand your weekly or monthly fuel spend.
+      Multiply your one-way distance by the number of trips per week, enter your car's efficiency,
+      and you will see exactly what percentage of your income goes to fuel. This can be eye-opening
+      when comparing a longer but cheaper suburban commute against a shorter urban one with stop-start
+      traffic that reduces fuel efficiency.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Carpooling is another common use case. When you drive colleagues or friends, the split feature
+      lets everyone contribute their fair share. Instead of guessing or rounding, the calculator gives
+      a precise per-person cost based on the total fuel consumed. This eliminates awkwardness and
+      ensures the driver is not left subsidising everyone else's travel.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator is also valuable when comparing driving to other modes of transport. If a train
+      ticket costs $45 and the fuel for a 300 km round trip in your car at 7 L/100km and $1.80/L is
+      $37.80, driving is cheaper — especially with two or more people sharing the cost. For longer
+      trips, include accommodation and tolls for a more complete comparison.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate estimates</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Real-world fuel efficiency is worse than brochure</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Manufacturers test under ideal conditions. Real-world driving typically returns 10–15% lower
+          efficiency than the official figure. Add a margin of 10% to the consumption value for a more
+          realistic estimate — use 7.7 L/100km instead of 7 L/100km, for example.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">City vs highway makes a big difference</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Stop-start city driving can increase fuel consumption by 20–40% compared to steady highway
+          cruising. Many cars display separate city and highway figures. Use the one that matches your
+          route, or average the two if the trip is mixed.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Fuel price varies by location</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Check the current price at the pump rather than relying on a national average. Prices can
+          vary significantly between stations on the same street, and even more between states or
+          countries. Apps like GasBuddy or PetrolPrices show real-time local rates.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Vehicle load and driving style matter</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          A fully loaded car with roof rack or trailer consumes 10–20% more fuel. Aggressive
+          acceleration and braking also increase consumption significantly. Smooth driving and
+          removing unnecessary roof loads can improve efficiency noticeably.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the fuel cost calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter trip details</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Type the trip distance, choose km or miles, enter your car's fuel efficiency, and select
+          the unit that matches your car's dashboard.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add price and split</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Enter the fuel price (per litre or per gallon) and optionally set how many people to split
+          the cost between. Defaults to 1 for solo travel.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Calculate and budget</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Click Calculate to see fuel needed, total cost, and cost per person. Adjust inputs to
+          compare different scenarios instantly.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 extended-content">
+    <h2 class="text-xl font-bold text-slate-900">Fuel efficiency by vehicle type</h2>
+    <p class="mt-2 text-slate-600">
+      Different types of vehicles have vastly different fuel consumption, and knowing where your car
+      sits on the spectrum helps set realistic expectations. Small hatchbacks and hybrids typically
+      achieve 4–6 L/100km (47–59 mpg), making them the most economical choice for commuting and
+      city driving. Mid-size sedans and family SUVs range from 7–10 L/100km (24–34 mpg), while
+      large SUVs, pickup trucks, and performance cars can consume 12–18 L/100km (13–20 mpg). At the
+      extreme end, a heavy-duty truck towing a trailer might use 25+ L/100km (less than 10 mpg).
+    </p>
+    <p class="mt-3 text-slate-600">
+      When you enter your vehicle's efficiency into the calculator, you can instantly see the fuel
+      cost for any trip. If you are shopping for a new car, run the numbers with your typical monthly
+      mileage and local fuel price to estimate annual fuel savings between models. A car that uses
+      6 L/100km instead of 9 L/100km saves 33% on fuel — over 20,000 km per year at $1.80/L, that is
+      $1,080 saved annually.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For electric vehicle owners, see the
+      <a href="/tools/ev-charging-cost-calculator" class="font-medium text-indigo-600 hover:underline">EV Charging Cost Calculator</a>
+      and the
+      <a href="/tools/ev-trip-planner" class="font-medium text-indigo-600 hover:underline">EV Trip Planner</a>
+      for equivalents. The
+      <a href="/tools/ev-charging-time-calculator" class="font-medium text-indigo-600 hover:underline">EV Charging Time Calculator</a>
+      helps estimate how long a top-up takes.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Fuel consumption vs CO₂ emissions</h2>
+    <p class="mt-2 text-slate-600">
+      Fuel consumption is directly linked to CO₂ emissions. Burning one litre of petrol produces about
+      2.31 kg of CO₂, while diesel produces about 2.68 kg per litre. Multiply the litres used by the
+      appropriate factor to estimate your trip's carbon footprint. For the 300 km example above —
+      21 litres of petrol — the trip produces about 48.5 kg of CO₂. For a deeper analysis, check the
+      <a href="/tools/ev-co2-savings" class="font-medium text-indigo-600 hover:underline">EV CO₂ Savings Calculator</a>
+      to compare petrol and electric vehicle emissions.
+    </p>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a
+        href="/tools/cost-per-unit-calculator"
+        class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"
+      >
+        <span class="text-lg">📦</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Cost Per Unit Calculator</h3>
+        <p class="text-sm text-slate-600">
+          Compare prices by weight, volume, or piece.
+        </p>
+      </a>
+      <a
+        href="/tools/discount-calculator"
+        class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"
+      >
+        <span class="text-lg">🏷️</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Discount Calculator</h3>
+        <p class="text-sm text-slate-600">
+          See the final price after any percentage off.
+        </p>
+      </a>
+      <a
+        href="/tools/savings-goal-calculator"
+        class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"
+      >
+        <span class="text-lg">🎯</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Savings Goal Calculator</h3>
+        <p class="text-sm text-slate-600">
+          Plan how much to save each month to reach a target.
+        </p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const dist = el('dist');
+    const eff = el('eff');
+    const price = el('price');
+    const split = el('split');
+    const effUnit = el('eff-unit');
+    const priceUnitLabel = el('price-unit-label');
+    const result = el('result');
+    const hint = el('hint');
+    const rFuel = el('r-fuel');
+    const rCost = el('r-cost');
+    const rPp = el('r-pp');
+
+    let distUnit = 'km';
+
+    document.querySelectorAll('.dist-unit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dist-unit').forEach((b) => {
+          b.classList.remove('bg-indigo-600', 'text-white');
+          b.classList.add('bg-white', 'text-slate-700');
+        });
+        btn.classList.remove('bg-white', 'text-slate-700');
+        btn.classList.add('bg-indigo-600', 'text-white');
+        distUnit = btn.id === 'unit-km' ? 'km' : 'mi';
+      });
+    });
+    el('unit-km').classList.add('bg-indigo-600', 'text-white');
+
+    effUnit.addEventListener('change', () => {
+      const isMpg = effUnit.value === 'mpg';
+      priceUnitLabel.textContent = isMpg ? 'per gallon' : 'per litre';
+    });
+
+    function fmt(n, isVolume) {
+      const d = isVolume && n >= 10 ? 1 : 2;
+      return n.toLocaleString(undefined, {
+        minimumFractionDigits: d,
+        maximumFractionDigits: d,
+      });
+    }
+
+    function fmtMoney(n) {
+      return '$' + n.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function update() {
+      const d = parseFloat(dist.value);
+      const e = parseFloat(eff.value);
+      const p = parseFloat(price.value);
+      const s = parseInt(split.value, 10) || 1;
+
+      if (isNaN(d) || isNaN(e) || isNaN(p) || d < 0 || e <= 0 || p < 0) {
+        result.classList.add('hidden');
+        if (e === 0 || (e !== undefined && e <= 0 && !isNaN(e))) {
+          hint.classList.remove('hidden');
+        } else {
+          hint.classList.add('hidden');
+        }
+        return;
+      }
+
+      if (e === 0) {
+        result.classList.add('hidden');
+        hint.classList.remove('hidden');
+        return;
+      }
+
+      hint.classList.add('hidden');
+
+      const distKm = distUnit === 'mi' ? d * 1.609 : d;
+
+      let consumption;
+      if (effUnit.value === 'lp100k') {
+        consumption = e;
+      } else if (effUnit.value === 'kmpl') {
+        consumption = 100 / e;
+      } else {
+        consumption = 235.215 / e;
+      }
+
+      let pricePerLitre;
+      const isMpg = effUnit.value === 'mpg';
+      if (isMpg) {
+        pricePerLitre = p / 3.78541;
+      } else {
+        pricePerLitre = p;
+      }
+
+      const litres = distKm / 100 * consumption;
+      const cost = litres * pricePerLitre;
+      const pp = cost / Math.max(1, s);
+
+      const useGal = isMpg;
+      const fuelVal = useGal ? litres / 3.78541 : litres;
+      const fuelUnit = useGal ? 'gal' : 'L';
+
+      rFuel.textContent = fmt(fuelVal, true) + ' ' + fuelUnit;
+      rCost.textContent = fmtMoney(cost);
+      rPp.textContent = fmtMoney(pp);
+
+      result.classList.remove('hidden');
+    }
+
+    el('calcBtn').addEventListener('click', update);
+    dist.addEventListener('input', update);
+    eff.addEventListener('input', update);
+    price.addEventListener('input', update);
+    split.addEventListener('input', update);
+    effUnit.addEventListener('change', update);
+  </script>
+</ToolLayout>

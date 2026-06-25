@@ -268,6 +268,11 @@ export const tools = [
   { slug: 'cost-per-unit-calculator', title: 'Cost-per-Unit Calculator', short: 'Compare two products by price per unit to find the best deal.', category: 'everyday', emoji: '🏷️', enabled: true, status: 'live' },
   { slug: 'vat-gst-calculator', title: 'VAT / GST Calculator', short: 'Add or remove VAT/GST from any price at any rate.', category: 'finance', emoji: '🧮', enabled: true, status: 'live' },
   { slug: 'overtime-pay-calculator', title: 'Overtime Pay Calculator', short: 'Calculate overtime wages at 1.5x or 2x your hourly rate.', category: 'finance', emoji: '⏰', enabled: true, status: 'live' },
+  { slug: 'severance-calculator', title: 'Severance Pay Calculator', short: 'Estimate severance or redundancy pay from salary and years of service.', category: 'finance', emoji: '🤝', enabled: true, status: 'live' },
+  { slug: 'fuel-cost-calculator', title: 'Fuel Cost Calculator', short: 'Estimate the fuel cost of any trip from distance, efficiency, and price.', category: 'automotive', emoji: '⛽', enabled: true, status: 'live' },
+  { slug: 'gsm-to-mm-calculator', title: 'GSM to mm Calculator', short: 'Convert paper GSM to thickness in mm and microns.', category: 'converters', emoji: '📄', enabled: true, status: 'live' },
+  { slug: 'lumens-to-lux-calculator', title: 'Lumens to Lux Calculator', short: 'Convert light output to illuminance over any area.', category: 'engineering', emoji: '💡', enabled: true, status: 'live' },
+  { slug: 'btu-to-tons-calculator', title: 'BTU to Tons Calculator', short: 'Convert HVAC cooling capacity between BTU/hr, tons, and kW.', category: 'engineering', emoji: '❄️', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages
