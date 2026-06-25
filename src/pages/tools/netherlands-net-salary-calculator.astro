@@ -1,0 +1,333 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Netherlands Net Salary Calculator';
+const description = 'Calculate Dutch net income after income tax and social security contributions.';
+const intro = 'Calculate Dutch net income after income tax and social security.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'How is Dutch income tax calculated?', a: 'Box 1 income in 2025 uses two brackets: up to €75,518 is taxed at 36.97% (combined income tax and social security), and anything above is taxed at 49.50%. The calculator applies these brackets progressively.' },
+  { q: 'What is the 30% ruling?', a: 'The 30% ruling is a tax advantage for expats in the Netherlands. Up to 30% of your salary can be paid as a tax-free allowance for extraterritorial costs, effectively reducing your taxable income by 30%. It is valid for up to 5 years.' },
+  { q: 'What is holiday allowance in the Netherlands?', a: 'Holiday allowance (vakantiegeld) is 8% of your gross annual salary, typically paid in May. It is a legal right for all employees in the Netherlands.' },
+  { q: 'What social security contributions do I pay?', a: 'Dutch social security includes AOW (state pension), ALW (unemployment insurance), and WAO/WIA (disability insurance). These are included in the first tax bracket rate of 36.97%.' },
+  { q: 'What is a good salary in the Netherlands?', a: 'The average Dutch salary in 2025 is around €45,000–€55,000 gross per year. A salary of €60,000+ is considered above average, and €100,000+ is typical for senior roles in tech and finance.' },
+  { q: 'Does this calculator include the tax credit?', a: 'This calculator provides an estimate using the standard tax brackets. General tax credits (heffingskortingen) can further reduce your tax bill. For a precise calculation, consult a Dutch tax advisor.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block sm:col-span-2">
+        <span class="text-sm font-medium text-slate-700">Annual gross salary (EUR)</span>
+        <input id="salary" type="number" min="0" step="100" placeholder="60000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+        <input id="holidayAllowance" type="checkbox" checked class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" />
+        <div>
+          <span class="font-medium text-slate-700">Holiday allowance (8%)</span>
+          <span class="block text-xs text-slate-400">Vakantiegeld, usually paid in May</span>
+        </div>
+      </label>
+      <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3 transition hover:bg-slate-50">
+        <input id="ruling30" type="checkbox" class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" />
+        <div>
+          <span class="font-medium text-slate-700">30% ruling</span>
+          <span class="block text-xs text-slate-400">Expat tax benefit — reduces taxable income by 30%</span>
+        </div>
+      </label>
+    </div>
+
+    <button id="calcBtn" class="mt-5 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Gross salary</div>
+          <div id="r-gross-salary" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Holiday allowance</div>
+          <div id="r-holiday" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Total gross</div>
+          <div id="r-total-gross" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-orange-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Income tax</div>
+          <div id="r-income-tax" class="mt-1 text-lg font-bold text-orange-700">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-amber-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Social security</div>
+          <div id="r-social" class="mt-1 text-lg font-bold text-amber-700">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 p-4 text-center sm:col-span-2">
+          <div class="text-xs text-slate-500">Net annual income</div>
+          <div id="r-net" class="mt-1 text-xl font-bold text-emerald-700">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Effective tax rate</div>
+          <div id="r-effective" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-xs text-slate-500">Monthly net</div>
+          <div id="r-monthly" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-indigo-50 p-4 text-center sm:col-span-2">
+          <div class="text-xs text-slate-500">13th month (holiday allowance payout)</div>
+          <div id="r-thirteenth" class="mt-1 text-lg font-bold text-indigo-700">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the Netherlands net salary calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      The Dutch tax system uses a progressive box structure. Most employees fall under Box 1, which taxes income from employment and home ownership combined. The 2025 rates apply two brackets: a first bracket of 36.97% on income up to €75,518, and a second bracket of 49.50% on anything above that threshold. The first bracket rate already includes social security premiums (AOW, ALW, WAO/WIA), so there is no separate social security charge on income exceeding the first bracket maximum.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Your holiday allowance (vakantiegeld) is 8% of your base salary and is treated as part of your total gross income for tax purposes. Many international professionals also qualify for the 30% ruling, which allows up to 30% of your salary to be paid as a tax-free allowance, significantly reducing your taxable base. This calculator combines all these factors to give you a realistic estimate of your take-home pay.
+    </p>
+    <div class="mt-5 space-y-2 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">Total gross</span> = Salary &times; (1 + 0.08 if holiday allowance)</div>
+      <div><span class="font-semibold">Taxable income</span> = Total gross &times; 0.70 if 30% ruling, else total gross</div>
+      <div><span class="font-semibold">First bracket</span> = min(Taxable, 75,518) &times; 0.3697</div>
+      <div><span class="font-semibold">Second bracket</span> = max(0, Taxable &minus; 75,518) &times; 0.4950</div>
+      <div><span class="font-semibold">Net income</span> = Total gross &minus; First bracket &minus; Second bracket</div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Netherlands Box 1 income tax brackets for 2025">
+      <title>Netherlands Box 1 Income Tax Brackets 2025</title>
+      <desc>A horizontal bar chart showing the two Dutch income tax brackets: 36.97% up to €75,518 and 49.50% above.</desc>
+      <rect x="60" y="30" width="460" height="70" rx="8" fill="#6366f1" />
+      <text x="290" y="58" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">Bracket 1: 36.97%</text>
+      <text x="290" y="76" text-anchor="middle" fill="#c7d2fe" font-size="12">Income from &euro;0 to &euro;75,518</text>
+      <text x="290" y="92" text-anchor="middle" fill="#c7d2fe" font-size="11">Income tax &#123;18.39%&#125; + Social security &#123;18.58%&#125;</text>
+
+      <rect x="60" y="130" width="230" height="70" rx="8" fill="#ef4444" />
+      <text x="175" y="158" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">Bracket 2: 49.50%</text>
+      <text x="175" y="176" text-anchor="middle" fill="#fecaca" font-size="12">Income above &euro;75,518</text>
+      <text x="175" y="192" text-anchor="middle" fill="#fecaca" font-size="11">Income tax only</text>
+
+      <line x1="60" y1="235" x2="520" y2="235" stroke="#e2e8f0" stroke-width="2" />
+      <text x="60" y="255" text-anchor="middle" fill="#94a3b8" font-size="12">&euro;0</text>
+      <text x="290" y="255" text-anchor="middle" fill="#94a3b8" font-size="12">&euro;75,518</text>
+      <text x="520" y="255" text-anchor="middle" fill="#94a3b8" font-size="12">High income</text>
+
+      <rect x="550" y="30" width="14" height="14" fill="#6366f1" rx="2" />
+      <text x="570" y="43" fill="#475569" font-size="13">Bracket 1 (36.97%)</text>
+      <rect x="550" y="55" width="14" height="14" fill="#ef4444" rx="2" />
+      <text x="570" y="68" fill="#475569" font-size="13">Bracket 2 (49.50%)</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Box 1 income tax brackets for 2025: progressive rates on employment income</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Netherlands tax brackets for 2025</h2>
+    <p class="mt-2 text-slate-600">
+      The Dutch tax authority (Belastingdienst) structures Box 1 income&mdash;which covers employment income, business income from a sole proprietorship, and income from your primary residence&mdash;into two marginal brackets. For the 2025 tax year, the first bracket applies a combined rate of 36.97% on taxable income up to €75,518. This rate is a blended figure that includes both income tax and national insurance contributions (social security). The income tax component within this first bracket is approximately 18.39%, while the social security premiums&mdash;AOW (state pension), ALW (unemployment), and WAO/WIA (disability)&mdash;account for roughly 18.58%.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The second bracket applies to any Box 1 income exceeding €75,518. This rate is 49.50% and consists entirely of income tax, with no social security component, because the maximum contribution base for social security premiums is capped at the first-bracket threshold. This means high earners face a significantly higher marginal rate on their additional income, an important consideration when negotiating salary increases or bonuses in the Netherlands.
+    </p>
+    <p class="mt-3 text-slate-600">
+      It is also worth noting that the Dutch system includes various tax credits (heffingskortingen) such as the general tax credit (algemene heffingskorting) and the employment tax credit (arbeidskorting). These credits reduce your effective tax rate further but depend on your specific income level and circumstances. This calculator provides a baseline estimate using the raw bracket rates, which gives you a conservative view of your net income.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Social security contributions in the Netherlands</h2>
+    <p class="mt-2 text-slate-600">
+      Dutch social security is bundled into the first tax bracket rate and covers three main programs. The AOW (Algemene Ouderdomswet) is the state pension that provides a basic retirement income for every resident who has lived or worked in the Netherlands. The ALW (Algemene Arbeidsongeschiktheidswet) covers unemployment insurance, providing temporary income support if you lose your job. The WAO/WIA (Wet werk en inkomen naar arbeidsvermogen) is the disability insurance scheme that replaces income if you become unable to work due to illness or injury.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Because these contributions are collected through the payroll tax system, employees see them automatically deducted from each payslip. Employers also pay additional social security contributions and pension premiums on top of the gross salary, but those employer costs are separate from what this calculator shows. Understanding these deductions is essential for anyone considering employment in the Netherlands, as the combined tax and social security burden significantly impacts your net take-home pay.
+    </p>
+    <div class="mt-5 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">AOW &mdash; State Pension</h3>
+        <p class="mt-1 text-xs text-slate-600">Old-age pension for residents aged 67+. Everyone who lives or works in NL builds up AOW at 2% per year of residence.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">ALW &mdash; Unemployment</h3>
+        <p class="mt-1 text-xs text-slate-600">Unemployment insurance providing temporary income if you lose your job. Covers up to 24 months of benefits.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">WAO/WIA &mdash; Disability</h3>
+        <p class="mt-1 text-xs text-slate-600">Income replacement if you become partially or fully disabled. Benefits depend on your degree of incapacity and work history.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Who should use this calculator</h2>
+    <p class="mt-2 text-slate-600">
+      This tool is designed for international professionals considering a move to the Netherlands, expats evaluating job offers, and anyone who wants a transparent view of their Dutch take-home pay. If you are currently negotiating a salary for a role in Amsterdam, Rotterdam, Utrecht, or Eindhoven, this calculator helps you understand the real purchasing power of your offered gross salary after all mandatory deductions.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F30D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Expat job offers</h3>
+        <p class="mt-1 text-sm text-slate-600">Evaluate overseas job offers by converting gross Dutch salaries into net income. Compare with your current country net salary to make an informed decision about relocation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F3E0;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Relocation planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Before moving to the Netherlands, estimate your monthly budget by calculating your net income, considering the impact of holiday allowance payout timing and the 30% ruling.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4BC;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salary negotiation</h3>
+        <p class="mt-1 text-sm text-slate-600">Know your bottom line. Enter different gross salary figures and see how each affects your monthly net pay. Understand what a 5k or 10k gross increase really means after tax.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F9D1;&#x200D;&#x1F4BB;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelancers & contractors</h3>
+        <p class="mt-1 text-sm text-slate-600">If you are considering a transition to freelance (zzp) work, model your expected net income and compare it against a permanent employment contract to decide which path suits your financial goals.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing your Dutch net salary</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the 30% ruling if you qualify</h3>
+        <p class="mt-1 text-sm text-slate-600">The 30% ruling is one of the most valuable tax benefits for expats in the Netherlands. It allows your employer to pay up to 30% of your salary as a tax-free allowance for extraterritorial costs, drastically reducing your taxable income. To qualify, you must have been recruited from abroad and have specific skills that are scarce in the Dutch labor market. The ruling is valid for up to five years and can save you thousands of euros in tax each year. Enable the toggle in the calculator to see your net income with this benefit applied.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Think about your pension</h3>
+        <p class="mt-1 text-sm text-slate-600">Dutch employers typically contribute to a pension fund (pensioenfonds) on top of your salary. While this contribution is separate from the take-home pay calculated here, it is a significant part of your total compensation package. When comparing job offers, factor in the employer pension contribution, which can be 5&ndash;15% of your salary depending on the sector and the pension scheme. A lower gross salary with a generous pension plan may be more valuable than a higher gross salary with no pension contribution.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand the holiday allowance timing</h3>
+        <p class="mt-1 text-sm text-slate-600">Dutch holiday allowance (8% of your annual salary) is typically paid as a lump sum in May. Some employers offer the option to spread it across the year instead. When budgeting, remember that May is effectively a double-pay month if you receive the full allowance at once. Use the calculator with the holiday allowance toggle to see how it affects your total gross income and net pay distribution across the year.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Explore the 13th month concept</h3>
+        <p class="mt-1 text-sm text-slate-600">In the Netherlands, the holiday allowance is sometimes referred to as a 13th month, though it is not a full extra month of salary&mdash;it is exactly 8% of your base salary (equivalent to roughly one month of pay if your salary were spread over 13 periods). Some collective labor agreements (CAOs) also include an actual 13th month or year-end bonus (eindejaarsuitkering), which is separate from the mandatory holiday allowance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Netherlands net salary calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your gross salary</h3>
+        <p class="mt-1 text-sm text-slate-600">Type your annual gross salary in euros. This is the amount stated in your employment contract before any deductions.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Toggle your options</h3>
+        <p class="mt-1 text-sm text-slate-600">Enable holiday allowance (default on) if your contract includes the 8% vakantiegeld. Enable the 30% ruling if you qualify as an expat.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review your breakdown</h3>
+        <p class="mt-1 text-sm text-slate-600">See your income tax, social security, net annual and monthly income, effective tax rate, and holiday allowance payout amount.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Living and working in the Netherlands</h2>
+    <p class="mt-2 text-slate-600">
+      The Netherlands has one of the most attractive job markets in Europe, particularly for professionals in technology, engineering, finance, and life sciences. Amsterdam is home to a vibrant startup ecosystem and major corporate headquarters, while Eindhoven is a global hub for high-tech manufacturing and design. The Dutch government actively welcomes international talent through programs like the 30% ruling and the highly skilled migrant (kennismigrant) visa scheme, which makes relocation relatively straightforward compared to other European countries.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The cost of living varies significantly across the country. Amsterdam and Utrecht are the most expensive cities for housing, while Eindhoven, Rotterdam, and The Hague offer more affordable options. The Dutch healthcare system is mandatory for all residents, with a basic health insurance premium of roughly €120&ndash;€150 per month for adults (not included in this salary calculation). Most employers offer additional benefits such as travel reimbursement, a bicycle scheme (fietsplan), and training budgets, all of which add to your total compensation package beyond the gross salary shown on your contract.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For a broader view of your personal finances, you may also want to explore the <a href="/tools/salary-calculator" class="font-medium text-indigo-600 hover:underline">Salary Calculator</a> for converting between pay periods, or the <a href="/tools/inflation-calculator" class="font-medium text-indigo-600 hover:underline">Inflation Calculator</a> to understand how rising prices affect your purchasing power over time.
+    </p>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/uk-take-home-pay-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">&#x1F1EC;&#x1F1E7;</span>
+        <h3 class="mt-1 font-semibold text-slate-900">UK Take-Home Pay Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate UK net salary after income tax and National Insurance deductions.</p>
+      </a>
+      <a href="/tools/australia-tax-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">&#x1F1E6;&#x1F1FA;</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Australia Tax Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate Australian PAYG tax and net income for any salary.</p>
+      </a>
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">&#x1F4B5;</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="text-sm text-slate-600">Convert between hourly, weekly, monthly and yearly pay periods.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      const el = (id) => document.getElementById(id);
+      const fmt = (n) => '€' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      function calculate() {
+        const salary = parseFloat(el('salary').value);
+        const hasHoliday = el('holidayAllowance').checked;
+        const hasRuling = el('ruling30').checked;
+
+        if (isNaN(salary) || salary < 0) {
+          el('result').classList.add('hidden');
+          return;
+        }
+
+        const holidayAllowance = hasHoliday ? salary * 0.08 : 0;
+        const totalGross = salary + holidayAllowance;
+        const taxableIncome = hasRuling ? totalGross * 0.7 : totalGross;
+
+        const bracketLimit = 75518;
+        const bracket1Rate = 0.3697;
+        const bracket2Rate = 0.4950;
+
+        const inBracket1 = Math.min(taxableIncome, bracketLimit);
+        const inBracket2 = Math.max(0, taxableIncome - bracketLimit);
+
+        const bracket1Total = inBracket1 * bracket1Rate;
+        const bracket2Total = inBracket2 * bracket2Rate;
+
+        const socialSecurityRate = 0.1858;
+        const socialSecurity = Math.min(taxableIncome, bracketLimit) * socialSecurityRate;
+        const incomeTax = bracket1Total - socialSecurity + bracket2Total;
+
+        const netIncome = totalGross - incomeTax - socialSecurity;
+        const effectiveRate = totalGross > 0 ? ((incomeTax + socialSecurity) / totalGross) * 100 : 0;
+        const monthlyNet = netIncome / 12;
+
+        el('r-gross-salary').textContent = fmt(salary);
+        el('r-holiday').textContent = hasHoliday ? fmt(holidayAllowance) : '—';
+        el('r-total-gross').textContent = fmt(totalGross);
+        el('r-income-tax').textContent = fmt(incomeTax);
+        el('r-social').textContent = fmt(socialSecurity);
+        el('r-net').textContent = fmt(netIncome);
+        el('r-effective').textContent = effectiveRate.toFixed(1) + '%';
+        el('r-monthly').textContent = fmt(monthlyNet);
+        el('r-thirteenth').textContent = hasHoliday ? fmt(holidayAllowance) : '—';
+        el('result').classList.remove('hidden');
+      }
+
+      el('calcBtn').addEventListener('click', calculate);
+      [el('salary'), el('holidayAllowance'), el('ruling30')].forEach(function (e) {
+        if (e) e.addEventListener('change', calculate);
+      });
+    });
+  </script>
+</ToolLayout>

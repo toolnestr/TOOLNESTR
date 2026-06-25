@@ -1,0 +1,553 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PIN Code Strength Checker';
+const description = 'Check how secure your numeric PIN is against common patterns, repetitions, and brute force.';
+const intro = 'Check how secure your numeric PIN is against common patterns and brute force.';
+const category = { id: 'security', name: 'Security Tools' };
+
+const faqs = [
+  { q: 'How is PIN strength calculated?', a: 'PIN strength is measured by entropy in bits, calculated as log&#8322;(10&#8314;). For a random 4-digit PIN this gives about 13.3 bits. However human-chosen PINs often have much lower effective entropy due to patterns like sequences, repeats and dates.' },
+  { q: 'How many possible 4-digit PINs exist?', a: 'There are 10,000 possible combinations from 0000 to 9999. Yet a large percentage of users pick from a very small subset — the top 20 most common PINs account for over 25% of all PINs in use.' },
+  { q: 'Why are patterns like 1234 and 1111 so popular?', a: 'People gravitate toward patterns that are easy to remember. Sequential numbers follow a natural mental path, repeated digits are trivial to recall, and dates tie to personal milestones. Attackers know this and try these patterns first.' },
+  { q: 'What PIN length is recommended?', a: '6 to 8 digits is recommended for most purposes. A 6-digit PIN has 1 million combinations — 100 times more than a 4-digit PIN. For high-security applications 8 or more digits are ideal.' },
+  { q: 'What patterns should I avoid?', a: 'Avoid sequential numbers (1234, 4321), repeated digits (1111, 2222), alternating patterns (1212), common codes (0000, 2580), years from 1990 to 2025, palindromes, and any personal information like birth years or phone number fragments.' },
+  { q: 'Is my PIN sent to a server?', a: 'No. All analysis happens entirely in your browser using JavaScript. The PIN never leaves your device.' },
+  { q: 'Can I reuse the same PIN for my phone and ATM?', a: 'No. Reusing PINs across systems is risky. If one system is compromised an attacker gains access to all others. Use unique PINs for different purposes.' },
+  { q: 'What is the strongest possible numeric PIN?', a: 'A randomly generated PIN that uses the maximum allowed length (10 digits) and avoids every common pattern. Such a PIN has around 33 bits of entropy and would take attackers significantly longer to brute force.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex items-stretch gap-2">
+      <input id="pinInput" type="password" placeholder="Enter a numeric PIN (4–10 digits)…" maxlength="10" class="w-full rounded-xl border border-slate-300 p-4 font-mono text-lg tracking-widest outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      <button id="toggleBtn" title="Show / Hide PIN" class="shrink-0 rounded-xl border border-slate-300 px-3 text-lg transition hover:bg-slate-50">&#x1F441;</button>
+    </div>
+
+    <div class="mt-5">
+      <div class="flex items-baseline justify-between text-sm">
+        <span class="font-medium text-slate-700">Strength Score</span>
+        <span id="scoreText" class="text-slate-500">—</span>
+      </div>
+      <div class="mt-1 h-4 w-full overflow-hidden rounded-full bg-slate-200">
+        <div id="scoreBar" class="h-full w-0 rounded-full transition-all duration-300"></div>
+      </div>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+        <div class="text-xs text-slate-500">Entropy</div>
+        <div id="entropyDisplay" class="mt-1 text-lg font-bold text-slate-900">—</div>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+        <div class="text-xs text-slate-500">PIN Length</div>
+        <div id="lengthDisplay" class="mt-1 text-lg font-bold text-slate-900">0</div>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+        <div class="text-xs text-slate-500">Combinations</div>
+        <div id="combinationsDisplay" class="mt-1 text-lg font-bold text-slate-900">—</div>
+      </div>
+    </div>
+
+    <div id="patternList" class="mt-4 space-y-1"></div>
+
+    <div id="suggestions" class="mt-3 space-y-1"></div>
+  </div>
+
+  <!-- SVG Diagram: Keypad with weak patterns highlighted -->
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340" width="800" height="340" role="img" aria-labelledby="pin-svg-title pin-svg-desc">
+      <title id="pin-svg-title">PIN Keypad Diagram with Weak Patterns</title>
+      <desc id="pin-svg-desc">A telephone-style keypad showing common weak PIN patterns: sequential keys highlighted in red, column pattern in blue, repeated digit in orange</desc>
+
+      <!-- Keypad background -->
+      <rect x="50" y="10" width="220" height="320" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+      <rect x="65" y="25" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="135" y="25" width="50" height="50" rx="8" fill="#fecaca" stroke="#ef4444" stroke-width="2" />
+      <rect x="205" y="25" width="50" height="50" rx="8" fill="#fecaca" stroke="#ef4444" stroke-width="2" />
+      <rect x="65" y="85" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="135" y="85" width="50" height="50" rx="8" fill="#fecaca" stroke="#ef4444" stroke-width="2" />
+      <rect x="205" y="85" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="65" y="145" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="135" y="145" width="50" height="50" rx="8" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" />
+      <rect x="205" y="145" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="65" y="205" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="135" y="205" width="50" height="50" rx="8" fill="#bfdbfe" stroke="#3b82f6" stroke-width="2" />
+      <rect x="205" y="205" width="50" height="50" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="135" y="265" width="50" height="50" rx="8" fill="#fed7aa" stroke="#f97316" stroke-width="2" />
+
+      <!-- Key labels -->
+      <text x="90" y="55" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="18" font-weight="700">1</text>
+      <text x="160" y="55" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="18" font-weight="700">2</text>
+      <text x="230" y="55" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="18" font-weight="700">3</text>
+      <text x="90" y="115" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="18" font-weight="700">4</text>
+      <text x="160" y="115" text-anchor="middle" fill="#991b1b" font-family="system-ui, sans-serif" font-size="18" font-weight="700">5</text>
+      <text x="230" y="115" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="18" font-weight="700">6</text>
+      <text x="90" y="175" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="18" font-weight="700">7</text>
+      <text x="160" y="175" text-anchor="middle" fill="#1e40af" font-family="system-ui, sans-serif" font-size="18" font-weight="700">8</text>
+      <text x="230" y="175" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="18" font-weight="700">9</text>
+      <text x="160" y="295" text-anchor="middle" fill="#9a3412" font-family="system-ui, sans-serif" font-size="18" font-weight="700">0</text>
+
+      <!-- Pattern 1: Sequential arrow (1 → 2 → 3) -->
+      <path d="M 127 50 L 133 50" stroke="#ef4444" stroke-width="2.5" fill="none" marker-end="url(#arrowRed)" />
+      <path d="M 197 50 L 203 50" stroke="#ef4444" stroke-width="2.5" fill="none" marker-end="url(#arrowRed)" />
+      <path d="M 127 110 L 133 110" stroke="#ef4444" stroke-width="2.5" fill="none" marker-end="url(#arrowRed)" />
+      <path d="M 197 110 L 203 110" stroke="#ef4444" stroke-width="2.5" fill="none" marker-end="url(#arrowRed)" />
+
+      <!-- Pattern 2: Column arrow (2 → 5 → 8 → 0) -->
+      <path d="M 160 82 L 160 83" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+      <path d="M 155 77 L 160 87 L 165 77" stroke="#3b82f6" stroke-width="2" fill="none" />
+      <path d="M 160 142 L 160 143" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+      <path d="M 155 137 L 160 147 L 165 137" stroke="#3b82f6" stroke-width="2" fill="none" />
+      <path d="M 160 202 L 160 203" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+      <path d="M 155 197 L 160 207 L 165 197" stroke="#3b82f6" stroke-width="2" fill="none" />
+      <path d="M 160 262 L 160 263" stroke="#3b82f6" stroke-width="2.5" fill="none" />
+      <path d="M 155 257 L 160 267 L 165 257" stroke="#3b82f6" stroke-width="2" fill="none" />
+
+      <!-- Pattern 3: Repeated digit (circled 1) -->
+      <circle cx="90" cy="50" r="28" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="4" />
+      <text x="90" y="22" text-anchor="middle" fill="#f97316" font-family="system-ui, sans-serif" font-size="10" font-weight="700">REPEATED</text>
+
+      <!-- Legend -->
+      <rect x="340" y="15" width="420" height="140" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5" />
+      <text x="360" y="40" fill="#1e293b" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Common Weak Patterns</text>
+
+      <rect x="360" y="52" width="16" height="16" rx="3" fill="#fecaca" stroke="#ef4444" stroke-width="1" />
+      <text x="384" y="65" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Sequential horizontal: 1&rarr;2&rarr;3, 4&rarr;5&rarr;6</text>
+
+      <rect x="360" y="78" width="16" height="16" rx="3" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1" />
+      <text x="384" y="91" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Column: 2&rarr;5&rarr;8&rarr;0 (straight down)</text>
+
+      <rect x="360" y="104" width="16" height="16" rx="3" fill="#fed7aa" stroke="#f97316" stroke-width="1" />
+      <text x="384" y="117" fill="#475569" font-family="system-ui, sans-serif" font-size="13">Repeated digit: 1111, 2222, 9999</text>
+
+      <text x="360" y="140" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Other patterns: alternating (1212), year (1990&ndash;2025), palindrome (1221)</text>
+
+      <!-- Bottom note about entropy -->
+      <rect x="340" y="170" width="420" height="80" rx="12" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1.5" />
+      <text x="360" y="194" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">PIN Entropy Formula</text>
+      <text x="360" y="214" fill="#475569" font-family="system-ui, sans-serif" font-size="13">
+        <tspan font-family="monospace" font-weight="700">E = L &times; log&#8322;(10)</tspan>
+        <tspan fill="#64748b"> where </tspan>
+        <tspan font-weight="600">L</tspan>
+        <tspan fill="#64748b"> = PIN length</tspan>
+      </text>
+      <text x="360" y="234" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">4-digit: 13.3 bits &bull; 6-digit: 19.9 bits &bull; 8-digit: 26.6 bits &bull; 10-digit: 33.2 bits</text>
+
+      <!-- Bottom note about pattern risk -->
+      <rect x="340" y="262" width="420" height="60" rx="12" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5" />
+      <text x="360" y="284" fill="#dc2626" font-family="system-ui, sans-serif" font-size="12" font-weight="700">&#x26A0; Patterns reduce effective entropy dramatically</text>
+      <text x="360" y="304" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">A pattern like 2580 has far fewer than 13.3 bits &mdash; attackers try these first</text>
+
+      <defs>
+        <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#ef4444" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Common weak PIN patterns on a telephone keypad: sequential runs (red), column pattern (blue), and repeated digits (orange)</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How PIN entropy works</h2>
+    <p class="mt-2 text-slate-600">PIN strength is measured using entropy — a mathematical measure of unpredictability expressed in bits. For a fully random numeric PIN of length L, the entropy is <code class="font-mono text-indigo-600">E = L &times; log&#8322;(10)</code>. Each digit contributes about 3.32 bits of entropy, so a 4-digit random PIN has 13.3 bits, a 6-digit PIN has 19.9 bits, and an 8-digit PIN has 26.6 bits.</p>
+    <p class="mt-3 text-slate-600">Every additional bit of entropy doubles the number of possible PINs an attacker must try. A 4-digit PIN has 10,000 possibilities while a 6-digit PIN has 1,000,000 — one hundred times more. At 8 digits there are 100 million combinations and at 10 digits there are 10 billion. These numbers assume the PIN was chosen uniformly at random from all possible values.</p>
+    <p class="mt-3 text-slate-600">The problem is that human-chosen PINs are almost never random. People pick memorable patterns — birthdays, anniversaries, repeated digits, or keyboard paths. These patterns dramatically reduce the effective entropy because an attacker does not need to try all 10,000 combinations; they only need to try a much smaller list of common patterns. A PIN like 1234 looks like it has 13.3 bits of entropy, but in reality it may have less than 1 bit of effective security.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">PIN:</span> <span class="text-slate-600">"1234"</span></div>
+        <div><span class="font-medium text-slate-700">Theoretical entropy:</span> <span class="text-slate-600">13.3 bits — but effectively &lt; 1 bit (common sequence)</span></div>
+        <div><span class="font-medium text-slate-700">PIN:</span> <span class="text-slate-600">"8392"</span></div>
+        <div><span class="font-medium text-slate-700">Theoretical entropy:</span> <span class="text-slate-600">13.3 bits — reasonably secure (no obvious pattern)</span></div>
+        <div><span class="font-medium text-slate-700">PIN:</span> <span class="text-slate-600">"729481"</span></div>
+        <div><span class="font-medium text-slate-700">Theoretical entropy:</span> <span class="text-slate-600">19.9 bits — strong for most purposes</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common patterns and their impact</h2>
+    <p class="mt-3 text-slate-600">Attackers do not blindly brute force all 10,000 combinations. They use statistical models built from real-world data breaches to guess the most likely PINs first. Studies of leaked PIN databases show that the top 20 most common PINs account for over 25% of all PINs in use. The single most common PIN, 1234, appears in roughly 10% of all PINs — more than 1,000 times more often than a uniform distribution would predict.</p>
+    <p class="mt-3 text-slate-600">The most dangerous patterns are sequential numbers (1234, 4321, 9876), repeated digits (1111, 2222, 9999), and alternating pairs (1212, 3434, 7878). Date-based PINs are also extremely common — years from 1990 to 2025 cover a huge portion of the population's birth years and anniversaries. The keypad pattern 2580 (straight down the middle column) is another favourite that appears in the top 30 most common PINs.</p>
+    <p class="mt-3 text-slate-600">Palindromes like 1221 or 12321 are also overrepresented because people find symmetric sequences easy to remember. Repeating blocks like 1122, 3344, and 5566 follow a similar logic. The common thread is that anything easy for a human to remember is also easy for an attacker to guess.</p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3E6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">ATM PIN Selection</h3>
+      <p class="mt-1 text-sm text-slate-600">Choosing a bank card PIN that is not sequential, date-based, or on the common-PIN list reduces the risk of someone guessing your code if your card is lost or stolen.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Phone Lock Codes</h3>
+      <p class="mt-1 text-sm text-slate-600">Smartphone lock screen PINs protect personal data. A weak PIN makes it trivial for someone who picks up your phone to unlock it and access your accounts, photos and messages.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F511;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Door &amp; Safe Codes</h3>
+      <p class="mt-1 text-sm text-slate-600">Electronic door locks, safes, and garage keypads often use 4–6 digit codes. A predictable code undermines the physical security of your home or office.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3A8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Online Account Backup</h3>
+      <p class="mt-1 text-sm text-slate-600">Many online services use numeric verification codes or backup PINs. Ensuring they are not trivially guessable adds an extra layer of account protection.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for strong PINs</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Longer is better</h3>
+        <p class="mt-1 text-sm text-slate-600">Use 6 or more digits whenever possible. Each extra digit multiplies the number of possible combinations by 10, making brute-force attacks exponentially harder. A 6-digit PIN has 100 times more combinations than a 4-digit one.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid dates and personal information</h3>
+        <p class="mt-1 text-sm text-slate-600">Birth years, anniversaries, and phone number fragments are the first things someone who knows you will try. Years from 1990 to 2025 cover an enormous fraction of all PINs and are in every attacker's dictionary.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid repetition and sequences</h3>
+        <p class="mt-1 text-sm text-slate-600">Do not use repeated digits (1111, 2222), sequential numbers (1234, 4321), alternating patterns (1212), or keypad paths (2580). These are the first patterns any cracking tool attempts.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use different PINs for different purposes</h3>
+        <p class="mt-1 text-sm text-slate-600">Never reuse your ATM PIN as your phone lock code or your door entry code. If one PIN is compromised all your other systems become vulnerable. Treat each PIN as a unique credential.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider a passphrase instead</h3>
+        <p class="mt-1 text-sm text-slate-600">If the system allows it, use a longer passcode than a simple numeric PIN. Modern phones support alphanumeric passcodes which are dramatically more secure. For more on this see the <a href="/tools/password-entropy-calculator" class="font-medium text-indigo-600 hover:underline">Password Entropy Calculator</a> and <a href="/tools/password-generator" class="font-medium text-indigo-600 hover:underline">Password Generator</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">PIN security by the numbers</h2>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">4 digits</span><span class="text-slate-400">10,000 combinations — 13.3 bits</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-red-400" style="width:25%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">5 digits</span><span class="text-slate-400">100,000 combinations — 16.6 bits</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-orange-400" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">6 digits</span><span class="text-slate-400">1,000,000 combinations — 19.9 bits</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-amber-400" style="width:55%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">8 digits</span><span class="text-slate-400">100,000,000 combinations — 26.6 bits</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:75%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">10 digits</span><span class="text-slate-400">10,000,000,000 combinations — 33.2 bits</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-green-600" style="width:100%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Strength Level</th><th class="p-3">Score</th><th class="p-3">Length</th><th class="p-3">Effective Entropy</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium text-red-600">Very Weak</td><td class="p-3">0–20</td><td class="p-3">4 digits with pattern</td><td class="p-3">&lt; 5 bits</td></tr>
+        <tr><td class="p-3 font-medium text-orange-600">Weak</td><td class="p-3">20–40</td><td class="p-3">4 digits random</td><td class="p-3">5–13 bits</td></tr>
+        <tr><td class="p-3 font-medium text-amber-600">Fair</td><td class="p-3">40–60</td><td class="p-3">5–6 digits</td><td class="p-3">13–20 bits</td></tr>
+        <tr><td class="p-3 font-medium text-emerald-600">Good</td><td class="p-3">60–80</td><td class="p-3">6–8 digits</td><td class="p-3">20–27 bits</td></tr>
+        <tr><td class="p-3 font-medium text-green-700">Strong</td><td class="p-3">80–100</td><td class="p-3">8–10 digits</td><td class="p-3">27+ bits</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use this PIN checker</h2>
+    <p class="mt-3 text-slate-600">Use this tool whenever you need to choose or verify a numeric PIN. The most common scenarios include selecting a new ATM or debit card PIN at the bank, setting a smartphone lock screen code, programming an electronic door lock or safe, and choosing a verification code for two-factor authentication backup.</p>
+    <p class="mt-3 text-slate-600">System administrators can use it to educate users about weak PIN choices during security awareness training. Developers can integrate similar pattern-detection logic into registration or PIN-change forms to reject weak PINs in real time. Even for low-security applications a strong PIN is simple to create and removes an unnecessary vulnerability.</p>
+    <p class="mt-3 text-slate-600">The tool also serves as a learning resource for understanding why certain PINs are fundamentally insecure. By experimenting with different PINs you can develop an intuition for what makes a numeric code difficult to guess — a skill that transfers directly to better password habits with the <a href="/tools/password-entropy-calculator" class="font-medium text-indigo-600 hover:underline">Password Entropy Calculator</a> and <a href="/tools/password-generator" class="font-medium text-indigo-600 hover:underline">Password Generator</a>.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the PIN strength checker</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your PIN</h3>
+        <p class="mt-1 text-sm text-slate-600">Type a numeric PIN between 4 and 10 digits. The analysis updates live as you type.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review detected patterns</h3>
+        <p class="mt-1 text-sm text-slate-600">Check which common patterns were found — sequences, repeats, dates, or common PINs — and see your entropy in bits.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Improve if needed</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the suggestions to choose a stronger PIN. Add more digits and avoid every identified pattern.</p>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      var el = function (id) { return document.getElementById(id); };
+      var pinInput = el('pinInput');
+
+      var commonPins = [
+        '1234','1111','0000','1212','7777','1004','2000','4444',
+        '2222','6969','9999','3333','5555','6666','1122','1313',
+        '8888','4321','2001','1010','2580','0852','2468','1357',
+        '9876','5678','4567','2345','6543','7654','8765','0987',
+        '1102','1177','1199','1236','1245','1290','1314','1345',
+        '1358','1369','1379','1390','1414','1423','1452','1478',
+        '1480','1490','1515','1523','1530','1545','1578','1587',
+        '1590','1595','1596','1597','1616','1625','1680','1717',
+        '1734','1763','1776','1818','1825','1850','1919','1920',
+        '5683','2323','2424','2525','2626','2727','2828','2929',
+        '3131','3232','3434','3535','3636','3737','3838','3939',
+        '4141','4242','4343','4545','4646','4747','4848','4949',
+        '5151','5252','5353','5454','5656','5757','5858','5959',
+        '6161','6262','6363','6464','6565','6767','6868','7171',
+        '7272','7373','7474','7575','7676','7878','7979','8181',
+        '8282','8383','8484','8585','8686','8787','8989','9191',
+        '9292','9393','9494','9595','9696','9797','9898','9090',
+        '0110','1001','0111','1110','0220','2002','0330','3003',
+        '0440','4004','0550','5005','0660','6006','0770','7007',
+        '0880','8008','0990','9009'
+      ];
+      var commonSet = {};
+      for (var ci = 0; ci < commonPins.length; ci++) {
+        commonSet[commonPins[ci]] = true;
+      }
+
+      function isSequentialAsc(s) {
+        if (s.length < 3) return false;
+        for (var i = 1; i < s.length; i++) {
+          if (parseInt(s[i], 10) !== parseInt(s[i - 1], 10) + 1) return false;
+        }
+        return true;
+      }
+
+      function isSequentialDesc(s) {
+        if (s.length < 3) return false;
+        for (var i = 1; i < s.length; i++) {
+          if (parseInt(s[i], 10) !== parseInt(s[i - 1], 10) - 1) return false;
+        }
+        return true;
+      }
+
+      function isAllSame(s) {
+        if (s.length < 2) return false;
+        var first = s[0];
+        for (var i = 1; i < s.length; i++) {
+          if (s[i] !== first) return false;
+        }
+        return true;
+      }
+
+      function isAlternating(s) {
+        if (s.length < 4 || s.length % 2 !== 0) return false;
+        var a = s[0], b = s[1];
+        if (a === b) return false;
+        for (var i = 0; i < s.length; i += 2) {
+          if (s[i] !== a || s[i + 1] !== b) return false;
+        }
+        return true;
+      }
+
+      function isPalindrome(s) {
+        if (s.length < 3) return false;
+        var i = 0, j = s.length - 1;
+        while (i < j) {
+          if (s[i] !== s[j]) return false;
+          i++; j--;
+        }
+        return true;
+      }
+
+      function isRepeatingPairs(s) {
+        if (s.length < 4 || s.length % 2 !== 0) return false;
+        var pairs = [];
+        for (var i = 0; i < s.length; i += 2) {
+          pairs.push(s.substring(i, i + 2));
+        }
+        if (pairs[0][0] === pairs[0][1]) return false;
+        for (var pi = 1; pi < pairs.length; pi++) {
+          if (pairs[pi] !== pairs[0]) return false;
+        }
+        return true;
+      }
+
+      function isYearPattern(s) {
+        if (s.length < 4 || s.length > 4) return false;
+        var n = parseInt(s, 10);
+        return n >= 1990 && n <= 2025;
+      }
+
+      function analyzePin(pin) {
+        var len = pin.length;
+        var results = [];
+        var deductions = 0;
+
+        if (len < 4) {
+          results.push({ type: 'error', msg: 'PIN must be at least 4 digits' });
+          return { score: 0, issues: results, entropy: 0, maxEntropy: 0 };
+        }
+
+        var maxEntropy = len * Math.log2(10);
+        var entropy = maxEntropy;
+
+        if (isAllSame(pin)) {
+          results.push({ type: 'danger', msg: 'All digits are the same — extremely weak' });
+          deductions += 55;
+          entropy = Math.min(entropy, 2);
+        }
+
+        if (isSequentialAsc(pin)) {
+          results.push({ type: 'danger', msg: 'Sequential ascending pattern detected (e.g. 1234)' });
+          deductions += 45;
+          entropy = Math.min(entropy, 2);
+        }
+
+        if (isSequentialDesc(pin)) {
+          results.push({ type: 'danger', msg: 'Sequential descending pattern detected (e.g. 4321)' });
+          deductions += 45;
+          entropy = Math.min(entropy, 2);
+        }
+
+        if (isAlternating(pin)) {
+          results.push({ type: 'warning', msg: 'Alternating digit pair detected (e.g. 1212)' });
+          deductions += 35;
+          entropy = Math.min(entropy, len * 0.5);
+        }
+
+        if (isRepeatingPairs(pin) && !isAlternating(pin)) {
+          results.push({ type: 'warning', msg: 'Repeating pair pattern detected (e.g. 5656)' });
+          deductions += 30;
+          entropy = Math.min(entropy, len * 0.6);
+        }
+
+        if (commonSet[pin]) {
+          results.push({ type: 'danger', msg: 'This PIN is on the list of most common PINs — easily guessed' });
+          deductions += 50;
+          entropy = Math.min(entropy, 1);
+        }
+
+        if (isYearPattern(pin)) {
+          results.push({ type: 'warning', msg: 'Looks like a year (1990–2025) — dates are commonly guessed' });
+          deductions += 30;
+          entropy = Math.min(entropy, 3);
+        }
+
+        if (isPalindrome(pin)) {
+          results.push({ type: 'warning', msg: 'Palindrome pattern detected (reads same forwards and backwards)' });
+          deductions += 20;
+          entropy = Math.min(entropy, len * 0.7);
+        }
+
+        if (!results.length) {
+          results.push({ type: 'good', msg: 'No common weak patterns detected' });
+        }
+
+        if (len < 6) {
+          results.push({ type: 'info', msg: 'Consider using 6 or more digits for better security' });
+        }
+
+        var baseScore = Math.min(100, len * 11);
+        var score = Math.max(0, Math.min(100, baseScore - deductions));
+
+        if (len >= 8) score = Math.min(score, 100);
+
+        return { score: Math.round(score), issues: results, entropy: entropy, maxEntropy: maxEntropy };
+      }
+
+      function update() {
+        var raw = pinInput.value.replace(/\D/g, '');
+        if (raw !== pinInput.value) pinInput.value = raw;
+
+        var len = raw.length;
+        el('lengthDisplay').textContent = len;
+
+        if (!len) {
+          el('scoreBar').style.width = '0%';
+          el('scoreText').textContent = '—';
+          el('entropyDisplay').textContent = '—';
+          el('combinationsDisplay').textContent = '—';
+          el('patternList').innerHTML = '';
+          el('suggestions').innerHTML = '';
+          return;
+        }
+
+        var analysis = analyzePin(raw);
+        var entropy = analysis.entropy;
+        var maxEntropy = analysis.maxEntropy;
+
+        el('entropyDisplay').textContent = entropy.toFixed(1) + ' / ' + maxEntropy.toFixed(1) + ' bits';
+
+        var combos = Math.pow(10, len);
+        if (combos >= 1e9) {
+          el('combinationsDisplay').textContent = (combos / 1e9).toFixed(1) + ' billion';
+        } else if (combos >= 1e6) {
+          el('combinationsDisplay').textContent = (combos / 1e6).toFixed(0) + ' million';
+        } else {
+          el('combinationsDisplay').textContent = combos.toLocaleString();
+        }
+
+        var score = analysis.score;
+        var bar = el('scoreBar'), scoreText = el('scoreText');
+        bar.style.width = score + '%';
+        if (score < 20) {
+          scoreText.textContent = 'Very Weak (' + score + '%)';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-red-500';
+        } else if (score < 40) {
+          scoreText.textContent = 'Weak (' + score + '%)';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-orange-500';
+        } else if (score < 60) {
+          scoreText.textContent = 'Fair (' + score + '%)';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-amber-500';
+        } else if (score < 80) {
+          scoreText.textContent = 'Good (' + score + '%)';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
+        } else {
+          scoreText.textContent = 'Strong (' + score + '%)';
+          bar.className = 'h-full rounded-full transition-all duration-300 bg-green-600';
+        }
+
+        var patternHtml = '';
+        for (var i = 0; i < analysis.issues.length; i++) {
+          var iss = analysis.issues[i];
+          var icon = iss.type === 'danger' ? '&#x2716;' : iss.type === 'warning' ? '&#x26A0;' : iss.type === 'good' ? '&#x2714;' : '&#x2139;';
+          var bg = iss.type === 'danger' ? 'bg-red-50 text-red-700' : iss.type === 'warning' ? 'bg-amber-50 text-amber-700' : iss.type === 'good' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700';
+          patternHtml += '<div class="flex items-start gap-2 rounded-lg ' + bg + ' px-3 py-2 text-xs"><span class="mt-0.5 shrink-0">' + icon + '</span><span>' + iss.msg + '</span></div>';
+        }
+        el('patternList').innerHTML = patternHtml;
+
+        var suggestionsHtml = '';
+        if (score < 60) {
+          if (len < 6) {
+            suggestionsHtml += '<div class="flex items-start gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700"><span class="mt-0.5 shrink-0">&#x1F4A1;</span><span>Make it longer — use 6 or more digits</span></div>';
+          }
+          if (analysis.issues.some(function (i) { return i.type === 'danger' || i.type === 'warning'; })) {
+            suggestionsHtml += '<div class="flex items-start gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700"><span class="mt-0.5 shrink-0">&#x1F4A1;</span><span>Avoid patterns: mix digits randomly, skip sequences, repeats, and dates</span></div>';
+          }
+          suggestionsHtml += '<div class="flex items-start gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700"><span class="mt-0.5 shrink-0">&#x1F4A1;</span><span>Use different PINs for different systems (ATM, phone, doors)</span></div>';
+        }
+        el('suggestions').innerHTML = suggestionsHtml;
+      }
+
+      el('toggleBtn').addEventListener('click', function () {
+        if (pinInput.type === 'password') {
+          pinInput.type = 'text';
+          this.textContent = '\u{1F440}';
+        } else {
+          pinInput.type = 'password';
+          this.textContent = '\u{1F441}';
+        }
+      });
+
+      pinInput.addEventListener('input', update);
+    });
+  </script>
+</ToolLayout>

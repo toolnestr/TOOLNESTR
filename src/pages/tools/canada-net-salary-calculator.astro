@@ -1,0 +1,484 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Canada Net Salary Calculator';
+const description = 'Calculate Canadian take-home pay after federal and provincial taxes, CPP, and EI.';
+const intro = 'Calculate Canadian take-home pay after federal and provincial taxes.';
+const category = { id: 'finance', name: 'Finance Tools' };
+const faqs = [
+  { q: 'How accurate is this calculator?', a: 'This calculator provides a close estimate using 2025 federal and provincial tax brackets, CPP, and EI rates. Actual tax owed may differ due to deductions, credits, and personal circumstances. Always confirm with a qualified accountant or the CRA.' },
+  { q: 'Why does Quebec use QPP instead of CPP?', a: 'Quebec operates its own pension plan (Quebec Pension Plan / QPP) instead of the federal Canada Pension Plan. The QPP rate is 6.40% compared to CPP\'s 5.95%, and Quebec residents also pay Quebec Parental Insurance Plan (QPIP) contributions.' },
+  { q: 'What is marginal tax rate?', a: 'Your marginal tax rate is the rate you pay on your next dollar of income. It combines your federal and provincial bracket rates. For example, earning $80,000 in Ontario means each additional dollar is taxed at 29.65% (20.5% federal + 9.15% provincial).' },
+  { q: 'Are CPP and EI deducted from every paycheck?', a: 'CPP is deducted on earnings up to the Year\'s Maximum Pensionable Earnings ($71,300 in 2025). EI is deducted on earnings up to Maximum Insurable Earnings ($65,700 in 2025). Once you exceed these thresholds, deductions stop for the year.' },
+  { q: 'Do tax brackets account for inflation?', a: 'Yes. Federal and provincial tax brackets are indexed to inflation each year. The 2025 rates shown here reflect the current indexed thresholds. Brackets typically increase annually to prevent "bracket creep" as wages rise with inflation.' },
+  { q: 'How does this compare to other countries?', a: 'Canada has a progressive tax system similar to other developed nations. For international comparisons, check our UK Take-Home Pay Calculator and Australia Tax Calculator. Canada\'s top combined marginal rate ranges from ~43% to ~54% depending on province.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Annual salary (CAD)</span>
+        <input id="salary" type="number" step="any" placeholder="75000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Province / Territory</span>
+        <select id="province" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="ON">Ontario</option>
+          <option value="QC">Quebec</option>
+          <option value="BC">British Columbia</option>
+          <option value="AB">Alberta</option>
+          <option value="MB">Manitoba</option>
+          <option value="SK">Saskatchewan</option>
+          <option value="NS">Nova Scotia</option>
+          <option value="NB">New Brunswick</option>
+          <option value="NL">Newfoundland &amp; Labrador</option>
+          <option value="PE">Prince Edward Island</option>
+        </select>
+      </label>
+    </div>
+
+    <button id="calcBtn" class="mt-5 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Gross annual income</div>
+          <div id="r-gross" class="mt-1 text-lg font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-amber-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Federal tax</div>
+          <div id="r-federal" class="mt-1 text-lg font-bold text-amber-700">—</div>
+        </div>
+        <div class="rounded-xl bg-amber-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Provincial tax</div>
+          <div id="r-provincial" class="mt-1 text-lg font-bold text-amber-700">—</div>
+        </div>
+        <div class="rounded-xl bg-orange-50 p-4 text-center">
+          <div class="text-sm text-slate-500">CPP / QPP</div>
+          <div id="r-cpp" class="mt-1 text-lg font-bold text-orange-700">—</div>
+        </div>
+        <div class="rounded-xl bg-orange-50 p-4 text-center">
+          <div class="text-sm text-slate-500">EI</div>
+          <div id="r-ei" class="mt-1 text-lg font-bold text-orange-700">—</div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Marginal tax rate</div>
+          <div id="r-marginal" class="mt-1 text-lg font-bold text-emerald-700">—</div>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Net annual income (take-home)</div>
+        <div id="r-net" class="mt-1 text-2xl font-bold">—</div>
+      </div>
+
+      <div class="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-5">
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Monthly</div>
+          <div id="r-monthly" class="mt-1 text-sm font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Semi-monthly</div>
+          <div id="r-semi" class="mt-1 text-sm font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Bi-weekly</div>
+          <div id="r-biweekly" class="mt-1 text-sm font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Weekly</div>
+          <div id="r-weekly" class="mt-1 text-sm font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Hourly</div>
+          <div id="r-hourly" class="mt-1 text-sm font-bold text-slate-800">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Canadian net salary is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      Canada's tax system is progressive — the more you earn, the higher the rate on each additional
+      dollar. Your employer deducts federal and provincial income tax, Canada Pension Plan (CPP) contributions,
+      and Employment Insurance (EI) premiums from each paycheck. The amount you actually receive after
+      these deductions is your net pay, also called take-home pay.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This calculator estimates your net annual income by applying the 2025 federal tax brackets, your
+      selected province's tax brackets, CPP (or QPP in Quebec), and EI deductions to your gross annual
+      salary. The result includes a breakdown by payment period — monthly, semi-monthly, bi-weekly,
+      weekly, and hourly — so you can see exactly what each paycheck will look like.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Canada salary deduction flow diagram">
+      <title>From gross salary to net income: tax and deduction flow</title>
+      <desc>A vertical flow diagram showing gross annual salary being split into federal tax, provincial tax, CPP/QPP, and EI deductions, with the remainder as net take-home income.</desc>
+      <rect x="250" y="10" width="300" height="52" rx="8" fill="#6366f1"/>
+      <text x="400" y="42" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">Gross Annual Salary</text>
+      <line x1="400" y1="62" x2="400" y2="90" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+      <rect x="40" y="90" width="160" height="50" rx="8" fill="#f59e0b"/>
+      <text x="120" y="120" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Federal Tax</text>
+      <text x="120" y="133" text-anchor="middle" fill="#fef3c7" font-size="10">15%–33% brackets</text>
+      <rect x="230" y="90" width="160" height="50" rx="8" fill="#f59e0b"/>
+      <text x="310" y="120" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Provincial Tax</text>
+      <text x="310" y="133" text-anchor="middle" fill="#fef3c7" font-size="10">varies by province</text>
+      <rect x="420" y="90" width="160" height="50" rx="8" fill="#f97316"/>
+      <text x="500" y="118" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">CPP / QPP</text>
+      <text x="500" y="133" text-anchor="middle" fill="#fef3c7" font-size="10">5.95% or 6.40%</text>
+      <rect x="610" y="90" width="160" height="50" rx="8" fill="#f97316"/>
+      <text x="690" y="120" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">EI</text>
+      <text x="690" y="133" text-anchor="middle" fill="#fef3c7" font-size="10">1.66%</text>
+      <line x1="120" y1="140" x2="120" y2="180" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="310" y1="140" x2="310" y2="180" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="500" y1="140" x2="500" y2="180" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="690" y1="140" x2="690" y2="180" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="120" y1="180" x2="690" y2="180" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="400" y1="180" x2="400" y2="210" stroke="#94a3b8" stroke-width="2" marker-end="url(#a)"/>
+      <rect x="250" y="215" width="300" height="52" rx="8" fill="#10b981"/>
+      <text x="400" y="247" text-anchor="middle" fill="#fff" font-size="15" font-weight="bold">Net Income (Take-Home Pay)</text>
+      <text x="400" y="290" text-anchor="middle" fill="#64748b" font-size="13">Gross salary minus federal tax, provincial tax, CPP/QPP, and EI deductions</text>
+      <defs><marker id="a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#94a3b8"/></marker></defs>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">How your gross salary flows through deductions to become net take-home pay</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Federal income tax (2025)</h2>
+    <p class="mt-2 text-slate-600">
+      The federal government taxes income at five progressive rates. Each bracket applies only to the
+      portion of income that falls within that range — you never pay a higher rate on money you earned
+      in a lower bracket.
+    </p>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Taxable income range</th><th class="p-3">Tax rate</th><th class="p-3">Tax on top of bracket</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Up to $57,375</td><td class="p-3">15%</td><td class="p-3">15% of amount</td></tr>
+          <tr><td class="p-3 font-medium">$57,376 – $114,750</td><td class="p-3">20.5%</td><td class="p-3">$8,606 + 20.5% over $57,375</td></tr>
+          <tr><td class="p-3 font-medium">$114,751 – $177,882</td><td class="p-3">26%</td><td class="p-3">$20,418 + 26% over $114,750</td></tr>
+          <tr><td class="p-3 font-medium">$177,883 – $253,414</td><td class="p-3">29%</td><td class="p-3">$36,832 + 29% over $177,882</td></tr>
+          <tr><td class="p-3 font-medium">Over $253,414</td><td class="p-3">33%</td><td class="p-3">$58,756 + 33% over $253,414</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-slate-600">
+      The federal basic personal amount for 2025 is approximately $16,129. This is a non-refundable
+      tax credit worth up to $2,419 (15% of $16,129) and is factored into the calculator estimate.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">CPP and EI deductions</h2>
+    <p class="mt-2 text-slate-600">
+      The Canada Pension Plan (CPP) and Employment Insurance (EI) are mandatory deductions that fund
+      retirement pensions and unemployment benefits. Both have annual maximum contribution limits:
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">CPP (2025)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Rate: <strong>5.95%</strong> of pensionable earnings<br />
+          Maximum earnings: <strong>$71,300</strong><br />
+          Maximum contribution: <strong>$4,243</strong>
+        </p>
+        <p class="mt-1 text-xs text-slate-400">
+          In Quebec, the Quebec Pension Plan (QPP) replaces CPP at <strong>6.40%</strong> on the same earnings limit.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">EI (2025)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Rate: <strong>1.66%</strong> of insurable earnings<br />
+          Maximum earnings: <strong>$65,700</strong><br />
+          Maximum premium: <strong>$1,091</strong>
+        </p>
+        <p class="mt-1 text-xs text-slate-400">
+          Quebec residents pay a lower EI rate (1.32%) and receive QPIP separately. This calculator uses 1.66% for all provinces for simplicity.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Provincial income tax rates (2025)</h2>
+    <p class="mt-2 text-slate-600">
+      Each province sets its own income tax brackets and rates. The four most populous provinces
+      are shown below. Select your province in the calculator for its specific brackets.
+    </p>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Province</th><th class="p-3">Brackets</th><th class="p-3">Rates</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Ontario</td><td class="p-3">$0–$51,446 / $51,447–$102,894 / $102,895–$150,000 / $150,001–$220,000 / $220,000+</td><td class="p-3">5.05% / 9.15% / 11.16% / 12.16% / 13.16%</td></tr>
+          <tr><td class="p-3 font-medium">Quebec</td><td class="p-3">$0–$51,780 / $51,781–$103,545 / $103,546–$126,000 / $126,000+</td><td class="p-3">14% / 19% / 24% / 25.75%</td></tr>
+          <tr><td class="p-3 font-medium">British Columbia</td><td class="p-3">$0–$47,937 / $47,938–$95,875 / $95,876–$116,344 / $116,345–$157,748 / $157,748+</td><td class="p-3">5.06% / 7.70% / 10.50% / 12.29% / 14.70%</td></tr>
+          <tr><td class="p-3 font-medium">Alberta</td><td class="p-3">$0–$148,269 / $148,270–$237,230 / $237,231–$355,845 / $355,845+</td><td class="p-3">10% / 12% / 13% / 14%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">You earn $80,000 per year living in Ontario in 2025.</p>
+      <div class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Gross annual salary:</span> <span class="text-slate-600">$80,000</span></div>
+        <div><span class="font-medium text-slate-700">Federal tax (estimate):</span> <span class="text-slate-600">~$12,338</span></div>
+        <div><span class="font-medium text-slate-700">Ontario tax (estimate):</span> <span class="text-slate-600">~$5,241</span></div>
+        <div><span class="font-medium text-slate-700">CPP contribution:</span> <span class="text-slate-600">~$4,243</span></div>
+        <div><span class="font-medium text-slate-700">EI premium:</span> <span class="text-slate-600">~$1,091</span></div>
+        <div><span class="font-medium text-slate-700">Marginal tax rate:</span> <span class="text-slate-600">29.65%</span></div>
+        <div class="font-semibold text-indigo-700"><span>Net annual income:</span> <span>~$57,087</span></div>
+        <div class="text-slate-600"><span>Monthly take-home:</span> <span>~$4,757</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">💼</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Job offers</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare employer offers across different provinces. A higher salary in a high-tax province may result in less take-home pay than a slightly lower salary in Alberta or BC. Use this calculator to make an apples-to-apples comparison of net income.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Relocation planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Moving to a new province changes your provincial tax rate. Quebec residents pay QPP instead of CPP, and Ontario has a health premium. Run the numbers before you move to understand how your take-home pay will change.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Financial planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Knowing your net income is the foundation of any budget. Use this calculator to determine your actual disposable income, plan savings contributions, and understand how a raise or bonus will affect your after-tax earnings.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding Canadian payroll deductions</h2>
+    <p class="mt-2 text-slate-600">
+      Canadian employees see several deductions on every pay stub. Federal and provincial income tax
+      are calculated based on the TD1 forms you submit to your employer, which determine the tax
+      credits you claim. CPP contributions are calculated on your gross earnings up to the Year's
+      Maximum Pensionable Earnings (YMPE), and EI premiums on earnings up to the Maximum Insurable
+      Earnings (MIE).
+    </p>
+    <p class="mt-3 text-slate-600">
+      Once you reach the YMPE ($71,300 in 2025) or MIE ($65,700 in 2025), those deductions stop
+      for the remainder of the year. This means your paychecks in the later months of the year may
+      be slightly larger. The calculator accounts for this by capping CPP and EI at their maximums.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Quebec-specific notes</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Quebec operates its own pension plan (QPP) at <strong>6.40%</strong> — higher than the federal
+        CPP rate of 5.95%. Quebec residents also contribute to the Quebec Parental Insurance Plan
+        (QPIP) and pay a separate provincial tax that is generally higher than other provinces. On the
+        other hand, Quebec offers several unique tax credits and a lower EI rate (1.32%). The
+        calculator reflects the higher QPP rate when Quebec is selected.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using this calculator</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Tax brackets are indexed annually — check the current year's rates for the most accurate results.</li>
+      <li>This calculator does not account for RRSP contributions, which reduce your taxable income. If you contribute to an RRSP, subtract your annual contribution from your salary before entering it.</li>
+      <li>Additional deductions like union dues, child support, or court-ordered garnishments are not included.</li>
+      <li>The marginal tax rate shown is the combined federal + provincial rate on your next dollar earned — useful for understanding bonus or overtime taxation.</li>
+      <li>For comparison with other countries, check the UK Take-Home Pay Calculator or Australia Tax Calculator.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/uk-take-home-pay-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🇬🇧</span>
+        <h3 class="mt-1 font-semibold text-slate-900">UK Take-Home Pay Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate UK net salary after income tax and National Insurance.</p>
+      </a>
+      <a href="/tools/australia-tax-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🇦🇺</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Australia Tax Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate Australian PAYG tax and net income for any salary.</p>
+      </a>
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">💵</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="text-sm text-slate-600">Convert pay between hourly, monthly, and yearly periods.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      const el = (id) => document.getElementById(id);
+      const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const FEDERAL_BRACKETS = [
+        { min: 0, max: 57375, rate: 0.15 },
+        { min: 57375, max: 114750, rate: 0.205 },
+        { min: 114750, max: 177882, rate: 0.26 },
+        { min: 177882, max: 253414, rate: 0.29 },
+        { min: 253414, max: Infinity, rate: 0.33 }
+      ];
+
+      const PROVINCIAL_RATES = {
+        'ON': { name: 'Ontario', brackets: [
+          { min: 0, max: 51446, rate: 0.0505 },
+          { min: 51446, max: 102894, rate: 0.0915 },
+          { min: 102894, max: 150000, rate: 0.1116 },
+          { min: 150000, max: 220000, rate: 0.1216 },
+          { min: 220000, max: Infinity, rate: 0.1316 }
+        ]},
+        'QC': { name: 'Quebec', qpp: true, brackets: [
+          { min: 0, max: 51780, rate: 0.14 },
+          { min: 51780, max: 103545, rate: 0.19 },
+          { min: 103545, max: 126000, rate: 0.24 },
+          { min: 126000, max: Infinity, rate: 0.2575 }
+        ]},
+        'BC': { name: 'British Columbia', brackets: [
+          { min: 0, max: 47937, rate: 0.0506 },
+          { min: 47937, max: 95875, rate: 0.077 },
+          { min: 95875, max: 116344, rate: 0.105 },
+          { min: 116344, max: 157748, rate: 0.1229 },
+          { min: 157748, max: Infinity, rate: 0.147 }
+        ]},
+        'AB': { name: 'Alberta', brackets: [
+          { min: 0, max: 148269, rate: 0.10 },
+          { min: 148269, max: 237230, rate: 0.12 },
+          { min: 237230, max: 355845, rate: 0.13 },
+          { min: 355845, max: Infinity, rate: 0.14 }
+        ]},
+        'MB': { name: 'Manitoba', brackets: [
+          { min: 0, max: 47000, rate: 0.108 },
+          { min: 47000, max: 100000, rate: 0.1275 },
+          { min: 100000, max: Infinity, rate: 0.174 }
+        ]},
+        'SK': { name: 'Saskatchewan', brackets: [
+          { min: 0, max: 52257, rate: 0.105 },
+          { min: 52257, max: 149256, rate: 0.125 },
+          { min: 149256, max: Infinity, rate: 0.145 }
+        ]},
+        'NS': { name: 'Nova Scotia', brackets: [
+          { min: 0, max: 29590, rate: 0.0879 },
+          { min: 29590, max: 59180, rate: 0.1495 },
+          { min: 59180, max: 93000, rate: 0.1667 },
+          { min: 93000, max: 150000, rate: 0.175 },
+          { min: 150000, max: Infinity, rate: 0.21 }
+        ]},
+        'NB': { name: 'New Brunswick', brackets: [
+          { min: 0, max: 49958, rate: 0.094 },
+          { min: 49958, max: 99916, rate: 0.14 },
+          { min: 99916, max: 162832, rate: 0.16 },
+          { min: 162832, max: Infinity, rate: 0.195 }
+        ]},
+        'NL': { name: 'Newfoundland & Labrador', brackets: [
+          { min: 0, max: 43048, rate: 0.087 },
+          { min: 43048, max: 86095, rate: 0.145 },
+          { min: 86095, max: 147829, rate: 0.158 },
+          { min: 147829, max: 193930, rate: 0.173 },
+          { min: 193930, max: Infinity, rate: 0.183 }
+        ]},
+        'PE': { name: 'Prince Edward Island', brackets: [
+          { min: 0, max: 31984, rate: 0.098 },
+          { min: 31984, max: 63969, rate: 0.138 },
+          { min: 63969, max: Infinity, rate: 0.167 }
+        ]}
+      };
+
+      const CPP_RATE = 0.0595;
+      const QPP_RATE = 0.064;
+      const CPP_MAX_EARNINGS = 71300;
+      const EI_RATE = 0.0166;
+      const EI_MAX_EARNINGS = 65700;
+      const FEDERAL_BPA_CREDIT = 2419;
+
+      function calcBracketTax(income, brackets) {
+        let tax = 0;
+        let prev = 0;
+        for (const b of brackets) {
+          if (income > prev) {
+            const taxable = Math.min(income, b.max) - prev;
+            tax += taxable * b.rate;
+          }
+          if (income <= b.max) break;
+          prev = b.max;
+        }
+        return tax;
+      }
+
+      function getMarginalRate(income, brackets) {
+        for (const b of brackets) {
+          if (income > b.min && income <= b.max) return b.rate;
+        }
+        return brackets[brackets.length - 1].rate;
+      }
+
+      function calculate() {
+        const salary = parseFloat(el('salary').value);
+        const province = el('province').value;
+
+        if (isNaN(salary) || salary < 0) {
+          el('result').classList.add('hidden');
+          return;
+        }
+
+        const provData = PROVINCIAL_RATES[province];
+
+        const federalTaxRaw = calcBracketTax(salary, FEDERAL_BRACKETS);
+        const federalTax = Math.max(0, federalTaxRaw - FEDERAL_BPA_CREDIT);
+        const provincialTax = calcBracketTax(salary, provData.brackets);
+
+        const isQc = province === 'QC';
+        const cppRate = isQc ? QPP_RATE : CPP_RATE;
+        const cpp = Math.min(salary, CPP_MAX_EARNINGS) * cppRate;
+
+        const ei = Math.min(salary, EI_MAX_EARNINGS) * EI_RATE;
+
+        const totalDeductions = federalTax + provincialTax + cpp + ei;
+        const netIncome = salary - totalDeductions;
+
+        const federalMarginal = getMarginalRate(salary, FEDERAL_BRACKETS);
+        const provincialMarginal = getMarginalRate(salary, provData.brackets);
+        const marginalTotal = federalMarginal + provincialMarginal;
+
+        const monthly = netIncome / 12;
+        const semiMonthly = netIncome / 24;
+        const biweekly = netIncome / 26;
+        const weekly = netIncome / 52;
+        const hourly = netIncome / (40 * 52);
+
+        el('r-gross').textContent = fmt(salary);
+        el('r-federal').textContent = fmt(federalTax);
+        el('r-provincial').textContent = fmt(provincialTax);
+        el('r-cpp').textContent = fmt(cpp);
+        el('r-ei').textContent = fmt(ei);
+        el('r-net').textContent = fmt(netIncome);
+        el('r-marginal').textContent = (marginalTotal * 100).toFixed(1) + '%';
+        el('r-monthly').textContent = fmt(monthly);
+        el('r-semi').textContent = fmt(semiMonthly);
+        el('r-biweekly').textContent = fmt(biweekly);
+        el('r-weekly').textContent = fmt(weekly);
+        el('r-hourly').textContent = fmt(hourly);
+
+        el('result').classList.remove('hidden');
+      }
+
+      el('calcBtn').addEventListener('click', calculate);
+      el('salary').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') calculate();
+      });
+    });
+  </script>
+</ToolLayout>

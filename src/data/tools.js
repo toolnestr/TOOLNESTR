@@ -348,6 +348,23 @@ export const tools = [
   // ── Part B: Miscellaneous ──
   { slug: 'tip-pooling-calculator', title: 'Tip Pooling Calculator', short: 'Split tips fairly among staff by hours worked or contribution level.', category: 'tools', emoji: '💵', enabled: true, status: 'live' },
   { slug: 'paint-coverage-calculator', title: 'Paint Coverage Calculator', short: 'Estimate how many gallons of paint you need for any room.', category: 'tools', emoji: '🎨', enabled: true, status: 'live' },
+  // ── Part B: Security — remaining ──
+  { slug: 'password-entropy-calculator', title: 'Password Entropy Calculator', short: 'Calculate password strength in bits of entropy and estimated crack time.', category: 'security', emoji: '🔐', enabled: true, status: 'live' },
+  { slug: 'csr-decoder', title: 'CSR Decoder', short: 'Decode the contents of a Certificate Signing Request (PEM format).', category: 'security', emoji: '📜', enabled: true, status: 'live' },
+  { slug: 'x509-certificate-decoder', title: 'X.509 Certificate Decoder', short: 'Decode the details of an X.509 SSL/TLS certificate in PEM format.', category: 'security', emoji: '🛡️', enabled: true, status: 'live' },
+  { slug: 'pin-code-strength-checker', title: 'PIN Code Strength Checker', short: 'Check how secure your numeric PIN is against common patterns and brute force.', category: 'security', emoji: '🔢', enabled: true, status: 'live' },
+  // ── Part B: Creators ──
+  { slug: 'youtube-thumbnail-downloader', title: 'YouTube Thumbnail Downloader', short: 'Download YouTube video thumbnails in multiple resolutions.', category: 'creators', emoji: '▶️', enabled: true, status: 'live' },
+  { slug: 'social-media-image-size-cheat-sheet', title: 'Social Media Image Sizes', short: 'The definitive cheat sheet for image dimensions across all social platforms.', category: 'creators', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'color-palette-generator', title: 'Color Palette Generator', short: 'Generate harmonious color palettes from a base color or uploaded image.', category: 'creators', emoji: '🎨', enabled: true, status: 'live' },
+  { slug: 'gradient-generator', title: 'CSS Gradient Generator', short: 'Create beautiful CSS gradients with a visual editor and copy the code.', category: 'creators', emoji: '🌈', enabled: true, status: 'live' },
+  { slug: 'favicon-generator', title: 'Favicon Generator', short: 'Generate favicon files in all required sizes from any image.', category: 'creators', emoji: '🔖', enabled: true, status: 'live' },
+  // ── Part B: Country Finance ──
+  { slug: 'uk-take-home-pay-calculator', title: 'UK Take-Home Pay Calculator', short: 'Calculate UK net salary after income tax and National Insurance deductions.', category: 'finance', emoji: '🇬🇧', enabled: true, status: 'live' },
+  { slug: 'pakistan-income-tax-calculator', title: 'Pakistan Income Tax Calculator', short: 'Calculate Pakistani income tax on salary using the latest tax slabs.', category: 'finance', emoji: '🇵🇰', enabled: true, status: 'live' },
+  { slug: 'canada-net-salary-calculator', title: 'Canada Net Salary Calculator', short: 'Calculate Canadian take-home pay after federal and provincial taxes.', category: 'finance', emoji: '🇨🇦', enabled: true, status: 'live' },
+  { slug: 'australia-tax-calculator', title: 'Australia Tax Calculator', short: 'Calculate Australian PAYG tax and net income for any salary.', category: 'finance', emoji: '🇦🇺', enabled: true, status: 'live' },
+  { slug: 'netherlands-net-salary-calculator', title: 'Netherlands Net Salary Calculator', short: 'Calculate Dutch net income after income tax and social security.', category: 'finance', emoji: '🇳🇱', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

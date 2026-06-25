@@ -1,0 +1,115 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Australia Tax Calculator';
+const description = 'Calculate Australian PAYG tax and net income for any salary, including Medicare Levy.';
+const intro = 'Calculate Australian PAYG tax and net income for any salary.';
+const category = { id: 'finance', name: 'Finance Tools' };
+const faqs = [
+  { q: 'What are the 2025-26 Australian tax rates?', a: '0% up to $18,200, 19% ($18,201-$45,000), 32.5% ($45,001-$135,000), 37% ($135,001-$190,000), 45% (above $190,000).' },
+  { q: 'What is the Medicare Levy?', a: 'A 2% levy on taxable income that funds Australia\'s public healthcare system. Most residents pay it.' },
+  { q: 'What is the tax-free threshold?', a: 'The first $18,200 of income is tax-free for Australian residents. Non-residents don\'t get this.' },
+  { q: 'How often are tax brackets updated?', a: 'Tax brackets are typically updated each financial year (July 1) and may be indexed for inflation.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mx-auto max-w-3xl">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="salary" class="block text-sm font-medium text-slate-700">Annual Salary (AUD)</label>
+          <input id="salary" type="number" min="0" step="1000" value="90000" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="flex items-end pb-3">
+          <label class="flex items-center gap-2 text-sm text-slate-700"><input id="medicare" type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /> Include Medicare Levy (2%)</label>
+        </div>
+      </div>
+      <button id="calc-btn" class="mt-4 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+      <div id="results" class="mt-6 hidden space-y-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="rounded-xl bg-green-50 p-3 text-center"><span class="text-xs font-medium text-green-700">Gross Salary</span><p id="gross-val" class="mt-1 text-lg font-bold text-green-800"></p></div>
+          <div class="rounded-xl bg-red-50 p-3 text-center"><span class="text-xs font-medium text-red-700">Income Tax</span><p id="tax-val" class="mt-1 text-lg font-bold text-red-800"></p></div>
+          <div class="rounded-xl bg-orange-50 p-3 text-center"><span class="text-xs font-medium text-orange-700">Medicare Levy</span><p id="medicare-val" class="mt-1 text-lg font-bold text-orange-800"></p></div>
+          <div class="rounded-xl bg-indigo-50 p-3 text-center"><span class="text-xs font-medium text-indigo-700">Net Income</span><p id="net-val" class="mt-1 text-lg font-bold text-indigo-800"></p></div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center text-sm text-slate-600" id="breakdown"></div>
+      </div>
+    </div>
+
+    <section class="mt-10">
+      <h2 class="text-xl font-bold text-slate-900">How Australian PAYG tax works</h2>
+      <p class="mt-2 text-slate-600">Australia uses a progressive tax system with a tax-free threshold of $18,200. Income is taxed at increasing marginal rates across five brackets. The Pay As You Go (PAYG) system withholds tax from each paycheck. The Medicare Levy is an additional 2% charge that funds Australia's public healthcare system.</p>
+    </section>
+
+    <section class="mt-10 border-t border-slate-200 pt-8">
+      <h2 class="text-lg font-bold text-slate-900">Tips</h2>
+      <ul class="mt-3 list-inside list-disc space-y-2 text-sm text-slate-600">
+        <li>The tax-free threshold is available to Australian residents only — non-residents pay tax from the first dollar.</li>
+        <li>High-income earners without private hospital insurance pay an additional Medicare Levy Surcharge (1-1.5%).</li>
+        <li>Tax offsets like the Low Income Tax Offset (LITO) can reduce your tax bill further.</li>
+      </ul>
+    </section>
+
+    <section class="mt-10 border-t border-slate-200 pt-8">
+      <h2 class="text-lg font-bold text-slate-900">Related tools</h2>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <a href="/tools/salary-calculator" class="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">Salary Calculator</a>
+        <a href="/tools/uk-take-home-pay-calculator" class="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">UK Take-Home Pay</a>
+        <a href="/tools/canada-net-salary-calculator" class="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200">Canada Net Salary</a>
+      </div>
+    </section>
+  </div>
+</ToolLayout>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var salaryInput = document.getElementById('salary');
+    var medicareCheck = document.getElementById('medicare');
+    var calcBtn = document.getElementById('calc-btn');
+    var results = document.getElementById('results');
+
+    function fmt(v) { return '$' + Math.round(v).toLocaleString('en-AU'); }
+
+    function calculate() {
+      var gross = parseFloat(salaryInput.value) || 0;
+      var includeMedicare = medicareCheck.checked;
+
+      var tax = 0;
+      var tiers = [
+        { min: 0, max: 18200, rate: 0 },
+        { min: 18201, max: 45000, rate: 0.19 },
+        { min: 45001, max: 135000, rate: 0.325 },
+        { min: 135001, max: 190000, rate: 0.37 },
+        { min: 190001, max: Infinity, rate: 0.45 }
+      ];
+
+      for (var i = 0; i < tiers.length; i++) {
+        var t = tiers[i];
+        if (gross > t.min) {
+          var chunk = Math.min(gross, t.max) - t.min;
+          if (chunk > 0) tax += chunk * t.rate;
+        }
+      }
+
+      var medicare = includeMedicare ? gross * 0.02 : 0;
+      var net = gross - tax - medicare;
+
+      document.getElementById('gross-val').textContent = fmt(gross);
+      document.getElementById('tax-val').textContent = fmt(tax);
+      document.getElementById('medicare-val').textContent = fmt(medicare);
+      document.getElementById('net-val').textContent = fmt(net);
+
+      var monthly = net / 12;
+      var fortnightly = net / 26;
+      var weekly = net / 52;
+      var effectiveRate = ((tax + medicare) / gross * 100).toFixed(1);
+
+      document.getElementById('breakdown').innerHTML = 'Monthly: ' + fmt(monthly) + ' | Fortnightly: ' + fmt(fortnightly) + ' | Weekly: ' + fmt(weekly) + '<br />Effective tax rate: ' + effectiveRate + '%';
+
+      results.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+  });
+</script>

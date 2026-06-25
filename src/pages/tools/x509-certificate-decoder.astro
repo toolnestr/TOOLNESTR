@@ -1,0 +1,983 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'X.509 Certificate Decoder';
+const description = 'Decode the details of an X.509 SSL/TLS certificate in PEM format.';
+const intro = 'Decode the details of an X.509 SSL/TLS certificate in PEM format.';
+const category = { id: 'security', name: 'Security Tools' };
+const faqs = [
+  { q: 'What is an X.509 certificate?', a: 'An X.509 certificate is a digital document that binds a public key to an identity (such as a domain name or organization). It is signed by a Certificate Authority (CA) to establish trust. X.509 is the standard format for SSL/TLS certificates used by HTTPS websites.' },
+  { q: 'What is PEM format?', a: 'PEM (Privacy-Enhanced Mail) is a Base64-encoded representation of the binary DER certificate data, wrapped with "-----BEGIN CERTIFICATE-----" and "-----END CERTIFICATE-----" header/footer lines. It is the most common format for distributing certificates.' },
+  { q: 'Can I decode a certificate from a website?', a: 'This tool only decodes certificates you paste. To get a website\'s certificate, click the padlock icon in your browser\'s address bar, view the certificate details, and export it in PEM format.' },
+  { q: 'Does this tool send my certificate anywhere?', a: 'No — all decoding happens entirely in your browser using JavaScript and the Web Crypto API. The certificate data never leaves your device.' },
+  { q: 'What is a certificate fingerprint?', a: 'The fingerprint is a SHA-256 hash of the entire DER-encoded certificate. It uniquely identifies the certificate and is used for pinning and verification purposes.' },
+  { q: 'What is the chain of trust?', a: 'The chain of trust is a hierarchical model where each certificate is signed by the next higher authority, starting from the server certificate, through intermediate CAs, up to a trusted root CA. Browsers ship with a list of trusted root CA certificates.' },
+  { q: 'What do SANs (Subject Alternative Names) do?', a: 'SANs list all the domain names and IP addresses that a certificate is valid for. Modern browsers require that the hostname matches one of the SAN entries. Wildcard certificates use *.domain.com to cover all subdomains.' },
+  { q: 'What does the expiry date tell me?', a: 'The certificate\'s validity period (notBefore and notAfter) defines when the certificate is considered valid. Browsers will show security warnings for expired certificates. Always check the notAfter date to ensure a certificate is still current.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="text-sm font-medium text-slate-700" for="pem-input">PEM Certificate</label>
+    <textarea
+      id="pem-input"
+      rows="8"
+      placeholder="-----BEGIN CERTIFICATE-----&#10;MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw&#10;...&#10;-----END CERTIFICATE-----"
+      class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-xs leading-5 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+    <div class="mt-3 flex items-center gap-3">
+      <button id="decode-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Decode Certificate</button>
+      <span id="decode-status" class="hidden rounded-lg px-3 py-2 text-sm font-medium"></span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="mt-6 hidden">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <h2 class="text-lg font-bold text-slate-900">Certificate Details</h2>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Subject</span>
+          <p id="field-subject" class="mt-1 break-all text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Issuer</span>
+          <p id="field-issuer" class="mt-1 break-all text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Serial Number</span>
+          <p id="field-serial" class="mt-1 break-all font-mono text-xs text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Version</span>
+          <p id="field-version" class="mt-1 text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Valid From</span>
+          <p id="field-valid-from" class="mt-1 text-sm text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Valid To</span>
+          <div class="mt-1 flex items-center gap-2">
+            <p id="field-valid-to" class="text-sm text-slate-900"></p>
+            <span id="expiry-badge" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"></span>
+          </div>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Signature Algorithm</span>
+          <p id="field-sig-alg" class="mt-1 text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Fingerprint (SHA-256)</span>
+          <p id="field-fingerprint" class="mt-1 break-all font-mono text-xs text-slate-600"></p>
+        </div>
+      </div>
+
+      <!-- Public Key -->
+      <h3 class="mt-6 text-base font-bold text-slate-900">Public Key</h3>
+      <div class="mt-3 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Algorithm</span>
+          <p id="field-pubkey-alg" class="mt-1 text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Key Size</span>
+          <p id="field-pubkey-size" class="mt-1 text-sm font-medium text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Key Fingerprint (SPKI)</span>
+          <p id="field-spki-fingerprint" class="mt-1 break-all font-mono text-xs text-slate-600"></p>
+        </div>
+      </div>
+
+      <!-- Extensions -->
+      <h3 class="mt-6 text-base font-bold text-slate-900">Extensions</h3>
+      <div class="mt-3 space-y-3">
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Subject Alternative Names (SANs)</span>
+          <div id="field-sans" class="mt-1"></div>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Basic Constraints</span>
+          <p id="field-basic-constraints" class="mt-1 text-sm text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Key Usage</span>
+          <p id="field-key-usage" class="mt-1 text-sm text-slate-900"></p>
+        </div>
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Extended Key Usage</span>
+          <p id="field-ext-key-usage" class="mt-1 text-sm text-slate-900"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How X.509 certificates work</h2>
+    <div class="mt-4 flex justify-center">
+      <svg class="w-full max-w-lg" viewBox="0 0 500 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="480" height="260" rx="12" stroke="#6366f1" stroke-width="2" fill="#eef2ff"/>
+        <text x="250" y="38" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="#4338ca">X.509 Certificate Structure</text>
+
+        <rect x="30" y="52" width="440" height="36" rx="6" fill="#c7d2fe" stroke="#6366f1" stroke-width="1"/>
+        <text x="250" y="75" text-anchor="middle" font-family="monospace" font-size="11" fill="#312e81">TBSCertificate (to-be-signed data)</text>
+
+        <text x="44" y="110" font-family="monospace" font-size="10" fill="#475569">Version (INTEGER)</text>
+        <text x="44" y="126" font-family="monospace" font-size="10" fill="#475569">Serial Number (INTEGER)</text>
+        <text x="44" y="142" font-family="monospace" font-size="10" fill="#475569">Signature Algorithm (OID)</text>
+        <text x="44" y="158" font-family="monospace" font-size="10" fill="#475569">Issuer Name (SEQUENCE of RDNs)</text>
+        <text x="44" y="174" font-family="monospace" font-size="10" fill="#475569">Validity (notBefore / notAfter)</text>
+        <text x="44" y="190" font-family="monospace" font-size="10" fill="#475569">Subject Name (SEQUENCE of RDNs)</text>
+        <text x="44" y="206" font-family="monospace" font-size="10" fill="#475569">Subject Public Key Info (Alg + BIT STRING)</text>
+        <text x="44" y="222" font-family="monospace" font-size="10" fill="#475569">Extensions (optional, SEQUENCE)</text>
+
+        <rect x="30" y="240" width="440" height="24" rx="6" fill="#a5b4fc" stroke="#6366f1" stroke-width="1"/>
+        <text x="250" y="256" text-anchor="middle" font-family="monospace" font-size="10" fill="#312e81">Signature Algorithm (OID) + Signature Value (BIT STRING)</text>
+      </svg>
+    </div>
+    <p class="mt-4 text-slate-600">An X.509 certificate binds a cryptographic public key to an identity — typically a domain name, organization, or individual. The certificate is signed by a trusted Certificate Authority (CA), creating a verifiable link between the public key and the identity it represents. The structure above shows the two main sections: the <strong>TBSCertificate</strong> (the data being certified) and the <strong>Signature</strong> (the CA's cryptographic proof).</p>
+    <p class="mt-3 text-slate-600">When a browser connects to an HTTPS website, the server presents its certificate during the TLS handshake. The browser verifies the signature using the CA's public key, checks the validity period, confirms the hostname matches a SAN entry, and ensures the certificate hasn't been revoked. This verification process establishes the secure connection.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The certificate verification process</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Parse and validate</h3>
+        <p class="mt-1 text-sm text-slate-600">The browser parses the PEM certificate, checks the signature algorithm, validity dates, and ensures the certificate structure conforms to X.509 standards.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Verify chain of trust</h3>
+        <p class="mt-1 text-sm text-slate-600">Each certificate in the chain is verified against the next, ending at a trusted root CA stored in the browser's trust store. The signature of each parent must validate the child certificate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check hostname and expiry</h3>
+        <p class="mt-1 text-sm text-slate-600">The browser confirms the requested hostname matches a SAN entry, the current date falls within the validity period, and the certificate hasn't been revoked via CRL or OCSP.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">PKI and the chain of trust</h2>
+    <div class="mt-4 flex justify-center">
+      <svg class="w-full max-w-xl" viewBox="0 0 520 200" xmlns="http://www.w3.org/2000/svg">
+        <rect x="190" y="10" width="140" height="44" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="260" y="37" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#4338ca">Root CA</text>
+
+        <rect x="100" y="80" width="140" height="44" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="170" y="107" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#4338ca">Intermediate CA</text>
+
+        <rect x="280" y="80" width="140" height="44" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="350" y="107" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#4338ca">Intermediate CA 2</text>
+
+        <rect x="190" y="150" width="140" height="44" rx="8" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+        <text x="260" y="177" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#065f46">Server Certificate</text>
+
+        <line x1="260" y1="54" x2="170" y2="80" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+        <line x1="260" y1="54" x2="350" y2="80" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+        <line x1="170" y1="124" x2="260" y2="150" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow2)"/>
+        <line x1="350" y1="124" x2="260" y2="150" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow2)"/>
+
+        <text x="130" y="73" font-family="sans-serif" font-size="9" fill="#6366f1">signs</text>
+        <text x="370" y="73" font-family="sans-serif" font-size="9" fill="#6366f1">signs</text>
+        <text x="130" y="143" font-family="sans-serif" font-size="9" fill="#10b981">signs</text>
+        <text x="370" y="143" font-family="sans-serif" font-size="9" fill="#10b981">signs</text>
+
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#6366f1"/></marker>
+          <marker id="arrow2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#10b981"/></marker>
+        </defs>
+      </svg>
+    </div>
+    <p class="mt-4 text-slate-600">The chain of trust (or certification path) is a hierarchical model where each certificate is signed by the private key of the next certificate in the chain. At the top is the Root CA — a self-signed certificate that is inherently trusted. Root CAs issue certificates to Intermediate CAs, which in turn issue end-entity (leaf) certificates to websites and services.</p>
+    <p class="mt-3 text-slate-600">Browsers and operating systems ship with a list of approximately 150 trusted Root CA certificates. When verifying a server certificate, the browser constructs the chain from the server certificate up to a trusted root. Each signature is verified using the public key of the parent certificate. If any link in the chain fails verification, the browser displays a security warning.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F50D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Debugging SSL issues</h3>
+        <p class="mt-1 text-sm text-slate-600">When a website shows certificate errors, decoding the PEM certificate reveals the issuer, validity dates, and SANs. You can quickly identify expired certificates, mismatched hostnames, or untrusted issuers without using OpenSSL on the command line.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x2705;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Verifying certificate details</h3>
+        <p class="mt-1 text-sm text-slate-600">Before deploying a new certificate to production, decode it to verify the subject name, SAN entries, key size, and signature algorithm match what was requested from the CA. Catching misconfigurations before deployment prevents downtime.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x23F3;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Expiry checking</h3>
+        <p class="mt-1 text-sm text-slate-600">Monitor certificate expiry dates to avoid unexpected outages. Decode certificates to see exact notAfter timestamps. Many organizations automate expiry monitoring, but manual spot-checks provide an additional safety layer.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F50F;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Certificate fingerprint verification</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare the SHA-256 fingerprint of a certificate against known values to ensure you have the correct certificate. This is particularly useful for certificate pinning and verifying certificates obtained through different channels.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with certificates</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always check the expiry date</h3>
+        <p class="mt-1 text-sm text-slate-600">Certificate expiry is the most common cause of SSL errors. Modern certificates are typically valid for 90 days to 1 year (Apple and Google have pushed for 90-day max validity). Set up calendar reminders or automated monitoring to renew certificates well before expiry.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify the chain of trust</h3>
+        <p class="mt-1 text-sm text-slate-600">A certificate is only as trustworthy as the chain it belongs to. Ensure that your server sends the full certificate chain including all intermediate CA certificates. Missing intermediates cause trust errors on clients that don't have the intermediate cached.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Wildcard certificates cover only one level</h3>
+        <p class="mt-1 text-sm text-slate-600">A wildcard certificate for <code class="rounded bg-slate-100 px-1 text-xs">*.example.com</code> covers <code class="rounded bg-slate-100 px-1 text-xs">www.example.com</code> and <code class="rounded bg-slate-100 px-1 text-xs">mail.example.com</code>, but does NOT cover <code class="rounded bg-slate-100 px-1 text-xs">example.com</code> (the bare domain) or <code class="rounded bg-slate-100 px-1 text-xs">sub.www.example.com</code> (multiple levels). You need separate SAN entries for each level you need to cover.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use strong key algorithms</h3>
+        <p class="mt-1 text-sm text-slate-600">RSA 2048-bit is the current minimum standard. For better security and performance, consider ECDSA with P-256 or P-384 curves. ECDSA keys are smaller and require less CPU for the same security level. Some CAs now offer ECDSA certificates as a standard option.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/csr-decoder" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">CSR Decoder</span><p class="mt-1 text-slate-600">Decode the contents of a Certificate Signing Request (PEM format).</p></a>
+      <a href="/tools/rsa-key-generator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">RSA Key Generator</span><p class="mt-1 text-slate-600">Generate a 2048-bit RSA public/private key pair in PEM or JWK format.</p></a>
+      <a href="/tools/redirect-chain-checker" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">Redirect Chain Checker</span><p class="mt-1 text-slate-600">Follow and analyze HTTP redirect chains for any URL.</p></a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      'use strict';
+
+      var $ = function (id) { return document.getElementById(id); };
+      var pemInput = $('pem-input');
+      var decodeBtn = $('decode-btn');
+      var decodeStatus = $('decode-status');
+      var results = $('results');
+
+      /* ── ASN.1 / DER parser ── */
+      var OID_MAP = {
+        '2.5.4.3': 'CN',
+        '2.5.4.4': 'SN',
+        '2.5.4.5': 'SERIALNUMBER',
+        '2.5.4.6': 'C',
+        '2.5.4.7': 'L',
+        '2.5.4.8': 'ST',
+        '2.5.4.9': 'STREET',
+        '2.5.4.10': 'O',
+        '2.5.4.11': 'OU',
+        '2.5.4.12': 'T',
+        '2.5.4.17': 'POSTALCODE',
+        '2.5.4.42': 'G',
+        '2.5.4.43': 'I',
+        '0.9.2342.19200300.100.1.1': 'UID',
+        '0.9.2342.19200300.100.1.25': 'DC',
+        '1.2.840.113549.1.9.1': 'emailAddress',
+        '2.5.29.14': 'subjectKeyIdentifier',
+        '2.5.29.15': 'keyUsage',
+        '2.5.29.17': 'subjectAltName',
+        '2.5.29.19': 'basicConstraints',
+        '2.5.29.35': 'authorityKeyIdentifier',
+        '2.5.29.37': 'extKeyUsage',
+        '1.2.840.113549.1.1.1': 'rsaEncryption',
+        '1.2.840.10045.2.1': 'ecPublicKey',
+        '1.2.840.113549.1.1.5': 'sha1WithRSAEncryption',
+        '1.2.840.113549.1.1.11': 'sha256WithRSAEncryption',
+        '1.2.840.113549.1.1.12': 'sha384WithRSAEncryption',
+        '1.2.840.113549.1.1.13': 'sha512WithRSAEncryption',
+        '1.2.840.10045.4.3.2': 'ecdsa-with-SHA256',
+        '1.2.840.10045.4.3.3': 'ecdsa-with-SHA384',
+        '1.2.840.10045.4.3.4': 'ecdsa-with-SHA512',
+        '1.3.101.112': 'Ed25519',
+        '1.3.101.113': 'Ed448',
+        '1.3.14.3.2.26': 'SHA1',
+        '2.16.840.1.101.3.4.2.1': 'SHA-256',
+        '2.16.840.1.101.3.4.2.2': 'SHA-384',
+        '2.16.840.1.101.3.4.2.3': 'SHA-512',
+        '1.2.840.113549.1.1.10': 'RSASSA-PSS',
+        '1.2.840.10045.4.1': 'ecdsa-with-SHA1',
+      };
+
+      var SIG_ALG_NAMES = {
+        '1.2.840.113549.1.1.5': 'SHA-1 with RSA Encryption',
+        '1.2.840.113549.1.1.11': 'SHA-256 with RSA Encryption',
+        '1.2.840.113549.1.1.12': 'SHA-384 with RSA Encryption',
+        '1.2.840.113549.1.1.13': 'SHA-512 with RSA Encryption',
+        '1.2.840.10045.4.3.2': 'ECDSA with SHA-256',
+        '1.2.840.10045.4.3.3': 'ECDSA with SHA-384',
+        '1.2.840.10045.4.3.4': 'ECDSA with SHA-512',
+        '1.3.101.112': 'Ed25519',
+        '1.3.101.113': 'Ed448',
+        '1.2.840.113549.1.1.10': 'RSASSA-PSS',
+        '1.2.840.10045.4.1': 'ECDSA with SHA-1',
+        '1.2.840.113549.1.1.4': 'MD5 with RSA Encryption',
+        '1.2.840.113549.1.1.2': 'MD2 with RSA Encryption',
+      };
+
+      var KEY_USAGE_NAMES = [
+        'digitalSignature', 'nonRepudiation', 'keyEncipherment',
+        'dataEncipherment', 'keyAgreement', 'keyCertSign',
+        'cRLSign', 'encipherOnly', 'decipherOnly'
+      ];
+
+      function parseOID(view, start, end) {
+        var parts = [];
+        var first = view.getUint8(start);
+        parts.push(Math.floor(first / 40));
+        parts.push(first % 40);
+        for (var i = start + 1; i < end; i++) {
+          var val = 0;
+          while (i < end) {
+            var b = view.getUint8(i);
+            val = (val << 7) | (b & 0x7F);
+            i++;
+            if (!(b & 0x80)) break;
+          }
+          parts.push(val);
+        }
+        return parts.join('.');
+      }
+
+      function readLength(view, offset) {
+        var len = view.getUint8(offset);
+        if (len < 0x80) return { length: len, bytes: 1 };
+        var num = len & 0x7F;
+        var length = 0;
+        for (var i = 0; i < num; i++) {
+          length = (length << 8) | view.getUint8(offset + 1 + i);
+        }
+        return { length: length, bytes: 1 + num };
+      }
+
+      function parseString(view, start, end) {
+        var s = '';
+        for (var i = start; i < end; i++) {
+          s += String.fromCharCode(view.getUint8(i));
+        }
+        return s;
+      }
+
+      function decodeTime(view, start, end, tag) {
+        var s = parseString(view, start, end);
+        if (tag === 0x17) {
+          // UTCTime: YYMMDDHHMMSSZ
+          var yy = parseInt(s.substring(0, 2), 10);
+          var yyyy = yy >= 50 ? 1900 + yy : 2000 + yy;
+          var mm = s.substring(2, 4);
+          var dd = s.substring(4, 6);
+          var hh = s.substring(6, 8);
+          var mi = s.substring(8, 10);
+          var ss = s.substring(10, 12);
+          return yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + mi + ':' + ss + ' UTC';
+        } else if (tag === 0x18) {
+          // GeneralizedTime: YYYYMMDDHHMMSSZ
+          return s.substring(0, 4) + '-' + s.substring(4, 6) + '-' + s.substring(6, 8) + ' ' +
+            s.substring(8, 10) + ':' + s.substring(10, 12) + ':' + s.substring(12, 14) + ' UTC';
+        }
+        return s;
+      }
+
+      function formatSerial(view, start, end) {
+        var hex = '';
+        for (var i = start; i < end; i++) {
+          var b = view.getUint8(i);
+          hex += ('0' + b.toString(16)).slice(-2);
+          if (i < end - 1 && (i - start + 1) % 2 === 0) hex += ':';
+        }
+        return hex;
+      }
+
+      function parseDN(view, start, end) {
+        var parts = [];
+        var pos = start;
+        while (pos < end) {
+          if (view.getUint8(pos) !== 0x31) break; // SET
+          var l1 = readLength(view, pos + 1);
+          var setEnd = pos + 1 + l1.bytes + l1.length;
+          pos += 1 + l1.bytes;
+          while (pos < setEnd) {
+            if (view.getUint8(pos) !== 0x30) break; // SEQUENCE
+            var l2 = readLength(view, pos + 1);
+            var seqEnd = pos + 1 + l2.bytes + l2.length;
+            pos += 1 + l2.bytes;
+            // OID
+            if (view.getUint8(pos) !== 0x06) break;
+            var lOid = readLength(view, pos + 1);
+            var oidStart = pos + 1 + lOid.bytes;
+            var oidEnd = oidStart + lOid.length;
+            var oid = parseOID(view, oidStart, oidEnd);
+            pos = oidEnd;
+            // Value
+            var valTag = view.getUint8(pos);
+            var lVal = readLength(view, pos + 1);
+            var valStart = pos + 1 + lVal.bytes;
+            var valEnd = valStart + lVal.length;
+            var val = '';
+            if (valTag === 0x0C || valTag === 0x13 || valTag === 0x14 || valTag === 0x16 || valTag === 0x1E) {
+              val = parseString(view, valStart, valEnd);
+            } else if (valTag === 0x12) {
+              val = parseString(view, valStart, valEnd);
+            } else if (valTag === 0x19) {
+              // PrintableString
+              val = parseString(view, valStart, valEnd);
+            } else {
+              val = '#' + formatSerial(view, valStart, valEnd).replace(/:/g, '');
+            }
+            var label = OID_MAP[oid] || oid;
+            parts.push(label + '=' + val);
+            pos = valEnd;
+          }
+        }
+        return parts.join(', ');
+      }
+
+      function parseExtensions(view, start, end) {
+        var result = { sans: [], basicConstraints: null, keyUsage: [], extKeyUsage: [] };
+        var pos = start;
+        while (pos < end) {
+          if (view.getUint8(pos) !== 0x30) { pos++; continue; }
+          var l = readLength(view, pos + 1);
+          var seqEnd = pos + 1 + l.bytes + l.length;
+          pos += 1 + l.bytes;
+          // Extension SEQUENCE: OID, [critical], OCTET STRING
+          if (pos + 2 > seqEnd) continue;
+          if (view.getUint8(pos) !== 0x06) { pos = seqEnd; continue; }
+          var lOid = readLength(view, pos + 1);
+          var oid = parseOID(view, pos + 1 + lOid.bytes, pos + 1 + lOid.bytes + lOid.length);
+          pos += 1 + lOid.bytes + lOid.length;
+          // optional critical BOOLEAN
+          if (pos < seqEnd && view.getUint8(pos) === 0x01) {
+            var lBool = readLength(view, pos + 1);
+            pos += 1 + lBool.bytes + lBool.length;
+          }
+          // OCTET STRING value
+          if (pos >= seqEnd || view.getUint8(pos) !== 0x04) { pos = seqEnd; continue; }
+          var lOs = readLength(view, pos + 1);
+          var osStart = pos + 1 + lOs.bytes;
+          var osEnd = osStart + lOs.length;
+          pos = osEnd;
+
+          if (oid === '2.5.29.17') {
+            // SubjectAltName
+            result.sans = parseSAN(view, osStart, osEnd);
+          } else if (oid === '2.5.29.19') {
+            // BasicConstraints
+            result.basicConstraints = parseBasicConstraints(view, osStart, osEnd);
+          } else if (oid === '2.5.29.15') {
+            // KeyUsage
+            result.keyUsage = parseKeyUsage(view, osStart, osEnd);
+          } else if (oid === '2.5.29.37') {
+            result.extKeyUsage = parseExtKeyUsage(view, osStart, osEnd);
+          }
+        }
+        return result;
+      }
+
+      function parseSAN(view, start, end) {
+        var names = [];
+        var pos = start;
+        while (pos < end) {
+          var tag = view.getUint8(pos);
+          var l = readLength(view, pos + 1);
+          var valStart = pos + 1 + l.bytes;
+          var valEnd = valStart + l.length;
+          var val = parseString(view, valStart, valEnd);
+          if (tag === 0x82) names.push('DNS:' + val);
+          else if (tag === 0x81) names.push('Email:' + val);
+          else if (tag === 0x87) names.push('IP:' + val);
+          else if (tag === 0x86) names.push('URI:' + val);
+          else names.push('#' + tag.toString(16) + ':' + val);
+          pos = valEnd;
+        }
+        return names;
+      }
+
+      function parseBasicConstraints(view, start, end) {
+        var pos = start;
+        if (pos >= end) return 'Not a CA';
+        if (view.getUint8(pos) === 0x01) {
+          var l = readLength(view, pos + 1);
+          var val = view.getUint8(pos + 1 + l.bytes);
+          if (val !== 0) return 'CA: TRUE';
+          return 'CA: FALSE';
+        }
+        if (view.getUint8(pos) === 0x30) {
+          // SEQUENCE
+          var l2 = readLength(view, pos + 1);
+          var seqEnd = pos + 1 + l2.bytes + l2.length;
+          pos += 1 + l2.bytes;
+          if (pos < seqEnd && view.getUint8(pos) === 0x01) {
+            var l3 = readLength(view, pos + 1);
+            var caVal = view.getUint8(pos + 1 + l3.bytes);
+            if (caVal !== 0) {
+              pos += 1 + l3.bytes + l3.length;
+              if (pos < seqEnd && view.getUint8(pos) === 0x02) {
+                var l4 = readLength(view, pos + 1);
+                var pathLen = 0;
+                for (var i = 0; i < l4.length; i++) {
+                  pathLen = (pathLen << 8) | view.getUint8(pos + 1 + l4.bytes + i);
+                }
+                return 'CA: TRUE, pathLen: ' + pathLen;
+              }
+              return 'CA: TRUE';
+            }
+            return 'CA: FALSE';
+          }
+          return 'Not a CA';
+        }
+        return 'Not a CA';
+      }
+
+      function parseKeyUsage(view, start, end) {
+        var pos = start;
+        if (view.getUint8(pos) !== 0x03) return 'N/A';
+        var l = readLength(view, pos + 1);
+        var valStart = pos + 1 + l.bytes;
+        var unused = view.getUint8(valStart);
+        var usage = [];
+        var bitLen = (l.length - 1) * 8 - unused;
+        for (var i = 0; i < bitLen && i < KEY_USAGE_NAMES.length; i++) {
+          var byteIdx = valStart + 1 + Math.floor(i / 8);
+          var bitIdx = 7 - (i % 8);
+          if (view.getUint8(byteIdx) & (1 << bitIdx)) {
+            usage.push(KEY_USAGE_NAMES[i]);
+          }
+        }
+        return usage.length ? usage.join(', ') : 'N/A';
+      }
+
+      var EXT_KEY_USAGE_OIDS = {
+        '1.3.6.1.5.5.7.3.1': 'serverAuth',
+        '1.3.6.1.5.5.7.3.2': 'clientAuth',
+        '1.3.6.1.5.5.7.3.3': 'codeSigning',
+        '1.3.6.1.5.5.7.3.4': 'emailProtection',
+        '1.3.6.1.5.5.7.3.8': 'timeStamping',
+        '1.3.6.1.5.5.7.3.9': 'OCSPSigning',
+        '1.3.6.1.4.1.311.10.3.4': 'efs',
+        '1.3.6.1.4.1.311.20.2.2': 'smartcardLogon',
+        '1.3.6.1.4.1.311.10.3.1': 'microsoftTrustListSigning',
+        '1.3.6.1.4.1.311.10.3.12': 'microsoftDocumentSigning',
+        '2.5.29.37.0': 'anyExtendedKeyUsage',
+      };
+
+      function parseExtKeyUsage(view, start, end) {
+        var pos = start;
+        var usages = [];
+        if (view.getUint8(pos) !== 0x30) return 'N/A';
+        var l = readLength(view, pos + 1);
+        var seqEnd = pos + 1 + l.bytes + l.length;
+        pos += 1 + l.bytes;
+        while (pos < seqEnd) {
+          if (view.getUint8(pos) !== 0x06) { pos++; continue; }
+          var lOid = readLength(view, pos + 1);
+          var oid = parseOID(view, pos + 1 + lOid.bytes, pos + 1 + lOid.bytes + lOid.length);
+          usages.push(EXT_KEY_USAGE_OIDS[oid] || oid);
+          pos += 1 + lOid.bytes + lOid.length;
+        }
+        return usages.length ? usages.join(', ') : 'N/A';
+      }
+
+      function parsePublicKey(view, start, end) {
+        var result = { algorithm: 'Unknown', keySize: 0 };
+        var pos = start;
+        if (view.getUint8(pos) !== 0x30) return result;
+        var l = readLength(view, pos + 1);
+        var algSeqEnd = pos + 1 + l.bytes + l.length;
+        pos += 1 + l.bytes;
+        // AlgorithmIdentifier SEQUENCE
+        if (view.getUint8(pos) !== 0x30) return result;
+        var l2 = readLength(view, pos + 1);
+        var algEnd = pos + 1 + l2.bytes + l2.length;
+        pos += 1 + l2.bytes;
+        // OID
+        if (view.getUint8(pos) !== 0x06) return result;
+        var lOid = readLength(view, pos + 1);
+        var oid = parseOID(view, pos + 1 + lOid.bytes, pos + 1 + lOid.bytes + lOid.length);
+        result.algorithm = OID_MAP[oid] || oid;
+
+        if (oid === '1.2.840.113549.1.1.1') {
+          // RSA - go past parameters (NULL) to BIT STRING
+          pos = algEnd;
+          // BIT STRING
+          if (view.getUint8(pos) !== 0x03) return result;
+          var lBs = readLength(view, pos + 1);
+          var bsStart = pos + 1 + lBs.bytes;
+          var unused = view.getUint8(bsStart);
+          // Parse the RSAPublicKey SEQUENCE inside the BIT STRING
+          var innerStart = bsStart + 1;
+          if (view.getUint8(innerStart) !== 0x30) return result;
+          var lInner = readLength(view, innerStart + 1);
+          var innerEnd = innerStart + 1 + lInner.bytes + lInner.length;
+          var innerPos = innerStart + 1 + lInner.bytes;
+          // modulus INTEGER
+          if (view.getUint8(innerPos) !== 0x02) return result;
+          var lMod = readLength(view, innerPos + 1);
+          var modStart = innerPos + 1 + lMod.bytes;
+          var modLen = lMod.length;
+          // Remove leading 0x00 if present
+          if (view.getUint8(modStart) === 0x00) { modStart++; modLen--; }
+          result.keySize = modLen * 8;
+          result.algorithm = 'RSA';
+        } else if (oid === '1.2.840.10045.2.1') {
+          // EC
+          result.algorithm = 'ECDSA';
+          // Look for the curve OID in the parameters
+          var paramPos = algEnd;
+          if (view.getUint8(paramPos) === 0x06) {
+            var lCurve = readLength(view, paramPos + 1);
+            var curveOid = parseOID(view, paramPos + 1 + lCurve.bytes, paramPos + 1 + lCurve.bytes + lCurve.length);
+            if (curveOid === '1.2.840.10045.3.1.7') result.keySize = 256;
+            else if (curveOid === '1.3.132.0.34') result.keySize = 384;
+            else if (curveOid === '1.3.132.0.35') result.keySize = 521;
+          }
+          // Determine key size from BIT STRING length
+          if (!result.keySize) {
+            var bitStringPos = algEnd;
+            if (view.getUint8(bitStringPos) === 0x03) {
+              var lBs2 = readLength(view, bitStringPos + 1);
+              var keyBytes = lBs2.length - 1;
+              if (keyBytes > 0) {
+                if (keyBytes <= 65) result.keySize = 256;
+                else if (keyBytes <= 97) result.keySize = 384;
+                else result.keySize = 521;
+              }
+            }
+          }
+        } else if (oid === '1.3.101.112') {
+          result.algorithm = 'Ed25519';
+          result.keySize = 256;
+        } else if (oid === '1.3.101.113') {
+          result.algorithm = 'Ed448';
+          result.keySize = 456;
+        }
+        return result;
+      }
+
+      function parseDER(buffer) {
+        var view = new DataView(buffer);
+        var pos = 0;
+
+        // Outer SEQUENCE (Certificate)
+        if (view.getUint8(pos) !== 0x30) throw new Error('Not a valid DER certificate (expected SEQUENCE)');
+        var lCert = readLength(view, pos + 1);
+        var certEnd = pos + 1 + lCert.bytes + lCert.length;
+        pos += 1 + lCert.bytes;
+
+        // TBSCertificate SEQUENCE
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected TBSCertificate SEQUENCE');
+        var lTbs = readLength(view, pos + 1);
+        var tbsEnd = pos + 1 + lTbs.bytes + lTbs.length;
+        var tbsStart = pos;
+        pos += 1 + lTbs.bytes;
+
+        var result = {};
+
+        // Version [0] EXPLICIT INTEGER (optional)
+        if (view.getUint8(pos) === 0xA0) {
+          var lVer = readLength(view, pos + 1);
+          var verInner = pos + 1 + lVer.bytes;
+          if (view.getUint8(verInner) === 0x02) {
+            var lVerInt = readLength(view, verInner + 1);
+            var verVal = view.getUint8(verInner + 1 + lVerInt.bytes);
+            result.version = 'V' + (verVal + 1);
+          }
+          pos += 1 + lVer.bytes + lVer.length;
+        } else {
+          result.version = 'V1';
+        }
+
+        // Serial Number INTEGER
+        if (view.getUint8(pos) !== 0x02) throw new Error('Expected Serial Number INTEGER');
+        var lSer = readLength(view, pos + 1);
+        var serStart = pos + 1 + lSer.bytes;
+        var serEnd = serStart + lSer.length;
+        result.serialNumber = formatSerial(view, serStart, serEnd);
+        pos = serEnd;
+
+        // Signature Algorithm SEQUENCE
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected Signature Algorithm SEQUENCE');
+        var lSigAlg = readLength(view, pos + 1);
+        var sigAlgEnd = pos + 1 + lSigAlg.bytes + lSigAlg.length;
+        pos += 1 + lSigAlg.bytes;
+        // OID
+        if (view.getUint8(pos) !== 0x06) throw new Error('Expected OID in SignatureAlgorithm');
+        var lOidSig = readLength(view, pos + 1);
+        var sigOid = parseOID(view, pos + 1 + lOidSig.bytes, pos + 1 + lOidSig.bytes + lOidSig.length);
+        result.signatureAlgorithm = SIG_ALG_NAMES[sigOid] || OID_MAP[sigOid] || sigOid;
+        pos = sigAlgEnd;
+
+        // Issuer
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected Issuer SEQUENCE');
+        var lIss = readLength(view, pos + 1);
+        var issStart = pos + 1 + lIss.bytes;
+        var issEnd = issStart + lIss.length;
+        result.issuer = parseDN(view, issStart, issEnd);
+        pos = issEnd;
+
+        // Validity SEQUENCE
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected Validity SEQUENCE');
+        var lVal = readLength(view, pos + 1);
+        var valEnd = pos + 1 + lVal.bytes + lVal.length;
+        pos += 1 + lVal.bytes;
+        // notBefore (UTCTime 0x17 or GeneralizedTime 0x18)
+        var tagNB = view.getUint8(pos);
+        var lNB = readLength(view, pos + 1);
+        result.validFrom = decodeTime(view, pos + 1 + lNB.bytes, pos + 1 + lNB.bytes + lNB.length, tagNB);
+        pos += 1 + lNB.bytes + lNB.length;
+        // notAfter
+        var tagNA = view.getUint8(pos);
+        var lNA = readLength(view, pos + 1);
+        result.validTo = decodeTime(view, pos + 1 + lNA.bytes, pos + 1 + lNA.bytes + lNA.length, tagNA);
+        pos += 1 + lNA.bytes + lNA.length;
+        // Skip remaining validity bytes
+        pos = valEnd;
+
+        // Subject
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected Subject SEQUENCE');
+        var lSub = readLength(view, pos + 1);
+        var subStart = pos + 1 + lSub.bytes;
+        var subEnd = subStart + lSub.length;
+        result.subject = parseDN(view, subStart, subEnd);
+        pos = subEnd;
+
+        // SubjectPublicKeyInfo
+        if (view.getUint8(pos) !== 0x30) throw new Error('Expected SubjectPublicKeyInfo SEQUENCE');
+        var lPk = readLength(view, pos + 1);
+        var pkEnd = pos + 1 + lPk.bytes + lPk.length;
+        var pkResult = parsePublicKey(view, pos, pkEnd);
+        result.publicKey = pkResult;
+        pos = pkEnd;
+
+        // Extensions [3] EXPLICIT (optional)
+        if (pos < tbsEnd && view.getUint8(pos) === 0xA3) {
+          var lExt = readLength(view, pos + 1);
+          var extContentStart = pos + 1 + lExt.bytes;
+          var extContentEnd = extContentStart + lExt.length;
+          // Inner SEQUENCE of extensions
+          pos = extContentStart;
+          if (view.getUint8(pos) === 0x30) {
+            var lExtSeq = readLength(view, pos + 1);
+            var extSeqEnd = pos + 1 + lExtSeq.bytes + lExtSeq.length;
+            pos += 1 + lExtSeq.bytes;
+            result.extensions = parseExtensions(view, pos, extSeqEnd);
+          }
+        }
+
+        return result;
+      }
+
+      /* ── Utility ── */
+      function pemToDer(pem) {
+        var b64 = pem
+          .replace(/-----BEGIN [A-Z ]+-----/g, '')
+          .replace(/-----END [A-Z ]+-----/g, '')
+          .replace(/\s/g, '');
+        var binary = atob(b64);
+        var buf = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
+        return buf.buffer;
+      }
+
+      function hexEncode(buf) {
+        var b = new Uint8Array(buf);
+        var hex = '';
+        for (var i = 0; i < b.length; i++) {
+          hex += ('0' + b[i].toString(16)).slice(-2);
+          if (i < b.length - 1 && (i + 1) % 2 === 0) hex += ':';
+        }
+        return hex.toUpperCase();
+      }
+
+      function showStatus(msg, ok) {
+        decodeStatus.textContent = msg;
+        decodeStatus.className = 'rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+        decodeStatus.classList.remove('hidden');
+      }
+
+      function hideStatus() {
+        decodeStatus.classList.add('hidden');
+      }
+
+      function setLoading(loading) {
+        decodeBtn.disabled = loading;
+        decodeBtn.textContent = loading ? 'Decoding...' : 'Decode Certificate';
+      }
+
+      async function decodeCertificate() {
+        hideStatus();
+        results.classList.add('hidden');
+        var pem = pemInput.value.trim();
+        if (!pem) {
+          showStatus('Paste a PEM certificate first.', false);
+          return;
+        }
+        if (pem.indexOf('-----BEGIN CERTIFICATE-----') === -1) {
+          showStatus('Invalid PEM format — expected "-----BEGIN CERTIFICATE-----" header.', false);
+          return;
+        }
+        setLoading(true);
+
+        try {
+          var der = pemToDer(pem);
+          var info = parseDER(der);
+
+          // Fingerprint
+          var hash = await crypto.subtle.digest('SHA-256', der);
+          var fp = hexEncode(hash);
+
+          // SPKI fingerprint
+          var spkiHash = null;
+          try {
+            var tmpDer = pemToDer(pem);
+            var tmpInfo = parseDER(tmpDer);
+            // Extract the BIT STRING of subjectPublicKeyInfo
+            // Re-parse just the SPKI portion
+            var tmpView = new DataView(tmpDer);
+            var tmpPos = 0;
+            if (tmpView.getUint8(tmpPos) !== 0x30) throw new Error('Not DER');
+            var l1 = readLength(tmpView, tmpPos + 1);
+            tmpPos += 1 + l1.bytes + l1.length; // past outer
+            if (tmpView.getUint8(tmpPos) !== 0x30) throw new Error('No TBS');
+            var l2 = readLength(tmpView, tmpPos + 1);
+            tmpPos += 1 + l2.bytes; // TBS start
+            // Skip version, serial, sigAlg, issuer, validity, subject
+            var tbsEnd = tmpPos + l2.length;
+            // Search for SPKI SEQUENCE (0x30) that starts the SubjectPublicKeyInfo
+            // We know it comes after subject DN. Subject DN ends at a known point.
+            // Simpler: just scan for the SPKI marker
+            // Actually, let's do it properly: compute position from known offsets
+            // Re-parse using the function we already have
+            var spkiPos = 0;
+            var spkiLen = 0;
+            // We need to find the offset and length of the SPKI in the DER
+            // Let's just compute it differently
+
+            // Actually, let's just extract the raw SPKI from the DER
+            // We know it's after subject and before extensions
+            // Let's re-parse and track position
+            function findSPKI(buf) {
+              var v = new DataView(buf);
+              var p = 0;
+              if (v.getUint8(p) !== 0x30) return null;
+              var lc = readLength(v, p + 1);
+              p += 1 + lc.bytes;
+              if (v.getUint8(p) !== 0x30) return null;
+              var lt = readLength(v, p + 1);
+              p += 1 + lt.bytes;
+              // skip version
+              if (v.getUint8(p) === 0xA0) { var lv = readLength(v, p + 1); p += 1 + lv.bytes + lv.length; }
+              if (v.getUint8(p) !== 0x02) return null; // serial
+              var ls = readLength(v, p + 1);
+              p += 1 + ls.bytes + ls.length;
+              if (v.getUint8(p) !== 0x30) return null; // sig alg
+              var lsa = readLength(v, p + 1);
+              p += 1 + lsa.bytes + lsa.length;
+              if (v.getUint8(p) !== 0x30) return null; // issuer
+              var li = readLength(v, p + 1);
+              p += 1 + li.bytes + li.length;
+              if (v.getUint8(p) !== 0x30) return null; // validity
+              var lv2 = readLength(v, p + 1);
+              p += 1 + lv2.bytes + lv2.length;
+              if (v.getUint8(p) !== 0x30) return null; // subject
+              var lsub = readLength(v, p + 1);
+              p += 1 + lsub.bytes + lsub.length;
+              // Now at SPKI
+              if (v.getUint8(p) !== 0x30) return null;
+              var lspki = readLength(v, p + 1);
+              var spkiEnd = p + 1 + lspki.bytes + lspki.length;
+              return buf.slice(p, spkiEnd);
+            }
+
+            var spkiRaw = findSPKI(tmpDer);
+            if (spkiRaw) {
+              var spkiHashBuf = await crypto.subtle.digest('SHA-256', spkiRaw);
+              spkiHash = hexEncode(spkiHashBuf);
+            }
+          } catch (e) {
+            spkiHash = null;
+          }
+
+          // Populate fields
+          $('field-subject').textContent = info.subject || 'N/A';
+          $('field-issuer').textContent = info.issuer || 'N/A';
+          $('field-serial').textContent = info.serialNumber || 'N/A';
+          $('field-version').textContent = info.version || 'N/A';
+          $('field-valid-from').textContent = info.validFrom || 'N/A';
+          $('field-valid-to').textContent = info.validTo || 'N/A';
+          $('field-sig-alg').textContent = info.signatureAlgorithm || 'N/A';
+          $('field-fingerprint').textContent = fp;
+          $('field-pubkey-alg').textContent = info.publicKey ? info.publicKey.algorithm : 'N/A';
+          $('field-pubkey-size').textContent = info.publicKey && info.publicKey.keySize ? info.publicKey.keySize + ' bits' : 'N/A';
+          $('field-spki-fingerprint').textContent = spkiHash || 'N/A';
+
+          // Expiry badge
+          var expiryBadge = $('expiry-badge');
+          if (info.validTo && info.validTo !== 'N/A') {
+            var parsed = Date.parse(info.validTo);
+            if (!isNaN(parsed)) {
+              var now = Date.now();
+              if (parsed < now) {
+                expiryBadge.textContent = 'Expired';
+                expiryBadge.className = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700';
+              } else {
+                var daysLeft = Math.floor((parsed - now) / 86400000);
+                if (daysLeft <= 30) {
+                  expiryBadge.textContent = daysLeft + ' days';
+                  expiryBadge.className = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700';
+                } else {
+                  expiryBadge.textContent = 'Valid';
+                  expiryBadge.className = 'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700';
+                }
+              }
+            } else {
+              expiryBadge.textContent = '';
+              expiryBadge.className = 'hidden';
+            }
+          } else {
+            expiryBadge.textContent = '';
+            expiryBadge.className = 'hidden';
+          }
+
+          // SANs
+          var sanContainer = $('field-sans');
+          sanContainer.innerHTML = '';
+          if (info.extensions && info.extensions.sans && info.extensions.sans.length) {
+            info.extensions.sans.forEach(function (san) {
+              var span = document.createElement('span');
+              span.className = 'mr-1.5 mb-1.5 inline-block rounded-md bg-indigo-50 px-2 py-0.5 font-mono text-xs text-indigo-700';
+              span.textContent = san;
+              sanContainer.appendChild(span);
+            });
+          } else {
+            sanContainer.textContent = 'N/A';
+            sanContainer.className = 'text-sm text-slate-500';
+          }
+
+          $('field-basic-constraints').textContent = info.extensions && info.extensions.basicConstraints ? info.extensions.basicConstraints : 'N/A';
+          $('field-key-usage').textContent = info.extensions && info.extensions.keyUsage && info.extensions.keyUsage.length ? info.extensions.keyUsage.join(', ') : 'N/A';
+          $('field-ext-key-usage').textContent = info.extensions && info.extensions.extKeyUsage && info.extensions.extKeyUsage.length ? info.extensions.extKeyUsage.join(', ') : 'N/A';
+
+          results.classList.remove('hidden');
+          showStatus('Certificate decoded successfully', true);
+        } catch (err) {
+          showStatus('Error decoding certificate: ' + err.message, false);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      decodeBtn.addEventListener('click', decodeCertificate);
+    })();
+  </script>
+</ToolLayout>

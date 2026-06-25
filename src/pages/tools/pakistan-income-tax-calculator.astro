@@ -1,0 +1,356 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Pakistan Income Tax Calculator';
+const description = 'Calculate Pakistani income tax on salary using the latest tax slabs.';
+const intro = 'Calculate Pakistani income tax on salary using the latest tax slabs.';
+const category = { id: 'finance', name: 'Finance Tools' };
+const faqs = [
+  { q: 'How is Pakistani income tax calculated on salary?', a: 'Pakistan uses a progressive tax system with slabs. Only the portion of your income falling within each slab is taxed at that slab\'s rate. The calculator applies these slabs in order: 0% up to PKR 600,000, then 5%, 15%, 25%, 30%, and 35% for income above PKR 4,100,000.' },
+  { q: 'What is the difference between gross salary and taxable income?', a: 'Gross salary is your total annual pay before any deductions. Taxable income is gross salary minus allowable deductions such as Zakat, WPPF, and other exemptions. This calculator estimates tax on your gross salary — your actual taxable income may be lower after deductions.' },
+  { q: 'Are these tax rates for salaried individuals only?', a: 'Yes, these slabs apply to salaried individuals in Pakistan for FY 2025-26. Business owners, freelancers, and AOPs have different tax regimes. Freelancers may want to use our Freelancer Tax Calculator instead.' },
+  { q: 'Does the calculator account for Zakat and other deductions?', a: 'No, the calculator estimates tax on gross salary only. Zakat at 2.5% of certain assets and other deductions like WPPF or provident fund contributions can reduce your taxable income. Consult a tax advisor for a complete picture.' },
+  { q: 'What is the effective tax rate?', a: 'Your effective tax rate is the total tax divided by your gross salary, expressed as a percentage. It is always lower than your highest marginal tax bracket because portions of your income are taxed at lower rates.' },
+  { q: 'How does the monthly breakdown work?', a: 'The monthly breakdown divides your annual figures by 12 to give you an approximate monthly view. Note that actual monthly tax may vary if your employer withholds tax differently due to bonus payments or other adjustments.' },
+  { q: 'Do I need to file a tax return in Pakistan?', a: 'If your taxable income exceeds PKR 600,000 in a tax year, you are required to file an income tax return. Filing is also required if you meet certain other criteria such as owning a vehicle, having a bank account above a threshold, or being a salaried individual with multiple employers.' },
+  { q: 'What happens if I have more than one source of salary income?', a: 'Income from multiple employers must be combined for tax purposes. Your total salary from all sources determines your tax bracket. Each employer typically withholds tax separately, so you may need to pay additional tax when filing your return.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Annual gross salary (PKR)</span>
+      <input id="salary" type="number" min="0" step="1000" placeholder="e.g. 1500000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    </label>
+    <button id="calcBtn" class="mt-5 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Gross salary</div>
+          <div id="r-gross" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-rose-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Total tax</div>
+          <div id="r-tax" class="mt-1 text-lg font-bold text-rose-700">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Net take-home</div>
+          <div id="r-net" class="mt-1 text-lg font-bold text-emerald-700">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+          <div class="text-sm opacity-80">Effective rate</div>
+          <div id="r-rate" class="mt-1 text-lg font-bold">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-semibold text-slate-700">Monthly breakdown</h3>
+        <div class="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
+          <div>
+            <div class="text-slate-400">Gross / month</div>
+            <div id="r-mgross" class="font-semibold text-slate-800">&mdash;</div>
+          </div>
+          <div>
+            <div class="text-slate-400">Tax / month</div>
+            <div id="r-mtax" class="font-semibold text-rose-600">&mdash;</div>
+          </div>
+          <div>
+            <div class="text-slate-400">Net / month</div>
+            <div id="r-mnet" class="font-semibold text-emerald-600">&mdash;</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="r-breakdown" class="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"></div>
+    </div>
+
+    <p id="warn" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></p>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="340" viewBox="0 0 800 340" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pakistan income tax slab structure diagram">
+      <title>Pakistan income tax slabs for FY 2025-26</title>
+      <desc>Diagram showing six progressive tax slabs: 0% up to 600,000, 5% from 600,001 to 1,200,000, 15% from 1,200,001 to 2,200,000, 25% from 2,200,001 to 3,200,000, 30% from 3,200,001 to 4,100,000, and 35% above 4,100,000.</desc>
+      <defs>
+        <linearGradient id="g0" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d1fae5"/><stop offset="1" stop-color="#a7f3d0"/></linearGradient>
+        <linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fef3c7"/><stop offset="1" stop-color="#fde68a"/></linearGradient>
+        <linearGradient id="g15" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fed7aa"/><stop offset="1" stop-color="#fdba74"/></linearGradient>
+        <linearGradient id="g25" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fecaca"/><stop offset="1" stop-color="#fca5a5"/></linearGradient>
+        <linearGradient id="g30" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fca5a5"/><stop offset="1" stop-color="#f87171"/></linearGradient>
+        <linearGradient id="g35" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f87171"/><stop offset="1" stop-color="#ef4444"/></linearGradient>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#94a3b8"/></marker>
+      </defs>
+      <rect x="40" y="20" width="720" height="50" rx="8" fill="url(#g0)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="80" y="45" font-family="system-ui,sans-serif" font-size="14" font-weight="700" fill="#065f46">Up to PKR 600,000</text>
+      <text x="80" y="60" font-family="system-ui,sans-serif" font-size="12" fill="#047857">0% tax &mdash; no tax on first 600,000</text>
+      <rect x="40" y="80" width="720" height="38" rx="8" fill="url(#g5)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="80" y="102" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#92400e">PKR 600,001 &ndash; 1,200,000</text>
+      <text x="400" y="102" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#b45309">5%</text>
+      <rect x="40" y="126" width="720" height="38" rx="8" fill="url(#g15)" stroke="#f97316" stroke-width="1.5"/>
+      <text x="80" y="148" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#7c2d12">PKR 1,200,001 &ndash; 2,200,000</text>
+      <text x="400" y="148" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#9a3412">15%</text>
+      <rect x="40" y="172" width="720" height="38" rx="8" fill="url(#g25)" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="80" y="194" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#7f1d1d">PKR 2,200,001 &ndash; 3,200,000</text>
+      <text x="400" y="194" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#991b1b">25%</text>
+      <rect x="40" y="218" width="720" height="38" rx="8" fill="url(#g30)" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="80" y="240" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#7f1d1d">PKR 3,200,001 &ndash; 4,100,000</text>
+      <text x="400" y="240" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#991b1b">30%</text>
+      <rect x="40" y="264" width="720" height="38" rx="8" fill="url(#g35)" stroke="#b91c1c" stroke-width="1.5"/>
+      <text x="80" y="286" font-family="system-ui,sans-serif" font-size="13" font-weight="700" fill="#450a0a">Above PKR 4,100,000</text>
+      <text x="400" y="286" font-family="system-ui,sans-serif" font-size="13" font-weight="600" fill="#7f1d1d">35%</text>
+      <line x1="40" y1="318" x2="760" y2="318" stroke="#cbd5e1" stroke-width="1"/>
+      <text x="400" y="335" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#64748b">Each slab applies only to the portion of income within its range &mdash; progressive taxation</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Pakistan income tax slabs for salaried individuals &mdash; FY 2025-26</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Pakistan income tax is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      Pakistan uses a <strong>progressive income tax system</strong> for salaried individuals. This means your income is divided into slices (slabs), and each slice is taxed at its own rate. You do not pay the highest rate on your entire salary — only on the portion that falls within the highest bracket you reach.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For example, if you earn PKR 3,000,000 per year:
+    </p>
+    <ul class="mt-3 space-y-1 text-sm text-slate-600">
+      <li class="flex gap-2"><span class="mt-0.5 h-5 w-5 shrink-0 rounded bg-emerald-100 text-center text-xs font-bold leading-5 text-emerald-700">1</span>First PKR 600,000 at <strong>0%</strong> &mdash; tax: <strong>PKR 0</strong></li>
+      <li class="flex gap-2"><span class="mt-0.5 h-5 w-5 shrink-0 rounded bg-amber-100 text-center text-xs font-bold leading-5 text-amber-700">2</span>Next PKR 600,000 at <strong>5%</strong> &mdash; tax: <strong>PKR 30,000</strong></li>
+      <li class="flex gap-2"><span class="mt-0.5 h-5 w-5 shrink-0 rounded bg-orange-100 text-center text-xs font-bold leading-5 text-orange-700">3</span>Next PKR 1,000,000 at <strong>15%</strong> &mdash; tax: <strong>PKR 150,000</strong></li>
+      <li class="flex gap-2"><span class="mt-0.5 h-5 w-5 shrink-0 rounded bg-red-100 text-center text-xs font-bold leading-5 text-red-700">4</span>Remaining PKR 800,000 at <strong>25%</strong> &mdash; tax: <strong>PKR 200,000</strong></li>
+    </ul>
+    <div class="mt-3 rounded-xl bg-slate-50 p-4 text-sm">
+      <span class="font-semibold text-slate-700">Total tax:</span> <span class="text-slate-600">PKR 0 + 30,000 + 150,000 + 200,000 = </span><strong class="text-rose-700">PKR 380,000</strong>
+      <br />
+      <span class="font-semibold text-slate-700">Effective rate:</span> <span class="text-slate-600">380,000 &divide; 3,000,000 = </span><strong class="text-slate-800">12.67%</strong>
+      <br />
+      <span class="font-semibold text-slate-700">Net take-home:</span> <span class="text-slate-600">3,000,000 &minus; 380,000 = </span><strong class="text-emerald-700">PKR 2,620,000</strong>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Pakistan tax slabs &mdash; FY 2025-26</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500">
+          <tr>
+            <th class="p-3">Taxable income range (PKR)</th>
+            <th class="p-3">Rate</th>
+            <th class="p-3">Max tax in slab</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr class="bg-emerald-50/50"><td class="p-3 font-medium">Up to 600,000</td><td class="p-3">0%</td><td class="p-3">PKR 0</td></tr>
+          <tr class="bg-amber-50/50"><td class="p-3 font-medium">600,001 &ndash; 1,200,000</td><td class="p-3">5%</td><td class="p-3">PKR 30,000</td></tr>
+          <tr class="bg-orange-50/50"><td class="p-3 font-medium">1,200,001 &ndash; 2,200,000</td><td class="p-3">15%</td><td class="p-3">PKR 150,000</td></tr>
+          <tr class="bg-red-50/50"><td class="p-3 font-medium">2,200,001 &ndash; 3,200,000</td><td class="p-3">25%</td><td class="p-3">PKR 250,000</td></tr>
+          <tr class="bg-red-100/50"><td class="p-3 font-medium">3,200,001 &ndash; 4,100,000</td><td class="p-3">30%</td><td class="p-3">PKR 270,000</td></tr>
+          <tr class="bg-red-200/50"><td class="p-3 font-medium">Above 4,100,000</td><td class="p-3">35%</td><td class="p-3">Unlimited</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Maximum tax in each slab assumes your income reaches the top of that bracket. The 35% slab has no upper limit.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4B0;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salary planning</h3>
+        <p class="mt-1 text-sm text-slate-600">When negotiating a salary raise or considering a new job, use this calculator to understand how much of your increased income will go to tax. Because Pakistan uses progressive slabs, a raise may push part of your income into a higher bracket. Knowing your effective tax rate helps you evaluate the real value of a salary increase.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4CB;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Job offer comparison</h3>
+        <p class="mt-1 text-sm text-slate-600">Comparing two job offers with different salaries? Run each through this calculator to see the net take-home pay after tax rather than comparing gross salaries alone. A job with a higher gross salary may have a disproportionately higher tax bill, narrowing the gap. Factor in other benefits like medical allowance, provident fund, and bonuses for a complete comparison.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4C4;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Tax filing preparation</h3>
+        <p class="mt-1 text-sm text-slate-600">Before filing your annual income tax return, use this calculator to estimate your tax liability. Compare the result with the tax already withheld by your employer (deducted at source). If your employer withheld more than necessary, you may be due a refund. If they withheld less, be prepared to pay the difference when you file your return.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4B8;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Monthly budgeting</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the monthly breakdown from this calculator to plan your monthly budget. Your monthly net salary is your gross monthly salary minus the monthly tax. This gives you a realistic number to work with when setting aside money for rent, utilities, savings, and discretionary spending. Adjust your budget as your salary changes throughout the year.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reducing your tax liability in Pakistan</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Claim all eligible deductions</h3>
+        <p class="mt-1 text-sm text-slate-600">Several deductions and exemptions are available to salaried individuals in Pakistan. Zakat paid during the year is deductible from your taxable income. Contributions to approved provident funds, pension funds, and group insurance premiums may also qualify for deductions. If you have taken a loan for a house or for education, the markup (interest) paid may be deductible under certain conditions.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider tax-advantaged investments</h3>
+        <p class="mt-1 text-sm text-slate-600">Investments in certain instruments approved by the tax authorities can reduce your taxable income. These include contributions to the Employees Provident Fund (EPF), Voluntary Pension System (VPS), and approved life insurance policies. The collective limit for these deductions is generally up to a specified percentage of your taxable income. Review the current limits with a tax advisor before investing.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand your tax certificate</h3>
+        <p class="mt-1 text-sm text-slate-600">Your employer issues an annual tax certificate (Form 16 or equivalent) showing your gross salary, deductions, and tax withheld. Always verify this certificate against your own records. Discrepancies between the certificate and your actual income or deductions can lead to incorrect tax filing. If you notice an error, ask your payroll department for a corrected certificate before filing your return.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">File your return on time</h3>
+        <p class="mt-1 text-sm text-slate-600">Filing your income tax return by the due date (typically September 30 for individuals) avoids late-filing penalties and keeps you compliant with the tax authorities. Late filing can result in a penalty of up to PKR 20,000 for salaried individuals, and may also prevent you from opening bank accounts, purchasing property, or registering a vehicle above a certain value.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consult a qualified tax advisor</h3>
+        <p class="mt-1 text-sm text-slate-600">Tax laws in Pakistan change frequently, and individual circumstances vary widely. While this calculator provides a useful estimate, it does not account for all deductions, exemptions, and credits that may apply to your situation. Always consult with a qualified tax advisor or chartered accountant for personalized tax planning and filing assistance.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding progressive taxation in Pakistan</h2>
+    <p class="mt-2 text-slate-600">
+      Pakistan's income tax system is designed so that individuals with higher incomes pay a larger percentage of their income in tax. This is achieved through progressive tax brackets. The concept is straightforward: the first PKR 600,000 of your income is tax-free. Beyond that, each successive bracket applies a higher rate, but only to the income that falls within that bracket.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This system prevents the common misconception that a raise could leave you with less take-home pay. Because only the portion of income within a higher bracket is taxed at that rate, your total after-tax income always increases when your gross salary increases. However, the rate of increase slows as you enter higher brackets — which is why knowing your effective tax rate is useful.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The effective tax rate is the average rate you pay across all your income. It is calculated as total tax divided by total income. Your marginal tax rate is the rate applied to your next rupee of income — the highest bracket you fall into. Understanding the difference between these two rates is key to making informed financial decisions, especially when considering additional income sources or negotiating salary increases.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Quick examples across salary levels</h3>
+      <div class="mt-2 grid gap-3 text-sm sm:grid-cols-3">
+        <div class="rounded-lg bg-white p-3">
+          <div class="font-semibold text-slate-700">PKR 900,000/year</div>
+          <div class="mt-1 text-slate-600">Tax-free: 600,000<br />5% slab: 300,000 &times; 5% = 15,000</div>
+          <div class="mt-1 font-medium text-rose-700">Total tax: PKR 15,000</div>
+          <div class="font-medium text-emerald-700">Effective: 1.67%</div>
+        </div>
+        <div class="rounded-lg bg-white p-3">
+          <div class="font-semibold text-slate-700">PKR 3,000,000/year</div>
+          <div class="mt-1 text-slate-600">Tax-free: 600,000<br />5%: 30,000 | 15%: 150,000<br />25% on remaining 800,000: 200,000</div>
+          <div class="mt-1 font-medium text-rose-700">Total tax: PKR 380,000</div>
+          <div class="font-medium text-emerald-700">Effective: 12.67%</div>
+        </div>
+        <div class="rounded-lg bg-white p-3">
+          <div class="font-semibold text-slate-700">PKR 6,000,000/year</div>
+          <div class="mt-1 text-slate-600">Tax-free: 600,000<br />5%: 30,000 | 15%: 150,000<br />25%: 250,000 | 30%: 270,000<br />35% on remaining 1,900,000: 665,000</div>
+          <div class="mt-1 font-medium text-rose-700">Total tax: PKR 1,365,000</div>
+          <div class="font-medium text-emerald-700">Effective: 22.75%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#x1F4B0;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Convert between hourly, daily, weekly, monthly, and yearly pay.</p>
+      </a>
+      <a href="/tools/freelancer-tax-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#x1F9D1;&#x200D;&#x1F4BB;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelancer Tax Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Estimate tax for self-employed and freelance income.</p>
+      </a>
+      <a href="/tools/budget-planner" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#x1F4CA;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Budget Planner</h3>
+        <p class="mt-1 text-xs text-slate-500">Plan your monthly budget and track your spending.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      const el = (id) => document.getElementById(id);
+      const fmt = (n) => 'PKR ' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+      function calcProgressiveTax(income) {
+        var tax = 0;
+        if (income > 4100000) {
+          tax += (income - 4100000) * 0.35;
+          income = 4100000;
+        }
+        if (income > 3200000) {
+          tax += (income - 3200000) * 0.30;
+          income = 3200000;
+        }
+        if (income > 2200000) {
+          tax += (income - 2200000) * 0.25;
+          income = 2200000;
+        }
+        if (income > 1200000) {
+          tax += (income - 1200000) * 0.15;
+          income = 1200000;
+        }
+        if (income > 600000) {
+          tax += (income - 600000) * 0.05;
+          income = 600000;
+        }
+        return tax;
+      }
+
+      function calculate() {
+        var warnEl = el('warn');
+        warnEl.classList.add('hidden');
+
+        var gross = parseFloat(el('salary').value);
+
+        if (isNaN(gross) || gross < 0) {
+          el('result').classList.add('hidden');
+          return;
+        }
+
+        if (gross === 0) {
+          el('result').classList.add('hidden');
+          return;
+        }
+
+        var totalTax = calcProgressiveTax(gross);
+        var net = gross - totalTax;
+        var effRate = (totalTax / gross) * 100;
+
+        el('r-gross').textContent = fmt(gross);
+        el('r-tax').textContent = fmt(totalTax);
+        el('r-net').textContent = fmt(net);
+        el('r-rate').textContent = effRate.toFixed(2) + '%';
+
+        el('r-mgross').textContent = fmt(gross / 12);
+        el('r-mtax').textContent = fmt(totalTax / 12);
+        el('r-mnet').textContent = fmt(net / 12);
+
+        var parts = [];
+        var remaining = gross;
+        var brackets = [
+          { label: 'Up to 600,000', rate: 0, start: 0, end: 600000 },
+          { label: '600,001 – 1,200,000', rate: 5, start: 600000, end: 1200000 },
+          { label: '1,200,001 – 2,200,000', rate: 15, start: 1200000, end: 2200000 },
+          { label: '2,200,001 – 3,200,000', rate: 25, start: 2200000, end: 3200000 },
+          { label: '3,200,001 – 4,100,000', rate: 30, start: 3200000, end: 4100000 },
+          { label: 'Above 4,100,000', rate: 35, start: 4100000, end: Infinity },
+        ];
+
+        for (var i = 0; i < brackets.length; i++) {
+          var b = brackets[i];
+          if (remaining <= 0) break;
+          var slice = Math.min(remaining, b.end - b.start);
+          if (slice > 0) {
+            var sliceTax = b.rate > 0 ? slice * (b.rate / 100) : 0;
+            parts.push(b.label + ': ' + fmt(slice) + ' &times; ' + b.rate + '% = ' + fmt(sliceTax));
+            remaining -= slice;
+          }
+        }
+
+        el('r-breakdown').innerHTML = '<span class="font-semibold">Tax breakdown:</span> ' + parts.join(' | ');
+        el('result').classList.remove('hidden');
+      }
+
+      el('calcBtn').addEventListener('click', calculate);
+      el('salary').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') calculate();
+      });
+    });
+  </script>
+</ToolLayout>

@@ -1,0 +1,420 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Favicon Generator';
+const description = 'Generate favicon files in all required sizes from any image — all in your browser.';
+const intro = 'Generate favicon files in all required sizes from any image.';
+const category = { id: 'creators', name: 'Creators' };
+const faqs = [
+  {
+    q: 'What favicon sizes do I need for my website?',
+    a: 'At minimum you should provide 16×16, 32×32, and 48×48 for browser tabs and bookmarks. For modern web apps, also include 192×192 and 512×512 for Progressive Web App (PWA) support, 128×128 for the Chrome Web Store, and 64×64 for Safari. This tool generates all seven sizes at once.',
+  },
+  {
+    q: 'What format should my favicon be?',
+    a: 'PNG is the most widely supported format for favicons across all modern browsers. The older ICO format can hold multiple sizes in one file but is no longer necessary. SVG favicons are supported in some browsers but not universally. PNG gives you the best compatibility.',
+  },
+  {
+    q: 'Can I use any image for a favicon?',
+    a: 'Yes, any square PNG or JPG image works. For the best results, start with a high-resolution square image at least 512×512 pixels so the smaller sizes have enough source data to downsample cleanly. Non-square images will be stretched to fit the square canvas.',
+  },
+  {
+    q: 'Why do I need so many different sizes?',
+    a: 'Different parts of the operating system and browser request different favicon sizes. Browser tabs use 16×16 or 32×32, bookmarks use 32×32, the Windows taskbar uses 32×32, Safari uses 64×64, iOS home screen uses a large icon, and Android PWAs require 192×192 and 512×512 for splash screens. Providing all sizes ensures your icon looks crisp everywhere.',
+  },
+  {
+    q: 'Do favicons help with SEO?',
+    a: 'Indirectly, yes. A recognizable favicon helps users identify your website tab among many open tabs, increasing return visits. Google displays favicons next to search results, which can improve click-through rates. Having proper favicons across all platforms contributes to a professional, trustworthy appearance.',
+  },
+  {
+    q: 'Where do I put favicon files on my server?',
+    a: 'Place the favicon files in your website root or an assets directory. Reference them in your HTML &lt;head&gt; using &lt;link&gt; tags with the correct sizes attribute. Most browsers will also automatically request /favicon.ico from your root, so you may want to place a 32×32 favicon there as well.',
+  },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input
+      id="fileInput"
+      type="file"
+      accept="image/png,image/jpeg"
+      class="block w-full cursor-pointer rounded-lg border border-slate-300 p-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+    />
+
+    <button
+      id="generateBtn"
+      disabled
+      class="mt-4 w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Generate Favicons
+    </button>
+
+    <div id="status" class="mt-3 hidden text-center text-sm text-slate-500"></div>
+
+    <div id="results" class="mt-6 hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-slate-900">Generated favicons</h3>
+        <button id="downloadAllBtn" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+          Download All as ZIP
+        </button>
+      </div>
+      <div id="previews" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"></div>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="text-sm font-semibold text-slate-900">HTML tags to add to your site</h3>
+        <p class="mt-1 text-xs text-slate-500">Copy and paste these into your &lt;head&gt; section.</p>
+        <div id="htmlTags" class="mt-3 space-y-1.5"></div>
+        <button id="copyAllTagsBtn" class="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100">
+          Copy All HTML Tags
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SVG diagram -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How favicon sizes work</h2>
+    <p class="mt-2 text-slate-600">Different platforms and contexts request different favicon sizes. Starting from one high-resolution source image, favicon generators create multiple scaled versions so your icon looks sharp everywhere — from a tiny browser tab to a full-screen mobile splash screen.</p>
+
+    <div class="mt-6 flex justify-center">
+      <svg viewBox="0 0 700 175" class="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4" xmlns="http://www.w3.org/2000/svg">
+        <text x="350" y="18" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b" font-family="sans-serif">Favicon sizes generated from one source image</text>
+
+        <rect x="8" y="48" width="30" height="30" rx="4" fill="#6366f1" opacity="0.15" stroke="#6366f1" stroke-width="1.5" />
+        <text x="23" y="70" text-anchor="middle" font-size="7" fill="#6366f1" font-family="sans-serif">Src</text>
+        <line x1="42" y1="63" x2="62" y2="63" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#a)" />
+
+        <rect x="66" y="28" width="60" height="60" rx="4" fill="#6366f1" opacity="0.1" stroke="#6366f1" stroke-width="1.5" />
+        <text x="96" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">512&#215;512</text>
+        <text x="96" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">PWA / Android</text>
+
+        <rect x="141" y="38" width="46" height="46" rx="3" fill="#818cf8" opacity="0.15" stroke="#818cf8" stroke-width="1.5" />
+        <text x="164" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">192&#215;192</text>
+        <text x="164" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">Android icon</text>
+
+        <rect x="202" y="46" width="36" height="36" rx="3" fill="#a5b4fc" opacity="0.2" stroke="#a5b4fc" stroke-width="1.5" />
+        <text x="220" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">128&#215;128</text>
+        <text x="220" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">Chrome Store</text>
+
+        <rect x="253" y="54" width="28" height="28" rx="3" fill="#c7d2fe" opacity="0.3" stroke="#c7d2fe" stroke-width="1.5" />
+        <text x="267" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">64&#215;64</text>
+        <text x="267" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">Safari</text>
+
+        <rect x="296" y="59" width="22" height="22" rx="3" fill="#ddd6fe" opacity="0.4" stroke="#ddd6fe" stroke-width="1.5" />
+        <text x="307" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">48&#215;48</text>
+        <text x="307" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">IE</text>
+
+        <rect x="333" y="63" width="18" height="18" rx="3" fill="#e9d5ff" opacity="0.5" stroke="#e9d5ff" stroke-width="1.5" />
+        <text x="342" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">32&#215;32</text>
+        <text x="342" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">Bookmarks</text>
+
+        <rect x="365" y="66" width="14" height="14" rx="3" fill="#f3e8ff" opacity="0.6" stroke="#f3e8ff" stroke-width="1.5" />
+        <text x="372" y="100" text-anchor="middle" font-size="9" fill="#4f46e5" font-family="sans-serif">16&#215;16</text>
+        <text x="372" y="115" text-anchor="middle" font-size="7.5" fill="#64748b" font-family="sans-serif">Tab</text>
+
+        <defs>
+          <marker id="a" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <path d="M0,0 L6,2 L0,4" fill="#cbd5e1" />
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </section>
+
+  <!-- Different platforms section -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Different platforms use different sizes</h2>
+    <p class="mt-2 text-slate-600">There is no single favicon size that works everywhere. Each platform and context has its own preferred dimensions, and browsers request the size that best matches the display context. Understanding which size is used where helps you prioritize and debug favicon issues.</p>
+
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500">
+          <tr>
+            <th class="p-3">Size</th>
+            <th class="p-3">Used by</th>
+            <th class="p-3">Context</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">16&#215;16</td><td class="p-3">All browsers</td><td class="p-3">Browser tab icon, address bar, history</td></tr>
+          <tr><td class="p-3 font-medium">32&#215;32</td><td class="p-3">All browsers</td><td class="p-3">Bookmarks, Windows taskbar, browser tabs (HiDPI)</td></tr>
+          <tr><td class="p-3 font-medium">48&#215;48</td><td class="p-3">Internet Explorer</td><td class="p-3">Desktop shortcuts, favorites menu</td></tr>
+          <tr><td class="p-3 font-medium">64&#215;64</td><td class="p-3">Safari, Opera</td><td class="p-3">Reader view, site icons</td></tr>
+          <tr><td class="p-3 font-medium">128&#215;128</td><td class="p-3">Chrome Web Store</td><td class="p-3">Extension and app icons in the store</td></tr>
+          <tr><td class="p-3 font-medium">192&#215;192</td><td class="p-3">Android / PWA</td><td class="p-3">Home screen icon, install banner icon</td></tr>
+          <tr><td class="p-3 font-medium">512&#215;512</td><td class="p-3">PWA</td><td class="p-3">Splash screen icon, maskable icon</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Use cases -->
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F310;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Website branding</h3>
+      <p class="mt-1 text-sm text-slate-600">Your favicon is the most visible brand element in a browser. It appears in the tab bar, bookmarks, history, and address bar. A clean, recognizable favicon helps users find your site among dozens of open tabs and reinforces brand identity every time someone navigates their browser.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4F1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">PWA and mobile icons</h3>
+      <p class="mt-1 text-sm text-slate-600">Progressive Web Apps require 192&#215;192 and 512&#215;512 icons for the manifest file. These icons appear on the user's home screen, app launcher, and splash screen when the PWA starts. Without properly sized icons, your PWA will not pass the installability criteria and users cannot add it to their home screen.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4BB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Browser tabs and bookmarks</h3>
+      <p class="mt-1 text-sm text-slate-600">The 16&#215;16 and 32&#215;32 favicons are the most frequently requested by browsers. They appear in tab headers, bookmark menus, and the browser's history view. On high-DPI (Retina) displays, the 32&#215;32 size is preferred for clarity. These small sizes must be crisp and readable at a glance.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4D6;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Mobile bookmarks</h3>
+      <p class="mt-1 text-sm text-slate-600">When users bookmark your site on iOS or Android, the system uses your favicon as the bookmark thumbnail. Safari uses a 64&#215;64 icon for this purpose, while Android may use 192&#215;192. Providing the correct sizes ensures your icon does not appear as a blurry, low-resolution placeholder on mobile home screens.</p>
+    </div>
+  </section>
+
+  <!-- Deep dive -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The history of favicon sizes</h2>
+    <p class="mt-2 text-slate-600">Favicons were introduced in Internet Explorer 5 (1999) with the ICO format and a single 16&#215;16 size. The ICO format could hold multiple images in one file, and browser vendors gradually added support for larger sizes. Firefox 3 (2008) added support for 32&#215;32, and by 2010 most browsers requested 16&#215;16 and 32&#215;32 depending on the context. The shift to high-DPI displays accelerated the need for even larger favicon sizes. iOS introduced 57&#215;57 icons for the home screen in 2007 with the original iPhone. Google's launch of the Chrome Web Store in 2010 required 128&#215;128 icons. The PWA movement, starting around 2015, formalized the requirement for 192&#215;192 and 512&#215;512 icons in the web app manifest. Today, providing seven sizes (16, 32, 48, 64, 128, 192, and 512) has become the standard best practice for comprehensive favicon coverage.</p>
+  </section>
+
+  <!-- Tips -->
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for creating favicons</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Start with a square high-resolution image</h3>
+        <p class="mt-1 text-sm text-slate-600">Favicons are always square. Begin with a source image that is at least 512&#215;512 pixels and has a 1:1 aspect ratio. If your logo is not square, center it on a square canvas with padding. High source resolution ensures the downsampled versions retain sharp edges and legible details.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep it simple for small sizes</h3>
+        <p class="mt-1 text-sm text-slate-600">At 16&#215;16 pixels, you have only 256 pixels to work with. Complex logos with fine text, gradients, or multiple elements become unrecognizable at this size. Design your favicon to work at 16&#215;16 first by using bold shapes, high contrast, and minimal detail. If your full logo is complex, create a simplified favicon version.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Test on all browsers</h3>
+        <p class="mt-1 text-sm text-slate-600">Different browsers handle favicons differently. Chrome prefers PNG, Firefox uses ICO or PNG, Safari is particular about sizes, and Edge follows Chrome's lead. Test your favicons in Chrome, Firefox, Safari, and Edge at minimum. Check both light and dark browser themes, as some browsers invert favicons in dark mode.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the correct HTML markup</h3>
+        <p class="mt-1 text-sm text-slate-600">Each favicon size needs its own &lt;link&gt; tag with the <code class="font-mono text-xs">sizes</code> attribute. Place these tags in the &lt;head&gt; of your HTML. Also include a <code class="font-mono text-xs">/favicon.ico</code> file in your root for legacy browsers that automatically request it. The order of tags does not matter — browsers pick the best match.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to use -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use this favicon generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload your image</h3>
+        <p class="mt-1 text-sm text-slate-600">Select a square PNG or JPG image from your device. Higher resolution source images produce better results — aim for at least 512&#215;512 pixels.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate all sizes</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the generate button. The tool creates seven favicon sizes (16&#215;16 through 512&#215;512) using canvas drawing. Everything runs in your browser — no uploads to any server.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download and deploy</h3>
+        <p class="mt-1 text-sm text-slate-600">Download individual favicons or all as a ZIP. Copy the generated HTML tags and paste them into your site's &lt;head&gt;. Place icon files in your root or assets folder.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Related tools -->
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/youtube-thumbnail-downloader" class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700">YouTube Thumbnail Downloader</a>
+      <a href="/tools/social-media-image-size-cheat-sheet" class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700">Social Media Image Size Cheat Sheet</a>
+      <a href="/tools/image-to-png" class="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700">Image to PNG Converter</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const SIZES = [16, 32, 48, 64, 128, 192, 512];
+    let sourceDataUrl = null;
+    let generatedBlobs = {};
+    let generatedUrls = {};
+
+    const fileInput = document.getElementById('fileInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const resultsDiv = document.getElementById('results');
+    const previewsDiv = document.getElementById('previews');
+    const htmlTagsDiv = document.getElementById('htmlTags');
+    const statusDiv = document.getElementById('status');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const copyAllTagsBtn = document.getElementById('copyAllTagsBtn');
+
+    fileInput.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      generateBtn.disabled = true;
+      statusDiv.classList.add('hidden');
+      resultsDiv.classList.add('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        sourceDataUrl = ev.target.result;
+        generateBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    generateBtn.addEventListener('click', function () {
+      if (!sourceDataUrl) return;
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
+      statusDiv.classList.add('hidden');
+      resultsDiv.classList.add('hidden');
+
+      const img = new Image();
+      img.onload = function () {
+        generateAll(img);
+      };
+      img.onerror = function () {
+        statusDiv.textContent = 'Failed to load image. Try a different file.';
+        statusDiv.classList.remove('hidden');
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate Favicons';
+      };
+      img.src = sourceDataUrl;
+    });
+
+    function generateAll(img) {
+      generatedBlobs = {};
+      generatedUrls = {};
+      previewsDiv.innerHTML = '';
+      htmlTagsDiv.innerHTML = '';
+      let pending = SIZES.length;
+
+      SIZES.forEach(function (size) {
+        var canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, size, size);
+
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            pending--;
+            return;
+          }
+          var url = URL.createObjectURL(blob);
+          var filename = 'favicon-' + size + 'x' + size + '.png';
+          generatedBlobs[size] = blob;
+          generatedUrls[size] = url;
+
+          var card = document.createElement('div');
+          card.className = 'rounded-lg border border-slate-200 bg-slate-50 p-3 text-center';
+
+          var label = document.createElement('p');
+          label.className = 'text-xs font-medium text-slate-500';
+          label.textContent = size + '\u00D7' + size;
+          card.appendChild(label);
+
+          var previewSize = Math.min(Math.max(size, 48), 96);
+          var imgEl = document.createElement('img');
+          imgEl.src = url;
+          imgEl.width = previewSize;
+          imgEl.height = previewSize;
+          imgEl.className = 'mx-auto mt-1.5 rounded';
+          imgEl.style.imageRendering = size < 48 ? 'pixelated' : 'auto';
+          card.appendChild(imgEl);
+
+          if (size < 48) {
+            var zoomLabel = document.createElement('p');
+            zoomLabel.className = 'mt-0.5 text-[10px] text-slate-400';
+            zoomLabel.textContent = 'shown at ' + previewSize + '\u00D7' + previewSize;
+            card.appendChild(zoomLabel);
+          }
+
+          var sizeInfo = document.createElement('p');
+          sizeInfo.className = 'mt-1 text-[10px] text-slate-400 font-mono';
+          sizeInfo.textContent = (blob.size / 1024).toFixed(1) + ' KB';
+          card.appendChild(sizeInfo);
+
+          var downloadLink = document.createElement('a');
+          downloadLink.href = url;
+          downloadLink.download = filename;
+          downloadLink.className = 'mt-2 inline-block rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-100';
+          downloadLink.textContent = 'Download';
+          card.appendChild(downloadLink);
+
+          previewsDiv.appendChild(card);
+
+          pending--;
+          if (pending === 0) {
+            finishGeneration();
+          }
+        }, 'image/png');
+      });
+    }
+
+    function finishGeneration() {
+      generateBtn.disabled = false;
+      generateBtn.textContent = 'Generate Favicons';
+      resultsDiv.classList.remove('hidden');
+
+      var tagHtml = '';
+      var sorted = SIZES.slice().sort(function (a, b) { return a - b; });
+      sorted.forEach(function (size) {
+        var filename = 'favicon-' + size + 'x' + size + '.png';
+        var escaped = '&lt;link rel="icon" type="image/png" sizes="' + size + 'x' + size + '" href="' + filename + '"&gt;';
+        tagHtml += '<div class="group flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-mono text-slate-700 border border-slate-100">' +
+          '<span class="flex-1">' + escaped + '</span>' +
+          '<button class="copy-tag-btn rounded border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700" data-tag="' +
+          '<link rel="icon" type="image/png" sizes="' + size + 'x' + size + '" href="' + filename + '">' +
+          '">Copy</button>' +
+          '</div>';
+      });
+      htmlTagsDiv.innerHTML = tagHtml;
+
+      document.querySelectorAll('.copy-tag-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var tag = btn.dataset.tag;
+          navigator.clipboard.writeText(tag).then(function () {
+            var orig = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(function () { btn.textContent = orig; }, 2000);
+          });
+        });
+      });
+    }
+
+    downloadAllBtn.addEventListener('click', function () {
+      var zip = new JSZip();
+      var added = false;
+      SIZES.forEach(function (size) {
+        if (generatedBlobs[size]) {
+          zip.file('favicon-' + size + 'x' + size + '.png', generatedBlobs[size]);
+          added = true;
+        }
+      });
+      if (!added) return;
+      zip.generateAsync({ type: 'blob' }).then(function (blob) {
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'favicons.zip';
+        link.click();
+      });
+    });
+
+    copyAllTagsBtn.addEventListener('click', function () {
+      var tags = SIZES.slice().sort(function (a, b) { return a - b; }).map(function (size) {
+        var filename = 'favicon-' + size + 'x' + size + '.png';
+        return '<link rel="icon" type="image/png" sizes="' + size + 'x' + size + '" href="' + filename + '">';
+      }).join('\n');
+      navigator.clipboard.writeText(tags).then(function () {
+        copyAllTagsBtn.textContent = 'Copied!';
+        setTimeout(function () { copyAllTagsBtn.textContent = 'Copy All HTML Tags'; }, 2000);
+      });
+    });
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</ToolLayout>
