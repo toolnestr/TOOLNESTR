@@ -1,0 +1,259 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Overtime Pay Calculator';
+const description = 'Calculate overtime wages at time-and-a-half or double-time based on your hourly rate and hours worked.';
+const intro = 'Calculate overtime wages at 1.5x or 2x your hourly rate.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is time-and-a-half?', a: '1.5 × your normal hourly rate. Common for weekdays over 40 hours or Saturdays.' },
+  { q: 'What is double time?', a: '2 × your normal rate. Often applies to Sundays or public holidays.' },
+  { q: 'Do I get overtime if I am salaried?', a: 'Many salaried roles include overtime in the base pay. Check your contract.' },
+  { q: 'Is overtime taxed differently?', a: 'No — it is added to your regular income and taxed at your marginal rate. The gross calculation here is pre-tax.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Hourly rate</span>
+        <input id="rate" type="number" min="0" step="any" placeholder="e.g. 20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Regular hours worked</span>
+        <input id="regular" type="number" min="0" step="any" placeholder="e.g. 40" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Overtime hours</span>
+        <input id="ot" type="number" min="0" step="any" placeholder="e.g. 10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Overtime multiplier</span>
+        <input id="mult" type="number" min="1" step="0.5" value="1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <button id="calc" class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">Calculate pay</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Regular pay</div>
+          <div id="r-regular" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Overtime pay</div>
+          <div id="r-ot" class="mt-1 text-lg font-bold text-slate-800">&mdash;</div>
+        </div>
+        <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+          <div class="text-sm opacity-80">Total gross pay</div>
+          <div id="r-total" class="mt-1 text-xl font-bold">&mdash;</div>
+        </div>
+      </div>
+      <p id="r-breakdown" class="mt-3 text-center text-sm text-slate-500"></p>
+    </div>
+
+    <p id="warn" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></p>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Overtime pay calculation flow diagram">
+      <title>Overtime pay calculation flow</title>
+      <desc>Flow diagram: Regular hours times hourly rate plus overtime hours times hourly rate times multiplier equals total gross pay.</desc>
+      <rect x="30" y="60" width="150" height="50" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="105" y="84" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Regular hrs &times; Rate</text>
+      <text x="105" y="100" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11">40 &times; $20 = $800</text>
+      <rect x="30" y="130" width="150" height="50" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2" />
+      <text x="105" y="154" text-anchor="middle" fill="#6d28d9" font-family="system-ui, sans-serif" font-size="13" font-weight="600">OT hrs &times; Rate &times; Mult</text>
+      <text x="105" y="170" text-anchor="middle" fill="#7c3aed" font-family="system-ui, sans-serif" font-size="11">10 &times; $20 &times; 1.5 = $300</text>
+      <path d="M180 85 L240 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <path d="M180 155 L240 155" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#94a3b8" /></marker></defs>
+      <rect x="250" y="55" width="160" height="50" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="330" y="79" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Regular Pay</text>
+      <text x="330" y="96" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12">$800</text>
+      <rect x="250" y="125" width="160" height="50" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="330" y="149" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Overtime Pay</text>
+      <text x="330" y="166" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12">$300</text>
+      <path d="M410 80 L460 80" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <path d="M410 150 L460 150" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+      <rect x="470" y="90" width="150" height="50" rx="10" fill="#d1fae5" stroke="#059669" stroke-width="2" />
+      <text x="545" y="114" text-anchor="middle" fill="#065f46" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Total Gross Pay</text>
+      <text x="545" y="130" text-anchor="middle" fill="#047857" font-family="system-ui, sans-serif" font-size="12">$800 + $300 = $1,100</text>
+      <line x1="30" y1="185" x2="760" y2="185" stroke="#cbd5e1" stroke-width="1" />
+      <text x="395" y="197" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Regular and overtime pay are added together to get your total gross pay</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">How regular and overtime pay combine to produce total gross pay</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Overtime pay formulas</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator uses three simple formulas to work out your gross pay including overtime. All figures are pre-tax — your actual take-home pay will be lower after deductions.
+    </p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Regular pay</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">regularPay = regularHrs &times; rate</p>
+        <p class="mt-1 text-xs text-slate-400">Your standard earnings for normal working hours at your base hourly rate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Overtime pay</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">otPay = otHrs &times; rate &times; multiplier</p>
+        <p class="mt-1 text-xs text-slate-400">Your overtime earnings at the enhanced rate. Common multipliers are 1.5 (time-and-a-half) and 2 (double time).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Total gross pay</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">total = regularPay + otPay</p>
+        <p class="mt-1 text-xs text-slate-400">The sum of your regular and overtime pay before any taxes or deductions are applied.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Hourly rate: <strong>$20/hr</strong> &nbsp;|&nbsp; Regular hours: <strong>40</strong> &nbsp;|&nbsp; OT hours: <strong>10</strong> &nbsp;|&nbsp; Multiplier: <strong>1.5&times;</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Regular pay:</span> <span class="text-slate-600">40 hrs &times; $20 = $800.00</span></div>
+        <div><span class="font-medium text-slate-700">Overtime pay:</span> <span class="text-slate-600">10 hrs &times; $20 &times; 1.5 = $300.00</span></div>
+        <div><span class="font-medium text-slate-700">Total gross pay:</span> <span class="text-slate-600">$800 + $300 = <strong>$1,100.00</strong></span></div>
+        <div><span class="font-medium text-slate-700">Effective hourly rate:</span> <span class="text-slate-600">$1,100 &divide; 50 hrs = $22.00/hr</span></div>
+      </div>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Double-time example &mdash; rate: <strong>$25/hr</strong>, OT hours: <strong>8</strong>, multiplier: <strong>2&times;</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Overtime pay:</span> <span class="text-slate-600">8 hrs &times; $25 &times; 2 = $400.00</span></div>
+        <div><span class="font-medium text-slate-700">Total with 40 reg hrs:</span> <span class="text-slate-600">$1,000 + $400 = <strong>$1,400.00</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🧾</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Checking your pay stub</h3>
+        <p class="mt-1 text-sm text-slate-600">Your employer should list regular and overtime pay separately on each pay stub. Use this calculator to verify the math — multiply your hourly rate by your regular hours, then calculate overtime at the agreed multiplier. If the numbers don't match, you have a clear basis to ask payroll for an explanation or correction.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📊</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Budgeting with overtime</h3>
+        <p class="mt-1 text-sm text-slate-600">If you regularly work overtime, factor those earnings into your monthly budget. Calculate the extra income at your typical overtime hours and multiplier, then add it to your base salary to get a realistic picture of your monthly cash flow. Just be conservative — overtime is rarely guaranteed.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚖️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Comparing job offers with OT</h3>
+        <p class="mt-1 text-sm text-slate-600">Not all jobs offer the same overtime terms. One role may pay time-and-a-half after 40 hours while another pays straight time for all hours. Use this calculator with realistic overtime estimates to compare the total earning potential of each offer rather than just the base hourly rate or salary.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📝</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelance project pricing</h3>
+        <p class="mt-1 text-sm text-slate-600">If a freelance project requires urgent turnaround, you may want to charge a premium rate for the accelerated timeline. Use the overtime multiplier concept to price rush work at 1.5x or 2x your standard rate and communicate the cost breakdown clearly to the client before starting.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for understanding overtime pay</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">These are pre-tax figures</h3>
+        <p class="mt-1 text-sm text-slate-600">All calculations on this page show gross pay — your earnings before income tax, Social Security, Medicare, and any other deductions. Your actual take-home pay will be lower. Use our <a href="/tools/tax-calculator" class="font-medium text-indigo-600 hover:underline">Tax Calculator</a> to estimate net pay for your situation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Overtime rules vary by country and contract</h3>
+        <p class="mt-1 text-sm text-slate-600">In the United States, the Fair Labor Standards Act (FLSA) requires overtime at 1.5x for non-exempt employees working over 40 hours per week. However, many salaried roles are exempt, and rules differ significantly in other countries. Always check your employment contract and local labor laws to confirm what applies to you.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check applicable laws in your jurisdiction</h3>
+        <p class="mt-1 text-sm text-slate-600">Some states and countries have their own overtime rules that may be more generous than federal standards. For example, California requires overtime at 1.5x for hours over 8 in a single day and double time for hours over 12. In the European Union, the Working Time Directive caps the average work week at 48 hours including overtime. Research the regulations where you work to ensure you are being paid correctly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Know your overtime threshold</h3>
+        <p class="mt-1 text-sm text-slate-600">Most overtime policies kick in after a certain number of hours in a work week (commonly 40), but some use daily thresholds or two-week averaging. Confirm the threshold that applies to your role so you can correctly identify which hours qualify as overtime and at what rate they should be paid.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">💰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Convert between hourly, daily, weekly, monthly, and yearly pay.</p>
+      </a>
+      <a href="/tools/invoice-late-fee-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Invoice Late Fee Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate late fees on overdue invoices by percentage or flat fee.</p>
+      </a>
+      <a href="/tools/freelancer-tax-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">🧑‍💻</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelancer Tax Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Estimate your self-employment tax and quarterly payments.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const rate = el('rate');
+    const regular = el('regular');
+    const ot = el('ot');
+    const mult = el('mult');
+    const calcBtn = el('calc');
+    const result = el('result');
+    const warn = el('warn');
+    const rRegular = el('r-regular');
+    const rOt = el('r-ot');
+    const rTotal = el('r-total');
+    const rBreakdown = el('r-breakdown');
+
+    function fmt(n) {
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculate() {
+      warn.classList.add('hidden');
+
+      const rateVal = parseFloat(rate.value);
+      const regHrs = parseFloat(regular.value);
+      const otHrs = parseFloat(ot.value);
+      const multVal = parseFloat(mult.value);
+
+      if (isNaN(rateVal) || rateVal < 0) {
+        result.classList.add('hidden');
+        return;
+      }
+
+      if (multVal < 1) {
+        warn.textContent = 'The overtime multiplier must be at least 1.';
+        warn.classList.remove('hidden');
+        result.classList.add('hidden');
+        return;
+      }
+
+      const regPay = (isNaN(regHrs) || regHrs <= 0) ? 0 : rateVal * regHrs;
+      const otPay = (isNaN(otHrs) || otHrs <= 0) ? 0 : rateVal * otHrs * multVal;
+      const total = regPay + otPay;
+
+      rRegular.textContent = fmt(regPay);
+      rOt.textContent = fmt(otPay);
+      rTotal.textContent = fmt(total);
+
+      const parts = [];
+      if (regPay > 0) parts.push(`${fmt(regPay)} regular`);
+      if (otPay > 0) parts.push(`${fmt(otPay)} overtime`);
+      rBreakdown.textContent = parts.length > 0 ? parts.join(' + ') + ` = ${fmt(total)} total` : '';
+
+      result.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+  </script>
+</ToolLayout>

@@ -263,6 +263,11 @@ export const tools = [
   { slug: 'aspect-ratio-calculator', title: 'Aspect Ratio Calculator', short: 'Resize width or height while maintaining the aspect ratio.', category: 'images', emoji: '📐', enabled: true, status: 'live' },
   { slug: 'invoice-late-fee-calculator', title: 'Invoice Late Fee Calculator', short: 'Work out the late fee and total due on an overdue invoice.', category: 'finance', emoji: '📄', enabled: true, status: 'live' },
   { slug: 'savings-goal-calculator', title: 'Savings Goal Calculator', short: 'How long to reach a savings goal — or how much to save monthly.', category: 'finance', emoji: '🎯', enabled: true, status: 'live' },
+  { slug: 'crypto-profit-calculator', title: 'Crypto Profit Calculator', short: 'Calculate profit or loss on crypto trades including fees.', category: 'finance', emoji: '💰', enabled: true, status: 'live' },
+  { slug: 'freelancer-tax-calculator', title: 'Freelancer Tax Estimator', short: 'Estimate how much freelance income to set aside for tax.', category: 'finance', emoji: '🧾', enabled: true, status: 'live' },
+  { slug: 'cost-per-unit-calculator', title: 'Cost-per-Unit Calculator', short: 'Compare two products by price per unit to find the best deal.', category: 'everyday', emoji: '🏷️', enabled: true, status: 'live' },
+  { slug: 'vat-gst-calculator', title: 'VAT / GST Calculator', short: 'Add or remove VAT/GST from any price at any rate.', category: 'finance', emoji: '🧮', enabled: true, status: 'live' },
+  { slug: 'overtime-pay-calculator', title: 'Overtime Pay Calculator', short: 'Calculate overtime wages at 1.5x or 2x your hourly rate.', category: 'finance', emoji: '⏰', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

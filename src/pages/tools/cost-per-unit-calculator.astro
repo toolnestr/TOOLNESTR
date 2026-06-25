@@ -1,0 +1,324 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Cost-per-Unit Calculator';
+const description = 'Compare two products by price per unit (g, ml, each) to instantly see which is the better deal.';
+const intro = 'Compare two products by price per unit to find the better deal.';
+const category = { id: 'everyday', name: 'Everyday' };
+const faqs = [
+  { q: 'Is the bigger pack always cheaper?', a: 'No — sometimes the smaller pack has a lower unit price, especially on promotions.' },
+  { q: 'Can I compare different units?', a: 'Convert to the same unit first (e.g. kg → g); comparing g to ml is meaningless.' },
+  { q: 'What about quality differences?', a: 'Unit price only measures cost — judge quality separately.' },
+  { q: 'Why do stores use misleading unit pricing?', a: 'Different units (per 100g vs per kg) make comparison harder — that is why this tool normalises everything.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div>
+        <h3 class="mb-3 text-center text-lg font-bold text-slate-800">Product A</h3>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Price ($)</span>
+          <input id="price-a" type="number" min="0" step="any" placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Quantity / size</span>
+          <input id="qty-a" type="number" min="0" step="any" placeholder="e.g. 500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Unit</span>
+          <select id="unit-a" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="L">L</option>
+            <option value="each">each</option>
+            <option value="oz">oz</option>
+            <option value="lb">lb</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <h3 class="mb-3 text-center text-lg font-bold text-slate-800">Product B</h3>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Price ($)</span>
+          <input id="price-b" type="number" min="0" step="any" placeholder="0.00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Quantity / size</span>
+          <input id="qty-b" type="number" min="0" step="any" placeholder="e.g. 1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Unit</span>
+          <select id="unit-b" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="g">g</option>
+            <option value="kg">kg</option>
+            <option value="ml">ml</option>
+            <option value="L">L</option>
+            <option value="each">each</option>
+            <option value="oz">oz</option>
+            <option value="lb">lb</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="mt-6 text-center">
+      <button id="compare-btn" class="rounded-xl bg-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2">Compare</button>
+    </div>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-5 text-center">
+          <div class="text-sm text-slate-500">Product A — unit price</div>
+          <div id="unit-a-result" class="mt-1 text-xl font-bold text-slate-800">—</div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-5 text-center">
+          <div class="text-sm text-slate-500">Product B — unit price</div>
+          <div id="unit-b-result" class="mt-1 text-xl font-bold text-slate-800">—</div>
+        </div>
+      </div>
+      <div id="banner" class="mt-4 rounded-xl p-4 text-center text-sm font-semibold"></div>
+      <div id="warning" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-700"></div>
+      <div id="hint" class="mt-3 hidden rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700"></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How cost-per-unit comparison works</h2>
+    <p class="mt-2 text-slate-600">
+      The unit price is the cost for a single unit of measure — one gram, one millilitre, or one item. The formula is simple:
+    </p>
+    <div class="mt-3 rounded-xl bg-indigo-50 p-4 text-center">
+      <code class="text-lg font-bold text-indigo-700">Unit Price = Price ÷ Quantity</code>
+    </div>
+    <p class="mt-3 text-slate-600">
+      Once both products have their unit prices calculated in the same base unit, a direct comparison tells you which is the better deal.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Product A: <strong>$3.00</strong> for <strong>500 g</strong> &nbsp;|&nbsp; Product B: <strong>$5.00</strong> for <strong>1000 g</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Product A unit price:</span> <span class="text-slate-600">$3.00 ÷ 500 g = $0.006 / g</span></div>
+        <div><span class="font-medium text-slate-700">Product B unit price:</span> <span class="text-slate-600">$5.00 ÷ 1000 g = $0.005 / g</span></div>
+        <div class="sm:col-span-2"><span class="font-medium text-emerald-600">Winner:</span> <span class="text-slate-600">Product B is <strong>~16.7% cheaper</strong> per gram</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="800" height="240" role="img" aria-labelledby="cpu-title cpu-desc">
+      <title id="cpu-title">Cost-per-Unit Comparison Diagram</title>
+      <desc id="cpu-desc">Two product packages side by side with price divided by quantity to show unit price comparison</desc>
+      <rect x="60" y="20" width="300" height="100" rx="10" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" />
+      <rect x="60" y="20" width="300" height="100" rx="10" fill="#a5b4fc" opacity="0.2" />
+      <text x="210" y="48" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="15" font-weight="700">Product A</text>
+      <text x="210" y="72" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="20" font-weight="800">$3.00 ÷ 500 g</text>
+      <text x="210" y="96" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="16" font-weight="700">= $0.006 / g</text>
+
+      <rect x="440" y="20" width="300" height="100" rx="10" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1" />
+      <rect x="440" y="20" width="300" height="100" rx="10" fill="#34d399" opacity="0.15" />
+      <text x="590" y="48" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="15" font-weight="700">Product B</text>
+      <text x="590" y="72" text-anchor="middle" fill="#475569" font-family="system-ui, sans-serif" font-size="20" font-weight="800">$5.00 ÷ 1000 g</text>
+      <text x="590" y="96" text-anchor="middle" fill="#059669" font-family="system-ui, sans-serif" font-size="16" font-weight="700">= $0.005 / g</text>
+
+      <path d="M 375 70 Q 405 30 440 70" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="4" />
+      <text x="410" y="28" text-anchor="middle" fill="#059669" font-family="system-ui, sans-serif" font-size="13" font-weight="600">B is ~17% cheaper</text>
+
+      <line x1="60" y1="145" x2="740" y2="145" stroke="#cbd5e1" stroke-width="1" />
+
+      <text x="60" y="175" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Package A</text>
+      <text x="400" y="175" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">unitPrice = price ÷ quantity</text>
+      <text x="740" y="175" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">Package B</text>
+
+      <rect x="310" y="190" width="180" height="36" rx="18" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1" />
+      <text x="400" y="213" text-anchor="middle" fill="#059669" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Cheaper per unit → B</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Both products converted to price per gram — the lower unit price wins</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🛒</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Grocery shopping</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare two brands, different pack sizes, or bulk vs individual portions. A larger bag of rice might look pricier but often works out cheaper per serving. The unit price reveals the truth behind the shelf tag.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📦</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bulk buying decisions</h3>
+        <p class="mt-1 text-sm text-slate-600">Warehouse clubs sell in huge quantities — but is the giant tub actually cheaper per unit? Sometimes the regular supermarket pack has a better unit price, especially during sales.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚖️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Comparing package sizes</h3>
+        <p class="mt-1 text-sm text-slate-600">A 200 ml bottle for $2 vs a 750 ml bottle for $6 — which is better? The unit price cuts through the noise. Stores often use different sizes to make direct comparison harder.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🧴</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Non-food products</h3>
+        <p class="mt-1 text-sm text-slate-600">Cleaning supplies, toiletries, pet food, and even paint all benefit from unit price comparison. Any product sold in variable quantities can be compared using this method.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for getting accurate comparisons</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always use the same unit</h3>
+        <p class="mt-1 text-sm text-slate-600">You cannot compare grams with millilitres — one is mass, the other is volume. Convert both to the same type of unit first. This tool detects mismatched unit types and warns you before the comparison.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch out for "per 100 g" labels</h3>
+        <p class="mt-1 text-sm text-slate-600">Some stores display the price per 100 g rather than per gram. That makes it look like the number is smaller than it really is. Always check what base unit the store is using before comparing.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider quality differences</h3>
+        <p class="mt-1 text-sm text-slate-600">Unit price is purely a cost metric. A cheaper brand might use lower-quality ingredients, have thinner packaging, or contain more water. Use unit price as one factor alongside reviews, ingredients, and your own experience.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check for promotional pricing</h3>
+        <p class="mt-1 text-sm text-slate-600">A temporary discount can flip the unit price comparison. If you compare during a sale, remember the regular price may tell a different story. Bulk buys on promotion can be excellent value — but only if you will actually use the quantity before it expires.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Why unit price matters more than package price</h2>
+    <div class="mt-4 space-y-4">
+      <p class="text-slate-600">
+        The total price on the shelf tag tells you what you will pay at the register, but it hides the true value. A $10 bag of dog food might seem more expensive than a $6 bag — but if the $10 bag contains 5 kg and the $6 bag contains 2 kg, the larger bag is actually cheaper per kilogram ($2/kg vs $3/kg). Over a month of feeding, choosing the larger bag saves real money.
+      </p>
+      <p class="text-slate-600">
+        Supermarkets and retailers are well aware of this psychology. They deliberately sell products in non-standard sizes to make direct comparison difficult. A brand might offer a 450 g jar instead of 500 g, or a 720 ml bottle instead of 750 ml. The price difference seems small, but the unit price reveals whether you are getting the same value. This practice, sometimes called "shrinkflation," is common across the grocery industry.
+      </p>
+      <p class="text-slate-600">
+        Unit price comparison becomes especially important for frequently purchased items. A difference of $0.01 per gram might not seem like much, but for a product you buy every week, it adds up significantly over a year. For example, if coffee costs $0.01/g more and you buy 500 g per month, that is an extra $60 per year — enough for several more bags of coffee.
+      </p>
+      <p class="text-slate-600">
+        The cost-per-unit calculator is particularly useful for household budgeting across multiple categories. When you track the unit prices of staples like rice, pasta, detergent, and toilet paper, you can identify which stores consistently offer better value. Over time, these small savings compound into substantial annual reductions in your grocery bill without any sacrifice in quality or quantity.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/discount-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">🏷️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Discount Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate savings from percentage-off deals</p>
+      </a>
+      <a href="/tools/tip-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">💵</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Tip Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Split bills and calculate gratuity easily</p>
+      </a>
+      <a href="/tools/savings-goal-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">🎯</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Savings Goal Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Plan how much to save each month</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+
+    const baseUnits = {
+      g: { group: 'mass', factor: 1, label: 'g' },
+      kg: { group: 'mass', factor: 1000, label: 'g' },
+      oz: { group: 'mass', factor: 28.3495, label: 'g' },
+      lb: { group: 'mass', factor: 453.592, label: 'g' },
+      ml: { group: 'volume', factor: 1, label: 'ml' },
+      L: { group: 'volume', factor: 1000, label: 'ml' },
+      each: { group: 'count', factor: 1, label: 'each' },
+    };
+
+    function fmtUnitPrice(val, baseLabel) {
+      let dec = val < 0.01 ? 6 : 2;
+      return '$' + val.toFixed(dec) + ' / ' + baseLabel;
+    }
+
+    function compare() {
+      const priceA = parseFloat($('price-a').value);
+      const qtyA = parseFloat($('qty-a').value);
+      const unitA = $('unit-a').value;
+      const priceB = parseFloat($('price-b').value);
+      const qtyB = parseFloat($('qty-b').value);
+      const unitB = $('unit-b').value;
+
+      const result = $('result');
+      const warning = $('warning');
+      const hint = $('hint');
+      const banner = $('banner');
+
+      warning.classList.add('hidden');
+      hint.classList.add('hidden');
+
+      if (isNaN(priceA) || isNaN(qtyA) || isNaN(priceB) || isNaN(qtyB) || priceA < 0 || priceB < 0) {
+        result.classList.add('hidden');
+        return;
+      }
+
+      if (qtyA <= 0 || qtyB <= 0) {
+        result.classList.remove('hidden');
+        $('unit-a-result').textContent = '—';
+        $('unit-b-result').textContent = '—';
+        hint.classList.remove('hidden');
+        hint.textContent = 'Quantity must be greater than zero.';
+        banner.className = 'mt-4 rounded-xl p-4 text-center text-sm font-semibold';
+        banner.textContent = '';
+        return;
+      }
+
+      const infoA = baseUnits[unitA];
+      const infoB = baseUnits[unitB];
+
+      if (infoA.group !== infoB.group) {
+        result.classList.remove('hidden');
+        $('unit-a-result').textContent = '—';
+        $('unit-b-result').textContent = '—';
+        warning.classList.remove('hidden');
+        warning.textContent = 'Cannot compare ' + unitA + ' (' + infoA.group + ') with ' + unitB + ' (' + infoB.group + '). Convert to like units first.';
+        banner.className = 'mt-4 rounded-xl p-4 text-center text-sm font-semibold';
+        banner.textContent = '';
+        return;
+      }
+
+      const qtyABase = qtyA * infoA.factor;
+      const qtyBBase = qtyB * infoB.factor;
+
+      const unitPriceA = priceA / qtyABase;
+      const unitPriceB = priceB / qtyBBase;
+
+      const baseLabel = infoA.label;
+
+      $('unit-a-result').textContent = fmtUnitPrice(unitPriceA, baseLabel);
+      $('unit-b-result').textContent = fmtUnitPrice(unitPriceB, baseLabel);
+
+      if (unitPriceA === unitPriceB) {
+        banner.className = 'mt-4 rounded-xl bg-slate-100 p-4 text-center text-sm font-semibold text-slate-700';
+        banner.textContent = 'Same price per unit — either is equally good value.';
+      } else if (unitPriceA < unitPriceB) {
+        const pct = ((unitPriceB - unitPriceA) / unitPriceA) * 100;
+        banner.className = 'mt-4 rounded-xl bg-emerald-50 p-4 text-center text-sm font-semibold text-emerald-700';
+        banner.textContent = 'Product A is cheaper per unit by ' + pct.toFixed(1) + '%.';
+      } else {
+        const pct = ((unitPriceA - unitPriceB) / unitPriceB) * 100;
+        banner.className = 'mt-4 rounded-xl bg-emerald-50 p-4 text-center text-sm font-semibold text-emerald-700';
+        banner.textContent = 'Product B is cheaper per unit by ' + pct.toFixed(1) + '%.';
+      }
+
+      result.classList.remove('hidden');
+    }
+
+    $('compare-btn').addEventListener('click', compare);
+    [$('price-a'), $('qty-a'), $('unit-a'), $('price-b'), $('qty-b'), $('unit-b')].forEach(function (el) {
+      el.addEventListener('input', compare);
+    });
+  </script>
+</ToolLayout>

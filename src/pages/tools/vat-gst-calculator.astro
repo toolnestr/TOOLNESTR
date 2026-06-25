@@ -1,0 +1,336 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'VAT / GST Calculator';
+const description = 'Add or remove VAT/GST from any price at any rate. Works for UK VAT, Australian GST, EU VAT, and more.';
+const intro = 'Add or remove VAT/GST from any price at any rate.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is the difference between VAT and GST?', a: 'Very little — both are consumption taxes. VAT is used in the EU/UK, GST in Australia/India/Canada. They work the same way.' },
+  { q: 'How do I remove VAT from a total?', a: 'Divide the total by (1 + rate/100). For 20% VAT: total ÷ 1.20 = price before VAT.' },
+  { q: 'What are common VAT rates?', a: 'UK 20%, Germany 19%, France 20%, Australia GST 10%, Canada GST 5%, Singapore 9%.' },
+  { q: 'Is VAT included in the listed price?', a: 'In most countries the displayed price must include VAT (B2C). For business-to-business, prices are often exclusive.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Amount</span>
+        <input id="amount" type="number" min="0" step="any" placeholder="e.g. 100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">VAT/GST rate (%)</span>
+        <input id="rate" type="number" min="0" step="any" value="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Rate preset</span>
+      <div class="mt-1 flex flex-wrap items-center gap-2">
+        <button data-rate="20" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">UK 20%</button>
+        <button data-rate="19" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">DE 19%</button>
+        <button data-rate="20" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">FR 20%</button>
+        <button data-rate="10" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">AU 10%</button>
+        <button data-rate="5" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">CA 5%</button>
+        <button data-rate="9" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">SG 9%</button>
+        <button data-rate="" class="rate-preset rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Custom</button>
+      </div>
+    </div>
+
+    <label class="mt-4 flex items-center gap-3 text-sm text-slate-700">
+      <span class="font-medium">Add VAT</span>
+      <div class="relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full bg-indigo-600 transition-colors" id="toggle-track">
+        <span class="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition-transform" id="toggle-thumb"></span>
+      </div>
+      <span class="font-medium">Remove VAT</span>
+    </label>
+
+    <button id="calculate" class="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="result" class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-5 text-center">
+        <div id="label-before" class="text-sm text-slate-500">Price before VAT</div>
+        <div id="r-before" class="mt-1 text-xl font-bold text-slate-800">—</div>
+      </div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center">
+        <div id="label-vat" class="text-sm text-slate-500">VAT amount</div>
+        <div id="r-vat" class="mt-1 text-xl font-bold text-indigo-600">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div id="label-after" class="text-sm opacity-80">Price after VAT</div>
+        <div id="r-after" class="mt-1 text-xl font-bold">—</div>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How VAT / GST calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      Value-Added Tax (VAT) and Goods and Services Tax (GST) are consumption taxes applied to goods and services. The calculation uses a simple percentage of the net (pre-tax) price. When you need to <strong>add VAT</strong>, multiply the net price by <code>(1 + rate/100)</code>. When you need to <strong>remove VAT</strong> from a gross (inclusive) total, divide by <code>(1 + rate/100)</code> to find the net amount.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The formulas are straightforward. To add VAT: <code>Total = Amount × (1 + Rate / 100)</code> and <code>VAT = Amount × Rate / 100</code>. To remove VAT: <code>Base = Total / (1 + Rate / 100)</code> and <code>VAT = Total − Base</code>. The same math applies whether you call it VAT, GST, or sales tax — the percentage rate is the only variable.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Adding VAT:</strong> £100 at 20% VAT → £100 × 0.20 = <strong>£20 VAT</strong> → £100 + £20 = <strong>£120 total</strong> (price including VAT).</p>
+      <p class="mt-1 text-sm text-slate-600"><strong>Removing VAT:</strong> £120 including 20% VAT → £120 ÷ 1.20 = <strong>£100</strong> (price before VAT) → £120 − £100 = <strong>£20 VAT</strong>.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Add mode:</span> <span class="text-slate-600">£100 + 20% = £120 total (VAT = £20)</span></div>
+        <div><span class="font-medium text-slate-700">Remove mode:</span> <span class="text-slate-600">£120 ÷ 1.20 = £100 net (VAT = £20)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="vat-title vat-desc">
+      <title id="vat-title">VAT/GST Calculation Flow Diagram</title>
+      <desc id="vat-desc">Two flow diagrams side by side showing adding VAT and removing VAT from a price</desc>
+      <rect x="40" y="40" width="160" height="60" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="120" y="65" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Price (net)</text>
+      <text x="120" y="84" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="20" font-weight="800">£100</text>
+
+      <rect x="240" y="40" width="140" height="60" rx="8" fill="#c7d2fe" stroke="#6366f1" stroke-width="1" stroke-dasharray="4" />
+      <text x="310" y="65" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="600">+ VAT 20%</text>
+      <text x="310" y="84" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="20" font-weight="800">+£20</text>
+
+      <rect x="420" y="40" width="160" height="60" rx="8" fill="#6366f1" />
+      <text x="500" y="65" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Total (gross)</text>
+      <text x="500" y="84" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="20" font-weight="800">£120</text>
+
+      <path d="M 200 70 Q 220 70 240 70" fill="none" stroke="#6366f1" stroke-width="2" />
+      <path d="M 380 70 Q 400 70 420 70" fill="none" stroke="#6366f1" stroke-width="2" />
+
+      <text x="120" y="130" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Add VAT</text>
+
+      <rect x="440" y="140" width="160" height="50" rx="8" fill="#6366f1" />
+      <text x="520" y="158" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Total (gross)</text>
+      <text x="520" y="177" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="16" font-weight="800">£120</text>
+
+      <path d="M 510 130 Q 510 115 520 115 L 620 115 Q 640 115 640 130 L 640 140" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4" />
+      <text x="575" y="110" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11" font-weight="600">÷ 1.20</text>
+
+      <rect x="640" y="140" width="140" height="50" rx="8" fill="#e0e7ff" stroke="#6366f1" stroke-width="1" />
+      <text x="710" y="158" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Net price</text>
+      <text x="710" y="177" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="16" font-weight="800">£100</text>
+
+      <text x="520" y="210" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Remove VAT</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Add VAT to a net price or remove VAT from a gross total — the formula works in both directions</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common VAT and GST rates around the world</h2>
+    <p class="mt-2 text-slate-600">
+      VAT and GST rates vary significantly by country. Some countries apply reduced rates for specific goods like food, children's clothing, or books. The rates below represent the standard rate in each jurisdiction.
+    </p>
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">United Kingdom (VAT)</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Germany (VAT)</span><span class="text-slate-400">19%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:76%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">France (VAT)</span><span class="text-slate-400">20%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-indigo-500" style="width:80%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Australia (GST)</span><span class="text-slate-400">10%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:40%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Canada (GST)</span><span class="text-slate-400">5%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-emerald-500" style="width:20%"></div></div>
+      </div>
+      <div>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-medium text-slate-700">Singapore (GST)</span><span class="text-slate-400">9%</span></div>
+        <div class="mt-1 h-3 w-full rounded-full bg-slate-100"><div class="h-3 rounded-full bg-violet-500" style="width:36%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the VAT / GST calculator</h2>
+    <p class="mt-2 text-slate-600">
+      The VAT calculator is essential for anyone who deals with pricing across different tax jurisdictions. Freelancers and small business owners frequently need to calculate VAT when invoicing clients in different countries. For example, a UK freelancer invoicing a client for £500 needs to add 20% VAT to show the total amount due: £500 + £100 VAT = £600. Similarly, a freelancer in Germany invoicing €1,000 at 19% VAT needs to show €1,190 as the total.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Expense tracking is another common use case. When you receive a receipt that includes VAT, you may need to remove the tax to record the net expense in your accounting software. For example, if you paid £240 for a business expense that includes 20% VAT, dividing by 1.20 gives you the net cost of £200 with £40 reclaimable VAT. This is crucial for accurate bookkeeping and VAT return preparation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Pricing products for different markets often requires adjusting for varying VAT rates. If you sell digital products across Europe, you might need to display prices with the VAT rate of each customer's country. Understanding how to add the correct tax rate ensures your pricing remains accurate and compliant across borders.
+    </p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📄</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Invoicing</h3>
+      <p class="mt-1 text-sm text-slate-600">Issue accurate invoices showing net price, VAT amount and gross total. Essential for freelancers and small businesses registered for VAT.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Expense tracking</h3>
+      <p class="mt-1 text-sm text-slate-600">Remove VAT from receipts to record net expenses and track reclaimable VAT for your business accounts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🌍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Multi-market pricing</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate prices with different VAT/GST rates when selling to customers in different countries or regions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💰</span>
+      <h3 class="mt-2 font-semibold text-slate-900">VAT return prep</h3>
+      <p class="mt-1 text-sm text-slate-600">Separate VAT from your sales and purchase totals when preparing your VAT return or BAS statement.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the VAT / GST calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the amount</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the price — either the net price (to add VAT) or the gross total (to remove VAT).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the rate & mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter or pick a VAT/GST rate preset. Toggle between "Add VAT" and "Remove VAT" mode.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See the breakdown</h3>
+        <p class="mt-1 text-sm text-slate-600">View the net price, VAT amount and gross total instantly. The labels update based on your mode.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">VAT / GST tips and best practices</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">B2C prices usually include VAT</h3>
+        <p class="mt-1 text-sm text-slate-600">In most countries, the price displayed to consumers (B2C) must include VAT by law. This is called the "inclusive" price. When shopping or selling to consumers, always use the gross figure that includes tax.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">B2B prices often exclude VAT</h3>
+        <p class="mt-1 text-sm text-slate-600">Business-to-business transactions typically quote prices excluding VAT because the buyer can reclaim the tax. Make sure you know whether a quoted price is net or gross before calculating.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify local rules</h3>
+        <p class="mt-1 text-sm text-slate-600">VAT rules differ by jurisdiction — reduced rates, exemptions, thresholds for registration, and reverse-charge mechanisms all apply. Always verify your specific obligations with a local tax professional or your country's tax authority.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why accurate VAT / GST calculation matters</h2>
+    <div class="mt-4 space-y-4">
+      <p class="text-slate-600">
+        Accurate VAT calculation is critical for both legal compliance and financial planning. If you are registered for VAT, your invoices must show the correct net amount, VAT rate, VAT charged, and gross total. An error in VAT calculation can lead to penalties from tax authorities, disallowed input tax credits, and disputes with customers. For businesses operating across multiple EU countries under the One Stop Shop (OSS) scheme, applying the correct VAT rate for each member state is essential.
+      </p>
+      <p class="text-slate-600">
+        For consumers, understanding VAT helps you compare prices fairly. A price displayed as €119 including 19% VAT has a net value of €100. When comparing prices across countries with different VAT rates, removing the tax gives you a true like-for-like comparison of the underlying product cost. This is particularly useful when making large purchases or evaluating subscription services priced in different currencies.
+      </p>
+      <p class="text-slate-600">
+        Freelancers and contractors benefit significantly from accurate VAT handling. When you set your rates, you need to decide whether they are inclusive or exclusive of VAT. A common mistake is quoting an all-inclusive price without factoring in the VAT you must remit to the tax authority. If you charge £600 inclusive of 20% VAT, you only keep £500 — the £100 must be paid to HMRC. Understanding this distinction prevents cash flow problems when your VAT return is due.
+      </p>
+      <p class="text-slate-600">
+        The calculator handles decimal amounts accurately, which matters for real-world transactions. A €49.99 item at 21% VAT (common in the Netherlands and Belgium) results in a VAT amount of €10.50 and a total of €60.49. Manually rounding these figures can lead to discrepancies in invoices and VAT returns. Our calculator uses precise decimal arithmetic to ensure your figures are accurate every time.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/freelancer-tax-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">🧾</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Freelancer Tax Calculator</h3>
+        <p class="mt-1 text-sm text-slate-600">Estimate your tax bill as a freelancer or sole trader.</p>
+      </a>
+      <a href="/tools/invoice-late-fee-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">⏰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Invoice Late Fee Calculator</h3>
+        <p class="mt-1 text-sm text-slate-600">Calculate late payment interest and penalties on overdue invoices.</p>
+      </a>
+      <a href="/tools/discount-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-2xl">🏷️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Discount Calculator</h3>
+        <p class="mt-1 text-sm text-slate-600">Calculate percentage discounts and savings on any product or service.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const amount = el('amount'), rate = el('rate');
+    const toggleTrack = el('toggle-track'), toggleThumb = el('toggle-thumb');
+    const rBefore = el('r-before'), rVat = el('r-vat'), rAfter = el('r-after');
+    const labelBefore = el('label-before'), labelVat = el('label-vat'), labelAfter = el('label-after');
+
+    let isRemove = false;
+
+    toggleTrack.addEventListener('click', () => {
+      isRemove = !isRemove;
+      toggleThumb.classList.toggle('translate-x-6', !isRemove);
+      toggleThumb.classList.toggle('translate-x-1', isRemove);
+      toggleTrack.classList.toggle('bg-indigo-600', !isRemove);
+      toggleTrack.classList.toggle('bg-emerald-600', isRemove);
+      labelBefore.textContent = isRemove ? 'Original total (incl. VAT)' : 'Price before VAT';
+      labelAfter.textContent = isRemove ? 'Price before VAT' : 'Price after VAT';
+      calculate();
+    });
+
+    function fmt(n) {
+      return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculate() {
+      const amt = parseFloat(amount.value);
+      const r = parseFloat(rate.value) || 0;
+
+      if (isNaN(amt) || amt < 0) {
+        rBefore.textContent = rVat.textContent = rAfter.textContent = '—';
+        return;
+      }
+
+      const rateDecimal = r / 100;
+      let before, vat, after;
+
+      if (isRemove) {
+        after = amt / (1 + rateDecimal);
+        vat = amt - after;
+        before = amt;
+        rBefore.textContent = fmt(before);
+        rVat.textContent = fmt(vat);
+        rAfter.textContent = fmt(after);
+      } else {
+        before = amt;
+        vat = amt * rateDecimal;
+        after = amt + vat;
+        rBefore.textContent = fmt(before);
+        rVat.textContent = fmt(vat);
+        rAfter.textContent = fmt(after);
+      }
+    }
+
+    document.querySelectorAll('.rate-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.rate) {
+          rate.value = btn.dataset.rate;
+          calculate();
+        }
+      });
+    });
+
+    el('calculate').addEventListener('click', calculate);
+    [amount, rate].forEach((e) => e.addEventListener('input', calculate));
+  </script>
+</ToolLayout>

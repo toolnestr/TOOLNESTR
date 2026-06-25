@@ -1,0 +1,304 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Freelancer Tax Estimator';
+const description = 'Estimate how much of your self-employed income to set aside for taxes after expenses. A quick planning tool — not tax advice.';
+const intro = 'Estimate how much of your freelance income to set aside for tax.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'Is this accurate for my country?', a: 'It uses a flat rate you supply, so it is an estimate — real systems use brackets and credits. Confirm with a local accountant.' },
+  { q: 'What expenses can I deduct?', a: 'Generally costs wholly for your business — software, equipment, home-office share — rules vary by country.' },
+  { q: 'How much should I set aside?', a: 'Many freelancers reserve 25–30% of income as a safe default until they know their exact rate.' },
+  { q: 'Is this tax advice?', a: 'No — this is a planning estimate. Always confirm your obligations with a qualified professional.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Gross freelance income</span>
+        <input id="income" type="number" step="any" placeholder="50000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Period</span>
+        <select id="period" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="year">Year</option>
+          <option value="month">Month</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Business expenses (deducted before tax)</span>
+        <input id="expenses" type="number" step="any" placeholder="8000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Estimated tax rate (%) <span class="text-xs text-amber-500">Estimate only</span></span>
+        <input id="rate" type="number" step="any" placeholder="22" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Extra set-aside (%) <span class="text-xs text-slate-400">optional</span></span>
+        <input id="buffer" type="number" step="any" placeholder="0" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+
+    <button id="calcBtn" class="mt-5 w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Estimate tax</button>
+
+    <div id="result" class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-slate-50 p-4 text-center">
+        <div class="text-sm text-slate-500">Taxable income</div>
+        <div id="r-taxable" class="mt-1 text-lg font-bold text-slate-800">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+        <div class="text-sm opacity-80">Estimated tax</div>
+        <div id="r-tax" class="mt-1 text-lg font-bold">—</div>
+      </div>
+      <div class="rounded-xl bg-amber-50 p-4 text-center">
+        <div class="text-sm text-slate-500">Suggested set-aside</div>
+        <div id="r-setaside" class="mt-1 text-lg font-bold text-amber-700">—</div>
+      </div>
+      <div class="rounded-xl bg-emerald-50 p-4 text-center">
+        <div class="text-sm text-slate-500">Income after tax</div>
+        <div id="r-after" class="mt-1 text-lg font-bold text-emerald-700">—</div>
+      </div>
+    </div>
+
+    <div id="disclaimer" class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-800">
+      ⚠️ Not tax advice — confirm with a professional.
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How freelancer tax is estimated</h2>
+    <p class="mt-2 text-slate-600">
+      Freelancers and self-employed workers are responsible for paying their own taxes — no employer
+      withholds them automatically. This calculator helps you estimate the amount to set aside from
+      each payment you receive.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The core formulas are:
+    </p>
+    <div class="mt-3 space-y-1 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">Taxable income</span> = max(0, Gross income − Business expenses)</div>
+      <div><span class="font-semibold">Estimated tax</span> = Taxable income × (Tax rate / 100)</div>
+      <div><span class="font-semibold">Suggested set-aside</span> = Estimated tax + Taxable income × (Buffer / 100)</div>
+      <div><span class="font-semibold">Income after tax</span> = Gross income − Estimated tax</div>
+    </div>
+    <p class="mt-3 text-slate-600">
+      The buffer (extra set-aside) acts as a safety margin — useful if you expect your actual tax
+      rate to be higher than your estimate, or if you want to build a reserve for quarterly payments.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">You earn $50,000 in gross freelance income with $8,000 in deductible expenses and a 22% estimated tax rate.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Gross income:</span> <span class="text-slate-600">$50,000</span></div>
+        <div><span class="font-medium text-slate-700">Business expenses:</span> <span class="text-slate-600">$8,000</span></div>
+        <div><span class="font-medium text-slate-700">Taxable income:</span> <span class="text-slate-600">$42,000</span></div>
+        <div><span class="font-medium text-slate-700">Estimated tax (22%):</span> <span class="text-slate-600">$9,240</span></div>
+        <div><span class="font-medium text-slate-700">With 3% buffer:</span> <span class="text-slate-600">$10,500 set aside</span></div>
+        <div><span class="font-medium text-slate-700">Income after tax:</span> <span class="text-slate-600">~$40,760</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Income to tax set-aside flow diagram">
+      <title>Freelance income flow: from gross income through expenses and tax to set-aside</title>
+      <desc>A flow diagram showing gross income minus expenses equals taxable income, which is multiplied by tax rate to get estimated tax, plus a buffer for the suggested set-aside.</desc>
+      <line x1="60" y1="195" x2="740" y2="195" stroke="#e2e8f0" stroke-width="2"/>
+      <rect x="30" y="30" width="140" height="56" rx="8" fill="#6366f1"/>
+      <text x="100" y="64" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Income</text>
+      <text x="100" y="78" text-anchor="middle" fill="#c7d2fe" font-size="11">gross freelance</text>
+      <path d="M170 58 L220 58" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+      <rect x="220" y="30" width="50" height="56" rx="8" fill="#f97316"/>
+      <text x="245" y="58" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">−</text>
+      <text x="245" y="74" text-anchor="middle" fill="#fff" font-size="11">expenses</text>
+      <path d="M270 58 L320 58" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="320" y="30" width="140" height="56" rx="8" fill="#10b981"/>
+      <text x="390" y="64" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Taxable income</text>
+      <text x="390" y="78" text-anchor="middle" fill="#d1fae5" font-size="11">= income − expenses</text>
+      <path d="M460 58 L510 58" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="510" y="30" width="50" height="56" rx="8" fill="#f97316"/>
+      <text x="535" y="58" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">×</text>
+      <text x="535" y="74" text-anchor="middle" fill="#fff" font-size="11">tax rate</text>
+      <path d="M560 58 L610 58" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="610" y="30" width="140" height="56" rx="8" fill="#ef4444"/>
+      <text x="680" y="64" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Estimated tax</text>
+      <text x="680" y="78" text-anchor="middle" fill="#fecaca" font-size="11">rate × taxable</text>
+      <rect x="610" y="120" width="140" height="56" rx="8" fill="#f59e0b"/>
+      <text x="680" y="154" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Set-aside</text>
+      <text x="680" y="168" text-anchor="middle" fill="#fef3c7" font-size="11">tax + buffer</text>
+      <path d="M680 86 L680 120" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow)"/>
+      <text x="580" y="112" text-anchor="middle" fill="#64748b" font-size="12">+ buffer</text>
+      <defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#94a3b8"/></marker></defs>
+      <text x="400" y="214" text-anchor="middle" fill="#64748b" font-size="13">Gross income → minus expenses → taxable → apply rate → set aside tax + buffer</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Flow from gross freelance income through deductions to your tax set-aside</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About this freelancer tax estimator</h2>
+    <p class="mt-2 text-slate-600">
+      Self-employment brings freedom — but also the responsibility of managing your own tax
+      obligations. Unlike traditional employees whose employers withhold income tax and payroll
+      contributions from each paycheck, freelancers receive their full gross payment and must
+      set aside the tax portion themselves. This calculator helps you plan for those obligations.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Enter your gross income (the total you invoice clients), subtract your legitimate business
+      expenses, supply an estimated tax rate that reflects your situation, and optionally add a
+      buffer percentage for safety. The result shows you how much to set aside and what you will
+      have left after tax. For a more detailed view of your take-home pay across different pay
+      periods, see the <a href="/tools/salary-calculator" class="font-medium text-indigo-600 hover:underline">Salary Calculator</a>.
+    </p>
+      <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+      <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+        <li>Enter your gross freelance income and choose whether it is per year or per month.</li>
+        <li>Add your deductible business expenses for the same period.</li>
+        <li>Enter your estimated tax rate (many freelancers use 25–30% as a default).</li>
+        <li>Optionally add an extra set-aside percentage as a safety buffer.</li>
+        <li>Click "Estimate tax" to see your taxable income, estimated tax, suggested set-aside, and income after tax.</li>
+      </ol>
+
+      <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+      <p class="mt-2 text-slate-600">
+        Use this estimator monthly to set aside the right amount from each client payment, so you are never caught short when tax season arrives. It is also valuable for quarterly estimated tax planning — many tax authorities require freelancers to pay estimated taxes four times a year, and this calculator shows you the rough amount to remit each quarter. If you are setting your freelance rates, run the numbers with your target after-tax income to determine what you need to charge.
+      </p>
+
+      <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for best results</h2>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+        <li>Real tax systems use progressive brackets — a flat rate is a simplification. Look up your country's brackets or ask an accountant for a more precise percentage.</li>
+        <li>Keep digital and physical receipts for every business expense. In an audit, receipts are your only proof that a deduction is legitimate.</li>
+        <li>Review your set-aside percentage at least once a year. As your income grows, you may move into a higher tax bracket and need to increase the amount you reserve.</li>
+        <li>Consider opening a separate savings account for tax money. Keeping it out of your checking account reduces the temptation to spend it.</li>
+      </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📆</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Monthly set-aside</h3>
+      <p class="mt-1 text-sm text-slate-600">Run the calculator each month with that month's invoice total and expenses. Transfer the suggested set-aside to a dedicated tax savings account immediately.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📅</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Quarterly planning</h3>
+      <p class="mt-1 text-sm text-slate-600">Use your quarterly income and expenses to estimate the tax payment due. Many tax authorities require quarterly estimated payments from self-employed workers.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💲</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Pricing your rates</h3>
+      <p class="mt-1 text-sm text-slate-600">Work backwards from your desired after-tax income. Enter it as a target, add expenses and tax, and see what gross income you need — then divide by your billable hours for a rate.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">⚠️</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Safety buffer</h3>
+      <p class="mt-1 text-sm text-slate-600">Add a 3–5% buffer to your tax rate to cover underestimates, odd-year surcharges, or local taxes you might have missed. It is better to over-set-aside than to owe unexpectedly.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Gross income</th><th class="p-3">Expenses</th><th class="p-3">Taxable</th><th class="p-3">Tax at 22%</th><th class="p-3">After tax</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">$20,000</td><td class="p-3">$2,000</td><td class="p-3">$18,000</td><td class="p-3">$3,960</td><td class="p-3">$16,040</td></tr>
+        <tr><td class="p-3 font-medium">$50,000</td><td class="p-3">$8,000</td><td class="p-3">$42,000</td><td class="p-3">$9,240</td><td class="p-3">$40,760</td></tr>
+        <tr><td class="p-3 font-medium">$80,000</td><td class="p-3">$12,000</td><td class="p-3">$68,000</td><td class="p-3">$14,960</td><td class="p-3">$65,040</td></tr>
+        <tr><td class="p-3 font-medium">$120,000</td><td class="p-3">$20,000</td><td class="p-3">$100,000</td><td class="p-3">$22,000</td><td class="p-3">$98,000</td></tr>
+        <tr><td class="p-3 font-medium">$200,000</td><td class="p-3">$35,000</td><td class="p-3">$165,000</td><td class="p-3">$36,300</td><td class="p-3">$163,700</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the freelancer tax estimator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your income</h3>
+        <p class="mt-1 text-sm text-slate-600">Type your gross freelance income and select the period — enter per-month figures for regular set-aside, or per-year for annual planning.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Subtract expenses &amp; set rate</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your deductible business expenses and an estimated tax rate. Use 25–30% if you are unsure — the calculator shows "Estimate only" as a reminder.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review and set aside</h3>
+        <p class="mt-1 text-sm text-slate-600">See your taxable income, estimated tax, suggested set-aside (with buffer), and income after tax. Transfer the set-aside to a dedicated account.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for managing freelance taxes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Separate your tax money immediately</h3>
+        <p class="mt-1 text-sm text-slate-600">As soon as a client payment lands in your account, transfer the suggested set-aside to a separate savings account. This prevents accidental spending of money that belongs to the tax authority and earns you a little interest in the meantime.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep meticulous expense records</h3>
+        <p class="mt-1 text-sm text-slate-600">Use accounting software or a simple spreadsheet to log every deductible expense. Categorize them (software, equipment, travel, home office, professional services) so you can maximize deductions at tax time and have clear records if audited.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Know your deadlines</h3>
+        <p class="mt-1 text-sm text-slate-600">Most self-employed workers must pay estimated taxes quarterly. Missing a deadline can result in penalties and interest. Mark the four due dates on your calendar and use this calculator before each one to confirm you have set aside enough.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/salary-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">💰</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Salary Calculator</h3>
+        <p class="text-sm text-slate-600">Convert pay between hourly, monthly, and yearly periods.</p>
+      </a>
+      <a href="/tools/invoice-late-fee-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">📄</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Invoice Late Fee Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate late payment penalties on overdue invoices.</p>
+      </a>
+      <a href="/tools/compound-interest" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">📈</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Compound Interest Calculator</h3>
+        <p class="text-sm text-slate-600">See how your savings grow with compound interest over time.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const cur = () => '$';
+    const fmt = (n) => cur() + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function update() {
+      const income = parseFloat(el('income').value);
+      const expenses = parseFloat(el('expenses').value);
+      const rate = parseFloat(el('rate').value);
+      const buffer = parseFloat(el('buffer').value) || 0;
+
+      if (isNaN(income) || isNaN(expenses) || isNaN(rate)) {
+        ['r-taxable', 'r-tax', 'r-setaside', 'r-after'].forEach((id) => (el(id).textContent = '—'));
+        el('disclaimer').classList.add('hidden');
+        return;
+      }
+
+      const taxable = Math.max(0, income - expenses);
+      const tax = taxable * (rate / 100);
+      const setAside = tax + taxable * (buffer / 100);
+      const after = income - tax;
+
+      el('r-taxable').textContent = fmt(taxable);
+      el('r-tax').textContent = fmt(tax);
+      el('r-setaside').textContent = fmt(setAside);
+      el('r-after').textContent = fmt(after);
+      el('disclaimer').classList.remove('hidden');
+    }
+
+    el('calcBtn').addEventListener('click', update);
+  </script>
+</ToolLayout>
