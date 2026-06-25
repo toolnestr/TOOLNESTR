@@ -283,6 +283,9 @@ export const tools = [
   { slug: 'ivf-due-date-calculator', title: 'IVF Due Date Calculator', short: 'Estimate your due date from your IVF embryo transfer date.', category: 'health', emoji: '👶', enabled: true, status: 'live' },
   { slug: 'cron-expression-generator', title: 'Cron Expression Generator', short: 'Build cron schedules with dropdowns — no syntax needed.', category: 'developers', emoji: '⏰', enabled: true, status: 'live' },
   { slug: 'crontab-to-human', title: 'Crontab to Human-Readable', short: 'Convert cron expressions into plain-English schedule descriptions.', category: 'developers', emoji: '📆', enabled: true, status: 'live' },
+  { slug: 'jwt-decoder', title: 'JWT Decoder', short: 'Decode a JSON Web Token to read its header and payload.', category: 'developers', emoji: '🔐', enabled: true, status: 'live' },
+  { slug: 'htaccess-redirect-generator', title: '.htaccess Redirect Generator', short: 'Generate 301/302 redirect rules without learning the syntax.', category: 'developers', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'open-graph-generator', title: 'Open Graph & Meta Tag Generator', short: 'Generate SEO and social-share meta tags with a live preview.', category: 'developers', emoji: '📋', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

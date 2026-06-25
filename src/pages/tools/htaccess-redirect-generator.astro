@@ -1,0 +1,366 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = '.htaccess Redirect Generator';
+const description = 'Generate correct .htaccess 301/302 redirect rules, HTTPS forcing, and www canonicalization rules. Copy-paste ready.';
+const intro = 'Generate correct .htaccess redirect rules without learning the syntax.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: '301 vs 302 — which should I use?', a: '301 (permanent) for real moves so search engines pass ranking; 302 only for temporary changes.' },
+  { q: 'Where does this go?', a: 'In the .htaccess file in your site root, usually near the top.' },
+  { q: 'Will it hurt SEO?', a: 'A correct 301 preserves SEO value; broken rules or chains can harm it — test after applying.' },
+  { q: 'What if my server uses Nginx?', a: 'This generator produces Apache .htaccess rules. Nginx uses a different config format.' },
+];
+const jsonLdExtra = {
+  name: '.htaccess Redirect Generator — 301/302 & HTTPS Rules',
+  description: 'Generate correct .htaccess redirect rules for 301/302 redirects, HTTPS forcing, and www canonicalization. Copy-paste ready, no syntax needed.',
+};
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-end gap-4">
+      <div class="grow">
+        <label class="text-sm font-medium text-slate-700" for="type">Redirect type</label>
+        <select id="type" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="301">Single URL (301)</option>
+          <option value="302">Single URL (302)</option>
+          <option value="https">Force HTTPS</option>
+          <option value="www-non">WWW &rarr; non-www</option>
+          <option value="non-www">non-www &rarr; WWW</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="single-fields" class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="old-path">Old path</label>
+        <input id="old-path" type="text" placeholder="/old-blog-post" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="new-url">New URL</label>
+        <input id="new-url" type="text" placeholder="https://example.com/new-page" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+    </div>
+
+    <div id="domain-fields" class="mt-4 hidden">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="domain">Your domain</label>
+        <input id="domain" type="text" placeholder="example.com" class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button id="generate-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Generate rule</button>
+      <button id="copy-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Copy</button>
+    </div>
+
+    <div class="mt-4" id="result-area">
+      <label class="text-sm font-medium text-slate-700">.htaccess rule</label>
+      <div class="relative mt-1">
+        <pre id="code-block" class="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 font-mono text-sm text-green-400">Select a type, fill in fields, and click Generate rule.</pre>
+      </div>
+      <p id="explanation" class="mt-2 text-xs text-slate-500">&nbsp;</p>
+      <p id="note" class="mt-1 hidden text-xs font-medium text-amber-600">Place above other rules in site root .htaccess</p>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How .htaccess redirects work</h2>
+    <p class="mt-2 text-slate-600">Apache's .htaccess (hypertext access) file is a per-directory configuration file supported by Apache-based web servers. When a request arrives, Apache checks the directory and every parent directory for .htaccess files, reading and applying the rules before serving the requested resource. Redirect rules are among the most common directives placed in .htaccess, allowing you to map old URLs to new ones, enforce secure connections, and canonicalise domain variations.</p>
+    <p class="mt-3 text-slate-600">The two main Apache modules used for redirects are <code class="font-mono">mod_alias</code> (providing the <code class="font-mono">Redirect</code> directive) and <code class="font-mono">mod_rewrite</code> (providing <code class="font-mono">RewriteRule</code>). Simple single-URL redirects use <code class="font-mono">Redirect</code> from mod_alias, which is straightforward and efficient. More complex rules — such as HTTP-to-HTTPS enforcement, www canonicalisation, or pattern-based rewrites — require mod_rewrite's <code class="font-mono">RewriteCond</code> / <code class="font-mono">RewriteRule</code> directives, which offer conditional matching with regular expression support.</p>
+    <p class="mt-3 text-slate-600">When Apache encounters a <code class="font-mono">Redirect</code> directive, it responds to the client's request with a 3xx HTTP status code and a <code class="font-mono">Location</code> header pointing to the target URL. The browser then fetches the new URL. Search engines that encounter a 301 response update their index to point to the new location, preserving the old URL's ranking signals. This makes correct redirect configuration essential for any site migration or URL restructuring.</p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180" width="800" height="180" role="img" aria-labelledby="htaccess-flow-title htaccess-flow-desc">
+      <title id="htaccess-flow-title">.htaccess Redirect Flow Diagram</title>
+      <desc id="htaccess-flow-desc">Diagram showing a browser requesting an old URL, Apache checking .htaccess, and returning a 301 redirect to the new URL</desc>
+      <defs>
+        <marker id="ht-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect width="800" height="180" fill="#f8fafc" rx="8" />
+      <rect x="30" y="55" width="160" height="60" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="110" y="77" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Browser</text>
+      <text x="110" y="94" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="10">requests /old-url</text>
+      <line x1="190" y1="85" x2="250" y2="85" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ht-arr)" />
+      <text x="220" y="77" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">1</text>
+      <rect x="255" y="30" width="180" height="110" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" />
+      <text x="345" y="52" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Apache Server</text>
+      <text x="345" y="70" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">reads .htaccess</text>
+      <text x="345" y="86" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">matches Redirect rule</text>
+      <text x="345" y="102" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">sends 301 + Location</text>
+      <text x="345" y="118" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="10">header to browser</text>
+      <line x1="435" y1="85" x2="495" y2="85" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ht-arr)" />
+      <text x="465" y="77" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">2</text>
+      <rect x="500" y="55" width="270" height="60" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" />
+      <text x="635" y="77" text-anchor="middle" fill="#16a34a" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Browser follows</text>
+      <text x="635" y="94" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">301 &rarr; requests /new-url</text>
+      <text x="110" y="160" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Old URL request</text>
+      <text x="345" y="165" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">301 redirect response (Location: /new-url)</text>
+      <text x="635" y="165" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">SEO value passes to new URL</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The browser requests an old URL, Apache's .htaccess matches the redirect rule and responds with a 301 pointing to the new location.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the rules are built</h2>
+    <p class="mt-2 text-slate-600">This generator produces different rule templates depending on the selected redirect type. Each type corresponds to a specific Apache directive or RewriteRule pattern:</p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Single URL Redirect (301 / 302)</h3>
+        <p class="mt-1 text-sm text-slate-600">Uses Apache's <code class="font-mono">Redirect</code> directive from mod_alias. Format: <code class="font-mono">Redirect 301 /old-path https://example.com/new-path</code>. The first argument is the status code, the second is the absolute path from the document root, and the third is the full destination URL. This is the simplest and most efficient redirect method for individual URLs.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Force HTTPS</h3>
+        <p class="mt-1 text-sm text-slate-600">Uses <code class="font-mono">RewriteCond</code> to check if <code class="font-mono">%{'{'}HTTPS}</code> is off, then <code class="font-mono">RewriteRule</code> to redirect to the HTTPS version of the same URL. The <code class="font-mono">[R=301,L]</code> flags tell Apache to send a 301 redirect and stop processing further rules. This rule should be placed before any other rules in your .htaccess.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">WWW Canonicalisation</h3>
+        <p class="mt-1 text-sm text-slate-600">Two variants: redirect www to non-www or non-www to www. Both use <code class="font-mono">RewriteCond</code> to match the requested hostname against <code class="font-mono">%{'{'}HTTP_HOST}</code>, then issue a 301 redirect to the canonical domain while preserving the request URI via the <code class="font-mono">%{'{'}REQUEST_URI}</code> variable. The <code class="font-mono">NC</code> flag makes the hostname comparison case-insensitive.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h3 class="font-semibold text-slate-900">Worked example</h3>
+    <div class="mt-3 grid gap-2 text-sm">
+      <div><span class="font-medium text-slate-700">Scenario:</span> <span class="text-slate-600">Moving /blog to /articles on a new domain</span></div>
+      <div><span class="font-medium text-slate-700">Old URL:</span> <span class="font-mono text-slate-600">https://oldsite.com/blog</span></div>
+      <div><span class="font-medium text-slate-700">New URL:</span> <span class="font-mono text-slate-600">https://newsite.com/articles</span></div>
+      <div><span class="font-medium text-slate-700">Generated rule:</span></div>
+    </div>
+    <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-900 p-3 font-mono text-sm text-green-400">Redirect 301 /blog https://newsite.com/articles</pre>
+    <p class="mt-2 text-xs text-slate-500">Visitors and search engines arriving at /blog are immediately sent to /articles with a 301 status, preserving SEO ranking.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F310;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Migrating URLs without losing SEO</h3>
+        <p class="mt-1 text-sm text-slate-600">When you restructure your site, old URLs must 301-redirect to new ones. This preserves the ranking signals that search engines have accumulated, preventing traffic loss. A broken redirect means a 404 page, which loses all accumulated SEO value.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F512;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Forcing HTTPS encryption</h3>
+        <p class="mt-1 text-sm text-slate-600">With HTTPS being a ranking signal and a necessity for security, every site should redirect HTTP traffic to HTTPS. The RewriteCond checks if the connection is not already encrypted, then issues a redirect to the HTTPS version of the exact same URL.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F3AF;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Canonical www or non-www</h3>
+        <p class="mt-1 text-sm text-slate-600">Search engines treat www.example.com and example.com as separate sites. Choosing one canonical form and redirecting the other avoids duplicate content penalties and consolidates ranking signals to a single domain.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F504;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Domain migration</h3>
+        <p class="mt-1 text-sm text-slate-600">When rebranding or moving to a new domain, every URL from the old site must redirect to its corresponding page on the new site. A site-wide 301 from the old domain root can work, but per-URL redirects preserve more SEO value.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for .htaccess redirects</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">301 = permanent (passes SEO)</h3>
+        <p class="mt-1 text-sm text-slate-600">Always use 301 for permanent URL changes. Search engines pass approximately 90-99% of page ranking signals through a 301 redirect. A 302 does not pass link equity and should only be used for temporary moves where the old URL will be restored.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Backup .htaccess before editing</h3>
+        <p class="mt-1 text-sm text-slate-600">A syntax error in .htaccess can bring down your entire site with a 500 Internal Server Error. Always download a backup of your existing .htaccess file before making changes. If something breaks, you can restore the backup immediately via FTP or your hosting control panel.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Test after applying</h3>
+        <p class="mt-1 text-sm text-slate-600">Use a redirect checker tool to verify that each rule works as expected. Check that old URLs return the correct status code (301/302) and land on the intended destination. Watch for redirect chains or loops that could harm performance and SEO.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What are .htaccess redirects?</h2>
+    <p class="mt-3 text-slate-600">An .htaccess redirect is a directive placed in Apache's per-directory configuration file that instructs the web server to respond to requests for a particular URL with a redirect status code and a new location. The file uses the hash (#) character for comments and supports a wide range of directives beyond redirects, including access control, MIME type configuration, and custom error pages.</p>
+    <p class="mt-3 text-slate-600">The two primary modules for redirects are mod_alias (simple, efficient, limited to one-to-one URL mapping) and mod_rewrite (powerful, supports regex, conditional logic, and complex rule chains). For simple redirects, mod_alias is preferred because it has less overhead. mod_rewrite should be used when you need pattern matching, conditional checks (like HTTPS status or hostname), or complex rewriting logic. Both modules are enabled on virtually all Apache installations and shared hosting environments.</p>
+    <p class="mt-3 text-slate-600">Rules in .htaccess are evaluated in order from top to bottom. When a rule matches, Apache applies it and, depending on the flags, may stop processing (L flag) or continue with subsequent rules. This ordering is important: place HTTPS and www canonicalisation rules before individual URL redirects, and place more specific redirects before general ones to avoid conflicts.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Redirect status codes explained</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500">
+          <tr><th class="p-3">Code</th><th class="p-3">Name</th><th class="p-3">SEO impact</th><th class="p-3">When to use</th></tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">301</td><td class="p-3">Moved Permanently</td><td class="p-3">Passes link equity</td><td class="p-3">Permanent URL changes, domain migrations</td></tr>
+          <tr><td class="p-3 font-medium">302</td><td class="p-3">Found</td><td class="p-3">Does not pass equity</td><td class="p-3">Temporary moves, A/B testing, maintenance</td></tr>
+          <tr><td class="p-3 font-medium">307</td><td class="p-3">Temporary Redirect</td><td class="p-3">Preserves method, no equity</td><td class="p-3">Temporary moves requiring same HTTP method</td></tr>
+          <tr><td class="p-3 font-medium">308</td><td class="p-3">Permanent Redirect</td><td class="p-3">Passes equity, preserves method</td><td class="p-3">Permanent moves requiring same HTTP method</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/redirect-chain-checker" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; Redirect Chain Checker</a>
+      <a href="/tools/open-graph-generator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; Open Graph Generator</a>
+      <a href="/tools/cron-expression-generator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; Cron Expression Generator</a>
+      <a href="/tools/uuid-generator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; UUID Generator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    var typeEl = document.getElementById('type');
+    var singleFields = document.getElementById('single-fields');
+    var domainFields = document.getElementById('domain-fields');
+    var oldPath = document.getElementById('old-path');
+    var newUrl = document.getElementById('new-url');
+    var domain = document.getElementById('domain');
+    var generateBtn = document.getElementById('generate-btn');
+    var copyBtn = document.getElementById('copy-btn');
+    var codeBlock = document.getElementById('code-block');
+    var explanation = document.getElementById('explanation');
+    var note = document.getElementById('note');
+    var status = document.getElementById('status');
+
+    function escapePath(p) {
+      return p.replace(/[^a-zA-Z0-9_\-/.~]/g, function(c) {
+        return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+      });
+    }
+
+    function showStatus(msg, ok) {
+      status.textContent = msg;
+      status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+      status.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      status.classList.add('hidden');
+    }
+
+    function toggleFields() {
+      var val = typeEl.value;
+      if (val === 'https' || val === 'www-non' || val === 'non-www') {
+        singleFields.classList.add('hidden');
+        domainFields.classList.remove('hidden');
+      } else {
+        singleFields.classList.remove('hidden');
+        domainFields.classList.add('hidden');
+      }
+      hideStatus();
+    }
+
+    typeEl.addEventListener('change', toggleFields);
+    toggleFields();
+
+    var templates = {
+      301: function(path, url) {
+        return 'Redirect 301 ' + escapePath(path) + ' ' + url;
+      },
+      302: function(path, url) {
+        return 'Redirect 302 ' + escapePath(path) + ' ' + url;
+      },
+      https: function(d) {
+        return 'RewriteEngine On\nRewriteCond %{HTTPS} off\nRewriteRule ^(.*)$ https://' + d + '/$1 [R=301,L]';
+      },
+      'www-non': function(d) {
+        return 'RewriteEngine On\nRewriteCond %{HTTP_HOST} ^www\\.' + d.replace(/\./g, '\\.') + ' [NC]\nRewriteRule ^(.*)$ https://' + d + '/$1 [R=301,L]';
+      },
+      'non-www': function(d) {
+        return 'RewriteEngine On\nRewriteCond %{HTTP_HOST} ^' + d.replace(/\./g, '\\.') + '$ [NC]\nRewriteRule ^(.*)$ https://www.' + d + '/$1 [R=301,L]';
+      }
+    };
+
+    var explanations = {
+      301: 'Permanent 301 redirect from old path to new URL — passes SEO ranking to the destination.',
+      302: 'Temporary 302 redirect from old path to new URL — does not pass SEO ranking.',
+      https: 'Redirects all HTTP traffic to HTTPS using a 301, ensuring encrypted connections for all visitors.',
+      'www-non': 'Redirects www.example.com to example.com (non-www canonical) with a 301.',
+      'non-www': 'Redirects example.com to www.example.com (www canonical) with a 301.'
+    };
+
+    var showNote = {
+      301: false,
+      302: false,
+      https: true,
+      'www-non': true,
+      'non-www': true
+    };
+
+    function generate() {
+      var val = typeEl.value;
+      var result = '';
+      var expl = '';
+      var n = false;
+
+      if (val === '301' || val === '302') {
+        var path = oldPath.value.trim();
+        var url = newUrl.value.trim();
+        if (!path || !url) {
+          showStatus('Please enter both the old path and the new URL.', false);
+          return;
+        }
+        if (!/^\//.test(path)) {
+          showStatus('Old path must start with / (e.g. /blog).', false);
+          return;
+        }
+        if (!/^https?:\/\//.test(url)) {
+          showStatus('New URL must start with http:// or https://', false);
+          return;
+        }
+        result = templates[val](path, url);
+        expl = explanations[val];
+        n = showNote[val];
+      } else {
+        var d = domain.value.trim();
+        if (!d) {
+          showStatus('Please enter your domain name.', false);
+          return;
+        }
+        if (/^https?:\/\//.test(d) || /^www\./.test(d)) {
+          showStatus('Enter just the domain without protocol or www (e.g. example.com).', false);
+          return;
+        }
+        if (val === 'https') {
+          result = templates.https(d);
+        } else if (val === 'www-non') {
+          result = templates['www-non'](d);
+        } else {
+          result = templates['non-www'](d);
+        }
+        expl = explanations[val];
+        n = showNote[val];
+      }
+
+      codeBlock.textContent = result;
+      explanation.textContent = expl;
+      if (n) {
+        note.classList.remove('hidden');
+      } else {
+        note.classList.add('hidden');
+      }
+      hideStatus();
+    }
+
+    generateBtn.addEventListener('click', generate);
+
+    copyBtn.addEventListener('click', async function() {
+      var text = codeBlock.textContent;
+      if (!text || text === 'Select a type, fill in fields, and click Generate rule.') return;
+      try {
+        await navigator.clipboard.writeText(text);
+        var o = copyBtn.textContent;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function() { copyBtn.textContent = o; }, 1200);
+      } catch (e) {}
+    });
+  </script>
+</ToolLayout>

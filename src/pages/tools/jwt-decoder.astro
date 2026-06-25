@@ -1,0 +1,194 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'JWT Decoder';
+const description = 'Paste a JWT to decode its header and payload and read claims like expiry and issuer. Runs in your browser.';
+const intro = 'Decode a JSON Web Token to read its header and payload — in your browser.';
+const category = { id: 'developers', name: 'Developers' };
+const faqs = [
+  { q: 'Is a JWT encrypted?', a: 'No — the payload is only Base64-encoded and readable by anyone; it is signed to prevent tampering, not to hide data.' },
+  { q: 'Does this verify the signature?', a: 'No — it only decodes. Verification needs the secret/public key, done server-side.' },
+  { q: 'Is my token uploaded?', a: 'No — decoding happens entirely in your browser.' },
+  { q: 'Can I see my token expiry?', a: 'Yes — the exp claim (if present) is converted to a human-readable date automatically.' },
+];
+---
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="text-sm font-medium text-slate-700" for="jwt-input">Paste JWT token</label>
+    <textarea id="jwt-input" rows="4" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U" class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-4 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></textarea>
+    <div id="jwt-status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+    <div id="jwt-error" class="mt-3 hidden rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700"></div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Header</h3>
+        <pre id="jwt-header" class="mt-2 overflow-x-auto text-xs text-slate-600"><span class="text-slate-400">Paste a token above…</span></pre>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Payload</h3>
+        <pre id="jwt-payload" class="mt-2 overflow-x-auto text-xs text-slate-600"><span class="text-slate-400">Paste a token above…</span></pre>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Signature</h3>
+        <pre id="jwt-signature" class="mt-2 break-all text-xs text-slate-600"><span class="text-slate-400">Paste a token above…</span></pre>
+      </div>
+    </div>
+    <p class="mt-4 text-xs text-amber-700"><strong>Does not verify signature</strong> — never paste production secrets into any online tool.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a JWT?</h2>
+    <p class="mt-2 text-slate-600">A JSON Web Token (JWT) is a compact, URL-safe string that carries claims between two parties. It consists of three parts separated by dots: a header, a payload, and a signature. The header describes the signing algorithm and token type, the payload contains the claims (data), and the signature is calculated by combining the first two parts with a secret key to prevent tampering.</p>
+    <p class="mt-3 text-slate-600">JWTs are commonly used for authentication (e.g. "I am logged in as user 42") and information exchange. Because the payload is only Base64-encoded — not encrypted — anyone who intercepts the token can read its contents. The signature protects against modification, not against reading.</p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="jwt-title jwt-desc">
+      <title id="jwt-title">JWT Decoding Process</title>
+      <desc id="jwt-desc">Flow diagram showing a JWT string being split by dots into header, payload, and signature parts</desc>
+      <rect x="30" y="30" width="740" height="38" rx="8" fill="#e0e7ff" stroke="#818cf8" stroke-width="2" />
+      <text x="400" y="55" text-anchor="middle" font-size="14" fill="#4338ca" font-family="monospace">header.payload.signature</text>
+      <line x1="400" y1="68" x2="170" y2="100" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="400" y1="68" x2="400" y2="100" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow)" />
+      <line x1="400" y1="68" x2="630" y2="100" stroke="#818cf8" stroke-width="2" marker-end="url(#arrow)" />
+      <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#818cf8" /></marker></defs>
+      <rect x="60" y="100" width="220" height="50" rx="8" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="170" y="118" text-anchor="middle" font-size="12" fill="#4338ca" font-weight="bold">Header</text>
+      <text x="170" y="138" text-anchor="middle" font-size="10" fill="#6366f1">Base64url decode → JSON</text>
+      <rect x="290" y="100" width="220" height="50" rx="8" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="400" y="118" text-anchor="middle" font-size="12" fill="#4338ca" font-weight="bold">Payload</text>
+      <text x="400" y="138" text-anchor="middle" font-size="10" fill="#6366f1">Base64url decode → JSON</text>
+      <rect x="520" y="100" width="220" height="50" rx="8" fill="#eef2ff" stroke="#a5b4fc" stroke-width="1.5" />
+      <text x="630" y="118" text-anchor="middle" font-size="12" fill="#4338ca" font-weight="bold">Signature</text>
+      <text x="630" y="138" text-anchor="middle" font-size="10" fill="#6366f1">Shown, not verified</text>
+      <rect x="170" y="175" width="460" height="30" rx="6" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1" />
+      <text x="400" y="195" text-anchor="middle" font-size="11" fill="#065f46">Runs entirely in your browser — nothing is uploaded</text>
+    </svg>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the JWT Decoder Works</h2>
+    <p class="mt-2 text-slate-600">The decoder takes a JWT string and splits it by the dot characters. The first segment (header) and second segment (payload) are Base64url-decoded and then parsed as JSON. The third segment (signature) is shown raw, since verifying it would require the signing key which is kept secret by the issuer.</p>
+    <p class="mt-3 text-slate-600">This tool does <em>not</em> verify the signature, because verification needs the secret or public key. Decoding only lets you read the claims — it does not prove the token is authentic.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked Example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p class="font-mono text-xs text-slate-500">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZXhwIjoxNzM1Njg5NjAwfQ.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U</p>
+      <p class="mt-2 text-sm text-slate-600">After decoding, the payload shows <code class="rounded bg-indigo-100 px-1 text-indigo-700">&#123; "sub": "1234567890", "exp": 1735689600 }</code> and the <code class="rounded bg-indigo-100 px-1 text-indigo-700">exp</code> field is displayed as <strong>Tuesday, January 1, 2025 at 12:00:00 AM UTC</strong> — a human-readable date.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-6 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 p-4">
+      <h3 class="font-semibold text-slate-900">Use Cases</h3>
+      <ul class="mt-2 space-y-2 text-sm text-slate-600">
+        <li>Debugging authentication tokens during development</li>
+        <li>Checking token expiry and claims like issuer and subject</li>
+        <li>Learning the structure and contents of JWTs</li>
+        <li>Verifying that expected claims are present in a token</li>
+      </ul>
+    </div>
+    <div class="rounded-xl border border-slate-200 p-4">
+      <h3 class="font-semibold text-slate-900">Tips &amp; Common Mistakes</h3>
+      <ul class="mt-2 space-y-2 text-sm text-slate-600">
+        <li><strong>Decoding is not verifying</strong> — anyone can read a JWT payload; it is signed, not encrypted.</li>
+        <li>Never paste production tokens into any online tool — they may be logged or intercepted.</li>
+        <li>The <code>alg: none</code> header value means no signature; reject such tokens server-side.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <h2 class="text-lg font-bold text-slate-900">Privacy &amp; Security</h2>
+    <p class="mt-2 text-sm text-slate-600">This tool processes everything locally in your browser. No data is sent to any server, logged, or stored. The JWT you paste never leaves your device. You can verify this by opening your browser developer tools network tab — no network requests are made when you paste a token.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/base64" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Base64 Encode / Decode</a>
+      <a href="/tools/uuid-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">UUID Generator</a>
+      <a href="/tools/color-contrast-checker" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Color Contrast Checker</a>
+    </div>
+  </section>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('jwt-input');
+      const headerEl = document.getElementById('jwt-header');
+      const payloadEl = document.getElementById('jwt-payload');
+      const signatureEl = document.getElementById('jwt-signature');
+      const statusEl = document.getElementById('jwt-status');
+      const errorEl = document.getElementById('jwt-error');
+      function b64url(s) {
+        let b = s.replace(/-/g, '+').replace(/_/g, '/');
+        while (b.length % 4) b += '=';
+        try { return atob(b); } catch (e) { return null; }
+      }
+      function fmtDate(ts) {
+        try {
+          return new Date(ts * 1000).toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short'
+          });
+        } catch (e) { return null; }
+      }
+      function decode() {
+        const raw = input.value.trim();
+        errorEl.classList.add('hidden');
+        statusEl.classList.add('hidden');
+        if (!raw) {
+          headerEl.innerHTML = '<span class="text-slate-400">Paste a token above…</span>';
+          payloadEl.innerHTML = '<span class="text-slate-400">Paste a token above…</span>';
+          signatureEl.textContent = 'Paste a token above…';
+          return;
+        }
+        const parts = raw.split('.');
+        if (parts.length !== 3) {
+          errorEl.textContent = 'Not a valid JWT (expected 3 dot-separated parts, got ' + parts.length + ')';
+          errorEl.classList.remove('hidden');
+          headerEl.innerHTML = '<span class="text-red-500">Parse error</span>';
+          payloadEl.innerHTML = '<span class="text-red-500">Parse error</span>';
+          signatureEl.textContent = 'Parse error';
+          return;
+        }
+        const [hB64, pB64, sB64] = parts;
+        const hDec = b64url(hB64);
+        const pDec = b64url(pB64);
+        if (!hDec || !pDec) {
+          errorEl.textContent = 'Could not decode — the token contains invalid Base64url characters';
+          errorEl.classList.remove('hidden');
+          headerEl.innerHTML = '<span class="text-red-500">Decode error</span>';
+          payloadEl.innerHTML = '<span class="text-red-500">Decode error</span>';
+          signatureEl.textContent = 'Decode error';
+          return;
+        }
+        try {
+          const hObj = JSON.parse(hDec);
+          headerEl.textContent = JSON.stringify(hObj, null, 2);
+        } catch (e) {
+          headerEl.textContent = hDec;
+        }
+        try {
+          const pObj = JSON.parse(pDec);
+          const tc = ['exp', 'iat', 'nbf'];
+          for (const k of tc) {
+            if (typeof pObj[k] === 'number') {
+              const d = fmtDate(pObj[k]);
+              if (d) pObj[k] = pObj[k] + ' (' + d + ')';
+            }
+          }
+          payloadEl.textContent = JSON.stringify(pObj, null, 2);
+        } catch (e) {
+          payloadEl.textContent = pDec;
+        }
+        signatureEl.textContent = sB64.length > 64 ? sB64.slice(0, 64) + '…' : sB64;
+        statusEl.textContent = 'Decoded successfully';
+        statusEl.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium bg-green-50 text-green-700';
+        statusEl.classList.remove('hidden');
+      }
+      input.addEventListener('input', decode);
+    });
+  </script>
+</ToolLayout>
