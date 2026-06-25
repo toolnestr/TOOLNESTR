@@ -1,0 +1,269 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'MTU Calculator';
+const description = 'Calculate the maximum payload size for a given MTU and encapsulation type like PPPoE, VLAN, GRE, or IPsec.';
+const intro = 'Calculate max payload for a given MTU and encapsulation type.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is MTU?', a: 'Maximum Transmission Unit — the largest packet size that can traverse a network link without fragmentation.' },
+  { q: 'What is the standard MTU?', a: 'Ethernet standard is 1500 bytes. With VLAN tagging it becomes 1496, with PPPoE it drops to 1492.' },
+  { q: 'Why does encapsulation reduce MTU?', a: 'Each encapsulation layer adds header bytes, reducing the space available for actual data payload.' },
+  { q: 'What happens if I exceed the MTU?', a: 'Packets are fragmented or dropped, causing performance issues and connectivity problems.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Payload size calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="block text-xs font-medium text-slate-500" for="mtu">MTU (bytes)</label>
+        <input id="mtu" type="number" min="68" max="9000" step="1" value="1500" placeholder="e.g. 1500" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-500" for="encap">Encapsulation</label>
+        <select id="encap" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0">None</option>
+          <option value="4">VLAN (802.1Q)</option>
+          <option value="8">PPPoE</option>
+          <option value="24">GRE</option>
+          <option value="54">IPsec</option>
+          <option value="8">Q-in-Q</option>
+        </select>
+      </div>
+    </div>
+    <button id="calc-btn" class="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+    <div id="result" class="mt-5 hidden rounded-xl bg-indigo-50 p-4 text-center">
+      <p class="text-xs font-medium text-indigo-500">Result</p>
+      <p id="payload-output" class="mt-1 text-2xl font-bold text-indigo-700">--</p>
+      <p id="result-detail" class="mt-0.5 text-xs text-indigo-400">--</p>
+    </div>
+    <hr class="my-4 border-slate-200" />
+    <h3 class="text-sm font-semibold text-slate-700">Encapsulation overhead reference</h3>
+    <div class="mt-2 overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-1.5 pr-2 font-medium">Encap type</th>
+            <th class="pb-1.5 pr-2 font-medium">Overhead (bytes)</th>
+            <th class="pb-1.5 font-medium">Effective payload at 1500 MTU</th>
+          </tr>
+        </thead>
+        <tbody id="overhead-tbody" class="text-slate-700"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="mtu-flow-title mtu-flow-desc">
+      <title id="mtu-flow-title">MTU Packet Structure Diagram</title>
+      <desc id="mtu-flow-desc">Diagram showing how encapsulation header bytes eat into the MTU budget, reducing available payload space</desc>
+      <text x="400" y="25" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">Payload = MTU − Encapsulation Overhead</text>
+
+      <rect x="50" y="50" width="700" height="50" rx="6" fill="#eef2ff" stroke="#818cf8" stroke-width="2" />
+      <text x="400" y="72" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">MTU Budget</text>
+      <text x="400" y="88" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="11">1500 bytes (or configured MTU)</text>
+
+      <rect x="50" y="130" width="140" height="50" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="2" />
+      <text x="120" y="152" text-anchor="middle" fill="#dc2626" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Overhead</text>
+      <text x="120" y="168" text-anchor="middle" fill="#ef4444" font-family="system-ui, sans-serif" font-size="10">4–57 bytes</text>
+
+      <rect x="200" y="130" width="550" height="50" rx="6" fill="#dcfce7" stroke="#22c55e" stroke-width="2" />
+      <text x="475" y="152" text-anchor="middle" fill="#16a34a" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Payload (Data)</text>
+      <text x="475" y="168" text-anchor="middle" fill="#22c55e" font-family="system-ui, sans-serif" font-size="10">MTU − Overhead bytes</text>
+
+      <line x1="190" y1="105" x2="190" y2="128" stroke="#6366f1" stroke-width="2" marker-end="url(#mtu-arrow)" />
+
+      <defs>
+        <marker id="mtu-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The MTU budget is split between encapsulation overhead (headers) and the actual data payload. Choosing the right encapsulation is critical for network efficiency.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the MTU calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The MTU (Maximum Transmission Unit) is the largest packet size — including headers — that can traverse a network link without fragmentation. When you add encapsulation layers such as VLAN tags, PPPoE headers, GRE tunnels, or IPsec security envelopes, each layer consumes bytes from the MTU budget, reducing the space available for your actual data payload.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculation is straightforward: <strong>Payload = MTU − Overhead</strong>. The overhead depends on the encapsulation protocol. A standard Ethernet frame has no overhead for the payload calculation (the 14-byte Ethernet header and 4-byte FCS are part of the Layer 2 frame and are already accounted for by the 1500-byte MTU convention). When you add a VLAN tag, an additional 4-byte 802.1Q header is inserted, reducing the payload capacity to 1496 bytes. PPPoE adds 8 bytes (6-byte PPPoE header + 2-byte PPP protocol ID), dropping the payload to 1492 bytes at 1500 MTU.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Efficiency is calculated as <strong>Efficiency = Payload / MTU × 100</strong>. This tells you what percentage of the MTU is actually carrying useful data versus being consumed by headers. For most encapsulations the efficiency is above 99% at standard 1500 MTU, but the absolute overhead matters more than the percentage — losing 8 bytes per packet may not sound like much, but at 50,000 packets per second that is 400 KB/s of overhead.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Encapsulation overhead details</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 pr-3 font-medium">Encapsulation</th>
+            <th class="pb-2 pr-3 font-medium">Overhead (bytes)</th>
+            <th class="pb-2 pr-3 font-medium">Payload at 1500 MTU</th>
+            <th class="pb-2 font-medium">Typical use case</th>
+          </tr>
+        </thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-medium">None (raw Ethernet)</td><td class="py-1.5 pr-3 font-mono">0</td><td class="py-1.5 pr-3 font-mono">1500</td><td class="py-1.5">Standard LAN traffic</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-medium">VLAN (802.1Q)</td><td class="py-1.5 pr-3 font-mono">4</td><td class="py-1.5 pr-3 font-mono">1496</td><td class="py-1.5">Network segmentation, trunk links</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-medium">PPPoE</td><td class="py-1.5 pr-3 font-mono">8</td><td class="py-1.5 pr-3 font-mono">1492</td><td class="py-1.5">DSL / broadband connections</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-medium">GRE</td><td class="py-1.5 pr-3 font-mono">24</td><td class="py-1.5 pr-3 font-mono">1476</td><td class="py-1.5">Tunneling, VPNs (without IPsec)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-1.5 pr-3 font-medium">IPsec (ESP tunnel)</td><td class="py-1.5 pr-3 font-mono">50–57</td><td class="py-1.5 pr-3 font-mono">1443–1450</td><td class="py-1.5">Secure VPNs, site-to-site tunnels</td></tr>
+          <tr><td class="py-1.5 pr-3 font-medium">Q-in-Q (802.1ad)</td><td class="py-1.5 pr-3 font-mono">8</td><td class="py-1.5 pr-3 font-mono">1492</td><td class="py-1.5">Provider bridging, data center</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">
+      IPsec overhead varies because of padding, authentication trailer length, and the specific transform (ESP-AES-GCM vs ESP-AES-CBC + HMAC). The calculator uses a default of 54 bytes for IPsec, which is typical for AES-GCM with a 16-byte ICV.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <p class="mt-2 text-slate-600">
+      Consider a standard Ethernet link with 1500 byte MTU running PPPoE encapsulation. PPPoE is commonly used on DSL broadband connections. The PPPoE header adds 8 bytes (6 bytes for the PPPoE session layer and 2 bytes for the PPP protocol identifier). The calculation is:
+    </p>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm text-slate-700">
+      Payload = MTU − Overhead<br />
+      Payload = 1500 − 8 = 1492 bytes<br />
+      Efficiency = 1492 / 1500 × 100 = 99.47%
+    </div>
+    <p class="mt-3 text-slate-600">
+      This means that out of every 1500-byte packet, 1492 bytes carry actual application data and only 8 bytes are overhead. While the efficiency looks excellent, the impact is more visible on smaller packets. A 64-byte control packet with 8 bytes of PPPoE overhead wastes 12.5% of the transmission on headers.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-3 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-800">VPN tunnel optimization</h3>
+        <p class="mt-1 text-sm text-slate-600">When configuring a VPN, especially IPsec or OpenVPN over GRE, the encapsulation overhead must be accounted for to avoid fragmentation. Many VPN clients automatically reduce the MTU on the virtual interface (e.g., to 1400 bytes) to leave room for the tunnel headers. If the MTU is not adjusted, TCP connections may stall, web pages may load partially, and file transfers may fail silently.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">Router and firewall configuration</h3>
+        <p class="mt-1 text-sm text-slate-600">Network engineers frequently need to set the correct MTU on router interfaces, firewall policies, and VPN tunnels. A misconfigured MTU is one of the most common causes of intermittent connectivity issues. Using this calculator, you can determine the correct MTU or MSS (Maximum Segment Size) clamp value for any encapsulation stack. The general rule is MSS = MTU − 40 (for TCP/IP headers) − encapsulation overhead.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">Troubleshooting MTU-related issues</h3>
+        <p class="mt-1 text-sm text-slate-600">Symptoms of MTU problems include: websites loading partially (text without images), SSH connections timing out, email attachments failing to send, and VPN connections dropping large file transfers. The root cause is typically a path that has a lower MTU than the sender's interface. Using Ping with the Don't Fragment (DF) flag set at increasing packet sizes (e.g., <code class="rounded bg-slate-200 px-1 py-0.5 font-mono text-xs">ping -M do -s 1472 google.com</code>) can help discover the actual path MTU.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for MTU tuning</h2>
+    <div class="mt-3 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-800">Path MTU Discovery (PMTUD)</h3>
+        <p class="mt-1 text-sm text-slate-600">Path MTU Discovery is a technique that allows TCP to automatically determine the maximum packet size that can traverse the entire path from source to destination without fragmentation. The sender marks packets with the DF (Don't Fragment) flag. If a router along the path needs to fragment but cannot (because DF is set), it sends back an ICMP Fragmentation Needed message with the next-hop MTU. The sender then reduces its segment size. PMTUD works well on well-configured networks, but some firewalls and middleboxes block ICMP messages, breaking PMTUD and causing connection hangs — a phenomenon known as a "PMTUD black hole."</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">Jumbo frames (9000 MTU)</h3>
+        <p class="mt-1 text-sm text-slate-600">Jumbo frames increase the standard Ethernet MTU from 1500 to 9000 bytes. They are commonly used in data centers, iSCSI storage networks, and high-performance computing clusters. The advantage is reduced CPU overhead (fewer interrupts per GB transferred) and better throughput. However, all devices on the Layer 2 path — switches, routers, and NICs — must support and be configured for jumbo frames. A single device set to 1500 MTU on a path will force fragmentation or drop jumbo frames. At 9000 MTU, the impact of encapsulation overhead is proportionally smaller: an 8-byte PPPoE header consumes only 0.09% of the MTU budget instead of 0.53%.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800">MSS clamping</h3>
+        <p class="mt-1 text-sm text-slate-600">Many routers and firewalls implement MSS (Maximum Segment Size) clamping as a workaround for MTU issues. MSS clamping rewrites the TCP SYN packet's MSS option to a value that accounts for encapsulation overhead, preventing the TCP sender from generating segments that exceed the effective path MTU. For example, on a PPPoE link with 1492 byte MTU, the MSS should be clamped to 1452 (1492 − 40 for TCP/IP headers). This is often configured automatically on DSL routers but may need manual adjustment on enterprise equipment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-3 space-y-1.5 text-sm">
+      <li><a href="/tools/subnet-mask-cheat-sheet" class="text-indigo-600 hover:text-indigo-700 hover:underline">Subnet Mask Cheat Sheet</a> — Interactive CIDR-to-hosts reference table.</li>
+      <li><a href="/tools/bandwidth-vs-throughput-calculator" class="text-indigo-600 hover:text-indigo-700 hover:underline">Bandwidth vs Throughput Calculator</a> — Estimate real achievable throughput from rated bandwidth.</li>
+      <li><a href="/tools/dns-record-builder" class="text-indigo-600 hover:text-indigo-700 hover:underline">DNS Record Builder</a> — Build correctly formatted DNS zone file records.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const overheads = {
+      '0': { label: 'None', overhead: 0 },
+      '4': { label: 'VLAN (802.1Q)', overhead: 4 },
+      '8': { label: 'PPPoE', overhead: 8 },
+      '24': { label: 'GRE', overhead: 24 },
+      '54': { label: 'IPsec', overhead: 54 },
+      '8-qinq': { label: 'Q-in-Q', overhead: 8 },
+    };
+
+    const mtuInput = document.getElementById('mtu');
+    const encapSelect = document.getElementById('encap');
+    const calcBtn = document.getElementById('calc-btn');
+    const resultDiv = document.getElementById('result');
+    const payloadOutput = document.getElementById('payload-output');
+    const resultDetail = document.getElementById('result-detail');
+    const overheadTbody = document.getElementById('overhead-tbody');
+
+    const encapTypes = [
+      { label: 'None', value: '0' },
+      { label: 'VLAN (802.1Q)', value: '4' },
+      { label: 'PPPoE', value: '8' },
+      { label: 'GRE', value: '24' },
+      { label: 'IPsec', value: '54' },
+      { label: 'Q-in-Q', value: '8-qinq' },
+    ];
+
+    function getOverhead(value) {
+      if (value === '8-qinq') return 8;
+      return parseInt(value, 10);
+    }
+
+    function getLabel(value) {
+      const found = encapTypes.find(function (e) { return e.value === value; });
+      return found ? found.label : 'Unknown';
+    }
+
+    function buildOverheadTable(mtu) {
+      overheadTbody.innerHTML = encapTypes.map(function (encap) {
+        var overhead = getOverhead(encap.value);
+        var payload = mtu - overhead;
+        return '<tr class="border-b border-slate-100"><td class="py-1 pr-2 font-mono">' + encap.label + '</td><td class="py-1 pr-2 font-mono">' + overhead + '</td><td class="py-1 font-mono">' + payload + '</td></tr>';
+      }).join('');
+    }
+
+    function calculate() {
+      var mtu = parseInt(mtuInput.value, 10);
+      if (isNaN(mtu) || mtu < 68) {
+        resultDiv.classList.add('hidden');
+        return;
+      }
+
+      var overhead = getOverhead(encapSelect.value);
+      var payload = mtu - overhead;
+      if (payload < 0) payload = 0;
+      var efficiency = (payload / mtu) * 100;
+
+      payloadOutput.textContent = payload + ' bytes payload';
+      resultDetail.textContent = overhead + ' bytes overhead \u2022 ' + efficiency.toFixed(1) + '% efficiency';
+      resultDiv.classList.remove('hidden');
+
+      buildOverheadTable(mtu);
+    }
+
+    function handleEncapChange() {
+      var mtu = parseInt(mtuInput.value, 10);
+      if (!isNaN(mtu) && mtu >= 68) {
+        buildOverheadTable(mtu);
+      }
+    }
+
+    calcBtn.addEventListener('click', calculate);
+    mtuInput.addEventListener('input', function () {
+      var mtu = parseInt(mtuInput.value, 10);
+      if (!isNaN(mtu) && mtu >= 68) {
+        buildOverheadTable(mtu);
+      }
+    });
+    encapSelect.addEventListener('change', handleEncapChange);
+
+    calculate();
+  </script>
+</ToolLayout>

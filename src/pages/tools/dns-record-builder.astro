@@ -1,0 +1,735 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'DNS Record Builder';
+const description =
+  'Build correctly formatted DNS zone file records for A, AAAA, MX, CNAME, TXT, SPF, and DKIM from form inputs. Copy-paste ready.';
+const intro =
+  'Build correctly formatted DNS zone file records from simple form inputs.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  {
+    q: 'What is a DNS zone file?',
+    a: 'A text file containing DNS records for a domain, with each line defining one resource record in the format: name TTL class type value (e.g. example.com. 3600 IN A 192.0.2.1).',
+  },
+  {
+    q: 'What is the format of a DNS record?',
+    a: 'Standard format: name  TTL  class  type  value. The name is the domain or subdomain (FQDN with trailing dot), TTL is the caching duration in seconds, class is almost always IN (Internet), type is the record type (A, AAAA, CNAME, etc.), and the value is the record data.',
+  },
+  {
+    q: 'What is SPF?',
+    a: 'Sender Policy Framework — a TXT record listing which servers are authorized to send email for your domain. Helps prevent email spoofing and improves deliverability.',
+  },
+  {
+    q: 'What is DKIM?',
+    a: 'DomainKeys Identified Mail — a TXT record containing a public key for verifying email signatures. Receiving servers use it to confirm that an email was genuinely sent by the domain and was not tampered with in transit.',
+  },
+  {
+    q: 'What does the trailing dot mean?',
+    a: 'In DNS zone files, a trailing dot (e.g. example.com.) indicates a fully qualified domain name (FQDN). Names without a trailing dot are relative to the zone origin. This is a critical syntax detail — omitting the dot can cause incorrect DNS lookups.',
+  },
+  {
+    q: 'What is a good TTL value?',
+    a: '3600 seconds (1 hour) is a good default. Use 300 (5 minutes) before planned changes so updates propagate quickly. Use 86400 (24 hours) or longer for stable records to improve caching and reduce resolver load.',
+  },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 class="text-base font-semibold text-slate-900">Build a DNS record</h2>
+
+    <div class="mt-3 flex flex-wrap items-end gap-4">
+      <div class="min-w-0 grow">
+        <label class="text-sm font-medium text-slate-700" for="type">Record type</label>
+        <select
+          id="type"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="A">A (IPv4 address)</option>
+          <option value="AAAA">AAAA (IPv6 address)</option>
+          <option value="CNAME">CNAME (canonical name)</option>
+          <option value="MX">MX (mail exchange)</option>
+          <option value="TXT">TXT (text)</option>
+          <option value="SPF">SPF (sender policy)</option>
+          <option value="DKIM">DKIM (email signing)</option>
+        </select>
+      </div>
+      <div class="w-28">
+        <label class="text-sm font-medium text-slate-700" for="ttl">TTL (seconds)</label>
+        <input
+          id="ttl"
+          type="number"
+          value="3600"
+          min="0"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- A / AAAA -->
+    <div id="fields-addr" class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="addr-name">Name</label>
+        <input
+          id="addr-name"
+          type="text"
+          placeholder='@, www, mail, or a domain'
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="addr-value">Value</label>
+        <input
+          id="addr-value"
+          type="text"
+          placeholder="192.0.2.1 or 2001:db8::1"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- CNAME -->
+    <div id="fields-cname" class="mt-4 hidden grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="cname-name">Name</label>
+        <input
+          id="cname-name"
+          type="text"
+          placeholder="www"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="cname-target">Target</label>
+        <input
+          id="cname-target"
+          type="text"
+          placeholder="example.com."
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- MX -->
+    <div id="fields-mx" class="mt-4 hidden grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="mx-name">Name</label>
+        <input
+          id="mx-name"
+          type="text"
+          placeholder="@"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="mx-priority">Priority</label>
+        <input
+          id="mx-priority"
+          type="number"
+          value="10"
+          min="0"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="mx-target">Target</label>
+        <input
+          id="mx-target"
+          type="text"
+          placeholder="mail.example.com."
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- TXT -->
+    <div id="fields-txt" class="mt-4 hidden grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="txt-name">Name</label>
+        <input
+          id="txt-name"
+          type="text"
+          placeholder="@"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="txt-value">Value</label>
+        <input
+          id="txt-value"
+          type="text"
+          placeholder='v=spf1 include:_spf.google.com ~all'
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- SPF -->
+    <div id="fields-spf" class="mt-4 hidden space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="spf-domain">Domain</label>
+          <input
+            id="spf-domain"
+            type="text"
+            placeholder="example.com"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="spf-policy">Policy</label>
+          <select
+            id="spf-policy"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          >
+            <option value="-all">-all (hard fail — reject unauthorised)</option>
+            <option value="~all" selected>~all (soft fail — mark as suspicious)</option>
+            <option value="?all">?all (neutral — no policy)</option>
+            <option value="+all">+all (pass — allow all, not recommended)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="spf-ips">Allowed IPs / CIDR blocks (space separated)</label>
+        <input
+          id="spf-ips"
+          type="text"
+          placeholder="192.0.2.0/24 203.0.113.0/24"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="spf-domains">Include domains (space separated)</label>
+        <input
+          id="spf-domains"
+          type="text"
+          placeholder="_spf.google.com mailgun.org"
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+    </div>
+
+    <!-- DKIM -->
+    <div id="fields-dkim" class="mt-4 hidden space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="dkim-selector">Selector</label>
+          <input
+            id="dkim-selector"
+            type="text"
+            placeholder="google"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="dkim-domain">Domain</label>
+          <input
+            id="dkim-domain"
+            type="text"
+            placeholder="example.com"
+            class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700" for="dkim-key">Public key (base64)</label>
+        <textarea
+          id="dkim-key"
+          rows="3"
+          placeholder="MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..."
+          class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button
+        id="generate-btn"
+        class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      >
+        Generate record
+      </button>
+      <button
+        id="copy-btn"
+        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      >
+        Copy
+      </button>
+    </div>
+
+    <div id="error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+
+    <div class="mt-4" id="result-area">
+      <label class="text-sm font-medium text-slate-700">Zone file line</label>
+      <pre
+        id="code-block"
+        class="mt-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 font-mono text-sm text-green-400"
+      >Select a record type, fill in the fields, and click Generate record.</pre>
+      <p id="explanation" class="mt-2 text-xs text-slate-500">&nbsp;</p>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">DNS zone file format</h2>
+    <p class="mt-2 text-slate-600">
+      A DNS zone file is a plain-text file that contains the mapping between domain names and IP addresses and other resources for a particular DNS zone. Every line in the file defines one resource record (RR) using a standard five-field format: name, TTL, class, type, and value. The file is read by a DNS server software such as BIND, PowerDNS, or Knot DNS, which serves the records to DNS resolvers across the internet.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The name field specifies the domain or subdomain that the record applies to. A fully qualified domain name (FQDN) must end with a trailing dot (e.g., <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">example.com.</code>). Names without a trailing dot are considered relative to the zone origin (the domain defined in the <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$ORIGIN</code> directive). The special name <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">@</code> is shorthand for the zone origin itself.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The TTL (Time to Live) field tells recursive resolvers how many seconds to cache the record before querying the authoritative server again. The class is almost always <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">IN</code> (Internet). The type indicates what kind of record it is (A, AAAA, CNAME, MX, TXT, etc.), and the value contains the record data whose format depends on the type. Understanding this structure is essential for anyone managing DNS for a domain, whether through a control panel, a DNS provider's API, or directly editing zone files on a nameserver.
+    </p>
+  </section>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" width="800" height="360" role="img" aria-labelledby="zonefile-title zonefile-desc">
+      <title id="zonefile-title">DNS Zone File Structure</title>
+      <desc id="zonefile-desc">Diagram showing a DNS zone file with each field of a resource record labelled: name, TTL, class, type, and value</desc>
+      <defs>
+        <marker id="zf-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+        </marker>
+      </defs>
+      <rect width="800" height="360" fill="#f8fafc" rx="12" />
+      <text x="400" y="28" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="15" font-weight="700">DNS Zone File — example.com</text>
+      <text x="400" y="44" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">Each line is one resource record with five fields: name, TTL, class, type, value</text>
+
+      <!-- Zone file background -->
+      <rect x="30" y="58" width="740" height="160" rx="6" fill="#1e293b" />
+
+      <!-- Line 1 -->
+      <text x="46" y="82" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13" font-weight="600">example.com.</text>
+      <text x="226" y="82" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">3600</text>
+      <text x="326" y="82" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">IN</text>
+      <text x="396" y="82" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">A</text>
+      <text x="466" y="82" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">192.0.2.1</text>
+
+      <!-- Line 2 -->
+      <text x="46" y="106" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">www</text>
+      <text x="226" y="106" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">3600</text>
+      <text x="326" y="106" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">IN</text>
+      <text x="396" y="106" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">CNAME</text>
+      <text x="466" y="106" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">example.com.</text>
+
+      <!-- Line 3 -->
+      <text x="46" y="130" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">@</text>
+      <text x="226" y="130" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">3600</text>
+      <text x="326" y="130" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">IN</text>
+      <text x="396" y="130" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">MX</text>
+      <text x="466" y="130" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">10 mail.example.com.</text>
+
+      <!-- Line 4 -->
+      <text x="46" y="154" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">example.com.</text>
+      <text x="226" y="154" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">3600</text>
+      <text x="326" y="154" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">IN</text>
+      <text x="396" y="154" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">TXT</text>
+      <text x="466" y="154" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">"v=spf1 include:_spf.google.com ~all"</text>
+
+      <!-- Line 5 -->
+      <text x="46" y="178" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">google._domainkey</text>
+      <text x="226" y="178" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">3600</text>
+      <text x="326" y="178" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">IN</text>
+      <text x="396" y="178" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">TXT</text>
+      <text x="466" y="178" fill="#22c55e" font-family="ui-monospace, monospace" font-size="13">"v=DKIM1; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC..."</text>
+
+      <!-- Field annotations -->
+      <rect x="42" y="230" width="174" height="34" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="129" y="251" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">NAME</text>
+      <line x1="129" y1="264" x2="129" y2="220" stroke="#6366f1" stroke-width="1.5" marker-end="url(#zf-arr)" />
+      <text x="129" y="279" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Domain or subdomain</text>
+
+      <rect x="228" y="230" width="90" height="34" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="273" y="251" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">TTL</text>
+      <line x1="273" y1="264" x2="273" y2="220" stroke="#6366f1" stroke-width="1.5" marker-end="url(#zf-arr)" />
+      <text x="273" y="279" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Cache duration (s)</text>
+
+      <rect x="326" y="230" width="64" height="34" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="358" y="251" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">CLASS</text>
+      <line x1="358" y1="264" x2="358" y2="220" stroke="#6366f1" stroke-width="1.5" marker-end="url(#zf-arr)" />
+      <text x="358" y="279" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">IN = Internet</text>
+
+      <rect x="398" y="230" width="68" height="34" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="432" y="251" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">TYPE</text>
+      <line x1="432" y1="264" x2="432" y2="220" stroke="#6366f1" stroke-width="1.5" marker-end="url(#zf-arr)" />
+      <text x="432" y="279" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Record type</text>
+
+      <rect x="480" y="230" width="290" height="34" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5" />
+      <text x="625" y="251" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="12" font-weight="600">VALUE (RDATA)</text>
+      <line x1="625" y1="264" x2="510" y2="215" stroke="#6366f1" stroke-width="1.5" marker-end="url(#zf-arr)" />
+      <text x="625" y="279" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Record data (type-dependent)</text>
+
+      <!-- Legend boxes -->
+      <rect x="40" y="300" width="720" height="48" rx="8" fill="#f1f5f9" />
+      <text x="60" y="320" fill="#475569" font-family="system-ui, sans-serif" font-size="11" font-weight="600">Key syntax rules:</text>
+      <text x="60" y="336" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">&#x2022; FQDN must end with a dot (example.com.)  |  &#x2022; @ is shorthand for the zone origin  |  &#x2022; Relative names inherit the origin  |  &#x2022; TXT values longer than 255 chars use multiple quoted strings</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A DNS zone file with five example records. Each field is colour-coded and annotated for clarity. The trailing dot on FQDN names is a critical syntax requirement.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Record types explained</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">A record (address)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Maps a domain name to an IPv4 address. This is the most fundamental DNS record type — every website needs at least one A record pointing to its web server's IP address. Multiple A records can be used for round-robin load balancing.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">AAAA record (quad-A)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Maps a domain name to an IPv6 address. Functionally identical to an A record but for the 128-bit IPv6 address space. As IPv6 adoption grows, every domain should have both A and AAAA records for dual-stack connectivity.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">CNAME record (canonical name)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Aliases one domain name to another. For example, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">www.example.com</code> can be a CNAME pointing to <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">example.com</code>. When the target IP changes, only the A record needs updating. CNAMEs cannot coexist with other record types at the same name.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">MX record (mail exchange)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Specifies the mail server that handles email for the domain. Each MX record has a priority number — lower values are tried first. If the primary server is unavailable, the mail is routed to the backup server with the next highest priority. MX records must point to an A or AAAA record, not a CNAME.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">TXT record (text)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Stores arbitrary text data, typically used for machine-readable policies. Common uses include SPF records (email sender authorisation), DKIM keys (email signing verification), DMARC policies (email authentication reporting), and domain ownership verification strings for Google Workspace, AWS, and other services.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">SPF (Sender Policy Framework)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Despite having its own DNS record type number (type 99, now deprecated), SPF data is stored in a TXT record. The value starts with <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">v=spf1</code> followed by mechanisms like <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">ip4:</code>, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">include:</code>, and <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">a:</code>, ending with a qualifier like <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">~all</code> (soft fail) or <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">-all</code> (hard fail).
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">DKIM (DomainKeys Identified Mail)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Also stored as a TXT record, DKIM provides cryptographic email signing. The record name follows the format <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">selector._domainkey.example.com.</code>. The value contains <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">v=DKIM1; p=</code> followed by the base64-encoded public key. Receiving mail servers use this key to verify that the email was genuinely signed by the sending domain.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h3 class="font-semibold text-slate-900">Worked example</h3>
+    <div class="mt-3 grid gap-2 text-sm">
+      <div><span class="font-medium text-slate-700">Scenario:</span> <span class="text-slate-600">Pointing example.com to a web server at 192.0.2.1</span></div>
+      <div><span class="font-medium text-slate-700">Name:</span> <span class="font-mono text-slate-600">example.com. (FQDN with trailing dot)</span></div>
+      <div><span class="font-medium text-slate-700">TTL:</span> <span class="font-mono text-slate-600">3600</span></div>
+      <div><span class="font-medium text-slate-700">Class:</span> <span class="font-mono text-slate-600">IN</span></div>
+      <div><span class="font-medium text-slate-700">Type:</span> <span class="font-mono text-slate-600">A</span></div>
+      <div><span class="font-medium text-slate-700">Value:</span> <span class="font-mono text-slate-600">192.0.2.1</span></div>
+      <div><span class="font-medium text-slate-700">Generated line:</span></div>
+    </div>
+    <pre class="mt-2 overflow-x-auto rounded-lg bg-slate-900 p-3 font-mono text-sm text-green-400">example.com. 3600 IN A 192.0.2.1</pre>
+    <p class="mt-2 text-xs text-slate-500">Visitors who type example.com into their browser are directed to the server at 192.0.2.1. The trailing dot tells the DNS parser that this is a fully qualified domain name.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for this builder</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Managing DNS for a domain</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Whether you use a control panel like cPanel, a cloud provider like AWS Route 53 or Cloudflare, or manage BIND zone files directly, correctly formatted DNS records are essential. A single misplaced character can break email delivery, take a website offline, or create a redirect loop. This builder helps you construct each record with the correct syntax before deploying it.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Setting up email (SPF, DKIM, MX)</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Configuring email for a domain requires three types of DNS records: MX records to route incoming mail to your mail server, SPF records to authorise outgoing mail servers, and DKIM records to cryptographically sign messages. Misconfiguring any of these leads to email being rejected, marked as spam, or failing authentication checks (DMARC).
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">CDN and reverse proxy setup</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          CDN providers like Cloudflare, Akamai, and Fastly require specific DNS configurations. You typically point your domain's A or AAAA records to the CDN's anycast IPs, or set up a CNAME to the CDN's proxy domain. Many CDNs also require TXT records for domain ownership verification and CAA records (Certificate Authority Authorization) for SSL/TLS certificate issuance.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">DNS migration and auditing</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          When migrating a domain from one DNS provider to another, you need to export all existing records and recreate them in the new provider's zone file format. Using a builder ensures each record is syntactically correct and matches the original. This is especially important for complex records like SPF and DKIM where incorrect syntax can break email authentication.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for DNS record management</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always use the trailing dot for FQDN</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          In a zone file, <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">example.com</code> (without trailing dot) is interpreted as relative to the current zone origin. If the origin is <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">example.com.</code>, a bare <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">example.com</code> becomes <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">example.com.example.com.</code> — a completely different domain. Always append a trailing dot to fully qualified domain names in the name, target, and MX target fields.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Choose TTL values strategically</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Short TTLs (300 seconds / 5 minutes) ensure changes propagate quickly, which is useful before a planned DNS migration or IP change. However, short TTLs increase the query load on your authoritative DNS servers. Long TTLs (86400 seconds / 24 hours) improve performance through aggressive caching but delay the visibility of changes. A common strategy is to lower the TTL to 300 seconds a few days before a planned change, then increase it again after the change is confirmed working.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand DNS propagation</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          DNS propagation is the time it takes for a record change to be picked up by recursive resolvers worldwide. Propagation depends on the TTL of the old record, not the new one — resolvers will continue serving the cached value until the old TTL expires. Even after TTL expiry, some resolvers ignore the TTL and cache for longer periods. Most changes propagate within a few hours, but some resolvers can hold stale data for up to 48 hours. Use a DNS propagation checker to verify the change is visible globally.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid CNAME at the zone apex</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Per the DNS specification (RFC 1912), a CNAME record cannot coexist with any other record type at the same node. Since the zone apex (bare domain like example.com) must have SOA and NS records, you cannot place a CNAME at the apex. If you need to point the apex to a service that provides only a CNAME target (like some CDNs), use a CNAME flattening service (Cloudflare) or an ALIAS / ANAME record if your provider supports it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a DNS zone file?</h2>
+    <p class="mt-2 text-slate-600">
+      A DNS zone file, also called a master file or a BIND zone file following the RFC 1035 standard, is a text file that describes a DNS zone. It contains all the resource records for a domain, starting with SOA (Start of Authority) and NS (Name Server) records that establish the zone's authority delegation, followed by the individual records for subdomains, mail servers, and other services. The zone file is loaded by an authoritative name server and served to recursive resolvers that query for records within the zone.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$ORIGIN</code> directive at the top of the file sets the default domain that relative names are appended to. For example, with <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$ORIGIN example.com.</code>, a record named <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">www</code> becomes <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">www.example.com.</code>. The <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$TTL</code> directive sets the default TTL for all records that follow, though individual records can override it. Modern zone files use <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$INCLUDE</code> directives to split large zones into multiple files, and <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm">$GENERATE</code> directives to create numbered records in a single line.
+    </p>
+    <p class="mt-3 text-slate-600">
+      While most domain owners today manage DNS through a web-based control panel or a DNS provider's API rather than editing zone files directly, understanding the zone file format is valuable for troubleshooting, debugging differences between providers, and working with authoritative DNS servers directly. Tools like this builder bridge the gap between the raw zone file syntax and the need to construct correct records quickly without memorising the syntax rules.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">References and further reading</h2>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc1035" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 1035 — Domain Names &mdash; Implementation and Specification</a> &mdash; the foundational DNS specification defining zone file format and all standard record types</li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc7208" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 7208 — Sender Policy Framework (SPF)</a> &mdash; the current SPF specification</li>
+      <li><a href="https://datatracker.ietf.org/doc/html/rfc6376" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">RFC 6376 — DomainKeys Identified Mail (DKIM)</a> &mdash; DKIM signature and verification specification</li>
+      <li><a href="https://dnsflagday.net/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">DNS Flag Day</a> &mdash; information about EDNS compliance and DNS resolver requirements</li>
+      <li><a href="https://www.isc.org/bind/" class="text-indigo-600 hover:text-indigo-700" rel="noopener noreferrer" target="_blank">ISC BIND</a> &mdash; the most widely used DNS server software, reference implementation for zone files</li>
+    </ul>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/subnet-mask-cheat-sheet" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; Subnet Mask Cheat Sheet</a>
+      <a href="/tools/mtu-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; MTU Calculator</a>
+      <a href="/tools/bandwidth-vs-throughput-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; Bandwidth vs Throughput Calculator</a>
+      <a href="/tools/dns-lookup" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; DNS Lookup Tool</a>
+      <a href="/tools/spf-checker" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; SPF Record Checker</a>
+      <a href="/tools/dmarc-checker" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">&rarr; DMARC Record Checker</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var el = function (id) { return document.getElementById(id); };
+
+      var typeEl = el('type');
+      var ttlEl = el('ttl');
+      var generateBtn = el('generate-btn');
+      var copyBtn = el('copy-btn');
+      var codeBlock = el('code-block');
+      var explanation = el('explanation');
+      var errorEl = el('error');
+      var resultArea = el('result-area');
+
+      var fieldSets = {
+        addr: el('fields-addr'),
+        cname: el('fields-cname'),
+        mx: el('fields-mx'),
+        txt: el('fields-txt'),
+        spf: el('fields-spf'),
+        dkim: el('fields-dkim'),
+      };
+
+      function hideError() {
+        errorEl.classList.add('hidden');
+      }
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove('hidden');
+      }
+
+      function toggleFields() {
+        var val = typeEl.value;
+        var showAddr = val === 'A' || val === 'AAAA';
+        var addrLabel = el('addr-value');
+        var label = addrLabel.previousElementSibling;
+
+        fieldSets.addr.classList.toggle('hidden', !showAddr);
+        fieldSets.cname.classList.toggle('hidden', val !== 'CNAME');
+        fieldSets.mx.classList.toggle('hidden', val !== 'MX');
+        fieldSets.txt.classList.toggle('hidden', val !== 'TXT');
+        fieldSets.spf.classList.toggle('hidden', val !== 'SPF');
+        fieldSets.dkim.classList.toggle('hidden', val !== 'DKIM');
+
+        if (showAddr) {
+          label.textContent = val === 'A' ? 'IPv4 Address' : 'IPv6 Address';
+          addrLabel.placeholder = val === 'A' ? '192.0.2.1' : '2001:db8::1';
+        }
+
+        hideError();
+      }
+
+      typeEl.addEventListener('change', toggleFields);
+      toggleFields();
+
+      function formatName(name) {
+        name = name.trim();
+        if (!name) return '';
+        if (name === '@') return '@';
+        if (name.indexOf('.') !== -1 && !name.endsWith('.')) return name + '.';
+        return name;
+      }
+
+      function generate() {
+        hideError();
+        var type = typeEl.value;
+        var ttl = ttlEl.value.trim() || '3600';
+
+        var name,
+          value,
+          record = '';
+        var expl = '';
+        var ok = true;
+
+        switch (type) {
+          case 'A': {
+            name = formatName(el('addr-name').value);
+            value = el('addr-value').value.trim();
+            if (!name || !value) { showError('Please enter both a name and an IPv4 address.'); ok = false; break; }
+            record = name + ' ' + ttl + ' IN A ' + value;
+            expl = 'Maps ' + name + ' to IPv4 address ' + value + '. Browsers and other clients use this record to find the server hosting the domain.';
+            break;
+          }
+          case 'AAAA': {
+            name = formatName(el('addr-name').value);
+            value = el('addr-value').value.trim();
+            if (!name || !value) { showError('Please enter both a name and an IPv6 address.'); ok = false; break; }
+            record = name + ' ' + ttl + ' IN AAAA ' + value;
+            expl = 'Maps ' + name + ' to IPv6 address ' + value + '. This is the IPv6 equivalent of an A record.';
+            break;
+          }
+          case 'CNAME': {
+            name = formatName(el('cname-name').value);
+            value = formatName(el('cname-target').value);
+            if (!name || !value) { showError('Please enter both a name and a target.'); ok = false; break; }
+            record = name + ' ' + ttl + ' IN CNAME ' + value;
+            expl = 'Aliases ' + name + ' to ' + value + '. Requests to the alias resolve to whatever IP the target resolves to.';
+            break;
+          }
+          case 'MX': {
+            name = formatName(el('mx-name').value);
+            var priority = el('mx-priority').value.trim();
+            value = formatName(el('mx-target').value);
+            if (!name || !priority || !value) { showError('Please enter a name, priority, and target for the MX record.'); ok = false; break; }
+            record = name + ' ' + ttl + ' IN MX ' + priority + ' ' + value;
+            expl = 'Routes email for ' + name + ' to mail server ' + value + ' with priority ' + priority + '. Lower priorities are tried first.';
+            break;
+          }
+          case 'TXT': {
+            name = formatName(el('txt-name').value);
+            value = el('txt-value').value.trim();
+            if (!name || !value) { showError('Please enter both a name and a value.'); ok = false; break; }
+            if (!value.startsWith('"')) value = '"' + value;
+            if (!value.endsWith('"')) value = value + '"';
+            record = name + ' ' + ttl + ' IN TXT ' + value;
+            expl = 'Stores a text value at ' + name + '. Used for SPF, DKIM, DMARC, domain verification, and other text-based policies.';
+            break;
+          }
+          case 'SPF': {
+            var spfDomain = el('spf-domain').value.trim();
+            var spfIps = el('spf-ips').value.trim();
+            var spfDomains = el('spf-domains').value.trim();
+            var spfPolicy = el('spf-policy').value;
+
+            if (!spfDomain) { showError('Please enter a domain.'); ok = false; break; }
+
+            var spfValue = 'v=spf1';
+            if (spfIps) {
+              var ips = spfIps.split(/\s+/);
+              for (var i = 0; i < ips.length; i++) {
+                if (ips[i]) spfValue += ' ip4:' + ips[i];
+              }
+            }
+            if (spfDomains) {
+              var domains = spfDomains.split(/\s+/);
+              for (var j = 0; j < domains.length; j++) {
+                if (domains[j]) spfValue += ' include:' + domains[j];
+              }
+            }
+            spfValue += ' ' + spfPolicy;
+
+            record = formatName(spfDomain) + ' ' + ttl + ' IN TXT "' + spfValue + '"';
+            expl = 'SPF record for ' + spfDomain + ' authorising specified IPs and domains to send email. Policy: ' + spfPolicy + '.';
+            break;
+          }
+          case 'DKIM': {
+            var selector = el('dkim-selector').value.trim();
+            var dkimDomain = el('dkim-domain').value.trim();
+            var pubKey = el('dkim-key').value.trim();
+
+            if (!selector || !dkimDomain || !pubKey) {
+              showError('Please enter a selector, domain, and public key.');
+              ok = false;
+              break;
+            }
+
+            var dkimName = selector + '._domainkey.' + formatName(dkimDomain);
+            var dkimValue = 'v=DKIM1; p=' + pubKey;
+            record = dkimName + ' ' + ttl + ' IN TXT "' + dkimValue + '"';
+            expl = 'DKIM public key record for ' + selector + '._domainkey.' + dkimDomain + '. Receiving servers use this key to verify email signatures from this domain.';
+            break;
+          }
+        }
+
+        if (!ok) return;
+
+        codeBlock.textContent = record;
+        explanation.textContent = expl;
+        resultArea.classList.add('opacity-0', 'transition-opacity', 'duration-200');
+        setTimeout(function () {
+          resultArea.classList.remove('opacity-0');
+          resultArea.classList.add('opacity-100');
+        }, 10);
+      }
+
+      generateBtn.addEventListener('click', generate);
+
+      copyBtn.addEventListener('click', async function () {
+        var text = codeBlock.textContent;
+        if (
+          !text ||
+          text === 'Select a record type, fill in the fields, and click Generate record.'
+        ) {
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(text);
+          var orig = copyBtn.textContent;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function () {
+            copyBtn.textContent = orig;
+          }, 1200);
+        } catch (e) {}
+      });
+
+      var inputs = document.querySelectorAll(
+        '#fields-addr input, #fields-cname input, #fields-mx input, #fields-txt input, #fields-spf input, #fields-spf select, #fields-dkim input, #fields-dkim textarea'
+      );
+      for (var i = 0; i < inputs.length; i++) {
+        inputs[i].addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') generate();
+        });
+      }
+    })();
+  </script>
+</ToolLayout>

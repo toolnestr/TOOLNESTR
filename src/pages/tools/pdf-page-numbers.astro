@@ -1,0 +1,374 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PDF Page Numberer';
+const description = 'Add page numbers to any PDF with position, start number, and format options. Works in your browser — no upload needed.';
+const intro = 'Add page numbers (position, start number, format) to any PDF — all in your browser.';
+const category = { id: 'pdf', name: 'PDF Tools' };
+const seoTitle = 'PDF Page Numberer — Add Page Numbers to PDF';
+const faqs = [
+  { q: 'Is my PDF uploaded to a server?', a: 'No — everything runs in your browser using pdf-lib. Your file never leaves your device.' },
+  { q: 'Can I start numbering from a specific page?', a: 'Yes — the start number and first page to number are both configurable.' },
+  { q: 'What formats are supported?', a: 'Plain numbers (1, 2, 3), Page X of Y, Roman numerals (i, ii, iii), and custom prefixes.' },
+  { q: 'Are the original pages modified?', a: 'Only the page number is added. The original PDF content is preserved.' },
+];
+---
+
+<ToolLayout title={seoTitle} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+      <span class="text-3xl">📄</span>
+      <span class="mt-2 font-medium text-slate-700">Upload PDF</span>
+      <span class="mt-1 text-sm text-slate-400">Drag and drop or click to browse</span>
+      <input id="file-input" type="file" accept="application/pdf" class="hidden" />
+    </label>
+
+    <div id="controls" class="mt-4 hidden space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Start number</span>
+          <input id="start-num" type="number" min="0" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">First page to number</span>
+          <input id="first-page" type="number" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Position</span>
+          <select id="position" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="bottom-center">Bottom center</option>
+            <option value="bottom-right">Bottom right</option>
+            <option value="top-right">Top right</option>
+            <option value="bottom-left">Bottom left</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Format</span>
+          <select id="format" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="plain">1, 2, 3</option>
+            <option value="page-x-of-y">Page X of Y</option>
+            <option value="roman">i, ii, iii</option>
+            <option value="page-x">Page X</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Font size</span>
+          <input id="font-size" type="number" min="6" max="72" value="12" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+
+      <p id="info" class="text-sm font-medium text-slate-600"></p>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="process-btn" disabled class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Add page numbers → Download</button>
+        <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+        <span id="status" class="text-sm text-slate-500"></span>
+      </div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How page numbering works</h2>
+    <p class="mt-2 text-slate-600">This tool takes your uploaded PDF and draws a page number on each page at the position you choose. The original content of every page stays exactly as it was — only the page number is added as a new text layer. The result is a brand-new PDF with numbered pages that you can download immediately.</p>
+    <p class="mt-3 text-slate-600">The numbering uses the <span class="font-mono text-indigo-600">pdf-lib</span> library to load your PDF, iterate through each page, and draw text at precise coordinates. The font (Helvetica) is embedded in the output so the numbers render correctly on any device. You control the starting number, which page gets the first number, the position on the page, the display format, and the font size.</p>
+
+    <div class="mt-6 flex justify-center">
+      <svg viewBox="0 0 300 400" class="w-64 h-auto" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="280" height="380" rx="4" fill="white" stroke="#cbd5e1" stroke-width="1.5" />
+        <rect x="30" y="30" width="240" height="20" rx="2" fill="#e0e7ff" opacity="0.6" />
+        <text x="150" y="44" text-anchor="middle" font-size="10" fill="#6366f1" font-family="sans-serif">Report Title</text>
+        <line x1="30" y1="70" x2="270" y2="70" stroke="#e2e8f0" stroke-width="1" />
+        <rect x="30" y="85" width="240" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="100" width="180" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="115" width="220" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="130" width="160" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="150" width="240" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="165" width="200" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="180" width="240" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="195" width="140" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="215" width="240" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="230" width="200" height="8" rx="2" fill="#f1f5f9" />
+        <rect x="30" y="245" width="160" height="8" rx="2" fill="#f1f5f9" />
+        <line x1="30" y1="270" x2="270" y2="270" stroke="#e2e8f0" stroke-width="1" />
+        <rect x="120" y="290" width="60" height="24" rx="12" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+        <text x="150" y="306" text-anchor="middle" font-size="11" fill="#6366f1" font-family="sans-serif" font-weight="bold">1</text>
+        <text x="150" y="335" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="sans-serif">Footer — page number</text>
+        <line x1="150" y1="314" x2="150" y2="290" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,2" />
+        <line x1="115" y1="300" x2="80" y2="300" stroke="#6366f1" stroke-width="1" marker-end="url(#arrow)" />
+        <line x1="185" y1="300" x2="220" y2="300" stroke="#6366f1" stroke-width="1" marker-end="url(#arrow)" />
+        <line x1="150" y1="286" x2="150" y2="40" stroke="#6366f1" stroke-width="1" marker-end="url(#arrow)" stroke-dasharray="4,3" opacity="0.5" />
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill="#6366f1" />
+          </marker>
+        </defs>
+        <text x="80" y="293" text-anchor="end" font-size="8" fill="#6366f1" font-family="sans-serif">Left</text>
+        <text x="220" y="293" text-anchor="start" font-size="8" fill="#6366f1" font-family="sans-serif">Right</text>
+        <text x="155" y="160" text-anchor="start" font-size="8" fill="#6366f1" font-family="sans-serif" transform="rotate(-90,155,160)">Top positions</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for page numbering</h2>
+    <p class="mt-2 text-slate-600">Adding page numbers is one of the most common PDF enhancements. Whether you are preparing a business report, submitting a thesis, or organising a manuscript, page numbers help readers navigate your document and keep pages in order when printed or separated.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📊</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Business reports</h3>
+        <p class="mt-1 text-sm text-slate-600">Numbered pages make professional reports easy to reference in meetings. Executives can say "turn to page 12" and everyone lands on the same chart or data table.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎓</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Theses and dissertations</h3>
+        <p class="mt-1 text-sm text-slate-600">Universities often require page numbers in specific positions. Start numbering after the table of contents and use Roman numerals for front matter and Arabic for the main body.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">✍️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Manuscripts</h3>
+        <p class="mt-1 text-sm text-slate-600">Publishers and editors rely on page numbers during review. Numbered pages make it easy to discuss specific passages without confusion.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚖️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Legal documents</h3>
+        <p class="mt-1 text-sm text-slate-600">Contracts, affidavits and court filings must have numbered pages to ensure completeness. Missing pages are immediately obvious when numbers skip.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the PDF page numberer</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload your PDF</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the upload area and select the PDF you want to number from your device.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Configure settings</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the format, position, starting number, first page, and font size.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Download the result</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Add page numbers → Download" and your numbered PDF is saved automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Format options explained</h2>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Format</th><th class="p-3">Example output</th><th class="p-3">Best for</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">1, 2, 3</td><td class="p-3">1 · 2 · 3</td><td class="p-3">Reports, general documents, simple numbering</td></tr>
+          <tr><td class="p-3 font-medium">Page X of Y</td><td class="p-3">Page 1 of 10 · Page 2 of 10</td><td class="p-3">Official filings, handouts, multi-section documents</td></tr>
+          <tr><td class="p-3 font-medium">i, ii, iii</td><td class="p-3">i · ii · iii</td><td class="p-3">Front matter, prefaces, tables of contents</td></tr>
+          <tr><td class="p-3 font-medium">Page X</td><td class="p-3">Page 1 · Page 2 · Page 3</td><td class="p-3">Formal documents, contracts, legal briefs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for great results</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Skip the cover page</h3>
+        <p class="mt-1 text-sm text-slate-600">Set "First page to number" to 2 (or later) to leave your title or cover page unnumbered. This is the standard approach for reports and theses where the first page is a title page.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Custom starting numbers</h3>
+        <p class="mt-1 text-sm text-slate-600">If your document is part of a larger set, set the start number to continue the sequence from a previous document. For example, start at 25 if the preceding document ended at page 24.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Choose the right position</h3>
+        <p class="mt-1 text-sm text-slate-600">Bottom centre is the most common and professional placement for page numbers. Top right works well for documents that will be stapled at the top left. Bottom left suits right-to-left documents or certain academic style guides.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Large files may take a moment</h3>
+        <p class="mt-1 text-sm text-slate-600">PDFs with hundreds of pages or large file sizes use more browser memory. The tool shows a loading state while processing — please wait for it to complete before trying another operation.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Roman numerals for front matter</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the Roman numeral format (i, ii, iii) for preface pages, tables of contents, and introductory sections. Switch to Arabic numbering for the main body. You can run the tool multiple times on different page ranges to achieve mixed numbering.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Security and privacy</h2>
+    <p class="mt-2 text-slate-600">This PDF page numberer runs entirely in your browser using the pdf-lib JavaScript library. Your PDF file is never uploaded to any server, transmitted over the network, or stored in the cloud. All processing — loading the PDF, reading its pages, drawing the page numbers, and saving the result — happens locally on your device.</p>
+    <p class="mt-3 text-slate-600">Because your document never leaves your computer, you can safely use this tool with confidential business reports, legal documents, academic manuscripts, and personal files. There are no privacy policies, data retention periods, or server logs to worry about. No cookies, trackers, or analytics scripts are involved in the numbering process.</p>
+    <p class="mt-3 text-slate-600">The only caveat is that closing the browser tab or refreshing the page clears all loaded data from memory. Always complete your numbering and download the result before navigating away. For particularly sensitive documents, close other tabs that may contain third-party scripts and use a trusted device on a private network.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-slate-600">Explore other PDF tools in the collection:</p>
+    <div class="mt-4 flex flex-wrap gap-2">
+      <a href="/tools/pdf-watermark" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">PDF Watermark</a>
+      <a href="/tools/pdf-rotate" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">PDF Rotate</a>
+      <a href="/tools/pdf-page-remover" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">PDF Page Remover</a>
+      <a href="/tools/merge-pdf" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">Merge PDF</a>
+      <a href="/tools/split-pdf" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700">Split PDF</a>
+    </div>
+  </section>
+
+  <script>
+    import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+
+    const input = document.getElementById('file-input');
+    const controls = document.getElementById('controls');
+    const startNumEl = document.getElementById('start-num');
+    const firstPageEl = document.getElementById('first-page');
+    const positionEl = document.getElementById('position');
+    const formatEl = document.getElementById('format');
+    const fontSizeEl = document.getElementById('font-size');
+    const processBtn = document.getElementById('process-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const status = document.getElementById('status');
+    const info = document.getElementById('info');
+
+    let currentBytes = null;
+    let currentName = '';
+
+    function toRoman(num) {
+      const map = [
+        [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+        [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+        [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+      ];
+      let result = '';
+      for (const [value, char] of map) {
+        while (num >= value) {
+          result += char;
+          num -= value;
+        }
+      }
+      return result.toLowerCase();
+    }
+
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+      status.textContent = '';
+      try {
+        currentBytes = await file.arrayBuffer();
+        currentName = file.name.replace(/\.pdf$/i, '');
+        const doc = await PDFDocument.load(currentBytes, { ignoreEncryption: true });
+        const totalPages = doc.getPageCount();
+        info.textContent = `"${file.name}" — ${totalPages} page${totalPages === 1 ? '' : 's'}`;
+        controls.classList.remove('hidden');
+        processBtn.disabled = false;
+      } catch {
+        controls.classList.add('hidden');
+        processBtn.disabled = true;
+        status.textContent = 'Could not read this PDF — it may be corrupted or password-protected.';
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      currentBytes = null;
+      currentName = '';
+      controls.classList.add('hidden');
+      processBtn.disabled = true;
+      status.textContent = '';
+      input.value = '';
+    });
+
+    processBtn.addEventListener('click', async () => {
+      if (!currentBytes) return;
+
+      const startNum = parseInt(startNumEl.value, 10) || 1;
+      const firstPage = parseInt(firstPageEl.value, 10) || 1;
+      const fontSize = parseInt(fontSizeEl.value, 10) || 12;
+      const position = positionEl.value;
+      const format = formatEl.value;
+
+      processBtn.disabled = true;
+      status.textContent = 'Adding page numbers…';
+
+      try {
+        const doc = await PDFDocument.load(currentBytes, { ignoreEncryption: true });
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const pages = doc.getPages();
+        const total = pages.length;
+
+        for (let i = 0; i < total; i++) {
+          const pageIndex = i + 1;
+          if (pageIndex < firstPage) continue;
+
+          const pageNum = startNum + (pageIndex - firstPage);
+          const page = pages[i];
+          const { width, height } = page.getSize();
+
+          let text;
+          switch (format) {
+            case 'page-x-of-y':
+              text = `Page ${pageNum} of ${startNum + total - firstPage}`;
+              break;
+            case 'roman':
+              text = toRoman(pageNum);
+              break;
+            case 'page-x':
+              text = `Page ${pageNum}`;
+              break;
+            default:
+              text = String(pageNum);
+          }
+
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+          const margin = 50;
+
+          let x, y;
+          switch (position) {
+            case 'bottom-center':
+              x = (width - textWidth) / 2;
+              y = margin;
+              break;
+            case 'bottom-right':
+              x = width - margin - textWidth;
+              y = margin;
+              break;
+            case 'top-right':
+              x = width - margin - textWidth;
+              y = height - margin - fontSize;
+              break;
+            case 'bottom-left':
+              x = margin;
+              y = margin;
+              break;
+            default:
+              x = (width - textWidth) / 2;
+              y = margin;
+          }
+
+          page.drawText(text, {
+            x,
+            y,
+            size: fontSize,
+            font,
+            color: rgb(0, 0, 0),
+          });
+        }
+
+        const out = await doc.save();
+        const blob = new Blob([out], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentName}-numbered.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        status.textContent = 'Numbered PDF downloaded!';
+      } catch (err) {
+        status.textContent = 'Something went wrong while adding page numbers.';
+      } finally {
+        processBtn.disabled = false;
+      }
+    });
+  </script>
+</ToolLayout>

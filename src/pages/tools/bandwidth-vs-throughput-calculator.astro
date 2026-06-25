@@ -1,0 +1,235 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Bandwidth vs Throughput Calculator';
+const description = 'Estimate real achievable throughput from rated bandwidth, accounting for protocol overhead, latency, and TCP window size.';
+const intro = 'Estimate real achievable throughput from rated bandwidth accounting for overhead.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is the difference between bandwidth and throughput?', a: 'Bandwidth is the theoretical maximum data transfer rate of a network link, while throughput is the actual rate achieved after accounting for protocol overhead, latency, congestion, and other real-world factors. Throughput is always lower than or equal to bandwidth.' },
+  { q: 'How much overhead is typical?', a: 'TCP/IP overhead is about 5–10% for large transfers using standard 1500-byte MTU, but can be 20–50% for small packets where header-to-payload ratio is worse. Encryption (TLS/SSL) adds 5–15% more. VPN protocols like WireGuard or OpenSSL add their own encapsulation overhead.' },
+  { q: 'Does latency affect throughput?', a: 'Yes — high latency limits throughput due to the TCP congestion window mechanism. With a fixed window size, the sender cannot transmit more than one window\'s worth of data per round-trip time. This is known as the bandwidth-delay product (BDP) problem. The formula is: Throughput &le; Window Size / RTT.' },
+  { q: 'What is TCP window size?', a: 'The TCP receive window is the amount of data (in bytes) a receiver is willing to accept before the sender must wait for an acknowledgment. The default window on many systems is 64 KB. TCP window scaling (RFC 7323) allows much larger windows, up to 1 GB, which is essential for high-throughput long-distance links.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 space-y-4">
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <h2 class="text-base font-semibold text-slate-900">Bandwidth vs Throughput Calculator</h2>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="bw-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">Rated bandwidth (Mbps)</label>
+          <input id="bw-input" type="number" placeholder="e.g. 100" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label for="overhead-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">Protocol overhead (%)</label>
+          <input id="overhead-input" type="number" value="8" step="any" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label for="latency-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">Round-trip latency (ms)</label>
+          <input id="latency-input" type="number" value="20" step="any" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label for="window-input" class="text-xs font-semibold uppercase tracking-wide text-slate-400">TCP window size (KB)</label>
+          <input id="window-input" type="number" value="64" step="any" class="mt-1 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+      </div>
+      <button id="calc-btn" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+    </div>
+
+    <div id="result-area" class="hidden space-y-3">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-center shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500">Estimated Throughput</p>
+          <p id="r-throughput" class="mt-1 text-3xl font-extrabold text-indigo-700">—</p>
+          <p class="text-xs text-indigo-400">Mbps</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-emerald-500">Efficiency</p>
+          <p id="r-efficiency" class="mt-1 text-3xl font-extrabold text-emerald-700">—</p>
+          <p class="text-xs text-emerald-400">% of rated</p>
+        </div>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-amber-500">Max Throughput (unlimited window)</p>
+          <p id="r-max-throughput" class="mt-1 text-3xl font-extrabold text-amber-700">—</p>
+          <p class="text-xs text-amber-400">Mbps</p>
+        </div>
+      </div>
+
+      <div id="bdp-note" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <span class="font-semibold text-slate-800">Bandwidth-delay product:</span> <span id="r-bdp">—</span>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bw-title bw-desc">
+      <title id="bw-title">Bandwidth vs Throughput Pipe Diagram</title>
+      <desc id="bw-desc">A wide pipe labelled Bandwidth with a narrower inner flow labelled Throughput, showing protocol overhead as the gap between theoretical and real speed</desc>
+      <rect x="30" y="10" width="740" height="260" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <text x="400" y="35" text-anchor="middle" fill="#1e293b" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Bandwidth vs Throughput — Water Pipe Analogy</text>
+
+      <rect x="80" y="65" width="640" height="60" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="400" y="95" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="18" font-weight="bold">Bandwidth (pipe width — theoretical max)</text>
+      <text x="400" y="113" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">100 Mbps link capacity</text>
+
+      <rect x="140" y="145" width="520" height="40" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="2" />
+      <text x="400" y="170" text-anchor="middle" fill="#047857" font-family="system-ui, sans-serif" font-size="16" font-weight="bold">Throughput (actual flow)</text>
+
+      <rect x="80" y="145" width="60" height="40" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" />
+      <text x="110" y="170" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Overhead</text>
+
+      <rect x="660" y="145" width="60" height="40" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" />
+      <text x="690" y="170" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="10" font-weight="600">Overhead</text>
+
+      <line x1="80" y1="220" x2="720" y2="220" stroke="#cbd5e1" stroke-width="1.5" />
+      <polygon points="720,220 710,216 710,224" fill="#cbd5e1" />
+
+      <text x="400" y="243" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Bandwidth</text>
+      <text x="400" y="257" text-anchor="middle" fill="#10b981" font-family="system-ui, sans-serif" font-size="12" font-weight="600">Throughput (Bandwidth &minus; Overhead &minus; Window limits)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">The full pipe width represents raw bandwidth; the narrower inner stream represents real throughput after overhead and TCP window constraints</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How throughput is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator estimates real-world TCP throughput using two fundamental constraints: protocol overhead and the bandwidth-delay product (BDP). The TCP throughput formula based on the BDP is:
+    </p>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5 text-center font-mono text-lg font-bold text-indigo-700">
+      TCP Throughput &le; (Window_Size &times; 8) / RTT
+    </div>
+    <p class="mt-3 text-slate-600">
+      The window size is in bytes, the factor of 8 converts to bits, and RTT is in seconds. This formula gives the theoretical maximum throughput imposed by the TCP sliding window — the sender cannot transmit more than one window full of data per round trip. After computing this limit, the result is further reduced by the protocol overhead percentage to account for TCP/IP headers, Ethernet framing, and any additional encapsulation.
+    </p>
+
+    <h3 class="mt-8 text-lg font-bold text-slate-900">Worked example</h3>
+    <p class="mt-2 text-slate-600">Take a typical office internet connection with the following parameters:</p>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <div class="grid gap-2 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Bandwidth:</span> <span class="text-slate-600">100 Mbps</span></div>
+        <div><span class="font-medium text-slate-700">Overhead:</span> <span class="text-slate-600">8%</span></div>
+        <div><span class="font-medium text-slate-700">RTT:</span> <span class="text-slate-600">20 ms (0.02 s)</span></div>
+        <div><span class="font-medium text-slate-700">Window:</span> <span class="text-slate-600">64 KB (65,536 bytes)</span></div>
+        <div class="sm:col-span-2"><span class="font-medium text-slate-700">TCP max throughput (window-limited):</span> <span class="text-slate-600">(64 &times; 1,024 &times; 8) / 0.02 = 524,288 &times; 8 / 0.02 = 25.6 Mbps</span></div>
+        <div class="sm:col-span-2"><span class="font-medium text-slate-700">After 8% overhead:</span> <span class="text-slate-600">25.6 &times; (1 &minus; 0.08) = 23.6 Mbps estimated throughput</span></div>
+        <div class="sm:col-span-2"><span class="font-medium text-slate-700">Efficiency:</span> <span class="text-slate-600">23.6 / 100 = 23.6%</span></div>
+      </div>
+    </div>
+    <p class="mt-3 text-slate-600">
+      In this case, throughput is limited by the TCP window (64 KB) combined with the 20 ms RTT, not by the link bandwidth. Increasing the window size or reducing latency would improve throughput. With TCP window scaling enabled (up to 1 MB or more), throughput could approach the bandwidth limit.
+    </p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Network performance testing</h3>
+      <p class="mt-1 text-sm text-slate-600">When running iperf3 or Speedtest, compare results against this calculator to understand whether TCP window limits or bandwidth is your bottleneck. If estimated throughput matches your iperf results, your window size or RTT is the constraint.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">VPN throughput planning</h3>
+      <p class="mt-1 text-sm text-slate-600">VPNs add encapsulation overhead and often increase RTT due to the extra tunnel hop. This calculator helps you predict the realistic throughput before deploying a VPN, so you can size your links and choose the right protocol (WireGuard typically has lower overhead than OpenSSL).</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Server capacity planning</h3>
+      <p class="mt-1 text-sm text-slate-600">When provisioning servers for high-bandwidth applications (streaming, file transfers, backups), use this tool to estimate whether your server's TCP stack configuration can saturate the available link. Tuning the TCP window, enabling window scaling, and using jumbo frames can dramatically improve throughput.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Cloud interconnect sizing</h3>
+      <p class="mt-1 text-sm text-slate-600">For Direct Connect, ExpressRoute, or other cloud interconnects, the RTT between your on-premises network and the cloud provider determines the BDP. Use the calculator to find the minimum TCP window needed to saturate your link, then configure your OS and firewall accordingly.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for improving throughput</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Enable TCP window scaling</h3>
+        <p class="mt-1 text-sm text-slate-600">TCP window scaling (RFC 7323) allows the receive window to grow beyond the default 64 KB limit, up to 1 GB. This is essential for high-bandwidth long-distance links. On Linux, check with <code class="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-800">sysctl net.ipv4.tcp_window_scaling</code>. It is enabled by default on modern OS kernels, but some enterprise firewall policies may disable it, severely capping throughput on high-latency paths.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use jumbo frames</h3>
+        <p class="mt-1 text-sm text-slate-600">Jumbo frames increase the MTU from the standard 1500 bytes to 9000 bytes, reducing the number of packets needed for a given data transfer. Fewer packets means less per-packet header overhead and lower CPU utilization. On a 100 Mbps link with standard MTU, the Ethernet/IP/TCP header overhead is roughly 7%. With jumbo frames, this drops below 1.5%. Jumbo frames require end-to-end support across all switches, routers, and NICs in the path.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Real-world vs theoretical</h3>
+        <p class="mt-1 text-sm text-slate-600">Theoretical calculations assume ideal conditions — no packet loss, no congestion, no queueing delay, and perfect TCP behaviour. In practice, packet loss triggers TCP congestion control (AIMD) which halves the window on each loss event, dramatically reducing throughput. Real-world throughput is typically 50–80% of the theoretical BDP limit on well-managed networks, and much lower on lossy or congested links. Tools like iperf3 and tcptrace help measure the actual throughput and loss rate.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Optimize the buffer size</h3>
+        <p class="mt-1 text-sm text-slate-600">The optimal TCP buffer (window) size is at least the bandwidth-delay product: BDP = Bandwidth (bps) &times; RTT (s). For a 100 Mbps link with 20 ms RTT, BDP = 100,000,000 &times; 0.02 = 2,000,000 bits = 244 KB. Ensure your OS's TCP buffer settings (<code class="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-800">net.ipv4.tcp_rmem</code> and <code class="rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-800">tcp_wmem</code> on Linux) are set high enough to accommodate the BDP for your link.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the bandwidth-delay product</h2>
+    <p class="mt-2 text-slate-600">
+      The bandwidth-delay product (BDP) is a fundamental concept in TCP performance. It represents the amount of data that can be "in flight" — transmitted but not yet acknowledged — on a network path at any given moment. The BDP is calculated as the link bandwidth in bits per second multiplied by the round-trip time in seconds. For a transatlantic link with 100 Mbps bandwidth and 100 ms RTT, the BDP is 100 Mbps &times; 0.1 s = 10 Mb or roughly 1.22 MB. To fully utilize this link, the TCP send buffer must be at least 1.22 MB. If the buffer is only 64 KB, the sender will spend most of its time waiting for acknowledgments, and throughput will be limited to roughly 64 KB / 100 ms = 5.2 Mbps — far below the link's 100 Mbps capability.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The BDP concept explains why high-latency links (satellite, intercontinental fibre) are particularly challenging for TCP performance. On a geostationary satellite link with 600 ms RTT, even the full BDP utilization with a 64 KB window yields only about 0.87 Mbps. Modern TCP implementations use window scaling, selective acknowledgments (SACK), and congestion control algorithms like BBR or CUBIC to improve performance on high-BDP paths. BBR, in particular, is designed to achieve high throughput on long-fat networks (LFNs) by pacing packets based on the estimated bandwidth and RTT, rather than relying solely on loss-based window adjustments.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The relationship between window size, RTT, and throughput also explains why short-lived connections (many HTTP requests for small resources) are disproportionately affected by latency. Each new TCP connection starts with a small initial window (typically 10 segments) and grows via slow-start. Connections that complete before the window grows large enough never reach peak throughput. This is why persistent connections (HTTP keep-alive, HTTP/2 multiplexing) and connection pooling are important strategies for latency-sensitive web applications. By keeping TCP connections open and reusing them, the window can stay in a large steady state, and the BDP limit is the only remaining throughput constraint.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/mtu-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">MTU Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Find the optimal MTU size for your network path to minimize fragmentation and reduce overhead.</p>
+      </a>
+      <a href="/tools/subnet-mask-cheat-sheet" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">Subnet Mask Cheat Sheet</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Quick reference for CIDR notation, subnet masks, and usable host counts.</p>
+      </a>
+      <a href="/tools/dns-record-builder" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <h3 class="text-sm font-semibold text-slate-900">DNS Record Builder</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Construct A, AAAA, CNAME, MX, TXT, and SRV records with syntax validation.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const netInputs = ['bw-input', 'overhead-input', 'latency-input', 'window-input'].map(el);
+    const btn = el('calc-btn');
+    const resultArea = el('result-area');
+
+    function calculate() {
+      const bw = parseFloat(el('bw-input').value);
+      const overhead = parseFloat(el('overhead-input').value);
+      const rttMs = parseFloat(el('latency-input').value);
+      const windowKb = parseFloat(el('window-input').value);
+
+      if (isNaN(bw) || bw <= 0 || isNaN(overhead) || isNaN(rttMs) || rttMs <= 0 || isNaN(windowKb) || windowKb <= 0) {
+        resultArea.classList.add('hidden');
+        return;
+      }
+
+      const rttSec = rttMs / 1000;
+      const windowBits = windowKb * 1024 * 8;
+
+      const tcpMaxMbps = (windowBits / rttSec) / 1_000_000;
+      const throughputMbps = tcpMaxMbps * (1 - overhead / 100);
+      const efficiencyPct = (throughputMbps / bw) * 100;
+
+      const bdpBits = bw * 1_000_000 * rttSec;
+      const bdpKb = bdpBits / 8 / 1024;
+
+      el('r-throughput').textContent = throughputMbps.toFixed(1);
+      el('r-efficiency').textContent = efficiencyPct.toFixed(1);
+      el('r-max-throughput').textContent = tcpMaxMbps.toFixed(1);
+      el('r-bdp').innerHTML = `The bandwidth-delay product for ${bw} Mbps at ${rttMs} ms RTT is <strong class="text-slate-800">${bdpKb.toFixed(0)} KB</strong>. Your TCP window is <strong class="text-slate-800">${windowKb} KB</strong>.${windowKb < bdpKb ? ' <span class="text-red-600">The window is smaller than the BDP — throughput is window-limited.</span>' : ' <span class="text-emerald-600">The window is large enough to saturate the link (ignoring overhead).</span>'}`;
+
+      resultArea.classList.remove('hidden');
+    }
+
+    btn.addEventListener('click', calculate);
+    netInputs.forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') calculate(); }));
+  </script>
+</ToolLayout>

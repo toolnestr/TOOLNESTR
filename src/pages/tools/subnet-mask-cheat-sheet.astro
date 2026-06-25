@@ -1,0 +1,272 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Subnet Mask Cheat Sheet';
+const description = 'Interactive CIDR-to-hosts reference table. Filter and search subnet masks from /0 to /32 with usable host counts.';
+const intro = 'Interactive CIDR-to-hosts reference table you can filter and search.';
+const category = { id: 'networking', name: 'Networking & IP Tools' };
+const faqs = [
+  { q: 'What is CIDR notation?', a: 'Classless Inter-Domain Routing — e.g. /24 means 255.255.255.0 with 256 addresses.' },
+  { q: 'How many usable hosts in a /24?', a: '256 total − 2 (network + broadcast) = 254 usable host addresses.' },
+  { q: 'What is the difference between /24 and /28?', a: '/24 = 254 usable hosts, /28 = 14 usable hosts. Each increment of 1 halves the address space.' },
+  { q: 'What is the smallest subnet?', a: '/30 with 2 usable hosts (point-to-point links) and /31 with 2 addresses but no network/broadcast (used for PtP).' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <input id="subnet-search" type="text" placeholder="Filter by CIDR, mask, or host count…" class="w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm" />
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-slate-500">
+            <th class="pb-2 pr-3 font-medium cursor-pointer" data-sort="cidr">CIDR</th>
+            <th class="pb-2 pr-3 font-medium cursor-pointer" data-sort="mask">Subnet Mask</th>
+            <th class="pb-2 pr-3 font-medium cursor-pointer" data-sort="total">Total IPs</th>
+            <th class="pb-2 pr-3 font-medium cursor-pointer" data-sort="usable">Usable IPs</th>
+            <th class="pb-2 pr-3 font-medium">Wildcard Mask</th>
+          </tr>
+        </thead>
+        <tbody id="subnet-tbody" class="text-slate-700"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="detail-panel" class="mt-4 hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <h2 id="detail-title" class="text-base font-bold text-slate-900"></h2>
+    <div id="detail-body" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-labelledby="cidr-scale-title cidr-scale-desc">
+      <title id="cidr-scale-title">CIDR-to-Hosts Scale Bar</title>
+      <desc id="cidr-scale-desc">Proportional scale bar showing CIDR prefixes /24, /16, and /8 with their host counts</desc>
+      <text x="400" y="22" text-anchor="middle" fill="#334155" font-family="system-ui, sans-serif" font-size="14" font-weight="700">CIDR Scale — Address Space by Prefix Length</text>
+      <rect x="30" y="40" width="740" height="30" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1" />
+      <rect x="30" y="40" width="370" height="30" rx="4" fill="#6366f1" />
+      <text x="215" y="60" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="700">/24 — 256 IPs</text>
+      <rect x="400" y="40" width="185" height="30" fill="#818cf8" />
+      <text x="492" y="60" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="12" font-weight="700">/16 — 65,536 IPs</text>
+      <rect x="585" y="40" width="185" height="30" rx="4" fill="#a5b4fc" />
+      <text x="677" y="60" text-anchor="middle" fill="#1e1b4b" font-family="system-ui, sans-serif" font-size="12" font-weight="700">/8 — 16.7M IPs</text>
+      <line x1="30" y1="90" x2="770" y2="90" stroke="#cbd5e1" stroke-width="2" />
+      <text x="30" y="110" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">/32</text>
+      <text x="215" y="110" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/24 boundary</text>
+      <text x="492" y="110" text-anchor="middle" fill="#818cf8" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/16 boundary</text>
+      <text x="677" y="110" text-anchor="middle" fill="#a5b4fc" font-family="system-ui, sans-serif" font-size="11" font-weight="600">/8 boundary</text>
+      <text x="770" y="110" text-anchor="end" fill="#64748b" font-family="system-ui, sans-serif" font-size="11">/0</text>
+      <rect x="30" y="135" width="8" height="8" rx="1" fill="#6366f1" />
+      <text x="44" y="143" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Small subnets (home, office)</text>
+      <rect x="300" y="135" width="8" height="8" rx="1" fill="#818cf8" />
+      <text x="314" y="143" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Medium subnets (campus, org)</text>
+      <rect x="570" y="135" width="8" height="8" rx="1" fill="#a5b4fc" />
+      <text x="584" y="143" fill="#64748b" font-family="system-ui, sans-serif" font-size="10">Large subnets (ISP, datacenter)</text>
+      <text x="400" y="175" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11">Each increment of 1 in CIDR halves the address space: /24 is half of /23, which is half of /22, etc.</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Visual scale of CIDR prefix lengths relative to address space from /32 (1 IP) to /0 (4,294,967,296 IPs)</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula</h2>
+    <p class="mt-2 text-slate-600">
+      Every subnet is defined by its <strong>CIDR prefix length</strong>, the number of leading 1-bits in the subnet mask. The math is straightforward:
+    </p>
+    <div class="mt-3 rounded-lg bg-slate-50 p-4 font-mono text-sm text-slate-800">
+      total_ips = 2<sup>(32 − cidr)</sup><br />
+      usable = total_ips − 2 &nbsp;(except /31 and /32)
+    </div>
+    <p class="mt-3 text-slate-600">
+      For a <strong>/24</strong> network: 2<sup>(32 − 24)</sup> = 2<sup>8</sup> = 256 total addresses. The network address (all host bits 0) and broadcast address (all host bits 1) are reserved, leaving <strong>254 usable host addresses</strong>. For a /16: 2<sup>(32 − 16)</sup> = 2<sup>16</sup> = 65,536 addresses, minus 2 = 65,534 usable. Each time you increase the prefix by 1, you cut the address space in half. A /25 has 128 total IPs (126 usable), /26 has 64 (62 usable), and so on.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The two exceptions are /31 (RFC 3021) and /32. A /31 has 2 total addresses but no network or broadcast reservation, making both addresses usable for point-to-point links. A /32 is a single-host route — all 1 address is usable (commonly used for loopback interfaces or default routes).
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example: /24 subnet</h2>
+    <p class="mt-2 text-slate-600">
+      Let us walk through a real /24 network, say <strong>192.168.1.0/24</strong>:
+    </p>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-slate-600">
+      <li><strong>CIDR notation:</strong> 192.168.1.0/24</li>
+      <li><strong>Subnet mask:</strong> 255.255.255.0</li>
+      <li><strong>Wildcard mask:</strong> 0.0.0.255</li>
+      <li><strong>Total addresses:</strong> 2<sup>(32 − 24)</sup> = 256</li>
+      <li><strong>Usable addresses:</strong> 256 − 2 = 254</li>
+      <li><strong>Network address:</strong> 192.168.1.0 (all host bits zero)</li>
+      <li><strong>Broadcast address:</strong> 192.168.1.255 (all host bits one)</li>
+      <li><strong>First usable:</strong> 192.168.1.1</li>
+      <li><strong>Last usable:</strong> 192.168.1.254</li>
+    </ul>
+    <p class="mt-3 text-slate-600">
+      The same pattern applies to every prefix length. For a /28 (255.255.255.240), the block size is 16 IPs: network + 14 usable + broadcast. For a /30 (255.255.255.252), the block is 4 IPs: network + 2 usable + broadcast — the smallest subnet commonly used for point-to-point links before /31 was standardized.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Network design</h3>
+        <p class="mt-1 text-sm text-slate-600">When planning a new network, choose a CIDR prefix that provides enough host addresses for current devices plus room for growth. A /24 is standard for a department LAN, /23 for a larger floor, and /22 for an entire building. For data center VLANs, /25 or /26 may suffice since each rack typically contains a limited number of servers.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Firewall rules</h3>
+        <p class="mt-1 text-sm text-slate-600">Firewall access control entries (ACEs) use CIDR notation to match source or destination networks. Instead of listing 254 individual host IPs, a single /24 rule covers the entire range. Understanding the block size helps avoid overly permissive rules that span too many addresses or overly restrictive ones that miss valid traffic.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Cloud VPC sizing</h3>
+        <p class="mt-1 text-sm text-slate-600">AWS, Azure, and Google Cloud all use CIDR blocks for Virtual Private Cloud (VPC) networks. Choosing the right VPC CIDR is critical because it cannot be changed after creation. A /16 (65,536 addresses) is common for large VPCs, with /24 subnets in each availability zone. Overlapping CIDRs between peered VPCs cause routing conflicts, so careful planning with this cheat sheet prevents costly redesigns.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips</h2>
+    <div class="mt-4 space-y-4">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always reserve the first and last IP</h3>
+        <p class="mt-1 text-sm text-slate-600">In every subnet (except /31 and /32), the first address is the network identifier and the last is the broadcast address. Do not assign these to hosts. Many devices and operating systems behave unexpectedly if a host claims the network or broadcast address, causing duplicate address detection failures, ARP issues, and routing problems.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use /31 for point-to-point links</h3>
+        <p class="mt-1 text-sm text-slate-600">RFC 3021 allows /31 subnets on point-to-point links, providing 2 usable addresses (both hosts) with no network or broadcast overhead. This doubles the efficiency of /30 links on router interconnects. When both endpoints support RFC 3021 (most modern routers do), prefer /31 to conserve address space.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Plan for growth</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose a prefix at least one bit larger than your current needs. A /24 that is 60% full today will run out of addresses sooner than expected as IoT devices, cloud workloads, and remote users multiply. Subnetting a larger block later requires re-addressing, so building in headroom from the start saves significant operational effort.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Wildcard masks for ACLs</h3>
+        <p class="mt-1 text-sm text-slate-600">In Cisco ACL syntax, the wildcard mask is the inverse of the subnet mask. For 255.255.255.0, the wildcard is 0.0.0.255. For 255.255.255.248 (/29), the wildcard is 0.0.0.7. The wildcard mask tells the ACL which bits to match (0 = match, 1 = ignore). This cheat sheet includes wildcard masks for quick ACL drafting.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations</h2>
+    <p class="mt-2 text-slate-600">
+      This cheat sheet covers IPv4 CIDR notation only. IPv6 subnetting uses a 128-bit address space with recommended /64 subnets and follows a fundamentally different hierarchy (see the <a href="/tools/ipv6-subnet-calculator/" class="text-indigo-500 hover:text-indigo-600">IPv6 Subnet Calculator</a>). The usable host counts assume standard RFC 791 and RFC 1812 subnet rules. Some cloud providers reserve additional addresses per subnet (AWS reserves the first 4 and last 1 IPs in each VPC subnet), so always check your provider documentation. Additionally, anycast, multicast, and broadcast networks may use different addressing conventions that deviate from standard host counts.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/mtu-calculator/" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-indigo-50">
+        <span class="text-2xl">📦</span>
+        <div><span class="font-semibold text-slate-900">MTU Calculator</span><p class="text-xs text-slate-500">Calculate max payload for a given MTU</p></div>
+      </a>
+      <a href="/tools/bandwidth-vs-throughput-calculator/" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-indigo-50">
+        <span class="text-2xl">📊</span>
+        <div><span class="font-semibold text-slate-900">Bandwidth vs Throughput</span><p class="text-xs text-slate-500">Estimate real achievable throughput</p></div>
+      </a>
+      <a href="/tools/dns-record-builder/" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-indigo-300 hover:bg-indigo-50">
+        <span class="text-2xl">🌐</span>
+        <div><span class="font-semibold text-slate-900">DNS Record Builder</span><p class="text-xs text-slate-500">Build formatted DNS zone records</p></div>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    function maskToStr(mask) {
+      const parts = [];
+      for (let i = 0; i < 4; i++) {
+        const byte = (mask >>> (24 - i * 8)) & 0xff;
+        parts.push(byte.toString());
+      }
+      return parts.join('.');
+    }
+
+    function wildcardStr(mask) {
+      const wc = ~mask >>> 0;
+      const parts = [];
+      for (let i = 0; i < 4; i++) {
+        const byte = (wc >>> (24 - i * 8)) & 0xff;
+        parts.push(byte.toString());
+      }
+      return parts.join('.');
+    }
+
+    function buildTable() {
+      const rows = [];
+      for (let cidr = 0; cidr <= 32; cidr++) {
+        const total = Math.pow(2, 32 - cidr);
+        const usable = cidr >= 31 ? total : total - 2;
+        const mask = ~((1 << (32 - cidr)) - 1) >>> 0;
+        rows.push({ cidr, mask, total, usable });
+      }
+      return rows;
+    }
+
+    const data = buildTable();
+    const tbody = document.getElementById('subnet-tbody');
+    const searchInput = document.getElementById('subnet-search');
+    const detailPanel = document.getElementById('detail-panel');
+    const detailTitle = document.getElementById('detail-title');
+    const detailBody = document.getElementById('detail-body');
+
+    function formatNum(n) {
+      return n.toLocaleString();
+    }
+
+    function renderRows(filter) {
+      const q = filter ? filter.toLowerCase() : '';
+      let html = '';
+      for (const r of data) {
+        const maskStr = maskToStr(r.mask);
+        const wildStr = wildcardStr(r.mask);
+        if (q && !(`/${r.cidr}`.includes(q)) && !maskStr.includes(q) && !formatNum(r.total).toLowerCase().includes(q) && !formatNum(r.usable).toLowerCase().includes(q)) continue;
+        html += '<tr class="border-b border-slate-100 cursor-pointer hover:bg-indigo-50 transition" data-cidr="' + r.cidr + '">' +
+          '<td class="py-2 pr-3 font-mono font-semibold text-slate-900">/' + r.cidr + '</td>' +
+          '<td class="py-2 pr-3 font-mono text-slate-700">' + maskStr + '</td>' +
+          '<td class="py-2 pr-3 text-slate-700">' + formatNum(r.total) + '</td>' +
+          '<td class="py-2 pr-3 text-slate-700">' + formatNum(r.usable) + '</td>' +
+          '<td class="py-2 pr-3 font-mono text-slate-500 text-xs">' + wildStr + '</td>' +
+          '</tr>';
+      }
+      tbody.innerHTML = html || '<tr><td colspan="5" class="py-4 text-center text-slate-400">No matching subnets</td></tr>';
+    }
+
+    function showDetail(cidr) {
+      const r = data.find((d) => d.cidr === cidr);
+      if (!r) return;
+      const maskStr = maskToStr(r.mask);
+      const wildStr = wildcardStr(r.mask);
+      const total = r.total;
+      const usable = r.usable;
+      const hostBits = 32 - cidr;
+      const blockSize = Math.pow(2, hostBits);
+      const netOctet = (r.mask >>> 0) & 0xff;
+      const netAddr = 'x.x.x.' + (0) + ' /' + cidr;
+      const bcastAddr = 'x.x.x.' + (blockSize - 1) + ' /' + cidr;
+      const firstUsable = 'x.x.x.1';
+      const lastUsable = 'x.x.x.' + (blockSize - 2);
+
+      detailTitle.textContent = 'Detailed breakdown for /' + cidr;
+      detailBody.innerHTML =
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Subnet Mask</span><p class="mt-0.5 font-mono text-sm font-semibold text-slate-900">' + maskStr + '</p></div>' +
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Wildcard Mask</span><p class="mt-0.5 font-mono text-sm font-semibold text-slate-900">' + wildStr + '</p></div>' +
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Network Address</span><p class="mt-0.5 font-mono text-sm text-slate-700">' + netAddr + ' (all host bits 0)</p></div>' +
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Broadcast Address</span><p class="mt-0.5 font-mono text-sm text-slate-700">' + bcastAddr + ' (all host bits 1)</p></div>' +
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">First Usable IP</span><p class="mt-0.5 font-mono text-sm text-slate-700">' + firstUsable + '</p></div>' +
+        '<div class="rounded-lg bg-slate-50 p-3"><span class="text-xs font-medium text-slate-500">Last Usable IP</span><p class="mt-0.5 font-mono text-sm text-slate-700">' + lastUsable + '</p></div>' +
+        '<div class="rounded-lg bg-indigo-50 p-3"><span class="text-xs font-medium text-indigo-600">Total IPs</span><p class="mt-0.5 font-mono text-lg font-bold text-indigo-900">' + formatNum(total) + '</p></div>' +
+        '<div class="rounded-lg bg-indigo-50 p-3"><span class="text-xs font-medium text-indigo-600">Usable IPs</span><p class="mt-0.5 font-mono text-lg font-bold text-indigo-900">' + formatNum(usable) + '</p></div>';
+      detailPanel.classList.remove('hidden');
+    }
+
+    searchInput.addEventListener('input', () => {
+      renderRows(searchInput.value);
+      detailPanel.classList.add('hidden');
+    });
+
+    tbody.addEventListener('click', (e) => {
+      const tr = e.target.closest('tr[data-cidr]');
+      if (tr) showDetail(parseInt(tr.dataset.cidr, 10));
+    });
+
+    renderRows('');
+  </script>
+</ToolLayout>

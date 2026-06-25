@@ -295,6 +295,14 @@ export const tools = [
   { slug: 'gear-ratio-calculator', title: 'Gear Ratio Calculator', short: 'Calculate RPM at speed from gear ratio, final drive, and tire size.', category: 'automotive', emoji: '⚙️', enabled: true, status: 'live' },
   { slug: 'car-depreciation-calculator', title: 'Car Depreciation Calculator', short: 'Project a vehicle value over time with a standard depreciation curve.', category: 'automotive', emoji: '📉', enabled: true, status: 'live' },
   { slug: 'towing-capacity-calculator', title: 'Towing Capacity Calculator', short: 'Compare trailer weight against towing and payload capacity limits.', category: 'automotive', emoji: '🚛', enabled: true, status: 'live' },
+  // ── Part B: Networking ──
+  { slug: 'mtu-calculator', title: 'MTU Calculator', short: 'Calculate max payload for a given MTU and encapsulation overhead.', category: 'networking', emoji: '📦', enabled: true, status: 'live' },
+  { slug: 'bandwidth-vs-throughput-calculator', title: 'Bandwidth vs Throughput Calculator', short: 'Estimate real achievable throughput from rated bandwidth.', category: 'networking', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'dns-record-builder', title: 'DNS Record Builder', short: 'Build correctly formatted DNS zone file records from form inputs.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'subnet-mask-cheat-sheet', title: 'Subnet Mask Cheat Sheet', short: 'Interactive CIDR-to-hosts reference table you can filter and search.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
+  // ── Part B: PDF Tools ──
+  { slug: 'pdf-page-numbers', title: 'PDF Page Numberer', short: 'Add page numbers to any PDF with position, start number, and format options.', category: 'pdf', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'pdf-watermark', title: 'PDF Watermark', short: 'Add diagonal text watermarks to PDF pages with adjustable opacity.', category: 'pdf', emoji: '💧', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages
