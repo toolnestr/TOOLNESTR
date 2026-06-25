@@ -1,0 +1,338 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Quadratic Equation Solver';
+const description = 'Solve ax² + bx + c = 0 with step-by-step work. Shows discriminant, real or complex roots, and the full quadratic formula.';
+const intro = 'Solve ax²+bx+c=0 with step-by-step solution showing discriminant and roots.';
+const category = { id: 'math', name: 'Math' };
+const faqs = [
+  { q: 'What is the discriminant?', a: 'D = b² − 4ac. If D > 0 there are 2 real roots; if D = 0 one real root; if D < 0 two complex roots.' },
+  { q: 'What are complex roots?', a: 'When the discriminant is negative, the roots involve the imaginary unit i. They come as a conjugate pair.' },
+  { q: 'What if a = 0?', a: 'Then it is not a quadratic equation but a linear one: bx + c = 0, solved as x = −c/b.' },
+  { q: 'Where is this used?', a: 'Physics, engineering, economics, and any field involving parabolic relationships.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">a</span>
+        <input id="in-a" type="number" step="any" value="1" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">b</span>
+        <input id="in-b" type="number" step="any" value="-5" placeholder="-5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">c</span>
+        <input id="in-c" type="number" step="any" value="6" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <button id="solve-btn" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Solve</button>
+
+    <div id="result" class="mt-6 hidden space-y-3 rounded-xl bg-slate-50 p-5">
+      <div class="text-center">
+        <div class="text-lg font-bold text-slate-900" id="eq-display">ax² + bx + c = 0</div>
+      </div>
+      <hr class="border-slate-200" />
+      <div class="grid gap-2 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Δ = b² − 4ac</span></div>
+        <div id="delta-display" class="text-right font-mono text-slate-900"></div>
+        <div><span class="font-medium text-slate-700">Δ value</span></div>
+        <div id="delta-val" class="text-right font-mono text-slate-900"></div>
+        <div><span class="font-medium text-slate-700">Root type</span></div>
+        <div id="root-type" class="text-right font-medium text-slate-900"></div>
+      </div>
+      <hr class="border-slate-200" />
+      <div id="roots-display" class="grid gap-3 sm:grid-cols-2"></div>
+      <div id="steps" class="mt-2 space-y-1 text-xs text-slate-500"></div>
+    </div>
+
+    <div id="linear-result" class="mt-6 hidden rounded-xl bg-amber-50 p-5 text-center text-sm text-amber-800"></div>
+
+    <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter coefficients a, b, c and click Solve.</p>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300" role="img" aria-labelledby="quad-title quad-desc">
+      <title id="quad-title">Parabola graph of a quadratic equation</title>
+      <desc id="quad-desc">A parabola opening upward crossing the x-axis at two root points, with vertex below the x-axis. Axes are labelled x and y.</desc>
+      <rect width="800" height="300" fill="#f8fafc" rx="8" />
+      <!-- Axes -->
+      <line x1="40" y1="150" x2="760" y2="150" stroke="#94a3b8" stroke-width="1.5" />
+      <line x1="400" y1="20" x2="400" y2="280" stroke="#94a3b8" stroke-width="1.5" />
+      <text x="755" y="145" font-size="13" fill="#64748b" font-family="system-ui">x</text>
+      <text x="405" y="25" font-size="13" fill="#64748b" font-family="system-ui">y</text>
+      <!-- Parabola: y = (x-2)(x-3)/6 scaled — roots at x=2 and x=3 mapped to pixels -->
+      <!-- Scale: x: 1 unit = 120px, origin at (400,150), y inverted -->
+      <!-- f(t) = (t-2)(t-3)/6 * 120 (scale y so vertex approx -1/24 -> -5px) -->
+      <!-- We'll draw a generic parabola shape -->
+      <path d="M 160 220 Q 400 20 640 220" fill="none" stroke="#6366f1" stroke-width="3" stroke-linecap="round" />
+      <!-- Vertex dot -->
+      <circle cx="400" cy="120" r="4" fill="#818cf8" />
+      <text x="410" y="115" font-size="11" fill="#818cf8" font-family="system-ui" font-weight="600">Vertex</text>
+      <!-- Root dots -->
+      <circle cx="160" cy="150" r="5" fill="#ef4444" />
+      <text x="145" y="140" font-size="11" fill="#ef4444" font-family="system-ui" font-weight="600">Root</text>
+      <circle cx="640" cy="150" r="5" fill="#ef4444" />
+      <text x="625" y="140" font-size="11" fill="#ef4444" font-family="system-ui" font-weight="600">Root</text>
+      <!-- Axis labels -->
+      <text x="155" y="170" font-size="11" fill="#64748b" font-family="system-ui" text-anchor="middle">x₁</text>
+      <text x="645" y="170" font-size="11" fill="#64748b" font-family="system-ui" text-anchor="middle">x₂</text>
+      <!-- Arrow heads -->
+      <polygon points="755,150 745,145 745,155" fill="#94a3b8" />
+      <polygon points="400,25 395,35 405,35" fill="#94a3b8" />
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A parabola opening upward, crossing the x-axis at two real roots. The vertex lies between them.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The quadratic formula</h2>
+    <p class="mt-2 text-slate-600">
+      The standard form of a quadratic equation is <strong>ax² + bx + c = 0</strong>, where a, b, and c are real numbers and a ≠ 0. The solutions — called <em>roots</em> — are given by the quadratic formula:
+    </p>
+    <div class="mx-auto my-6 max-w-sm rounded-xl bg-indigo-50 p-5 text-center">
+      <p class="text-xl font-bold text-indigo-800">x = (−b ± √(b² − 4ac)) / 2a</p>
+    </div>
+    <p class="text-slate-600">
+      The expression under the square root, <strong>Δ = b² − 4ac</strong>, is called the <em>discriminant</em>. It determines the nature of the roots without fully solving the equation. If Δ &gt; 0, the equation has two distinct real roots. If Δ = 0, there is exactly one real root (a repeated root). If Δ &lt; 0, the roots are complex and come as a conjugate pair involving the imaginary unit i.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example: x² − 5x + 6 = 0</h2>
+    <p class="mt-2 text-slate-600">
+      Let us walk through a concrete case. Consider the equation <strong>x² − 5x + 6 = 0</strong>. Here a = 1, b = −5, and c = 6.
+    </p>
+    <div class="mt-4 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">1. Identify coefficients</p>
+        <p class="mt-1 text-sm text-slate-600">a = 1, b = −5, c = 6.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">2. Compute the discriminant</p>
+        <p class="mt-1 text-sm text-slate-600">Δ = b² − 4ac = (−5)² − 4·1·6 = 25 − 24 = <strong>1</strong>.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">3. Apply the quadratic formula</p>
+        <p class="mt-1 text-sm text-slate-600">x = (5 ± √1) / 2·1 = (5 ± 1) / 2.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">4. Find the two roots</p>
+        <p class="mt-1 text-sm text-slate-600">x₁ = (5 + 1) / 2 = 3, &nbsp; x₂ = (5 − 1) / 2 = 2.</p>
+        <p class="mt-1 text-sm text-slate-600">Since Δ = 1 &gt; 0, both roots are real and distinct. The parabola crosses the x-axis at x = 2 and x = 3.</p>
+      </div>
+    </div>
+    <p class="mt-4 text-slate-600">
+      You can verify by plugging each root back into the original equation: 2² − 5·2 + 6 = 4 − 10 + 6 = 0, and 3² − 5·3 + 6 = 9 − 15 + 6 = 0. Both work, confirming the solution.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Another example: 2x² − 4x + 2 = 0</h2>
+    <p class="mt-2 text-slate-600">
+      Now consider <strong>2x² − 4x + 2 = 0</strong> with a = 2, b = −4, c = 2. The discriminant is Δ = (−4)² − 4·2·2 = 16 − 16 = <strong>0</strong>. A zero discriminant means a single repeated root. Applying the formula: x = (4 ± √0) / 4 = 1. The equation has one real root (a double root) at x = 1, and the parabola just touches the x-axis at its vertex.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Complex roots: x² + x + 1 = 0</h2>
+    <p class="mt-2 text-slate-600">
+      When the discriminant is negative, the square root of a negative number introduces the imaginary unit i (where i² = −1). For <strong>x² + x + 1 = 0</strong>, a = 1, b = 1, c = 1. The discriminant is Δ = 1 − 4 = <strong>−3</strong>. The roots are:
+    </p>
+    <p class="mt-1 text-slate-600">x = (−1 ± √(−3)) / 2 = (−1 ± i·√3) / 2.</p>
+    <p class="mt-1 text-slate-600">
+      These are two complex conjugate roots: x₁ = (−1 + i√3)/2 and x₂ = (−1 − i√3)/2. The parabola does not cross the x-axis — it lies entirely above or below it. Complex roots always come in pairs because the coefficients are real.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎯</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Physics</h3>
+        <p class="mt-1 text-sm text-slate-600">Projectile motion, free fall, and kinematics. The height of a thrown object follows a parabolic path; solving for time when height is zero is a quadratic equation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📈</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Engineering</h3>
+        <p class="mt-1 text-sm text-slate-600">Circuit analysis, structural load calculations, and signal processing all produce quadratic relationships that need solving.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📐</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Algebra</h3>
+        <p class="mt-1 text-sm text-slate-600">Homework, exam prep, and graphing parabolas. Understanding quadratics is foundational for calculus, optimisation, and advanced mathematics.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Relation to parabolas</h2>
+    <p class="mt-2 text-slate-600">
+      The graph of y = ax² + bx + c is a parabola. The sign of a determines the opening direction: a &gt; 0 opens upward (like a U), and a &lt; 0 opens downward (like an upside-down U). The vertex is the highest or lowest point, and the roots are where the parabola meets the x-axis. The vertex x-coordinate is given by x = −b / (2a), and the y-coordinate is found by substituting this back into the equation. The axis of symmetry is the vertical line through the vertex.
+    </p>
+    <p class="mt-3 text-slate-600">
+      If the discriminant is positive, the parabola crosses the x-axis at two distinct points. If it is zero, the vertex touches the x-axis. If it is negative, the parabola hovers entirely above (a &gt; 0) or below (a &lt; 0) the x-axis and has no real points of intersection.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for solving quadratic equations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always check a ≠ 0 first</h3>
+        <p class="mt-1 text-sm text-slate-600">If a = 0, the equation is not quadratic but linear. Solve it as bx + c = 0, giving x = −c / b. This calculator handles that case automatically.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">The discriminant tells you everything</h3>
+        <p class="mt-1 text-sm text-slate-600">Compute Δ = b² − 4ac before attempting to find roots. Knowing whether Δ is positive, zero, or negative immediately tells you what kind of roots to expect and whether the parabola crosses the x-axis.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Rationalise and simplify</h3>
+        <p class="mt-1 text-sm text-slate-600">When the discriminant is not a perfect square, leave the root expression in simplified radical form. For complex roots, always write them as a conjugate pair: p ± qi.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verify by substitution</h3>
+        <p class="mt-1 text-sm text-slate-600">Plug your computed roots back into the original equation to check they produce zero. This is a simple sanity check that catches arithmetic mistakes.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/prime-number-checker" class="font-medium text-indigo-600 hover:underline">Prime Number Checker</a> — test whether a number is prime.</li>
+      <li><a href="/tools/gcd-lcm-calculator" class="font-medium text-indigo-600 hover:underline">GCD and LCM Calculator</a> — find the greatest common divisor and least common multiple of two numbers.</li>
+      <li><a href="/tools/logarithm-calculator" class="font-medium text-indigo-600 hover:underline">Logarithm Calculator</a> — compute logarithms with any base.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function formatNum(n) {
+      if (Number.isInteger(n)) return n.toString();
+      const s = n.toFixed(6);
+      return parseFloat(s).toString();
+    }
+
+    function formatComplex(real, imag) {
+      if (Math.abs(imag) < 1e-12) return formatNum(real);
+      const r = Math.abs(real) < 1e-12 ? '' : formatNum(real);
+      const i = formatNum(Math.abs(imag)) === '1' ? '' : formatNum(Math.abs(imag));
+      const sign = imag < 0 ? ' − ' : ' + ';
+      return (r || '0') + sign + i + 'i';
+    }
+
+    function sqrtSimplified(n) {
+      if (n === 0) return { coeff: 0, radicand: 0 };
+      if (n < 0) {
+        const { coeff, radicand } = sqrtSimplified(-n);
+        return { coeff, radicand, imag: true };
+      }
+      let coeff = 1, radicand = n;
+      for (let i = 2; i * i <= radicand; i++) {
+        while (radicand % (i * i) === 0) {
+          coeff *= i;
+          radicand /= i * i;
+        }
+      }
+      return { coeff, radicand };
+    }
+
+    function solve() {
+      const a = parseFloat(el('in-a').value);
+      const b = parseFloat(el('in-b').value);
+      const c = parseFloat(el('in-c').value);
+      const hint = el('hint');
+      const result = el('result');
+      const linear = el('linear-result');
+
+      result.classList.add('hidden');
+      linear.classList.add('hidden');
+
+      if ([a, b, c].some(isNaN)) {
+        hint.textContent = 'Please enter valid numbers for a, b, and c.';
+        hint.classList.remove('hidden');
+        return;
+      }
+      hint.classList.add('hidden');
+
+      // Handle a = 0 (linear case)
+      if (Math.abs(a) < 1e-12) {
+        if (Math.abs(b) < 1e-12) {
+          linear.innerHTML = c === 0
+            ? '<strong>Infinite solutions:</strong> 0 = 0 is true for all x.'
+            : '<strong>No solution:</strong> ' + formatNum(c) + ' = 0 is false.';
+        } else {
+          const x = -c / b;
+          linear.innerHTML = '<strong>Linear equation:</strong> ' + formatNum(b) + 'x + ' + formatNum(c) + ' = 0 &rarr; x = ' + formatNum(x);
+        }
+        linear.classList.remove('hidden');
+        return;
+      }
+
+      // Quadratic case
+      const discriminant = b * b - 4 * a * c;
+      const twoA = 2 * a;
+
+      el('eq-display').innerHTML = formatNum(a) + 'x² ' +
+        (b >= 0 ? '+ ' : '− ') + formatNum(Math.abs(b)) + 'x ' +
+        (c >= 0 ? '+ ' : '− ') + formatNum(Math.abs(c)) + ' = 0';
+
+      el('delta-display').innerHTML = '(' + formatNum(b) + ')² − 4·' + formatNum(a) + '·' + formatNum(c);
+      el('delta-val').textContent = formatNum(discriminant);
+
+      const rootsDiv = el('roots-display');
+      rootsDiv.innerHTML = '';
+
+      const steps = el('steps');
+      steps.innerHTML = '';
+
+      if (Math.abs(discriminant) < 1e-12) {
+        const root = -b / twoA;
+        el('root-type').textContent = 'One real root (repeated)';
+        rootsDiv.innerHTML =
+          '<div class="rounded-lg bg-indigo-100 p-3 text-center"><span class="text-xs text-indigo-500">Root</span><div class="mt-1 text-lg font-bold text-indigo-700">x = ' + formatNum(root) + '</div></div>';
+        steps.innerHTML =
+          '<div>Step 1: Δ = b² − 4ac = ' + formatNum(discriminant) + '</div>' +
+          '<div>Step 2: Since Δ = 0, one repeated root</div>' +
+          '<div>Step 3: x = −b / 2a = ' + formatNum(-b) + ' / ' + formatNum(twoA) + ' = ' + formatNum(root) + '</div>';
+      } else if (discriminant > 0) {
+        const sqrtD = Math.sqrt(discriminant);
+        const r1 = (-b + sqrtD) / twoA;
+        const r2 = (-b - sqrtD) / twoA;
+        el('root-type').textContent = 'Two distinct real roots';
+        rootsDiv.innerHTML =
+          '<div class="rounded-lg bg-emerald-50 p-3 text-center"><span class="text-xs text-emerald-500">Root 1</span><div class="mt-1 text-lg font-bold text-emerald-700">x₁ = ' + formatNum(r1) + '</div></div>' +
+          '<div class="rounded-lg bg-emerald-50 p-3 text-center"><span class="text-xs text-emerald-500">Root 2</span><div class="mt-1 text-lg font-bold text-emerald-700">x₂ = ' + formatNum(r2) + '</div></div>';
+        steps.innerHTML =
+          '<div>Step 1: Δ = b² − 4ac = ' + formatNum(b) + '² − 4·' + formatNum(a) + '·' + formatNum(c) + ' = ' + formatNum(discriminant) + '</div>' +
+          '<div>Step 2: √Δ = √' + formatNum(discriminant) + ' = ' + formatNum(sqrtD) + '</div>' +
+          '<div>Step 3: x₁ = (−b + √Δ) / 2a = (' + formatNum(-b) + ' + ' + formatNum(sqrtD) + ') / ' + formatNum(twoA) + ' = ' + formatNum(r1) + '</div>' +
+          '<div>Step 4: x₂ = (−b − √Δ) / 2a = (' + formatNum(-b) + ' − ' + formatNum(sqrtD) + ') / ' + formatNum(twoA) + ' = ' + formatNum(r2) + '</div>';
+      } else {
+        const absD = -discriminant;
+        const sqrtAbsD = Math.sqrt(absD);
+        const realPart = -b / twoA;
+        const imagPart = sqrtAbsD / twoA;
+        el('root-type').textContent = 'Two complex conjugate roots';
+        rootsDiv.innerHTML =
+          '<div class="rounded-lg bg-purple-50 p-3 text-center"><span class="text-xs text-purple-500">Root 1</span><div class="mt-1 text-lg font-bold text-purple-700">x₁ = ' + formatComplex(realPart, imagPart) + '</div></div>' +
+          '<div class="rounded-lg bg-purple-50 p-3 text-center"><span class="text-xs text-purple-500">Root 2</span><div class="mt-1 text-lg font-bold text-purple-700">x₂ = ' + formatComplex(realPart, -imagPart) + '</div></div>';
+
+        const { coeff, radicand } = sqrtSimplified(absD);
+        const sqrtStr = coeff === 1 ? '√' + radicand : (radicand === 1 ? formatNum(coeff) : formatNum(coeff) + '√' + radicand);
+        steps.innerHTML =
+          '<div>Step 1: Δ = b² − 4ac = ' + formatNum(discriminant) + ' (negative → complex roots)</div>' +
+          '<div>Step 2: √|Δ| = √' + formatNum(absD) + ' = ' + sqrtStr + '</div>' +
+          '<div>Step 3: Real part = −b / 2a = ' + formatNum(-b) + ' / ' + formatNum(twoA) + ' = ' + formatNum(realPart) + '</div>' +
+          '<div>Step 4: Imaginary part = √|Δ| / 2a = ' + sqrtStr + ' / ' + formatNum(twoA) + ' = ' + formatNum(imagPart) + '</div>' +
+          '<div>Step 5: x = ' + formatNum(realPart) + ' ± ' + formatNum(imagPart) + 'i</div>';
+      }
+
+      result.classList.remove('hidden');
+    }
+
+    el('solve-btn').addEventListener('click', solve);
+    ['in-a', 'in-b', 'in-c'].forEach((id) => el(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') solve(); }));
+    solve();
+  </script>
+</ToolLayout>

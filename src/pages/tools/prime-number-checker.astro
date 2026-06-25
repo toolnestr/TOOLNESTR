@@ -1,0 +1,300 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Prime Number Checker';
+const description = 'Check if any number is prime and list its factors if composite. Also generate primes up to any limit.';
+const intro = 'Check if a number is prime and list its factors if composite.';
+const category = { id: 'math', name: 'Math' };
+const faqs = [
+  { q: 'What is a prime number?', a: 'A number greater than 1 that can only be divided evenly by 1 and itself.' },
+  { q: 'Is 1 a prime number?', a: 'No — by definition, prime numbers must be greater than 1 and have exactly two factors.' },
+  { q: 'What is the largest known prime?', a: 'The largest known prime has millions of digits and is found through distributed computing projects like GIMPS.' },
+  { q: 'Are primes used in encryption?', a: 'Yes — RSA encryption relies on the difficulty of factoring the product of two large primes.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Mode">
+      <label class="cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 border-slate-300 bg-white text-slate-600 hover:bg-slate-50">
+        <input type="radio" name="mode" value="check" checked class="sr-only" onchange="switchMode('check')"> Check number
+      </label>
+      <label class="cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 border-slate-300 bg-white text-slate-600 hover:bg-slate-50">
+        <input type="radio" name="mode" value="generate" class="sr-only" onchange="switchMode('generate')"> Generate primes up to N
+      </label>
+    </div>
+
+    <div id="check-mode" class="mt-4">
+      <label class="block text-sm font-medium text-slate-700" for="check-input">Enter number</label>
+      <div class="mt-1 flex gap-2">
+        <input id="check-input" type="number" min="1" step="1" placeholder="e.g. 97" value="97"
+          class="block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <button id="check-btn" onclick="runCheck()"
+          class="shrink-0 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Check</button>
+      </div>
+    </div>
+
+    <div id="generate-mode" class="mt-4 hidden">
+      <label class="block text-sm font-medium text-slate-700" for="gen-input">Up to</label>
+      <div class="mt-1 flex gap-2">
+        <input id="gen-input" type="number" min="2" step="1" placeholder="e.g. 100" value="100"
+          class="block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <button id="gen-btn" onclick="runGenerate()"
+          class="shrink-0 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Generate</button>
+      </div>
+    </div>
+
+    <div id="result" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div id="result-content" class="text-sm text-slate-700"></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How prime number checking works</h2>
+    <p class="mt-2 text-slate-600">This tool uses <strong>trial division</strong> — the simplest and most intuitive primality test. A number <var>n</var> is checked by testing divisibility against every integer from 2 up to the square root of <var>n</var> (&#x221A;<var>n</var>). If any of these divides <var>n</var> evenly, then <var>n</var> is composite. If none divide evenly, then <var>n</var> is prime. The algorithm is optimised by treating 2 as a special case and then only testing odd divisors, which cuts the work in half.</p>
+    <p class="mt-3 text-slate-600">For factor listing, once a divisor is found, the tool divides <var>n</var> by that divisor to get the complementary factor, ensuring all factors are identified. Factors are collected in order and duplicates are removed when the divisor and quotient are the same (perfect squares).</p>
+    <p class="mt-3 text-slate-600">For prime generation, the tool applies the same trial-division check to every number from 2 up to the specified limit. While the Sieve of Eratosthenes is faster for generating many primes, trial division is used here so that the generation logic is consistent with the checker logic and works efficiently for moderate limits.</p>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example: checking 97</h3>
+      <div class="mt-2 space-y-1 text-sm text-slate-600">
+        <p>&#x221A;97 &#x2248; 9.8, so we test divisors up to 9.</p>
+        <p>97 &divide; 2 = 48.5 &rarr; not a whole number &cross;</p>
+        <p>97 &divide; 3 = 32.33 &rarr; not a whole number &cross;</p>
+        <p>97 &divide; 5 = 19.4 &rarr; not a whole number &cross;</p>
+        <p>97 &divide; 7 = 13.857 &rarr; not a whole number &cross;</p>
+        <p>97 &divide; 9 = 10.777 &rarr; not a whole number &cross;</p>
+        <p class="font-semibold text-emerald-700">No divisor found &rarr; 97 is PRIME &check;</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Number line with primes highlighted</h2>
+    <p class="mt-2 text-sm text-slate-600">Primes are marked in green on the number line below. Notice how primes become less frequent as numbers get larger.</p>
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white p-4">
+      <svg viewBox="0 0 800 120" class="w-full max-w-3xl" role="img" aria-label="Number line 1-100 with primes highlighted">
+        <line x1="20" y1="60" x2="780" y2="60" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4"/>
+        <line x1="20" y1="42" x2="20" y2="78" stroke="#94a3b8" stroke-width="2"/>
+        <text x="20" y="100" text-anchor="middle" font-size="9" fill="#94a3b8">0</text>
+        <text x="780" y="100" text-anchor="middle" font-size="9" fill="#94a3b8">100</text>
+        {[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97].slice(0, 13).map((n) => {
+          const px = 20 + (n / 100) * 760;
+          return `<line x1="${px}" y1="42" x2="${px}" y2="78" stroke="#22c55e" stroke-width="3" stroke-linecap="round"/><text x="${px}" y="36" text-anchor="middle" font-size="10" font-weight="bold" fill="#16a34a">${n}</text>`;
+        }).join('')}
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f4da;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Math Homework</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly check if numbers are prime for homework assignments on number theory, divisibility, or prime factorisation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f512;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Cryptography Learning</h3>
+      <p class="mt-1 text-sm text-slate-600">Understand the foundational building blocks of RSA and other encryption algorithms that rely on the difficulty of factoring large semiprimes.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f3eb;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Teaching Number Theory</h3>
+      <p class="mt-1 text-sm text-slate-600">Demonstrate primality testing and factorisation in the classroom with instant feedback and clear visual results.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1f9ee;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Competitive Programming</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify edge cases and generate primes quickly while practising algorithmic problem-solving with number theory problems.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with primes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Even numbers greater than 2 are never prime</h3>
+        <p class="mt-1 text-sm text-slate-600">Any even number can be divided by 2, so it has at least three factors (1, 2, and itself). This is why the trial division algorithm skips all even divisors after checking 2.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the Sieve of Eratosthenes for large ranges</h3>
+        <p class="mt-1 text-sm text-slate-600">To generate all primes up to a large limit (say, 10 million), the Sieve of Eratosthenes is far more efficient than trial division. The sieve works by marking multiples of each prime starting from 2, leaving only the unmarked numbers as primes.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Only check divisors up to the square root</h3>
+        <p class="mt-1 text-sm text-slate-600">If <var>n</var> has a factor greater than &#x221A;<var>n</var>, it must have a complementary factor smaller than &#x221A;<var>n</var>. So checking only up to &#x221A;<var>n</var> is sufficient to determine primality.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for perfect squares</h3>
+        <p class="mt-1 text-sm text-slate-600">When listing factors of a perfect square (like 16 or 36), include the square root only once. For example, factors of 36 are 1, 2, 3, 4, 6, 9, 12, 18, 36 — notice 6 appears only once.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is a prime number?</h2>
+    <p class="mt-2 text-slate-600">
+      A prime number is a natural number greater than 1 that has exactly two distinct positive divisors: 1 and itself. This means it cannot be formed by multiplying two smaller natural numbers. The first few primes are 2, 3, 5, 7, 11, 13, 17, 19, 23, and 29. The number 2 is the only even prime — all other even numbers are divisible by 2 and therefore composite.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Prime numbers are the fundamental building blocks of arithmetic. The Fundamental Theorem of Arithmetic states that every integer greater than 1 can be expressed uniquely as a product of primes (up to ordering). This unique factorisation property is what makes primes so important in number theory and cryptography.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Trial division algorithm</h2>
+    <p class="mt-2 text-slate-600">
+      The algorithm used in this tool is straightforward:<br>
+      1. If <var>n</var> &le; 1, it is not prime.<br>
+      2. If <var>n</var> is 2, it is prime (special case for the only even prime).<br>
+      3. If <var>n</var> is even (divisible by 2), it is composite.<br>
+      4. Check divisibility by every odd number from 3 up to &#x221A;<var>n</var>.<br>
+      5. If any divisor is found, <var>n</var> is composite; otherwise it is prime.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For factor listing, step 4 collects both the divisor and the quotient (<var>n</var> / divisor) as factors, then sorts them in ascending order. This ensures all factors are captured efficiently in a single pass.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">History of prime numbers</h2>
+    <p class="mt-2 text-slate-600">
+      The study of prime numbers dates back to ancient Greece. Euclid's <em>Elements</em> (circa 300 BC) contains the first known proof that there are infinitely many primes. Euclid's proof assumes a finite list of primes and constructs a new number that must have a prime factor not on the list, creating a contradiction.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Eratosthenes of Cyrene (circa 240 BC) developed the Sieve of Eratosthenes, still the most efficient way to generate all small primes. In the 17th century, Pierre de Fermat made important contributions, including Fermat's Little Theorem, which is the basis for many modern primality tests. Marin Mersenne studied primes of the form 2<sup><var>p</var></sup> &minus; 1, now called Mersenne primes, which are the source of the largest known primes today.
+    </p>
+    <p class="mt-3 text-slate-600">
+      In the 20th century, the search for large primes transitioned from manual calculation to computers. The Great Internet Mersenne Prime Search (GIMPS), founded in 1996, has discovered all recent record primes by harnessing distributed computing power from thousands of volunteers worldwide.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Primes in cryptography</h2>
+    <p class="mt-2 text-slate-600">
+      Prime numbers are the backbone of modern public-key cryptography. The RSA algorithm, published in 1977 by Rivest, Shamir, and Adleman, generates two large primes (typically hundreds of digits long), multiplies them together, and uses the product as part of the public key. The security of RSA relies on the fact that factoring the product back into its original primes is computationally infeasible with current technology.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Other cryptographic systems that rely on primes include Diffie-Hellman key exchange, DSA (Digital Signature Algorithm), and elliptic-curve cryptography. The practical upshot is that whenever you visit a secure website (HTTPS), send an encrypted message, or sign a digital document, prime numbers are working behind the scenes to protect your data.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/quadratic-equation-solver" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">Quadratic Equation Solver</a>
+      <a href="/tools/gcd-lcm-calculator" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">GCD &amp; LCM Calculator</a>
+      <a href="/tools/logarithm-calculator" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">Logarithm Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const result = $('result');
+    const resultContent = $('result-content');
+
+    function switchMode(mode) {
+      $('check-mode').classList.toggle('hidden', mode !== 'check');
+      $('generate-mode').classList.toggle('hidden', mode !== 'generate');
+      result.classList.add('hidden');
+    }
+
+    function isPrime(n) {
+      if (n < 2) return false;
+      if (n === 2) return true;
+      if (n % 2 === 0) return false;
+      const limit = Math.sqrt(n);
+      for (let i = 3; i <= limit; i += 2) {
+        if (n % i === 0) return false;
+      }
+      return true;
+    }
+
+    function getFactors(n) {
+      if (n < 2) return [];
+      const factors = new Set();
+      factors.add(1);
+      factors.add(n);
+      const limit = Math.sqrt(n);
+      for (let i = 2; i <= limit; i++) {
+        if (n % i === 0) {
+          factors.add(i);
+          factors.add(n / i);
+        }
+      }
+      return [...factors].sort((a, b) => a - b);
+    }
+
+    function generatePrimes(limit) {
+      const primes = [];
+      for (let n = 2; n <= limit; n++) {
+        if (n === 2) { primes.push(2); continue; }
+        if (n % 2 === 0) continue;
+        let isPrime = true;
+        const sqrt = Math.sqrt(n);
+        for (let i = 3; i <= sqrt; i += 2) {
+          if (n % i === 0) { isPrime = false; break; }
+        }
+        if (isPrime) primes.push(n);
+      }
+      return primes;
+    }
+
+    function runCheck() {
+      const val = parseInt($('check-input').value, 10);
+      if (isNaN(val) || val < 1) {
+        resultContent.innerHTML = '<span class="text-red-600">Please enter a valid positive integer.</span>';
+        result.classList.remove('hidden');
+        return;
+      }
+      if (val > 100000000) {
+        resultContent.innerHTML = '<span class="text-red-600">Number is too large for trial division. Try a number under 100 million.</span>';
+        result.classList.remove('hidden');
+        return;
+      }
+      const prime = isPrime(val);
+      if (prime) {
+        resultContent.innerHTML =
+          `<span class="text-lg font-bold text-emerald-700">${val.toLocaleString()} is PRIME</span>` +
+          `<p class="mt-1 text-slate-500">It has exactly 2 factors: 1 and ${val.toLocaleString()}.</p>`;
+      } else {
+        const factors = getFactors(val);
+        const factorsStr = factors.join(', ');
+        resultContent.innerHTML =
+          `<span class="text-lg font-bold text-red-600">${val.toLocaleString()} is COMPOSITE</span>` +
+          `<p class="mt-1 text-slate-500">Factors: ${factorsStr}</p>`;
+      }
+      result.classList.remove('hidden');
+    }
+
+    function runGenerate() {
+      const limit = parseInt($('gen-input').value, 10);
+      if (isNaN(limit) || limit < 2) {
+        resultContent.innerHTML = '<span class="text-red-600">Please enter a limit of 2 or greater.</span>';
+        result.classList.remove('hidden');
+        return;
+      }
+      if (limit > 500000) {
+        resultContent.innerHTML = '<span class="text-red-600">Limit is too large for trial division. Try up to 500,000.</span>';
+        result.classList.remove('hidden');
+        return;
+      }
+      const primes = generatePrimes(limit);
+      const count = primes.length;
+      let display;
+      if (count <= 100) {
+        display = primes.join(', ');
+      } else {
+        display = primes.slice(0, 100).join(', ') +
+          ', <span class="font-medium text-indigo-600">… and ' + (count - 100) + ' more</span>';
+      }
+      resultContent.innerHTML =
+        `<div class="flex items-baseline gap-2"><span class="text-lg font-bold text-indigo-700">${count.toLocaleString()} prime${count !== 1 ? 's' : ''}</span> <span class="text-sm text-slate-500">found up to ${limit.toLocaleString()}</span></div>` +
+        `<div class="mt-2 leading-relaxed">${display}</div>`;
+      result.classList.remove('hidden');
+    }
+
+    $('check-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') runCheck(); });
+    $('gen-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') runGenerate(); });
+  </script>
+</ToolLayout>

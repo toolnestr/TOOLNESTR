@@ -303,6 +303,15 @@ export const tools = [
   // ── Part B: PDF Tools ──
   { slug: 'pdf-page-numbers', title: 'PDF Page Numberer', short: 'Add page numbers to any PDF with position, start number, and format options.', category: 'pdf', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'pdf-watermark', title: 'PDF Watermark', short: 'Add diagonal text watermarks to PDF pages with adjustable opacity.', category: 'pdf', emoji: '💧', enabled: true, status: 'live' },
+  { slug: 'pdf-password-protect', title: 'PDF Password Protect', short: 'Encrypt and password-protect PDFs with user and owner passwords.', category: 'pdf', emoji: '🔒', enabled: true, status: 'live' },
+  { slug: 'pdf-rotate', title: 'PDF Rotate Pages', short: 'Rotate all or selected PDF pages by 90, 180, or 270 degrees.', category: 'pdf', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'pdf-page-remover', title: 'PDF Page Remover', short: 'Remove specific pages from a PDF by page number range.', category: 'pdf', emoji: '🗑️', enabled: true, status: 'live' },
+  { slug: 'pdf-to-text', title: 'PDF to Text', short: 'Extract all selectable text from a PDF and copy to clipboard.', category: 'pdf', emoji: '📝', enabled: true, status: 'live' },
+  // ── Part B: Math ──
+  { slug: 'quadratic-equation-solver', title: 'Quadratic Equation Solver', short: 'Solve ax²+bx+c=0 with step-by-step solution showing discriminant and roots.', category: 'math', emoji: '📈', enabled: true, status: 'live' },
+  { slug: 'prime-number-checker', title: 'Prime Number Checker', short: 'Check if a number is prime and list its factors if composite.', category: 'math', emoji: '🔢', enabled: true, status: 'live' },
+  { slug: 'gcd-lcm-calculator', title: 'GCD & LCM Calculator', short: 'Find the greatest common divisor and least common multiple of any numbers.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },
+  { slug: 'logarithm-calculator', title: 'Logarithm Calculator', short: 'Calculate log base b of x, natural log, and see the change-of-base formula.', category: 'math', emoji: '📊', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

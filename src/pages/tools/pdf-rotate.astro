@@ -1,0 +1,351 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'PDF Rotate Pages';
+const description =
+  'Rotate all or selected PDF pages by 90, 180, or 270 degrees — all in your browser. ' +
+  'No uploads, no server, no file size limits.';
+const intro =
+  'Rotate all or selected PDF pages by 90, 180, or 270 degrees. Enter page ranges like "1,3,5-7" to rotate only specific pages — everything runs in your browser.';
+const category = { id: 'pdf', name: 'PDF Tools' };
+const faqs = [
+  { q: 'Can I rotate specific pages only?', a: 'Yes — enter page ranges like "1,3,5-7" to rotate only specific pages. Leave it on "All pages" to rotate every page in the document.' },
+  { q: 'Is the original file modified?', a: 'A new rotated PDF is downloaded; the original is never modified.' },
+  { q: 'Does it work for scanned PDFs?', a: 'Yes — rotation works on the page level regardless of content type. Scanned pages, text pages, and mixed documents all rotate the same way.' },
+  { q: 'Is my file uploaded?', a: 'No — everything runs in your browser using pdf-lib. Your file never leaves your device.' },
+  { q: 'Can I undo a rotation?', a: 'Upload the rotated PDF and rotate it back by the complementary angle (e.g. 90° becomes 270°) to restore the original orientation.' },
+  { q: 'What angles are supported?', a: '90 degrees (clockwise), 180 degrees (upside down), and 270 degrees (counter-clockwise / 90 degrees anticlockwise).' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label for="file-input" class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+      <span class="text-3xl">🔄</span>
+      <span class="mt-2 font-medium text-slate-700">Upload a PDF</span>
+      <span class="mt-1 text-sm text-slate-400">Select a PDF file to rotate its pages</span>
+      <input id="file-input" type="file" accept="application/pdf" class="hidden" />
+    </label>
+
+    <div id="controls" class="mt-6 hidden">
+      <p id="info" class="mb-4 text-sm font-medium text-slate-600"></p>
+
+      <div class="mb-5">
+        <span class="text-sm font-medium text-slate-700">Rotation angle</span>
+        <div class="mt-2 flex gap-4">
+          <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700">
+            <input type="radio" name="angle" value="90" checked class="accent-indigo-600" />
+            90&deg; clockwise
+          </label>
+          <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700">
+            <input type="radio" name="angle" value="180" class="accent-indigo-600" />
+            180&deg;
+          </label>
+          <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-700 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700">
+            <input type="radio" name="angle" value="270" class="accent-indigo-600" />
+            270&deg; clockwise
+          </label>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Pages to rotate</span>
+          <div class="mt-1 flex flex-wrap items-center gap-3">
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="scope" value="all" checked class="accent-indigo-600" />
+              All pages
+            </label>
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="scope" value="custom" class="accent-indigo-600" />
+              Custom range
+            </label>
+            <input id="page-range" type="text" placeholder="e.g. 1,3,5-7" disabled class="w-48 rounded-xl border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-40" />
+          </div>
+        </label>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="rotate-btn" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40">Rotate &rarr; Download</button>
+        <span id="status" class="text-sm text-slate-500"></span>
+      </div>
+    </div>
+
+    <div id="download-area" class="mt-4 hidden"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How PDF page rotation works</h2>
+    <p class="mt-2 text-slate-600">PDF page rotation changes the displayed orientation of each page without modifying the underlying content. When you rotate a page by 90 degrees, the text, images, and vector graphics all remain exactly as they were — they are simply presented at a different angle. This is different from physically re-rendering the content; the PDF specification stores a rotation value per page that tells PDF readers how to display it, and modifying this value is what the tool changes.</p>
+    <p class="mt-3 text-slate-600">The tool uses the <span class="font-mono text-indigo-600">pdf-lib</span> JavaScript library to read the PDF file, access its internal page tree, and set a new rotation value for each selected page. The rotation value is stored in the PDF's page dictionary as an integer representing degrees clockwise: 90, 180, or 270. A value of 0 (or absent) means the page is in its natural orientation. Since rotation is a property of the page itself, it is respected by all PDF viewers including Adobe Acrobat, browser PDF viewers, and mobile document readers.</p>
+    <p class="mt-3 text-slate-600">One important detail is that rotation is cumulative with any existing rotation already set on a page. If a page was scanned at a 90-degree angle and already has a rotation value of 270 degrees to correct it, applying another 90-degree rotation will produce a 360-degree rotation — effectively returning it to 0 degrees. The tool applies the rotation as an absolute new value, not an increment, so each page ends up at exactly the angle you select regardless of any pre-existing rotation.</p>
+
+    <div class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
+      <h3 class="mb-4 text-center font-semibold text-slate-900">A page through four rotation states</h3>
+      <svg viewBox="0 0 720 200" class="w-full max-w-3xl mx-auto" role="img" aria-label="Four PDF page icons showing 0, 90, 180, and 270 degree rotation">
+        <defs>
+          <filter id="rshadow"><feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity=".15" /></filter>
+          <g id="page-icon">
+            <rect x="0" y="0" width="120" height="160" rx="4" fill="#fff" stroke="#cbd5e1" stroke-width="1.5" />
+            <line x1="15" y1="30" x2="105" y2="30" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="15" y1="48" x2="90" y2="48" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="15" y1="66" x2="95" y2="66" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="15" y1="84" x2="70" y2="84" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="15" y1="102" x2="85" y2="102" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round" />
+          </g>
+        </defs>
+
+        <!-- 0 degrees (original) -->
+        <g transform="translate(10, 10)" filter="url(#rshadow)">
+          <use href="#page-icon" />
+          <text x="60" y="185" text-anchor="middle" font-size="12" fill="#475569" font-weight="600">0&deg; (original)</text>
+          <path d="M60 140 L55 130 L65 130 Z" fill="#6366f1" />
+        </g>
+
+        <!-- arrow -->
+        <g transform="translate(140, 85)">
+          <path d="M0 0 L30 0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,3" />
+          <path d="M25 -5 L30 0 L25 5" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+          <text x="15" y="-8" text-anchor="middle" font-size="10" fill="#94a3b8">90&deg;</text>
+        </g>
+
+        <!-- 90 degrees -->
+        <g transform="translate(190, 10)" filter="url(#rshadow)">
+          <g transform="translate(60, 80) rotate(90) translate(-60, -80)">
+            <use href="#page-icon" />
+          </g>
+          <text x="60" y="185" text-anchor="middle" font-size="12" fill="#475569" font-weight="600">90&deg; CW</text>
+          <path d="M60 140 L55 130 L65 130 Z" fill="#6366f1" />
+        </g>
+
+        <!-- arrow -->
+        <g transform="translate(320, 85)">
+          <path d="M0 0 L30 0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,3" />
+          <path d="M25 -5 L30 0 L25 5" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+          <text x="15" y="-8" text-anchor="middle" font-size="10" fill="#94a3b8">180&deg;</text>
+        </g>
+
+        <!-- 180 degrees -->
+        <g transform="translate(370, 10)" filter="url(#rshadow)">
+          <g transform="translate(60, 80) rotate(180) translate(-60, -80)">
+            <use href="#page-icon" />
+          </g>
+          <text x="60" y="185" text-anchor="middle" font-size="12" fill="#475569" font-weight="600">180&deg;</text>
+          <path d="M60 140 L55 130 L65 130 Z" fill="#6366f1" />
+        </g>
+
+        <!-- arrow -->
+        <g transform="translate(500, 85)">
+          <path d="M0 0 L30 0" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,3" />
+          <path d="M25 -5 L30 0 L25 5" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+          <text x="15" y="-8" text-anchor="middle" font-size="10" fill="#94a3b8">270&deg;</text>
+        </g>
+
+        <!-- 270 degrees -->
+        <g transform="translate(550, 10)" filter="url(#rshadow)">
+          <g transform="translate(60, 80) rotate(270) translate(-60, -80)">
+            <use href="#page-icon" />
+          </g>
+          <text x="60" y="185" text-anchor="middle" font-size="12" fill="#475569" font-weight="600">270&deg; CW</text>
+          <path d="M60 140 L55 130 L65 130 Z" fill="#6366f1" />
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases for PDF rotation</h2>
+    <p class="mt-2 text-slate-600">Fixing scanned documents that came out sideways is the most frequent reason people reach for a PDF rotation tool. Scanners and multi-function printers sometimes misdetect page orientation, especially when scanning documents with mixed portrait and landscape pages. A stack of printed forms fed through an automatic document feeder might have every other page rotated 90 degrees because the original sheets were stapled at different orientations. Rather than re-scanning all the pages individually, you can upload the resulting PDF and rotate the misaligned pages in seconds without losing scan quality.</p>
+    <p class="mt-3 text-slate-600">Correcting landscape pages in an otherwise portrait document is another everyday scenario. Presentation slides exported to PDF often come out in landscape orientation while the rest of the document (notes, appendices, or cover pages) remains in portrait. A single mixed-orientation PDF looks unprofessional when emailed to stakeholders or printed for a meeting. With the page range feature, you can select only the landscape pages and rotate them to portrait (or vice versa) without affecting the rest of the document, producing a consistent reading experience throughout.</p>
+    <p class="mt-3 text-slate-600">Adjusting presentation slide decks exported from PowerPoint, Google Slides, or Keynote is a related use case. Sometimes slides export at the wrong orientation, especially when switching between 16:9 and 4:3 aspect ratios or when using presenter notes that get wrapped into the PDF output. A quick batch rotation of all pages by 90 degrees can salvage a deck that was exported incorrectly, saving you from re-exporting from the source application. This is particularly useful when you have already added annotations, bookmarks, or form fields to the PDF and want to preserve that work rather than starting from scratch.</p>
+    <p class="mt-3 text-slate-600">E-book publishers and digital content creators use PDF rotation to optimise reading experiences across devices. A PDF formatted for desktop viewing might need all pages rotated to landscape for better tablet reading, or a book scanned in portrait might benefit from two-up landscape rotation for side-by-side reading on a widescreen monitor. The ability to rotate the entire document with a single click makes it practical to prepare the same content for different viewing environments without maintaining multiple source files.</p>
+    <p class="mt-3 text-slate-600">Archivists and document digitisation teams processing large batches of scanned historical records often encounter pages with inconsistent orientation. Bound volumes scanned page by page may have fold-out pages, maps, or illustrations oriented differently from the main text. Using the custom page range input, an archivist can precisely target these outlier pages — for example, "12,45,78-82,120" — and rotate them individually without processing the entire document. This targeted approach is far more efficient than opening each page in a PDF editor and rotating it manually.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using page ranges</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Page range syntax</h3>
+        <p class="mt-1 text-sm text-slate-600">Use comma-separated numbers and hyphens for ranges. For example, <span class="font-mono text-indigo-600">1,3,5-7</span> selects pages 1, 3, 5, 6, and 7. Ranges are inclusive on both ends. The order of pages does not matter — they are always processed in document order.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Valid range examples</h3>
+        <p class="mt-1 text-sm text-slate-600"><span class="font-mono text-indigo-600">1</span> — single page, <span class="font-mono text-indigo-600">1-10</span> — first ten pages, <span class="font-mono text-indigo-600">5,10,15</span> — three specific pages, <span class="font-mono text-indigo-600">1,3,5-7,10</span> — mixed single pages and a range, <span class="font-mono text-indigo-600">1-</span> — from page 1 to the end (not supported, use the total page count).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Invalid ranges are skipped</h3>
+        <p class="mt-1 text-sm text-slate-600">If a page number exceeds the total page count, it is silently ignored. Ranges that overlap or are out of order (e.g. <span class="font-mono text-indigo-600">7-5</span>) are corrected automatically. If every page in your range is invalid, no rotation occurs and the tool will show a warning.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use "All pages" for bulk rotation</h3>
+        <p class="mt-1 text-sm text-slate-600">If every page in your PDF needs the same rotation, simply leave the selector on "All pages." This is faster and avoids the overhead of enumerating every page number in the range input.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the PDF page rotator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Upload a PDF</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the upload area and select the PDF whose pages you want to rotate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose angle and pages</h3>
+        <p class="mt-1 text-sm text-slate-600">Pick 90, 180, or 270 degrees, and choose whether to rotate all pages or a custom range.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download the rotated PDF</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Rotate → Download" and your reoriented PDF saves automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Use case</th><th class="p-3">Typical angle</th><th class="p-3">Pages affected</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">Scanned document rotated wrong</td><td class="p-3">90&deg; or 270&deg;</td><td class="p-3">All pages or specific</td></tr>
+        <tr><td class="p-3 font-medium">Landscape page in portrait PDF</td><td class="p-3">90&deg;</td><td class="p-3">Specific pages only</td></tr>
+        <tr><td class="p-3 font-medium">Presentation slide deck correction</td><td class="p-3">90&deg; or 180&deg;</td><td class="p-3">All pages</td></tr>
+        <tr><td class="p-3 font-medium">Tablet reading optimisation</td><td class="p-3">90&deg; or 270&deg;</td><td class="p-3">All pages</td></tr>
+        <tr><td class="p-3 font-medium">Fold-out page in historical scan</td><td class="p-3">90&deg;</td><td class="p-3">Single page</td></tr>
+        <tr><td class="p-3 font-medium">Upside-down scan correction</td><td class="p-3">180&deg;</td><td class="p-3">All pages or specific</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Client-side processing with pdf-lib</h2>
+    <p class="mt-2 text-slate-600">This tool processes your PDF entirely in the browser using the pdf-lib JavaScript library. When you upload a file, it is read into memory on your device and never transmitted anywhere. The library loads the PDF structure, iterates through every page that matches your selection, and sets the new rotation value on each page's dictionary entry. The original content — text, images, fonts, annotations, form fields, and metadata — remains completely untouched.</p>
+    <p class="mt-3 text-slate-600">The rotation operation is one of the fastest PDF modifications because it does not re-encode or re-render any page content. It simply changes a single integer value in the page object's dictionary. A 200-page PDF with dozens of high-resolution images takes roughly the same time to rotate as a 10-page text-only document because no content processing is involved. The save operation writes out a new PDF file with the updated rotation values applied.</p>
+    <p class="mt-3 text-slate-600">Because everything runs client-side, there are no file size limits imposed by a server, no queue times, and no privacy concerns. Your document never appears in server logs, never gets cached in a cloud bucket, and never passes through a third-party API endpoint. Once you close the browser tab, all traces of your file are cleared from memory. This makes the tool suitable for sensitive documents including legal contracts, medical records, financial statements, and confidential business proposals.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/pdf-page-numbers" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50">
+        <span class="font-semibold text-slate-900">PDF Page Numbers</span>
+        <span class="mt-1 block text-slate-500">Add page numbers to existing PDFs</span>
+      </a>
+      <a href="/tools/pdf-watermark" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50">
+        <span class="font-semibold text-slate-900">PDF Watermark</span>
+        <span class="mt-1 block text-slate-500">Add text watermarks to PDF pages</span>
+      </a>
+      <a href="/tools/pdf-page-remover" class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50">
+        <span class="font-semibold text-slate-900">PDF Page Remover</span>
+        <span class="mt-1 block text-slate-500">Delete specific pages from a PDF</span>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (async () => {
+      const { PDFDocument, degrees } = await import('https://esm.sh/pdf-lib@1.17.1');
+
+      const input = document.getElementById('file-input');
+      const controls = document.getElementById('controls');
+      const info = document.getElementById('info');
+      const rotateBtn = document.getElementById('rotate-btn');
+      const status = document.getElementById('status');
+      const downloadArea = document.getElementById('download-area');
+      const scopeRadios = document.querySelectorAll('input[name="scope"]');
+      const pageRange = document.getElementById('page-range');
+
+      let currentBytes = null;
+      let totalPages = 0;
+
+      scopeRadios.forEach((r) => {
+        r.addEventListener('change', () => {
+          pageRange.disabled = document.querySelector('input[name="scope"]:checked').value !== 'custom';
+        });
+      });
+
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        if (!file) return;
+        status.textContent = '';
+        downloadArea.classList.add('hidden');
+        downloadArea.innerHTML = '';
+        try {
+          currentBytes = await file.arrayBuffer();
+          const doc = await PDFDocument.load(currentBytes, { ignoreEncryption: true });
+          totalPages = doc.getPageCount();
+          info.textContent = `"${file.name}" — ${totalPages} page${totalPages === 1 ? '' : 's'}`;
+          controls.classList.remove('hidden');
+        } catch {
+          controls.classList.add('hidden');
+          status.textContent = '⚠️ Could not read this PDF — it may be corrupted or password-protected.';
+        }
+      });
+
+      function parsePageRanges(input, total) {
+        if (!input || input.trim() === '') {
+          return Array.from({ length: total }, (_, i) => i);
+        }
+        const pages = new Set();
+        const parts = input.split(',');
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (!trimmed) continue;
+          if (trimmed.includes('-')) {
+            const [a, b] = trimmed.split('-').map((s) => parseInt(s.trim(), 10));
+            const start = isNaN(a) ? 1 : a;
+            const end = isNaN(b) ? total : b;
+            for (let i = Math.min(start, end); i <= Math.max(start, end); i++) {
+              if (i >= 1 && i <= total) pages.add(i - 1);
+            }
+          } else {
+            const n = parseInt(trimmed, 10);
+            if (!isNaN(n) && n >= 1 && n <= total) pages.add(n - 1);
+          }
+        }
+        return [...pages].sort((a, b) => a - b);
+      }
+
+      rotateBtn.addEventListener('click', async () => {
+        if (!currentBytes) return;
+        const scope = document.querySelector('input[name="scope"]:checked').value;
+        const rangeInput = pageRange.value.trim();
+        const indices = scope === 'all' ? Array.from({ length: totalPages }, (_, i) => i) : parsePageRanges(rangeInput, totalPages);
+
+        if (indices.length === 0) {
+          status.textContent = '⚠️ No valid pages in your range. Check the page numbers.';
+          return;
+        }
+
+        const angle = parseInt(document.querySelector('input[name="angle"]:checked').value, 10);
+
+        rotateBtn.disabled = true;
+        status.textContent = `Rotating ${indices.length} page${indices.length === 1 ? '' : 's'}…`;
+
+        try {
+          const doc = await PDFDocument.load(currentBytes, { ignoreEncryption: true });
+          for (const idx of indices) {
+            const page = doc.getPage(idx);
+            page.setRotation(degrees(angle));
+          }
+          const bytes = await doc.save();
+          const blob = new Blob([bytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const ext = input.files[0]?.name?.replace(/\.[^.]+$/, '') || 'rotated';
+          a.download = `${ext}-rotated.pdf`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+          status.textContent = `✓ Done! Rotated ${indices.length} page${indices.length === 1 ? '' : 's'} by ${angle}°.`;
+        } catch {
+          status.textContent = '⚠️ Something went wrong while rotating.';
+        } finally {
+          rotateBtn.disabled = false;
+        }
+      });
+    })();
+  </script>
+</ToolLayout>
