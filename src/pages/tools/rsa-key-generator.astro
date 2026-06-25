@@ -1,0 +1,305 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'RSA Key Generator';
+const description = 'Generate a 2048-bit RSA public/private key pair in PEM or JWK format. All in your browser.';
+const intro = 'Generate a 2048-bit RSA public/private key pair in PEM or JWK format.';
+const category = { id: 'security', name: 'Security Tools' };
+const faqs = [
+  { q: 'What key size is generated?', a: 'The default is 2048-bit, which is the current NIST-recommended minimum for RSA.' },
+  { q: 'What formats are supported?', a: 'PEM (base64 with headers) and JWK (JSON Web Key) formats for both keys.' },
+  { q: 'Are the keys stored anywhere?', a: 'No — they are generated in your browser and never sent anywhere. Copy them immediately.' },
+  { q: 'Can I generate 4096-bit keys?', a: 'Yes — select 4096 for higher security at the cost of slower generation and larger keys.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-4">
+      <div>
+        <label class="text-sm font-medium text-slate-700">Key Size</label>
+        <select id="key-size" class="mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="2048">2048 bits</option>
+          <option value="4096">4096 bits</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-slate-700">Export Format</label>
+        <select id="export-format" class="mt-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="pem">PEM</option>
+          <option value="jwk">JWK</option>
+        </select>
+      </div>
+      <button id="generate-btn" class="mt-5 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">Generate Key Pair</button>
+    </div>
+
+    <div id="spinner" class="mt-4 hidden items-center gap-3 text-sm text-slate-500">
+      <svg class="h-5 w-5 animate-spin text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+      <span>Generating key pair&hellip; this may take several seconds for 4096-bit keys.</span>
+    </div>
+
+    <div class="mt-4">
+      <label class="text-sm font-medium text-slate-700">Public Key</label>
+      <div class="mt-1 flex items-stretch gap-2">
+        <textarea id="public-key" rows="5" readonly class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-5 outline-none" placeholder="Public key will appear here after generation&hellip;"></textarea>
+        <button id="copy-public" class="shrink-0 rounded-xl bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700">Copy</button>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <label class="text-sm font-medium text-slate-700">Private Key</label>
+      <div class="mt-1 flex items-stretch gap-2">
+        <textarea id="private-key" rows="8" readonly class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-5 outline-none" placeholder="Private key will appear here after generation&hellip;"></textarea>
+        <button id="copy-private" class="shrink-0 rounded-xl bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700">Copy</button>
+      </div>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How RSA works</h2>
+    <div class="mt-4 flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
+      <div class="flex h-32 w-32 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-indigo-50">
+        <svg class="h-16 w-16 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+      </div>
+      <svg class="h-8 w-16 shrink-0 text-slate-300" fill="none" viewBox="0 0 48 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h38M33 4l10 8-10 8" /></svg>
+      <div class="flex h-32 w-32 items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50">
+        <svg class="h-16 w-16 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+      </div>
+    </div>
+    <div class="mt-4 flex justify-center gap-12 text-sm font-medium text-slate-600">
+      <span>Public Key &mdash; encrypts</span>
+      <span>Private Key &mdash; decrypts</span>
+    </div>
+    <p class="mt-4 text-slate-600">RSA is an asymmetric encryption algorithm that uses two mathematically linked keys: a <strong>public key</strong> for encryption and a <strong>private key</strong> for decryption. Data encrypted with the public key can only be decrypted by the corresponding private key, making it safe to share the public key openly.</p>
+    <p class="mt-3 text-slate-600">Named after its inventors Rivest, Shamir, and Adleman (1977), RSA relies on the practical difficulty of factoring the product of two large prime numbers. The key generation process selects two large primes, computes their product (the modulus, n), and derives the public and private exponents. A 2048-bit key, the current standard, uses a 2048-bit modulus which would take an impractical amount of time for classical computers to factor.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common RSA use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F9EE;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">SSH Authentication</h3>
+        <p class="mt-1 text-sm text-slate-600">RSA key pairs are the most common method for passwordless SSH login. The public key is added to <code class="rounded bg-slate-100 px-1 text-xs">~/.ssh/authorized_keys</code> on the server, while the private key stays on the client. SSH uses RSA for both authentication and optional session encryption.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">SSL/TLS Certificates</h3>
+        <p class="mt-1 text-sm text-slate-600">RSA is the most widely used algorithm in X.509 certificates that secure HTTPS websites. Certificate Authorities sign the domain owner's public key, creating a chain of trust. During TLS handshake, the client encrypts a session secret with the server's public key.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4EC;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">PGP / GPG Encryption</h3>
+        <p class="mt-1 text-sm text-slate-600">Pretty Good Privacy (PGP) and its open-source GNU Privacy Guard (GPG) use RSA key pairs for encrypting emails, files, and messages. Users publish their public key to keyservers and keep their private key in a local keyring, often protected by a passphrase.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4DD;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Digital Signatures</h3>
+        <p class="mt-1 text-sm text-slate-600">RSA signatures verify the authenticity and integrity of documents, software packages, and code commits. The signer hashes the content and encrypts the hash with their private key; anyone with the public key can verify the signature by decrypting and comparing the hash.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using RSA keys</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep your private key secret</h3>
+        <p class="mt-1 text-sm text-slate-600">The private key is the cornerstone of your security. Never share it, never commit it to version control, and never paste it into online forms. If a private key is compromised, anyone can decrypt traffic intended for you or impersonate you.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Share only the public key</h3>
+        <p class="mt-1 text-sm text-slate-600">The public key is designed to be shared freely. Distribute it through public keyservers, include it in your email signature, or add it to servers you need to authenticate to. There is no risk in sharing your public key &mdash; it can only be used to encrypt data or verify your signatures.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">PEM format for OpenSSL compatibility</h3>
+        <p class="mt-1 text-sm text-slate-600">PEM (Privacy-Enhanced Mail) is the de facto standard for storing and exchanging cryptographic keys. Files generated here can be used directly with OpenSSL, SSH, and most programming languages. JWK (JSON Web Key) is a newer format useful for web APIs and JavaScript environments.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider encrypting the private key</h3>
+        <p class="mt-1 text-sm text-slate-600">For production use, store your private key encrypted with a strong passphrase. Tools like OpenSSL and GPG can encrypt the key file so it is protected at rest. The key generated here is unencrypted &mdash; treat it with the same care as any other sensitive credential.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding RSA key sizes</h2>
+    <p class="mt-3 text-slate-600">The size of an RSA key, measured in bits, refers to the length of the modulus (n = p &times; q). Larger key sizes provide more security because factoring the modulus becomes exponentially harder. However, larger keys also mean slower generation, slower encryption and decryption, and larger output.</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Key Size</th><th class="p-3">Security Level</th><th class="p-3">Generation Time</th><th class="p-3">Recommendation</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">2048 bits</td><td class="p-3">112-bit symmetric equivalent</td><td class="p-3">Fast (&lt;1 second)</td><td class="p-3">Current minimum standard</td></tr>
+          <tr><td class="p-3 font-medium">3072 bits</td><td class="p-3">128-bit symmetric equivalent</td><td class="p-3">Moderate</td><td class="p-3">Good for future-proofing</td></tr>
+          <tr><td class="p-3 font-medium">4096 bits</td><td class="p-3">~150-bit symmetric equivalent</td><td class="p-3">Slower (several seconds)</td><td class="p-3">High security environments</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-4 text-slate-600">NIST (National Institute of Standards and Technology) recommends 2048-bit RSA as the minimum for secure applications through 2030. Organizations handling extremely sensitive data or planning for long-term security often choose 4096-bit keys. Note that post-quantum cryptography will eventually replace RSA, but for now RSA 2048 and 4096 remain widely trusted.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">RSA vs other asymmetric algorithms</h2>
+    <p class="mt-3 text-slate-600">While RSA is the most widely recognized asymmetric algorithm, it is not the only option. Modern alternatives like ECDSA (Elliptic Curve Digital Signature Algorithm) and Ed25519 offer equivalent security with much smaller key sizes and faster generation. For example, a 256-bit ECDSA key provides security comparable to a 3072-bit RSA key.</p>
+    <p class="mt-3 text-slate-600">Despite these advantages, RSA remains dominant due to its widespread adoption, extensive library support, and compatibility with legacy systems. SSH, TLS, and PGP all support RSA, and it is the algorithm most familiar to system administrators. The tool uses RSA-OAEP with SHA-256, a modern padding scheme that provides semantic security.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the RSA Key Generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select key size and format</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose 2048 or 4096 bits for the key size, then pick PEM or JWK as the output format. PEM is best for OpenSSL, SSH, and general use. JWK works well for web APIs and JavaScript applications.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Click generate</h3>
+        <p class="mt-1 text-sm text-slate-600">Press the Generate Key Pair button. Generation happens entirely in your browser using the Web Crypto API. 2048-bit keys generate in under a second; 4096-bit keys may take 5&ndash;30 seconds depending on your device.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Copy and save your keys</h3>
+        <p class="mt-1 text-sm text-slate-600">Copy both keys immediately. Save the public key to a <code class="rounded bg-slate-100 px-1 text-xs">.pub</code> file and the private key to a secure, encrypted location. The keys exist only in your browser's memory and disappear on page refresh.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/aes-encrypt-decrypt" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">AES Encrypt &amp; Decrypt</span><p class="mt-1 text-slate-600">Symmetric encryption using AES-256-CBC with a password.</p></a>
+      <a href="/tools/bcrypt-checker" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">Bcrypt Hash Checker</span><p class="mt-1 text-slate-600">Generate and verify bcrypt password hashes.</p></a>
+      <a href="/tools/sha256-hash-generator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-300 hover:shadow-sm"><span class="font-semibold text-slate-900">SHA-256 Hash Generator</span><p class="mt-1 text-slate-600">Compute SHA-256 hashes for text or files.</p></a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const keySize = $('key-size');
+      const exportFormat = $('export-format');
+      const generateBtn = $('generate-btn');
+      const spinner = $('spinner');
+      const publicKeyEl = $('public-key');
+      const privateKeyEl = $('private-key');
+      const copyPublicBtn = $('copy-public');
+      const copyPrivateBtn = $('copy-private');
+      const status = $('status');
+
+      let publicKeyCache = null;
+      let privateKeyCache = null;
+
+      function showStatus(msg, ok) {
+        status.textContent = msg;
+        status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+        status.classList.remove('hidden');
+      }
+
+      function hideStatus() {
+        status.classList.add('hidden');
+      }
+
+      function setLoading(loading) {
+        generateBtn.disabled = loading;
+        spinner.classList.toggle('hidden', !loading);
+        if (loading) {
+          publicKeyEl.value = '';
+          privateKeyEl.value = '';
+          publicKeyCache = null;
+          privateKeyCache = null;
+        }
+      }
+
+      function arrayBufferToBase64(buf) {
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+
+      function formatPem(base64, label) {
+        const lines = ['-----BEGIN ' + label + '-----'];
+        for (let i = 0; i < base64.length; i += 64) {
+          lines.push(base64.substring(i, i + 64));
+        }
+        lines.push('-----END ' + label + '-----');
+        return lines.join('\n');
+      }
+
+      async function generate() {
+        hideStatus();
+        setLoading(true);
+
+        const modulusLength = parseInt(keySize.value, 10);
+        const format = exportFormat.value;
+
+        try {
+          const keyPair = await crypto.subtle.generateKey(
+            { name: 'RSA-OAEP', modulusLength, publicExponent: new Uint8Array([0x01, 0x00, 0x01]), hash: 'SHA-256' },
+            true,
+            ['encrypt', 'decrypt']
+          );
+
+          if (format === 'jwk') {
+            const publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+            const privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+            publicKeyEl.value = JSON.stringify(publicJwk, null, 2);
+            privateKeyEl.value = JSON.stringify(privateJwk, null, 2);
+            publicKeyCache = publicJwk;
+            privateKeyCache = privateJwk;
+          } else {
+            const spki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+            const pkcs8 = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+            const pubB64 = arrayBufferToBase64(spki);
+            const privB64 = arrayBufferToBase64(pkcs8);
+            publicKeyEl.value = formatPem(pubB64, 'PUBLIC KEY');
+            privateKeyEl.value = formatPem(privB64, 'PRIVATE KEY');
+            publicKeyCache = formatPem(pubB64, 'PUBLIC KEY');
+            privateKeyCache = formatPem(privB64, 'PRIVATE KEY');
+          }
+
+          showStatus('Key pair generated successfully!', true);
+        } catch (err) {
+          showStatus('Error generating keys: ' + err.message, false);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      generateBtn.addEventListener('click', generate);
+
+      async function copyText(text, btn) {
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          btn.classList.add('bg-green-600');
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.classList.remove('bg-green-600');
+          }, 1200);
+        } catch (e) {
+          showStatus('Failed to copy to clipboard.', false);
+        }
+      }
+
+      copyPublicBtn.addEventListener('click', function () {
+        const text = publicKeyEl.value;
+        if (!text) { showStatus('No public key to copy. Generate a key pair first.', false); return; }
+        copyText(text, copyPublicBtn);
+      });
+
+      copyPrivateBtn.addEventListener('click', function () {
+        const text = privateKeyEl.value;
+        if (!text) { showStatus('No private key to copy. Generate a key pair first.', false); return; }
+        copyText(text, copyPrivateBtn);
+      });
+    })();
+  </script>
+</ToolLayout>

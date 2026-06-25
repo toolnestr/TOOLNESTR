@@ -1,0 +1,408 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Bcrypt Hash Checker';
+const description = 'Generate bcrypt hashes from plaintext and verify plaintext against existing bcrypt hashes.';
+const intro = 'Generate bcrypt hashes and verify plaintext against existing hashes.';
+const category = { id: 'security', name: 'Security & Hash' };
+const faqs = [
+  { q: 'What is bcrypt?', a: 'An adaptive password-hashing function that includes a salt to protect against rainbow table attacks.' },
+  { q: 'What are salt rounds?', a: 'The work factor: more rounds (e.g. 12) means slower hashing and stronger protection against brute-force.' },
+  { q: 'Is this the same as encryption?', a: 'No — hashing is one-way. You cannot recover the original text from a bcrypt hash.' },
+  { q: 'Can I verify a password against a hash?', a: 'Yes — enter a password and an existing hash to check if they match.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2 border-b border-slate-200 pb-3">
+      <button id="tab-hash" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Hash</button>
+      <button id="tab-verify" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Verify</button>
+    </div>
+
+    <div id="panel-hash">
+      <label class="text-sm font-medium text-slate-700" for="hash-input">Plaintext</label>
+      <input id="hash-input" type="text" placeholder="Enter text to hash…" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <div>
+          <label class="text-sm font-medium text-slate-700" for="rounds">Salt Rounds</label>
+          <input id="rounds" type="number" min="4" max="16" value="10" class="mt-1 w-24 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <button id="hash-btn" class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Generate Hash</button>
+      </div>
+
+      <div class="mt-4">
+        <label class="text-sm font-medium text-slate-700">Bcrypt Hash</label>
+        <div class="mt-1 flex items-stretch gap-2">
+          <input id="hash-output" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-sm outline-none" placeholder="$2b$10$..." />
+          <button id="copy-btn" class="shrink-0 rounded-xl bg-indigo-600 px-4 text-sm font-medium text-white transition hover:bg-indigo-700">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-verify" class="hidden">
+      <label class="text-sm font-medium text-slate-700" for="verify-input">Plaintext</label>
+      <input id="verify-input" type="text" placeholder="Enter plaintext to verify…" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+
+      <label class="mt-3 block text-sm font-medium text-slate-700" for="verify-hash">Bcrypt Hash</label>
+      <input id="verify-hash" type="text" placeholder="$2b$10$..." class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+
+      <button id="verify-btn" class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Verify</button>
+
+      <div id="verify-result" class="mt-4 hidden rounded-xl border p-4 text-center text-lg font-bold"></div>
+    </div>
+
+    <div id="status" class="mt-3 hidden rounded-lg px-3 py-2 text-sm font-medium"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How bcrypt hashing works</h2>
+    <p class="mt-2 text-slate-600">Bcrypt is an adaptive cryptographic hash function designed for password hashing by Niels Provos and David Mazières in 1999. It is based on the Blowfish cipher and incorporates a salt to protect against rainbow table attacks. The "adaptive" nature means the cost factor (salt rounds) can be increased over time to counter faster hardware, making bcrypt future-proof for password storage.</p>
+    <p class="mt-3 text-slate-600">When you hash a password with bcrypt, the function generates a random 16-byte salt (encoded as 22 base64 characters), then performs 2<sup>rounds</sup> iterations of the key derivation process using the Blowfish cipher. The output is a 60-character string in the format: <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$10$salt22charshashed31chars</code>. The <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$</code> prefix identifies the algorithm version, <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">10</code> is the cost factor (2<sup>10</sup> = 1,024 iterations), followed by the salt and the 184-bit hash output.</p>
+    <p class="mt-3 text-slate-600">Because the salt is randomly generated each time, the same password produces a different hash on every invocation. This prevents attackers from using precomputed lookup tables and ensures that users sharing the same password still get distinct stored hashes.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Input:</span> <span class="text-slate-600">"MyP@ssw0rd!"</span></div>
+        <div><span class="font-medium text-slate-700">Salt rounds:</span> <span class="text-slate-600">10 (2<sup>10</sup> = 1,024 iterations)</span></div>
+        <div><span class="font-medium text-slate-700">Output format:</span> <span class="text-slate-600">$2b$10$... (60 characters)</span></div>
+        <div><span class="font-medium text-slate-700">Security:</span> <span class="text-slate-600">Adaptive — resistant to brute-force and rainbow tables</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure>
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="280" viewBox="0 0 800 280">
+      <title>Bcrypt Hash and Verify Flow Diagram</title>
+      <desc>Flow diagram showing password being hashed with bcrypt using a salt producing a hash string, and separately a password being compared against a stored hash to produce a match or no-match result</desc>
+      <rect width="800" height="280" fill="#f8fafc" rx="8"/>
+      <text x="400" y="22" font-family="sans-serif" font-size="14" fill="#475569" text-anchor="middle" font-weight="bold">Bcrypt — Hash &amp; Verify Flow</text>
+      <line x1="400" y1="28" x2="400" y2="280" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="200" y="46" font-family="sans-serif" font-size="12" fill="#6366f1" text-anchor="middle" font-weight="bold">Hashing</text>
+      <text x="600" y="46" font-family="sans-serif" font-size="12" fill="#6366f1" text-anchor="middle" font-weight="bold">Verifying</text>
+      <rect x="100" y="60" width="140" height="44" fill="#e2e8f0" rx="8"/>
+      <text x="170" y="78" font-family="sans-serif" font-size="13" fill="#475569" text-anchor="middle" font-weight="bold">Password</text>
+      <text x="170" y="94" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">"MyP@ssw0rd!"</text>
+      <rect x="530" y="60" width="140" height="44" fill="#e2e8f0" rx="8"/>
+      <text x="600" y="78" font-family="sans-serif" font-size="13" fill="#475569" text-anchor="middle" font-weight="bold">Password</text>
+      <text x="600" y="94" font-family="monospace" font-size="10" fill="#64748b" text-anchor="middle">(user input)</text>
+      <line x1="240" y1="82" x2="280" y2="82" stroke="#6366f1" stroke-width="2"/>
+      <polygon points="280,77 295,82 280,87" fill="#6366f1"/>
+      <rect x="300" y="52" width="180" height="60" fill="#6366f1" rx="8"/>
+      <text x="390" y="72" font-family="sans-serif" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="bold">Bcrypt Hash</text>
+      <text x="390" y="88" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">salt + 2<sup>rounds</sup> iterations</text>
+      <text x="390" y="102" font-family="sans-serif" font-size="10" fill="#c7d2fe" text-anchor="middle">random salt per call</text>
+      <line x1="480" y1="82" x2="520" y2="82" stroke="#6366f1" stroke-width="2"/>
+      <polygon points="520,77 535,82 520,87" fill="#6366f1"/>
+      <rect x="540" y="120" width="220" height="44" fill="#f0fdf4" rx="8" stroke="#22c55e" stroke-width="1"/>
+      <text x="650" y="138" font-family="sans-serif" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="bold">Bcrypt Hash String</text>
+      <text x="650" y="154" font-family="monospace" font-size="10" fill="#1e293b" text-anchor="middle">$2b$10$... (60 chars)</text>
+      <rect x="100" y="135" width="140" height="44" fill="#f0fdf4" rx="8" stroke="#22c55e" stroke-width="1"/>
+      <text x="170" y="153" font-family="sans-serif" font-size="13" fill="#16a34a" text-anchor="middle" font-weight="bold">Bcrypt Hash</text>
+      <text x="170" y="169" font-family="monospace" font-size="10" fill="#1e293b" text-anchor="middle">$2b$10$...</text>
+      <line x1="800" y1="150" x2="800" y2="170" stroke="transparent"/>
+      <rect x="300" y="130" width="180" height="55" fill="#fef3c7" rx="8" stroke="#f59e0b" stroke-width="1"/>
+      <text x="390" y="150" font-family="sans-serif" font-size="12" fill="#d97706" text-anchor="middle" font-weight="bold">Comparison</text>
+      <text x="390" y="168" font-family="sans-serif" font-size="10" fill="#92400e" text-anchor="middle">bcrypt.compare()</text>
+      <text x="390" y="180" font-family="sans-serif" font-size="10" fill="#92400e" text-anchor="middle">constant-time compare</text>
+      <line x1="100" y1="179" x2="280" y2="157" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <line x1="240" y1="179" x2="295" y2="157" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="296,154 300,156 294,160" fill="#6366f1"/>
+      <line x1="535" y1="164" x2="490" y2="157" stroke="#6366f1" stroke-width="1.5"/>
+      <polygon points="489,154 486,161 493,158" fill="#6366f1"/>
+      <line x1="480" y1="157" x2="490" y2="157" stroke="#6366f1" stroke-width="1.5"/>
+      <rect x="100" y="200" width="140" height="40" fill="#dcfce7" rx="8"/>
+      <text x="170" y="220" font-family="sans-serif" font-size="14" fill="#16a34a" text-anchor="middle" font-weight="bold">Match &#10003;</text>
+      <line x1="530" y1="179" x2="490" y2="157" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <rect x="530" y="200" width="140" height="40" fill="#fef2f2" rx="8" stroke="#ef4444" stroke-width="1"/>
+      <text x="600" y="220" font-family="sans-serif" font-size="14" fill="#dc2626" text-anchor="middle" font-weight="bold">No Match &#10007;</text>
+      <text x="170" y="264" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Same salt &#8594; same hash</text>
+      <text x="390" y="264" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Extracts salt from hash, re-hashes, compares</text>
+      <text x="600" y="264" font-family="sans-serif" font-size="10" fill="#94a3b8" text-anchor="middle">Wrong password or corrupted hash</text>
+    </svg>
+    <figcaption>Bcrypt flow: a password is hashed with a random salt to produce a 60-character hash; for verification the salt is extracted from the stored hash and the comparison is performed in constant time.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The bcrypt hash format</h2>
+    <p class="mt-2 text-slate-600">Every bcrypt hash follows a strict format: <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$10$abc123...xyz</code>. The <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$</code> prefix indicates the algorithm version. Earlier versions used <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2a$</code> (original) and <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2x$</code>/<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2y$</code> (bug-fix variants). Modern implementations use <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$</code> exclusively because it correctly handles the 8-bit character encoding issue that affected <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2a$</code>.</p>
+    <p class="mt-3 text-slate-600">The second field (two digits) is the cost factor — the exponent used for the number of iterations (<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">2<sup>cost</sup></code>). A cost of 10 means 1,024 iterations; cost 12 means 4,096 iterations; cost 14 means 16,384 iterations. The cost is stored as a zero-padded two-digit number from 04 to 31.</p>
+    <p class="mt-3 text-slate-600">The remaining 53 characters contain the 22-character base64-encoded salt and the 31-character base64-encoded hash output (184 bits). The base64 variant used by bcrypt differs from standard base64 — it uses a custom alphabet (<code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">.</code> through <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">/</code> following <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">A-Za-z0-9</code> ordering) that is incompatible with standard base64 encoding.</p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F512;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Application Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Implements bcrypt for user registration and login systems. Hashes passwords on signup and verifies them on login, ensuring plaintext passwords are never stored in the database.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Security Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Audits password storage practices and recommends bcrypt with appropriate cost factors. Ensures compliance with OWASP guidelines for credential storage.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4E1;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">API Backend Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Uses bcrypt to hash API tokens and client secrets before storing them. Verifies tokens on each authenticated request without exposing the original secret.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">DevOps / Sysadmin</h3>
+      <p class="mt-1 text-sm text-slate-600">Configures authentication systems that rely on bcrypt for shadow password files, VPN credentials, and internal tool authentication.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Choosing the right salt rounds</h2>
+    <p class="mt-2 text-slate-600">The cost factor (salt rounds) determines how computationally expensive each hash operation is. A higher cost provides stronger protection but increases the time required to hash and verify. The table below shows approximate hashing times on modern hardware (2025 baseline: single core):</p>
+    <div class="mt-5 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Rounds</th><th class="p-3">Iterations</th><th class="p-3">Approx. Time</th><th class="p-3">Recommendation</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">4</td><td class="p-3">16</td><td class="p-3">&lt; 1 ms</td><td class="p-3">Testing only — no security</td></tr>
+          <tr><td class="p-3 font-medium">8</td><td class="p-3">256</td><td class="p-3">~5 ms</td><td class="p-3">Low-security internal tools</td></tr>
+          <tr><td class="p-3 font-medium">10</td><td class="p-3">1,024</td><td class="p-3">~50 ms</td><td class="p-3">Standard for most applications</td></tr>
+          <tr><td class="p-3 font-medium">12</td><td class="p-3">4,096</td><td class="p-3">~200 ms</td><td class="p-3">Recommended for sensitive data</td></tr>
+          <tr><td class="p-3 font-medium">14</td><td class="p-3">16,384</td><td class="p-3">~800 ms</td><td class="p-3">High-security / admin accounts</td></tr>
+          <tr><td class="p-3 font-medium">16</td><td class="p-3">65,536</td><td class="p-3">~3.2 s</td><td class="p-3">Maximum — may affect UX</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-slate-600">For most production web applications, 10–12 salt rounds strike the right balance between security and user experience. High-security environments (financial services, healthcare) should use 12–14 rounds. Always benchmark on your production hardware before choosing a cost factor, and plan to increase it as hardware improves over time.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bcrypt use cases</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Storing user passwords</h3>
+        <p class="mt-1 text-sm text-slate-600">The most common use case for bcrypt is password storage. When a user creates an account, the application hashes their password with bcrypt before storing it in the database. The original password is never stored. When the user logs in, the application hashes the provided password with the same salt extracted from the stored hash and compares the results. This means even if the database is compromised, the attacker only gains access to the bcrypt hashes — cracking them requires significant computational resources for each password.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Verifying login credentials</h3>
+        <p class="mt-1 text-sm text-slate-600">During login, bcrypt's verification function extracts the salt and cost factor from the stored hash, re-hashes the provided password with those parameters, and compares the results. This process is intentionally slow (configurable via the cost factor) to frustrate brute-force attacks while remaining transparent to legitimate users who only authenticate once per session.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Securing API tokens and secrets</h3>
+        <p class="mt-1 text-sm text-slate-600">Applications often generate API keys or bearer tokens that act as long-lived credentials. Instead of storing these tokens in plaintext, services hash them with bcrypt at issuance time. On each API request, the provided token is verified against the stored hash. If the token database is breached, the attacker cannot use the hashes to authenticate — they would need to crack each bcrypt hash individually.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bcrypt vs other password hashing algorithms</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Algorithm</th><th class="p-3">Salt</th><th class="p-3">Adaptive</th><th class="p-3">Memory Hard</th><th class="p-3">Best For</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Bcrypt</td><td class="p-3">Yes (16 bytes)</td><td class="p-3">Yes (rounds)</td><td class="p-3">No</td><td class="p-3">General password storage</td></tr>
+          <tr><td class="p-3 font-medium">Argon2id</td><td class="p-3">Yes (16+ bytes)</td><td class="p-3">Yes (iterations, memory, threads)</td><td class="p-3">Yes</td><td class="p-3">New applications (gold standard)</td></tr>
+          <tr><td class="p-3 font-medium">PBKDF2</td><td class="p-3">Yes</td><td class="p-3">Yes (iterations)</td><td class="p-3">No</td><td class="p-3">Legacy systems, FIPS compliance</td></tr>
+          <tr><td class="p-3 font-medium">scrypt</td><td class="p-3">Yes</td><td class="p-3">Yes (CPU + memory)</td><td class="p-3">Yes</td><td class="p-3">Memory-hard alternative to bcrypt</td></tr>
+          <tr><td class="p-3 font-medium">SHA-256 (raw)</td><td class="p-3">No</td><td class="p-3">No</td><td class="p-3">No</td><td class="p-3">Not suitable for passwords (too fast)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use Bcrypt Hash Checker</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Switch to Hash mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the "Hash" tab. Enter any plaintext and choose the number of salt rounds (4–16, default 10).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate the hash</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Generate Hash" to compute the bcrypt hash. The result is a 60-character string starting with $2b$.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Verify an existing hash</h3>
+        <p class="mt-1 text-sm text-slate-600">Switch to "Verify" mode, enter a plaintext and a bcrypt hash, then click "Verify" to check if they match.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using bcrypt</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use 10–12 salt rounds for production</h3>
+        <p class="mt-1 text-sm text-slate-600">A cost factor of 10 provides adequate security for most web applications and completes in ~50 ms on modern hardware. For sensitive data like financial or healthcare information, use 12–14 rounds. Always benchmark on your production infrastructure before choosing a cost factor. Remember that Moore's law means you should plan to increase the cost over time — bcrypt's adaptive design makes this straightforward.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Never truncate user passwords</h3>
+        <p class="mt-1 text-sm text-slate-600">Bcrypt has a maximum input length of 72 bytes. Passwords longer than 72 characters are silently truncated to 72 bytes by some implementations. If your application accepts long passwords, either warn users about the 72-byte limit or pre-hash the password (e.g. with SHA-256) before passing it to bcrypt. Most libraries now handle this correctly, but it is worth verifying.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Use constant-time comparison</h3>
+        <p class="mt-1 text-sm text-slate-600">Bcrypt's verify function performs a constant-time comparison by default, meaning it takes the same amount of time regardless of how many characters match. This prevents timing attacks where an attacker could determine how close a guessed password is to the correct one by measuring response times. Never implement your own comparison — always use the library's built-in verify function.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Consider Argon2id for new projects</h3>
+        <p class="mt-1 text-sm text-slate-600">While bcrypt remains an excellent choice and is battle-tested, the OWASP recommended algorithm for password hashing is Argon2id. Argon2id is memory-hard, meaning it resists GPU- and ASIC-based attacks more effectively than bcrypt. If you are starting a new project and your platform supports Argon2id, it is worth considering. However, bcrypt is still vastly superior to raw SHA-256 or unsalted MD5 for password storage.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What is bcrypt?</h2>
+    <p class="mt-3 text-slate-600">Bcrypt is a password-hashing function designed by Niels Provos and David Mazières, based on the Blowfish cipher. It was presented at USENIX in 1999 and has since become one of the most widely used password hashing algorithms in the world. Bcrypt's key innovation is its adaptive cost factor: the "salt rounds" parameter determines how many iterations of the Blowfish key schedule are performed, making the hash deliberately slow to compute.</p>
+    <p class="mt-3 text-slate-600">Each bcrypt hash incorporates a 128-bit (16-byte) salt generated by a cryptographically secure random number generator. The salt is stored as part of the hash output, which means every call to the hash function with the same password produces a completely different result. This defeats rainbow tables and ensures that users with identical passwords still get unique stored hashes.</p>
+    <p class="mt-3 text-slate-600">Bcrypt is classified as a "password hashing function" (PHF) rather than a general-purpose hash. Unlike SHA-256 or MD5, which are designed to be fast, bcrypt is intentionally slow to make brute-force attacks economically infeasible. As computing power increases, the cost factor can be raised to maintain security — this adaptability is what makes bcrypt future-proof.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How bcrypt generates hashes</h2>
+    <p class="mt-3 text-slate-600">Bcrypt works by first initializing the Blowfish cipher with a key schedule derived from the password and salt. The key schedule (EksBlowfishSetup) performs 2<sup>cost</sup> iterations of the Blowfish key expansion, where each iteration mixes the password and salt into the cipher's internal state (4,608 bytes of S-boxes and P-array). This heavy memory usage makes bcrypt resistant to GPU-based parallel attacks.</p>
+    <p class="mt-3 text-slate-600">After key setup, bcrypt encrypts the string "OrpheanBeholderScryDoubt" (192 bits / 24 bytes) using the initialized Blowfish cipher 64 times. The result of this encryption is the 184-bit hash output, which is then encoded along with the salt and cost factor into the standard <code class="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">$2b$10$...</code> format. The entire process is deterministic given the same password, salt, and cost — making verification possible by repeating the same computation.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Bcrypt and security compliance</h2>
+    <p class="mt-3 text-slate-600">Bcrypt meets the password storage requirements for most regulatory frameworks including GDPR, HIPAA, PCI-DSS, and SOC 2. PCI-DSS requirement 3.5 specifically mandates that stored passwords must be one-way hashed using strong cryptography — bcrypt qualifies with appropriate cost factors. Many compliance auditors explicitly look for salted, adaptive hashing when reviewing password storage implementations.</p>
+    <p class="mt-3 text-slate-600">When using bcrypt for compliance, document your chosen cost factor and the rationale behind it. Set up a migration strategy to increase the cost factor over time (for example, re-hash passwords on user login with an updated cost). Maintain audit logs showing that plaintext passwords are never stored or logged at any point in the authentication flow.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-indigo-50 p-6">
+    <h2 class="text-xl font-bold text-indigo-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/aes-encrypt-decrypt" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F512; AES Encrypt / Decrypt</a>
+      <a href="/tools/rsa-key-generator" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F511; RSA Key Generator</a>
+      <a href="/tools/sha256-hash-generator" class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700">&#x1F4DD; SHA-256 Hash Generator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function() {
+      var bcryptPromise = null;
+
+      function getBcrypt() {
+        if (!bcryptPromise) {
+          bcryptPromise = import('https://esm.sh/bcryptjs@2.4.3').then(function(m) {
+            return m.default || m;
+          }).catch(function(err) {
+            console.error('Failed to load bcryptjs from CDN:', err);
+            showStatus('Failed to load bcrypt library. Please check your internet connection and try again.', false);
+            return null;
+          });
+        }
+        return bcryptPromise;
+      }
+
+      var el = function(id) { return document.getElementById(id); };
+
+      var tabHash = el('tab-hash');
+      var tabVerify = el('tab-verify');
+      var panelHash = el('panel-hash');
+      var panelVerify = el('panel-verify');
+
+      var hashInput = el('hash-input');
+      var rounds = el('rounds');
+      var hashBtn = el('hash-btn');
+      var hashOutput = el('hash-output');
+      var copyBtn = el('copy-btn');
+
+      var verifyInput = el('verify-input');
+      var verifyHash = el('verify-hash');
+      var verifyBtn = el('verify-btn');
+      var verifyResult = el('verify-result');
+
+      var status = el('status');
+
+      function showStatus(msg, ok) {
+        status.textContent = msg;
+        status.className = 'mt-3 rounded-lg px-3 py-2 text-sm font-medium ' + (ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700');
+        status.classList.remove('hidden');
+      }
+
+      function hideStatus() {
+        status.classList.add('hidden');
+      }
+
+      function setActiveTab(tab) {
+        if (tab === 'hash') {
+          tabHash.className = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700';
+          tabVerify.className = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';
+          panelHash.classList.remove('hidden');
+          panelVerify.classList.add('hidden');
+          verifyResult.classList.add('hidden');
+        } else {
+          tabHash.className = 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';
+          tabVerify.className = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700';
+          panelHash.classList.add('hidden');
+          panelVerify.classList.remove('hidden');
+          verifyResult.classList.add('hidden');
+        }
+        hideStatus();
+      }
+
+      tabHash.addEventListener('click', function() { setActiveTab('hash'); });
+      tabVerify.addEventListener('click', function() { setActiveTab('verify'); });
+
+      hashBtn.addEventListener('click', async function() {
+        var text = hashInput.value;
+        if (!text) { showStatus('Please enter text to hash.', false); return; }
+        var roundsVal = parseInt(rounds.value, 10);
+        if (isNaN(roundsVal) || roundsVal < 4 || roundsVal > 16) {
+          showStatus('Salt rounds must be between 4 and 16.', false);
+          return;
+        }
+        hideStatus();
+        hashBtn.textContent = 'Hashing…';
+        hashBtn.disabled = true;
+        try {
+          var bcrypt = await getBcrypt();
+          if (!bcrypt) { hashBtn.textContent = 'Generate Hash'; hashBtn.disabled = false; return; }
+          var hash = bcrypt.hashSync(text, roundsVal);
+          hashOutput.value = hash;
+          showStatus('Bcrypt hash generated successfully.', true);
+        } catch (e) {
+          showStatus('Error generating hash: ' + e.message, false);
+        }
+        hashBtn.textContent = 'Generate Hash';
+        hashBtn.disabled = false;
+      });
+
+      verifyBtn.addEventListener('click', async function() {
+        var text = verifyInput.value;
+        var hash = verifyHash.value;
+        if (!text || !hash) { showStatus('Please enter both plaintext and a bcrypt hash.', false); return; }
+        hideStatus();
+        verifyBtn.textContent = 'Verifying…';
+        verifyBtn.disabled = true;
+        try {
+          var bcrypt = await getBcrypt();
+          if (!bcrypt) { verifyBtn.textContent = 'Verify'; verifyBtn.disabled = false; return; }
+          var match = bcrypt.compareSync(text, hash);
+          verifyResult.classList.remove('hidden');
+          if (match) {
+            verifyResult.className = 'mt-4 rounded-xl border border-green-300 bg-green-50 p-4 text-center text-lg font-bold text-green-700';
+            verifyResult.textContent = '\u2713 Match';
+          } else {
+            verifyResult.className = 'mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-center text-lg font-bold text-red-700';
+            verifyResult.textContent = '\u2717 No match';
+          }
+          showStatus('Verification complete.', true);
+        } catch (e) {
+          showStatus('Error verifying hash: ' + e.message, false);
+        }
+        verifyBtn.textContent = 'Verify';
+        verifyBtn.disabled = false;
+      });
+
+      copyBtn.addEventListener('click', async function() {
+        if (!hashOutput.value) return;
+        try {
+          await navigator.clipboard.writeText(hashOutput.value);
+          var b = copyBtn; var o = b.textContent; b.textContent = 'Copied!'; setTimeout(function() { b.textContent = o; }, 1200);
+        } catch (e) {}
+      });
+    })();
+  </script>
+</ToolLayout>

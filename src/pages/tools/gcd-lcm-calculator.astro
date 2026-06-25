@@ -1,0 +1,316 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'GCD & LCM Calculator';
+const description = 'Find the GCD and LCM of any numbers with step-by-step Euclidean algorithm. Free online math tool.';
+const intro = 'Find the greatest common divisor and least common multiple of any numbers.';
+const category = { id: 'math', name: 'Math' };
+const faqs = [
+  { q: 'What is GCD?', a: 'The greatest common divisor is the largest number that divides all given numbers without a remainder.' },
+  { q: 'What is LCM?', a: 'The least common multiple is the smallest positive number that is a multiple of all given numbers.' },
+  { q: 'How do you compute GCD?', a: 'Euclidean algorithm: repeatedly replace the larger number with its remainder modulo the smaller.' },
+  { q: 'How are GCD and LCM related?', a: 'For two numbers a and b: GCD(a,b) × LCM(a,b) = a × b.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block text-sm font-medium text-slate-700" for="numbers-input">Enter numbers (comma-separated)</label>
+    <input id="numbers-input" type="text" value="12, 18, 24" placeholder="e.g. 12, 18, 24"
+      class="mt-1 block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    <div class="mt-3 flex flex-wrap gap-3">
+      <button id="calc-gcd-btn"
+        class="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate GCD</button>
+      <button id="calc-lcm-btn"
+        class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">Calculate LCM</button>
+      <button id="calc-both-btn"
+        class="rounded-xl bg-slate-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">Calculate Both</button>
+    </div>
+    <p id="input-error" class="mt-3 hidden text-sm font-semibold text-red-500"></p>
+    <div id="result-area" class="mt-4 hidden space-y-4">
+      <div id="gcd-result" class="hidden rounded-xl border border-indigo-200 bg-indigo-50 p-4"></div>
+      <div id="lcm-result" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-4"></div>
+      <div id="steps-result" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h3 class="text-sm font-semibold text-slate-700">Step-by-step</h3>
+        <div id="steps-content" class="mt-2 text-sm text-slate-600"></div>
+      </div>
+      <div id="prime-result" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <h3 class="text-sm font-semibold text-amber-800">Prime factorizations</h3>
+        <div id="prime-content" class="mt-2 text-sm text-amber-700"></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="700" height="320" viewBox="0 0 700 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="venn-title venn-desc">
+      <title id="venn-title">Venn diagram showing common and unique prime factors of 12 and 18</title>
+      <desc id="venn-desc">Two overlapping circles. Left circle: factors of 12 (2, 2, 3). Right circle: factors of 18 (2, 3, 3). Overlap: shared factors (2, 3). The product of the overlap gives GCD = 6.</desc>
+      <circle cx="240" cy="160" r="100" fill="#eef2ff" stroke="#6366f1" stroke-width="2.5" />
+      <circle cx="460" cy="160" r="100" fill="#ecfdf5" stroke="#10b981" stroke-width="2.5" />
+      <text x="150" y="120" text-anchor="middle" fill="#4338ca" font-size="18" font-weight="bold">2</text>
+      <text x="350" y="120" text-anchor="middle" fill="#059669" font-size="18" font-weight="bold">3</text>
+      <text x="150" y="160" text-anchor="middle" fill="#94a3b8" font-size="12">12 = 2 &times; 2 &times; 3</text>
+      <text x="350" y="160" text-anchor="middle" fill="#94a3b8" font-size="12">18 = 2 &times; 3 &times; 3</text>
+      <text x="240" y="160" text-anchor="middle" fill="#6366f1" font-size="24" font-weight="bold">2 &times; 3</text>
+      <text x="240" y="200" text-anchor="middle" fill="#4338ca" font-size="14">GCD = 6</text>
+      <text x="240" y="285" text-anchor="middle" fill="#64748b" font-size="13">Common factors (overlap) give the GCD</text>
+      <line x1="100" y1="50" x2="600" y2="50" stroke="#e2e8f0" stroke-width="1.5" />
+      <text x="195" y="40" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="bold">12</text>
+      <text x="505" y="40" text-anchor="middle" fill="#10b981" font-size="12" font-weight="bold">18</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Venn diagram of prime factors for 12 and 18. The overlapping region contains the common factors whose product is the GCD.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Euclidean algorithm for GCD</h2>
+    <p class="mt-2 text-slate-600">The Euclidean algorithm is one of the oldest algorithms still in common use, dating back to ancient Greece (circa 300 BC). It computes the greatest common divisor of two numbers efficiently using repeated division. The algorithm is based on the observation that the GCD of two numbers does not change if the larger number is replaced by its remainder when divided by the smaller number.</p>
+    <p class="mt-3 text-slate-600">Formally, for integers <var>a</var> and <var>b</var> where <var>a</var> &gt; <var>b</var>:</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <div class="font-mono text-sm font-bold text-indigo-700">gcd(<var>a</var>, <var>b</var>) =</div>
+        <div class="mt-1 font-mono text-sm text-slate-600"><var>a</var> &emsp; if <var>b</var> = 0</div>
+        <div class="font-mono text-sm text-slate-600">gcd(<var>b</var>, <var>a</var> mod <var>b</var>) &emsp; otherwise</div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="text-sm text-slate-600">The algorithm repeats the modulo operation until the remainder is zero. The last non-zero remainder is the GCD. For <var>n</var> numbers, compute pairwise using reduce.</p>
+      </div>
+    </div>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example: GCD(12, 18)</h3>
+      <div class="mt-2 space-y-1 text-sm text-slate-600">
+        <p>Step 1: 18 &divide; 12 = 1 remainder <strong>6</strong> &emsp; gcd(12, 18) &rarr; gcd(12, 6)</p>
+        <p>Step 2: 12 &divide; 6 = 2 remainder <strong>0</strong> &emsp; gcd(12, 6) &rarr; gcd(6, 0)</p>
+        <p class="font-semibold text-emerald-700">Last non-zero remainder = 6 &rarr; GCD = 6</p>
+        <p class="mt-2 text-slate-500">LCM = (12 &times; 18) / GCD = 216 / 6 = 36</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F9EE;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Simplifying Fractions</h3>
+      <p class="mt-1 text-sm text-slate-600">To reduce a fraction to its simplest form, divide numerator and denominator by their GCD. For example, <sup>12</sup>/<sub>18</sub> simplified by GCD 6 gives <sup>2</sup>/<sub>3</sub>.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x23F0;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Scheduling &amp; Cycles</h3>
+      <p class="mt-1 text-sm text-slate-600">LCM helps determine when repeating events align. If one machine runs every 12 minutes and another every 18 minutes, they both run together every LCM(12, 18) = 36 minutes.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Number Theory</h3>
+      <p class="mt-1 text-sm text-slate-600">GCD and LCM are foundational in number theory. The relationship GCD &times; LCM = product of numbers is a key identity used in proofs and problem-solving.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3ED;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Gear Ratios</h3>
+      <p class="mt-1 text-sm text-slate-600">In mechanical engineering, LCM of gear teeth counts determines when gears return to their starting alignment. GCD helps find the simplest ratio between two gears.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">GCD and LCM relationship</h2>
+    <p class="mt-2 text-slate-600">For any two positive integers <var>a</var> and <var>b</var>, the product of their GCD and LCM equals the product of the numbers themselves:</p>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+      <span class="font-mono text-lg font-bold text-indigo-700">GCD(<var>a</var>, <var>b</var>) &times; LCM(<var>a</var>, <var>b</var>) = <var>a</var> &times; <var>b</var></span>
+    </div>
+    <p class="mt-3 text-slate-600">This identity allows you to compute LCM directly from GCD: LCM = (<var>a</var> &times; <var>b</var>) / GCD(<var>a</var>, <var>b</var>). For three or more numbers, the relationship generalises but becomes more complex — the simple product identity only holds pairwise.</p>
+    <p class="mt-3 text-slate-600">The proof follows from prime factorisation. Each prime factor appears in both GCD and LCM: the GCD takes the minimum exponent across all numbers, while the LCM takes the maximum exponent. When you multiply GCD and LCM, you get the full product because min(<var>e</var>) + max(<var>e</var>) = <var>e</var><sub>1</sub> + <var>e</var><sub>2</sub> for each prime across two numbers.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the GCD &amp; LCM Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter numbers</h3>
+        <p class="mt-1 text-sm text-slate-600">Type two or more positive integers separated by commas, e.g. "12, 18, 24".</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose calculation</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "Calculate GCD" to find the greatest common divisor, "Calculate LCM" for the least common multiple, or "Calculate Both".</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Review steps</h3>
+        <p class="mt-1 text-sm text-slate-600">For two numbers, the step-by-step breakdown of the Euclidean algorithm is shown. Prime factorisation is displayed when numbers are 100 or less.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for working with GCD and LCM</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">The distributive property</h3>
+        <p class="mt-1 text-sm text-slate-600">GCD and LCM distribute over each other: GCD(<var>a</var>, LCM(<var>b</var>, <var>c</var>)) = LCM(GCD(<var>a</var>, <var>b</var>), GCD(<var>a</var>, <var>c</var>)). Similarly, LCM(<var>a</var>, GCD(<var>b</var>, <var>c</var>)) = GCD(LCM(<var>a</var>, <var>b</var>), LCM(<var>a</var>, <var>c</var>)). These are known as the distributive laws of GCD and LCM and mirror the distributive property in Boolean algebra.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">GCD of more than two numbers</h3>
+        <p class="mt-1 text-sm text-slate-600">To find the GCD of three or more numbers, compute the GCD pairwise using reduce: GCD(<var>a</var>, <var>b</var>, <var>c</var>) = GCD(GCD(<var>a</var>, <var>b</var>), <var>c</var>). The order does not matter — GCD is associative and commutative. The same approach works for LCM. This calculator extends to <var>n</var> numbers automatically.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Coprime numbers</h3>
+        <p class="mt-1 text-sm text-slate-600">Two numbers are called coprime (or relatively prime) if their GCD is 1. For example, 8 and 15 are coprime because their only common factor is 1. When two numbers are coprime, their LCM is simply their product. Coprime pairs are essential in cryptography and modular arithmetic.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-600">Efficiency of the Euclidean algorithm</h3>
+        <p class="mt-1 text-sm text-slate-600">The Euclidean algorithm is remarkably efficient. The number of division steps grows logarithmically with the size of the input numbers. In the worst case (consecutive Fibonacci numbers), the number of steps is still proportional to the number of digits. This makes it practical even for extremely large numbers used in cryptography.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the Euclidean algorithm in depth</h2>
+    <p class="mt-2 text-slate-600">The Euclidean algorithm works because of a simple observation: any common divisor of <var>a</var> and <var>b</var> also divides their difference <var>a</var> &minus; <var>b</var>. By repeatedly applying this with the modulo operation (which is essentially repeated subtraction), we reduce the problem to smaller and smaller numbers until one reaches zero.</p>
+    <p class="mt-3 text-slate-600">The extended Euclidean algorithm is an important variant that, in addition to finding the GCD, also finds integers <var>x</var> and <var>y</var> such that <var>ax</var> + <var>by</var> = GCD(<var>a</var>, <var>b</var>). This is known as B&#x00E9;zout's identity and is used in solving linear Diophantine equations and computing modular inverses in RSA encryption.</p>
+    <p class="mt-3 text-slate-600">Historically, the Euclidean algorithm is one of the earliest algorithms ever formally described. Euclid included it in his <em>Elements</em> (Book VII, Propositions 1-3) around 300 BC. The algorithm predates the concept of modular arithmetic by over two millennia, yet it remains the most efficient way to compute GCD even on modern computers.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/prime-number-checker" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F522;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Prime Number Checker</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Check if a number is prime and list its factors if composite.</p>
+      </a>
+      <a href="/tools/logarithm-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4CA;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Logarithm Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Calculate log base b of x, natural log, and see the change-of-base formula.</p>
+      </a>
+      <a href="/tools/fraction-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2797;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Fraction Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Add, subtract, multiply and divide fractions with simplification.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const input = $('numbers-input');
+    const errorEl = $('input-error');
+    const resultArea = $('result-area');
+    const gcdResult = $('gcd-result');
+    const lcmResult = $('lcm-result');
+    const stepsResult = $('steps-result');
+    const stepsContent = $('steps-content');
+    const primeResult = $('prime-result');
+    const primeContent = $('prime-content');
+
+    function gcd(a, b) {
+      while (b) { const t = b; b = a % b; a = t; }
+      return a;
+    }
+
+    function gcdWithSteps(a, b) {
+      const steps = [];
+      let x = a, y = b;
+      while (y) {
+        const r = x % y;
+        steps.push({ x, y, q: Math.floor(x / y), r });
+        x = y; y = r;
+      }
+      return { result: x, steps };
+    }
+
+    function parseNumbers(str) {
+      const nums = str.split(',').map(s => parseInt(s.trim(), 10));
+      if (nums.length < 2) { throw new Error('Enter at least 2 numbers.'); }
+      for (const n of nums) {
+        if (isNaN(n) || n < 1 || !Number.isInteger(n)) { throw new Error('All values must be positive integers.'); }
+      }
+      return nums;
+    }
+
+    function getPrimeFactors(n) {
+      const factors = [];
+      let d = 2;
+      while (d * d <= n) {
+        while (n % d === 0) { factors.push(d); n /= d; }
+        d++;
+      }
+      if (n > 1) factors.push(n);
+      return factors;
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+      resultArea.classList.add('hidden');
+    }
+
+    function clearError() {
+      errorEl.classList.add('hidden');
+    }
+
+    function run(mode) {
+      clearError();
+      let nums;
+      try { nums = parseNumbers(input.value); } catch (e) { showError(e.message); return; }
+
+      const showGCD = mode === 'gcd' || mode === 'both';
+      const showLCM = mode === 'lcm' || mode === 'both';
+
+      const valA = nums[0], valB = nums.length === 2 ? nums[1] : null;
+
+      if (showGCD) {
+        const g = nums.reduce((a, b) => gcd(a, b));
+        gcdResult.innerHTML =
+          `<div class="flex items-baseline gap-2"><span class="text-lg font-bold text-indigo-700">GCD = ${g.toLocaleString()}</span></div>` +
+          `<p class="mt-1 text-sm text-indigo-600">Greatest common divisor of ${nums.join(', ')}</p>`;
+        gcdResult.classList.remove('hidden');
+
+        if (valB) {
+          const { result, steps } = gcdWithSteps(valA, valB);
+          let stepsHtml = '';
+          for (const s of steps) {
+            stepsHtml += `<p>${s.x} &divide; ${s.y} = ${s.q} remainder <strong>${s.r}</strong></p>`;
+          }
+          stepsHtml += `<p class="mt-1 font-semibold text-emerald-700">GCD = ${result}</p>`;
+          stepsContent.innerHTML = stepsHtml;
+          stepsResult.classList.remove('hidden');
+        } else {
+          stepsResult.classList.add('hidden');
+        }
+      } else {
+        gcdResult.classList.add('hidden');
+      }
+
+      if (showLCM) {
+        const l = nums.reduce((a, b) => a * b / gcd(a, b));
+        lcmResult.innerHTML =
+          `<div class="flex items-baseline gap-2"><span class="text-lg font-bold text-emerald-700">LCM = ${l.toLocaleString()}</span></div>` +
+          `<p class="mt-1 text-sm text-emerald-600">Least common multiple of ${nums.join(', ')}</p>`;
+        lcmResult.classList.remove('hidden');
+      } else {
+        lcmResult.classList.add('hidden');
+      }
+
+      const allSmall = nums.every(n => n <= 100);
+      if (allSmall) {
+        let html = '';
+        for (const n of nums) {
+          const factors = getPrimeFactors(n);
+          html += `<p><span class="font-medium">${n}</span> = ${factors.join(' &times; ')}</p>`;
+        }
+        primeContent.innerHTML = html;
+        primeResult.classList.remove('hidden');
+      } else {
+        primeResult.classList.add('hidden');
+      }
+
+      resultArea.classList.remove('hidden');
+    }
+
+    $('calc-gcd-btn').addEventListener('click', () => run('gcd'));
+    $('calc-lcm-btn').addEventListener('click', () => run('lcm'));
+    $('calc-both-btn').addEventListener('click', () => run('both'));
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') run('both'); });
+  </script>
+</ToolLayout>

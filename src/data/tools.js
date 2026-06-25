@@ -312,6 +312,13 @@ export const tools = [
   { slug: 'prime-number-checker', title: 'Prime Number Checker', short: 'Check if a number is prime and list its factors if composite.', category: 'math', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'gcd-lcm-calculator', title: 'GCD & LCM Calculator', short: 'Find the greatest common divisor and least common multiple of any numbers.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },
   { slug: 'logarithm-calculator', title: 'Logarithm Calculator', short: 'Calculate log base b of x, natural log, and see the change-of-base formula.', category: 'math', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'combination-permutation-calculator', title: 'Combination & Permutation Calculator', short: 'Calculate nCr and nPr with step-by-step factorial breakdown.', category: 'math', emoji: '🔀', enabled: true, status: 'live' },
+  { slug: 'matrix-calculator', title: 'Matrix Calculator', short: 'Add, subtract, multiply, and find the determinant or inverse of matrices.', category: 'math', emoji: '🧮', enabled: true, status: 'live' },
+  // ── Part B: Security ──
+  { slug: 'aes-encrypt-decrypt', title: 'AES Encrypt & Decrypt', short: 'Encrypt or decrypt text with AES-256-CBC using a password.', category: 'security', emoji: '🔐', enabled: true, status: 'live' },
+  { slug: 'rsa-key-generator', title: 'RSA Key Generator', short: 'Generate a 2048-bit RSA public/private key pair in PEM or JWK format.', category: 'security', emoji: '🗝️', enabled: true, status: 'live' },
+  { slug: 'bcrypt-checker', title: 'Bcrypt Hash Checker', short: 'Generate bcrypt hashes and verify plaintext against existing hashes.', category: 'security', emoji: '🔑', enabled: true, status: 'live' },
+  { slug: 'qr-code-generator', title: 'QR Code Generator', short: 'Generate QR codes from any URL or text and download as PNG.', category: 'security', emoji: '📱', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

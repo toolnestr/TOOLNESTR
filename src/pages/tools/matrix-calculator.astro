@@ -1,0 +1,452 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Matrix Calculator';
+const description = 'Add, subtract, multiply matrices. Compute determinant and inverse for square matrices.';
+const intro = 'Add, subtract, multiply, and find the determinant or inverse of matrices.';
+const category = { id: 'math', name: 'Math' };
+const faqs = [
+  { q: 'What size matrices are supported?', a: 'Up to 4×4. Larger matrices are computationally intensive for browser-side computation.' },
+  { q: 'Can I multiply non-square matrices?', a: 'Yes — as long as the number of columns of A equals the number of rows of B.' },
+  { q: 'What is the determinant?', a: 'A scalar value computed from a square matrix that indicates whether it is invertible (det ≠ 0).' },
+  { q: 'What is the inverse?', a: 'A⁻¹ such that A × A⁻¹ = I. Only square matrices with non-zero determinant have an inverse.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div>
+        <h3 class="mb-2 text-sm font-semibold text-slate-700">Matrix A</h3>
+        <div class="mb-2 flex gap-2">
+          <select id="a-rows" class="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="1">1 row</option><option value="2" selected>2 rows</option><option value="3">3 rows</option><option value="4">4 rows</option>
+          </select>
+          <span class="self-center text-slate-400">×</span>
+          <select id="a-cols" class="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="1">1 col</option><option value="2" selected>2 cols</option><option value="3">3 cols</option><option value="4">4 cols</option>
+          </select>
+        </div>
+        <div id="matrix-a-grid" class="grid gap-2"></div>
+      </div>
+      <div>
+        <h3 class="mb-2 text-sm font-semibold text-slate-700">Matrix B</h3>
+        <div class="mb-2 flex gap-2">
+          <select id="b-rows" class="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="1">1 row</option><option value="2" selected>2 rows</option><option value="3">3 rows</option><option value="4">4 rows</option>
+          </select>
+          <span class="self-center text-slate-400">×</span>
+          <select id="b-cols" class="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="1">1 col</option><option value="2" selected>2 cols</option><option value="3">3 cols</option><option value="4">4 cols</option>
+          </select>
+        </div>
+        <div id="matrix-b-grid" class="grid gap-2"></div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+      <select id="operation" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="add">A + B</option>
+        <option value="subtract">A − B</option>
+        <option value="multiply">A × B</option>
+        <option value="determinant">det(A)</option>
+        <option value="inverse">A⁻¹</option>
+      </select>
+      <button id="calc-btn" class="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+    </div>
+
+    <div class="mt-4">
+      <div id="error-msg" class="hidden rounded-xl bg-red-50 p-3 text-sm text-red-700"></div>
+    </div>
+
+    <div id="result-area" class="mt-4 hidden">
+      <h4 class="mb-2 text-sm font-semibold text-slate-700">Result</h4>
+      <div id="result-grid" class="grid gap-2"></div>
+      <div id="result-scalar" class="hidden text-center text-2xl font-bold text-indigo-600"></div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-labelledby="mat-title mat-desc">
+      <title id="mat-title">Matrix multiplication diagram</title>
+      <desc id="mat-desc">Two matrices labeled A and B with arrows from rows of A and columns of B converging into result matrix C</desc>
+      <rect width="800" height="280" fill="#f8fafc" rx="8" />
+      <rect x="60" y="60" width="100" height="80" rx="6" fill="#6366f1" opacity="0.15" stroke="#6366f1" stroke-width="2" />
+      <text x="110" y="45" text-anchor="middle" fill="#6366f1" font-family="system-ui" font-size="15" font-weight="700">Matrix A</text>
+      <text x="75" y="85" font-family="monospace" font-size="13" fill="#1e293b">a₁₁</text><text x="105" y="85" font-family="monospace" font-size="13" fill="#1e293b">a₁₂</text>
+      <text x="75" y="110" font-family="monospace" font-size="13" fill="#1e293b">a₂₁</text><text x="105" y="110" font-family="monospace" font-size="13" fill="#1e293b">a₂₂</text>
+      <text x="135" y="85" font-family="monospace" font-size="13" fill="#1e293b">…</text><text x="135" y="110" font-family="monospace" font-size="13" fill="#1e293b">…</text>
+      <rect x="350" y="60" width="100" height="80" rx="6" fill="#818cf8" opacity="0.15" stroke="#818cf8" stroke-width="2" />
+      <text x="400" y="45" text-anchor="middle" fill="#818cf8" font-family="system-ui" font-size="15" font-weight="700">Matrix B</text>
+      <text x="365" y="85" font-family="monospace" font-size="13" fill="#1e293b">b₁₁</text><text x="395" y="85" font-family="monospace" font-size="13" fill="#1e293b">b₁₂</text>
+      <text x="365" y="110" font-family="monospace" font-size="13" fill="#1e293b">b₂₁</text><text x="395" y="110" font-family="monospace" font-size="13" fill="#1e293b">b₂₂</text>
+      <text x="425" y="85" font-family="monospace" font-size="13" fill="#1e293b">…</text><text x="425" y="110" font-family="monospace" font-size="13" fill="#1e293b">…</text>
+      <rect x="600" y="80" width="100" height="60" rx="6" fill="#a5b4fc" opacity="0.15" stroke="#a5b4fc" stroke-width="2" />
+      <text x="650" y="65" text-anchor="middle" fill="#a5b4fc" font-family="system-ui" font-size="15" font-weight="700">Matrix C</text>
+      <text x="615" y="100" font-family="monospace" font-size="13" fill="#1e293b">c₁₁</text><text x="645" y="100" font-family="monospace" font-size="13" fill="#1e293b">c₁₂</text>
+      <text x="615" y="125" font-family="monospace" font-size="13" fill="#1e293b">c₂₁</text><text x="645" y="125" font-family="monospace" font-size="13" fill="#1e293b">c₂₂</text>
+      <path d="M 160 80 L 350 80" stroke="#6366f1" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-purple)" />
+      <path d="M 160 120 L 350 120" stroke="#6366f1" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-purple)" />
+      <path d="M 450 100 L 600 100" stroke="#818cf8" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-indigo)" />
+      <path d="M 450 120 L 600 120" stroke="#818cf8" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrow-indigo)" />
+      <defs>
+        <marker id="arrow-purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#6366f1"/></marker>
+        <marker id="arrow-indigo" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#818cf8"/></marker>
+      </defs>
+      <text x="260" y="145" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="11">Row i of A × Column j of B</text>
+      <text x="530" y="150" text-anchor="middle" fill="#64748b" font-family="system-ui" font-size="11">cᵢⱼ = Σ aᵢₖ · bₖⱼ</text>
+      <text x="400" y="230" text-anchor="middle" fill="#475569" font-family="system-ui" font-size="13">Element-wise operations (addition, subtraction) combine same-position entries.</text>
+      <text x="400" y="255" text-anchor="middle" fill="#475569" font-family="system-ui" font-size="13">Matrix multiplication uses row-by-column dot products: cᵢⱼ = Σₖ aᵢₖ · bₖⱼ.</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Matrix multiplication: each element cᵢⱼ is the dot product of row i of A and column j of B</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How matrix arithmetic works</h2>
+    <p class="mt-2 text-slate-600">
+      A matrix is a rectangular arrangement of numbers in rows and columns. The size of a matrix is written as <strong>rows × columns</strong> (e.g., a 2×3 matrix has 2 rows and 3 columns). Matrices are fundamental in linear algebra and appear throughout mathematics, physics, engineering, computer graphics, and data science.
+    </p>
+    <p class="mt-3 text-slate-600">
+      <strong>Addition and subtraction</strong> are performed <em>element-wise</em>. Every element in the first matrix is added to or subtracted from the corresponding element in the second matrix. This requires both matrices to have <strong>identical dimensions</strong>: if A is 2×3 and B is 2×3, then A + B and A − B are both defined and result in another 2×3 matrix. For example, if A = [[1, 2], [3, 4]] and B = [[5, 6], [7, 8]], then A + B = [[6, 8], [10, 12]] and A − B = [[−4, −4], [−4, −4]].
+    </p>
+    <p class="mt-3 text-slate-600">
+      <strong>Multiplication</strong> is more involved than simple element-wise operations. Given matrix A of size <em>m × n</em> and matrix B of size <em>n × p</em>, the product C = A × B is of size <em>m × p</em>. Each element cᵢⱼ is computed as the <strong>dot product</strong> of row i from A and column j from B:
+    </p>
+    <div class="mx-auto my-6 max-w-sm rounded-xl bg-indigo-50 p-5 text-center">
+      <p class="text-lg font-bold text-indigo-800">cᵢⱼ = Σₖ aᵢₖ · bₖⱼ</p>
+    </div>
+    <p class="text-slate-600">
+      The number of columns of A <strong>must equal</strong> the number of rows of B for multiplication to be valid. Matrix multiplication is <strong>not commutative</strong>: in general A × B ≠ B × A. In fact, if A is 2×3 and B is 3×2, the product A × B is 2×2 while B × A is 3×3, so they are not even the same shape.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example: 2×2 matrix multiplication</h3>
+      <p class="mt-1 text-sm text-slate-600">Multiply A = [[1, 2], [3, 4]] and B = [[5, 6], [7, 8]].</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">c₁₁:</span> <span class="text-slate-600">1·5 + 2·7 = 5 + 14 = 19</span></div>
+        <div><span class="font-medium text-slate-700">c₁₂:</span> <span class="text-slate-600">1·6 + 2·8 = 6 + 16 = 22</span></div>
+        <div><span class="font-medium text-slate-700">c₂₁:</span> <span class="text-slate-600">3·5 + 4·7 = 15 + 28 = 43</span></div>
+        <div><span class="font-medium text-slate-700">c₂₂:</span> <span class="text-slate-600">3·6 + 4·8 = 18 + 32 = 50</span></div>
+      </div>
+      <p class="mt-2 text-sm text-slate-600">Result: C = [[19, 22], [43, 50]].</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The determinant of a matrix</h2>
+    <p class="mt-2 text-slate-600">
+      The <strong>determinant</strong> is a scalar value computed from a <strong>square matrix</strong> (same number of rows and columns). It is denoted as det(A) or |A|. The determinant has profound geometric meaning: it represents the <strong>volume scaling factor</strong> of the linear transformation described by the matrix. A zero determinant means the transformation collapses space into a lower dimension (the matrix is <em>singular</em> and not invertible).
+    </p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">2×2 determinant</h3>
+        <p class="mt-1 text-sm text-slate-600">For A = [[a, b], [c, d]], the determinant is:</p>
+        <p class="mt-1 text-center text-lg font-bold text-indigo-700">det(A) = ad − bc</p>
+        <p class="mt-1 text-sm text-slate-600">This is the area of the parallelogram formed by the column vectors (or row vectors) of the matrix. If det(A) = 0, the parallelogram collapses to a line or point.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">3×3 determinant</h3>
+        <p class="mt-1 text-sm text-slate-600">For a 3×3 matrix, expand using the first row (cofactor expansion):</p>
+        <p class="mt-1 text-center text-sm font-mono text-indigo-700">det(A) = a(ei − fh) − b(di − fg) + c(dh − eg)</p>
+        <p class="mt-1 text-sm text-slate-600">where the elements are arranged as [[a, b, c], [d, e, f], [g, h, i]]. This corresponds to the volume of the parallelepiped formed by the three column vectors.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">4×4 determinant (recursive computation)</h3>
+        <p class="mt-1 text-sm text-slate-600">The 4×4 determinant is computed recursively using cofactor expansion along the first row. Each 4×4 determinant breaks down into four 3×3 determinants, each of which breaks down further into 2×2 determinants. This calculator performs this recursion automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Matrix inverse</h2>
+    <p class="mt-2 text-slate-600">
+      The <strong>inverse</strong> of a square matrix A, denoted A⁻¹, is the matrix that satisfies A × A⁻¹ = A⁻¹ × A = I, where I is the <strong>identity matrix</strong> (ones on the diagonal and zeros elsewhere). Only square matrices with <strong>non-zero determinant</strong> are invertible. A matrix with zero determinant is called <em>singular</em> and has no inverse.
+    </p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">2×2 inverse formula</h3>
+        <p class="mt-1 text-sm text-slate-600">For A = [[a, b], [c, d]] with det(A) = ad − bc ≠ 0:</p>
+        <p class="mt-1 text-center text-sm font-mono text-indigo-700">A⁻¹ = 1/det(A) · [[d, −b], [−c, a]]</p>
+        <p class="mt-1 text-sm text-slate-600">Simply swap a and d, negate b and c, then divide every entry by the determinant.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">3×3 inverse via adjugate</h3>
+        <p class="mt-1 text-sm text-slate-600">For larger matrices, the inverse is computed using the <strong>adjugate method</strong>. The adjugate (or classical adjoint) is the transpose of the <strong>cofactor matrix</strong>. Each cofactor Cᵢⱼ = (−1)ⁱ⁺ʲ · det(Mᵢⱼ), where Mᵢⱼ is the <em>minor</em> — the matrix obtained by removing row i and column j. The inverse is then:</p>
+        <p class="mt-1 text-center text-sm font-mono text-indigo-700">A⁻¹ = adj(A) / det(A)</p>
+        <p class="mt-1 text-sm text-slate-600">This calculator applies this method for 3×3 matrices. The process involves computing nine 2×2 determinants (one for each cofactor), arranging them into the cofactor matrix, transposing to get the adjugate, and finally dividing by the determinant.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for matrix operations</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎮</span>
+        <h3 class="mt-2 font-semibold text-slate-900">3D graphics and game development</h3>
+        <p class="mt-1 text-sm text-slate-600">Transformation matrices are the backbone of modern 3D rendering. A 4×4 matrix can combine rotation, translation, scaling, and perspective projection into a single operation. Every vertex of a 3D model is multiplied by the model-view-projection matrix to map it onto the 2D screen. Matrix multiplication is performed millions of times per frame in modern games and rendering engines like OpenGL, DirectX, and Vulkan. The inverse of a transformation matrix is used for tasks like camera controls, ray tracing, and collision detection.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📊</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Linear regression and data science</h3>
+        <p class="mt-1 text-sm text-slate-600">The normal equation for linear regression, <strong>θ = (XᵀX)⁻¹Xᵀy</strong>, involves matrix multiplication and inversion. The design matrix X contains the training data, and solving this equation produces the optimal parameters for a linear model. Matrix operations are also central to principal component analysis (PCA), singular value decomposition (SVD), neural network computations, and covariance matrix analysis. Libraries like NumPy, TensorFlow, and PyTorch perform these operations with highly optimised matrix multiplication routines.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚛️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Physics simulations</h3>
+        <p class="mt-1 text-sm text-slate-600">Quantum mechanics represents physical states as vectors in Hilbert space and observables as Hermitian matrices (operators). The time evolution of a quantum system is described by the Schrödinger equation, which involves matrix exponentiation. In classical physics, the moment of inertia tensor is a 3×3 matrix that relates angular momentum to angular velocity. Finite element analysis (FEA) uses large sparse matrices to simulate stress, strain, and heat distribution in physical objects. Solving these systems requires matrix inversion and decomposition at scale.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Economics and finance</h3>
+        <p class="mt-1 text-sm text-slate-600">Input-output models in economics use large matrices to represent the interdependencies between different sectors of an economy. Leontief's input-output model solves <strong>x = (I − A)⁻¹d</strong>, where A is the technology matrix and d is the final demand vector. In finance, the covariance matrix of asset returns is central to modern portfolio theory (Markowitz efficient frontier). Markowitz optimisation finds the portfolio weights that minimise risk for a given return by solving linear systems involving the covariance matrix and its inverse.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Properties of matrix operations</h2>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Property</th><th class="p-3">Formula</th><th class="p-3">Description</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Associative</td><td class="p-3 font-mono text-xs">(AB)C = A(BC)</td><td class="p-3">Order of grouping does not matter in multiplication</td></tr>
+          <tr><td class="p-3 font-medium">Distributive</td><td class="p-3 font-mono text-xs">A(B + C) = AB + AC</td><td class="p-3">Multiplication distributes over addition</td></tr>
+          <tr><td class="p-3 font-medium">Non-commutative</td><td class="p-3 font-mono text-xs">AB ≠ BA</td><td class="p-3">Swapping factors changes the result</td></tr>
+          <tr><td class="p-3 font-medium">Identity</td><td class="p-3 font-mono text-xs">AI = IA = A</td><td class="p-3">Multiplying by the identity leaves A unchanged</td></tr>
+          <tr><td class="p-3 font-medium">Inverse property</td><td class="p-3 font-mono text-xs">AA⁻¹ = I</td><td class="p-3">A matrix times its inverse yields identity</td></tr>
+          <tr><td class="p-3 font-medium">Transpose of product</td><td class="p-3 font-mono text-xs">(AB)ᵀ = BᵀAᵀ</td><td class="p-3">Transpose reverses the multiplication order</td></tr>
+          <tr><td class="p-3 font-medium">Determinant of product</td><td class="p-3 font-mono text-xs">det(AB) = det(A)det(B)</td><td class="p-3">Determinant of a product is the product of determinants</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/quadratic-equation-solver" class="font-medium text-indigo-600 hover:underline">Quadratic Equation Solver</a> — solve ax² + bx + c = 0 with step-by-step work.</li>
+      <li><a href="/tools/gcd-lcm-calculator" class="font-medium text-indigo-600 hover:underline">GCD and LCM Calculator</a> — find the greatest common divisor and least common multiple.</li>
+      <li><a href="/tools/scientific-calculator" class="font-medium text-indigo-600 hover:underline">Scientific Calculator</a> — a full scientific calculator with trig, log, and power functions.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+
+    function buildGrid(containerId, rows, cols) {
+      const c = $(containerId);
+      c.innerHTML = '';
+      c.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      for (let r = 0; r < rows; r++) {
+        for (let col = 0; col < cols; col++) {
+          const inp = document.createElement('input');
+          inp.type = 'number';
+          inp.step = 'any';
+          inp.value = '0';
+          inp.dataset.row = r;
+          inp.dataset.col = col;
+          inp.className = 'w-full rounded-lg border border-slate-300 p-2 text-center font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100';
+          c.appendChild(inp);
+        }
+      }
+    }
+
+    function readMatrix(containerId) {
+      const inputs = $(containerId).querySelectorAll('input');
+      const rows = parseInt($(containerId.replace('-grid', '-rows')).value, 10);
+      const cols = parseInt($(containerId.replace('-grid', '-cols')).value, 10);
+      const m = [];
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const v = parseFloat(inputs[r * cols + c].value);
+          row.push(isNaN(v) ? 0 : v);
+        }
+        m.push(row);
+      }
+      return m;
+    }
+
+    function formatMatrix(m) {
+      const rows = m.length, cols = m[0].length;
+      const grid = document.createElement('div');
+      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      grid.className = 'grid gap-2';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const span = document.createElement('span');
+          span.className = 'rounded-lg border border-slate-200 bg-slate-50 p-2 text-center font-mono text-sm text-slate-900';
+          const v = m[r][c];
+          span.textContent = Number.isInteger(v) ? v.toString() : parseFloat(v.toFixed(6)).toString();
+          grid.appendChild(span);
+        }
+      }
+      return grid;
+    }
+
+    function displayResult(matrix) {
+      const ra = $('result-area');
+      const rg = $('result-grid');
+      const rs = $('result-scalar');
+      rg.innerHTML = '';
+      rg.classList.add('hidden');
+      rs.classList.add('hidden');
+      if (matrix) {
+        if (Array.isArray(matrix) && Array.isArray(matrix[0])) {
+          rg.appendChild(formatMatrix(matrix));
+          rg.classList.remove('hidden');
+        } else {
+          rs.textContent = typeof matrix === 'number'
+            ? (Number.isInteger(matrix) ? matrix.toString() : parseFloat(matrix.toFixed(6)).toString())
+            : matrix.toString();
+          rs.classList.remove('hidden');
+        }
+      }
+      ra.classList.remove('hidden');
+    }
+
+    function determinant(m) {
+      const n = m.length;
+      if (n === 1) return m[0][0];
+      if (n === 2) return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+      let det = 0;
+      for (let col = 0; col < n; col++) {
+        const minor = [];
+        for (let r = 1; r < n; r++) {
+          const row = [];
+          for (let c = 0; c < n; c++) {
+            if (c !== col) row.push(m[r][c]);
+          }
+          minor.push(row);
+        }
+        const sign = col % 2 === 0 ? 1 : -1;
+        det += sign * m[0][col] * determinant(minor);
+      }
+      return det;
+    }
+
+    function inverse(m) {
+      const n = m.length;
+      const det = determinant(m);
+      if (Math.abs(det) < 1e-12) return null;
+      if (n === 2) {
+        const inv = [
+          [m[1][1] / det, -m[0][1] / det],
+          [-m[1][0] / det, m[0][0] / det]
+        ];
+        return inv;
+      }
+      if (n === 3) {
+        const cofactors = [];
+        for (let r = 0; r < 3; r++) {
+          const row = [];
+          for (let c = 0; c < 3; c++) {
+            const minor = [];
+            for (let mr = 0; mr < 3; mr++) {
+              if (mr === r) continue;
+              const mrow = [];
+              for (let mc = 0; mc < 3; mc++) {
+                if (mc === c) continue;
+                mrow.push(m[mr][mc]);
+              }
+              minor.push(mrow);
+            }
+            const sign = (r + c) % 2 === 0 ? 1 : -1;
+            row.push(sign * determinant(minor));
+          }
+          cofactors.push(row);
+        }
+        const adjugate = [
+          [cofactors[0][0], cofactors[1][0], cofactors[2][0]],
+          [cofactors[0][1], cofactors[1][1], cofactors[2][1]],
+          [cofactors[0][2], cofactors[1][2], cofactors[2][2]]
+        ];
+        for (let r = 0; r < 3; r++)
+          for (let c = 0; c < 3; c++)
+            adjugate[r][c] /= det;
+        return adjugate;
+      }
+      return null;
+    }
+
+    function rebuildGrids() {
+      buildGrid('matrix-a-grid', parseInt($('a-rows').value, 10), parseInt($('a-cols').value, 10));
+      buildGrid('matrix-b-grid', parseInt($('b-rows').value, 10), parseInt($('b-cols').value, 10));
+      $('result-area').classList.add('hidden');
+      $('error-msg').classList.add('hidden');
+    }
+
+    function calculate() {
+      const err = $('error-msg');
+      err.classList.add('hidden');
+      $('result-area').classList.add('hidden');
+
+      const A = readMatrix('matrix-a-grid');
+      const B = readMatrix('matrix-b-grid');
+      const aRows = A.length, aCols = A[0].length;
+      const bRows = B.length, bCols = B[0].length;
+      const op = $('operation').value;
+
+      if (op === 'add' || op === 'subtract') {
+        if (aRows !== bRows || aCols !== bCols) {
+          err.textContent = 'Matrices must have the same dimensions for addition/subtraction.';
+          err.classList.remove('hidden');
+          return;
+        }
+        const result = [];
+        for (let r = 0; r < aRows; r++) {
+          const row = [];
+          for (let c = 0; c < aCols; c++) {
+            row.push(op === 'add' ? A[r][c] + B[r][c] : A[r][c] - B[r][c]);
+          }
+          result.push(row);
+        }
+        displayResult(result);
+      } else if (op === 'multiply') {
+        if (aCols !== bRows) {
+          err.textContent = 'Columns of A (' + aCols + ') must equal rows of B (' + bRows + ') for multiplication.';
+          err.classList.remove('hidden');
+          return;
+        }
+        const result = [];
+        for (let r = 0; r < aRows; r++) {
+          const row = [];
+          for (let c = 0; c < bCols; c++) {
+            let sum = 0;
+            for (let k = 0; k < aCols; k++) sum += A[r][k] * B[k][c];
+            row.push(sum);
+          }
+          result.push(row);
+        }
+        displayResult(result);
+      } else if (op === 'determinant') {
+        if (aRows !== aCols) {
+          err.textContent = 'Determinant is only defined for square matrices.';
+          err.classList.remove('hidden');
+          return;
+        }
+        const det = determinant(A);
+        displayResult(det);
+      } else if (op === 'inverse') {
+        if (aRows !== aCols) {
+          err.textContent = 'Inverse is only defined for square matrices.';
+          err.classList.remove('hidden');
+          return;
+        }
+        const inv = inverse(A);
+        if (!inv) {
+          err.textContent = 'Matrix is singular (determinant = 0). No inverse exists.';
+          err.classList.remove('hidden');
+          return;
+        }
+        displayResult(inv);
+      }
+    }
+
+    ['a-rows', 'a-cols', 'b-rows', 'b-cols'].forEach((id) => $(id).addEventListener('change', rebuildGrids));
+    $('calc-btn').addEventListener('click', calculate);
+
+    rebuildGrids();
+    calculate();
+  </script>
+</ToolLayout>
