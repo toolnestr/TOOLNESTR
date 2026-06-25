@@ -1,0 +1,364 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Tire Size Calculator';
+const description = 'Compare two tire sizes (e.g. 225/45R17 vs 235/40R18) to see diameter, circumference, and speedometer error.';
+const intro = 'Compare two tire sizes and see diameter, circumference, and speedometer error.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'Can I use a different tire size?', a: 'As long as the diameter difference is within 3% of the original, it is usually safe.' },
+  { q: 'How does tire size affect speedometer?', a: 'A larger tire reads slower than actual speed; a smaller tire reads faster.' },
+  { q: 'What do the numbers mean?', a: '225/45R17 means 225mm tread width, 45% aspect ratio, 17-inch rim diameter.' },
+  { q: 'What is the best tire size upgrade?', a: 'Wider tires improve grip but may affect clearance, fuel economy, and speedometer accuracy.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div>
+        <h3 class="mb-3 text-sm font-semibold text-slate-700">Tire A</h3>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Width (mm)</span>
+          <input id="aw" type="number" min="0" step="1" placeholder="e.g. 225" value="225" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Aspect ratio (%)</span>
+          <input id="ar" type="number" min="0" step="1" placeholder="e.g. 45" value="45" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Rim diameter (inches)</span>
+          <input id="ari" type="number" min="0" step="0.5" placeholder="e.g. 17" value="17" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+      <div>
+        <h3 class="mb-3 text-sm font-semibold text-slate-700">Tire B</h3>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Width (mm)</span>
+          <input id="bw" type="number" min="0" step="1" placeholder="e.g. 235" value="235" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Aspect ratio (%)</span>
+          <input id="br" type="number" min="0" step="1" placeholder="e.g. 40" value="40" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="mt-3 block">
+          <span class="text-sm font-medium text-slate-700">Rim diameter (inches)</span>
+          <input id="bri" type="number" min="0" step="0.5" placeholder="e.g. 18" value="18" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+    </div>
+
+    <button id="calc" class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">Compare</button>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Diameter</div>
+          <div class="mt-1 flex items-baseline justify-center gap-3">
+            <span id="r-da" class="text-lg font-bold text-slate-800">&mdash;</span>
+            <span class="text-xs text-slate-400">vs</span>
+            <span id="r-db" class="text-lg font-bold text-slate-800">&mdash;</span>
+          </div>
+          <div id="r-diff-d" class="mt-1 text-xs font-medium"></div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center">
+          <div class="text-sm text-slate-500">Circumference</div>
+          <div class="mt-1 flex items-baseline justify-center gap-3">
+            <span id="r-ca" class="text-lg font-bold text-slate-800">&mdash;</span>
+            <span class="text-xs text-slate-400">vs</span>
+            <span id="r-cb" class="text-lg font-bold text-slate-800">&mdash;</span>
+          </div>
+          <div id="r-diff-c" class="mt-1 text-xs font-medium"></div>
+        </div>
+        <div class="rounded-xl bg-indigo-600 p-4 text-center text-white">
+          <div class="text-sm opacity-80">Speedometer error</div>
+          <div id="r-speedo" class="mt-1 text-xl font-bold">&mdash;</div>
+          <div id="r-speedo-detail" class="mt-1 text-xs opacity-75"></div>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Revs per mile</div>
+          <div class="mt-1 flex items-baseline justify-center gap-3 text-sm font-bold text-slate-800">
+            <span id="r-rpa">&mdash;</span>
+            <span class="text-xs font-normal text-slate-400">vs</span>
+            <span id="r-rpb">&mdash;</span>
+          </div>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center">
+          <div class="text-xs text-slate-500">Revs per km</div>
+          <div class="mt-1 flex items-baseline justify-center gap-3 text-sm font-bold text-slate-800">
+            <span id="r-rka">&mdash;</span>
+            <span class="text-xs font-normal text-slate-400">vs</span>
+            <span id="r-rkb">&mdash;</span>
+          </div>
+        </div>
+      </div>
+      <p id="r-taller" class="mt-3 text-center text-sm text-slate-500"></p>
+    </div>
+
+    <p id="warn" class="mt-3 hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></p>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tire cross-section diagram showing tread width, sidewall height, and rim diameter">
+      <title>Tire size cross-section labels</title>
+      <desc>Diagram of a tire cross-section with labels for tread width, sidewall height, and rim diameter. The tire is shown as a circular cross-section with the rim at the center.</desc>
+      <rect x="160" y="40" width="480" height="200" rx="100" fill="#f1f5f9" stroke="#475569" stroke-width="3" />
+      <rect x="240" y="40" width="320" height="200" rx="100" fill="#e2e8f0" stroke="#475569" stroke-width="2" />
+      <rect x="310" y="40" width="180" height="200" rx="90" fill="#cbd5e1" stroke="#475569" stroke-width="2" />
+      <circle cx="400" cy="140" r="40" fill="#94a3b8" stroke="#475569" stroke-width="3" />
+      <circle cx="400" cy="140" r="10" fill="#475569" />
+      <line x1="160" y1="260" x2="160" y2="20" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow-up)" marker-start="url(#arrow-down)" />
+      <line x1="640" y1="260" x2="640" y2="20" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow-up)" marker-start="url(#arrow-down)" />
+      <text x="400" y="275" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Tread width (mm) &mdash; e.g. 225</text>
+      <line x1="400" y1="20" x2="400" y2="60" stroke="#d97706" stroke-width="2" marker-end="url(#arrow-down)" marker-start="url(#arrow-up)" />
+      <text x="420" y="45" fill="#d97706" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Sidewall</text>
+      <line x1="400" y1="140" x2="440" y2="140" stroke="#059669" stroke-width="2" marker-end="url(#arrow-right)" marker-start="url(#arrow-left)" />
+      <text x="460" y="137" fill="#059669" font-family="system-ui, sans-serif" font-size="13" font-weight="600">Rim</text>
+      <defs>
+        <marker id="arrow-up" markerWidth="8" markerHeight="6" refX="4" refY="6" orient="auto"><path d="M0 6 L4 0 L8 6" fill="#6366f1" /></marker>
+        <marker id="arrow-down" markerWidth="8" markerHeight="6" refX="4" refY="0" orient="auto"><path d="M0 0 L4 6 L8 0" fill="#6366f1" /></marker>
+        <marker id="arrow-right" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0 L8 3 L0 6" fill="#059669" /></marker>
+        <marker id="arrow-left" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto"><path d="M8 0 L0 3 L8 6" fill="#059669" /></marker>
+      </defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Tire cross-section showing tread width, sidewall height, and rim diameter</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tire size formulas</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator uses these formulas to compute tire dimensions from the three numbers in a standard tire size code (e.g. 225/45R17).
+    </p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Sidewall height</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">sidewall = width &times; aspect / 100</p>
+        <p class="mt-1 text-xs text-slate-400">The sidewall is a percentage of the tread width. A 225/45 tire has a sidewall of 225 &times; 0.45 = 101.25 mm.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Overall diameter</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">diameter = (2 &times; sidewall / 25.4) + rim</p>
+        <p class="mt-1 text-xs text-slate-400">The sidewall height is doubled (top and bottom of the tire), converted from mm to inches, then added to the rim diameter. The result is the total tire diameter in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Circumference</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">circumference = &pi; &times; diameter</p>
+        <p class="mt-1 text-xs text-slate-400">The distance the tire travels in one full revolution. This directly affects speedometer readings and gearing.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="font-semibold text-slate-900">Speedometer error</h3>
+        <p class="mt-1 font-mono text-sm text-slate-600">error% = (newDiam / origDiam - 1) &times; 100</p>
+        <p class="mt-1 text-xs text-slate-400">A larger tire diameter means the car travels further per revolution than the speedometer expects, so the speedometer reads lower than actual speed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Tire A: <strong>225/45R17</strong> &nbsp;|&nbsp; Tire B: <strong>235/40R18</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Sidewall A:</span> <span class="text-slate-600">225 &times; 0.45 = 101.25 mm</span></div>
+        <div><span class="font-medium text-slate-700">Sidewall B:</span> <span class="text-slate-600">235 &times; 0.40 = 94.00 mm</span></div>
+        <div><span class="font-medium text-slate-700">Diameter A:</span> <span class="text-slate-600">(2 &times; 101.25 / 25.4) + 17 = 24.97 in (634.3 mm)</span></div>
+        <div><span class="font-medium text-slate-700">Diameter B:</span> <span class="text-slate-600">(2 &times; 94.00 / 25.4) + 18 = 25.40 in (658.8 mm)</span></div>
+        <div><span class="font-medium text-slate-700">Circumference A:</span> <span class="text-slate-600">&pi; &times; 634.3 = 1,992.7 mm</span></div>
+        <div><span class="font-medium text-slate-700">Circumference B:</span> <span class="text-slate-600">&pi; &times; 658.8 = 2,069.7 mm</span></div>
+        <div><span class="font-medium text-slate-700">Difference:</span> <span class="text-slate-600">3.9% — Tire B is taller</span></div>
+        <div><span class="font-medium text-slate-700">Speedometer impact:</span> <span class="text-slate-600">At 60 mph actual, speedo reads ~57.7 mph with Tire B</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#9881;&#65039;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Upgrading wheels</h3>
+      <p class="mt-1 text-sm text-slate-600">Moving to a larger rim diameter (e.g. 17&#8243; to 18&#8243;) often requires a lower aspect ratio tire to keep the overall diameter close to the original. This is known as a &ldquo;plus-sizing&rdquo; upgrade — the goal is to maintain the same rolling radius while fitting larger rims and wider tires for better handling and appearance.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#9981;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Checking compatibility</h3>
+      <p class="mt-1 text-sm text-slate-600">Before buying new tires, compare the diameter against your current setup. A difference larger than 3% can cause clearance issues with the fenders, suspension, or brake components. It can also throw off the anti-lock braking system (ABS), traction control, and the vehicle&rsquo;s electronic stability program.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#128200;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Speedometer calibration</h3>
+      <p class="mt-1 text-sm text-slate-600">If you swap to a different tire size, your speedometer will be off by the same percentage as the diameter difference. Some vehicles can be recalibrated by a dealer or with a tuner. Others use a gear in the transmission that can be swapped to correct the reading. Knowing the exact error helps you avoid speeding tickets.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#128663;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fuel economy impact</h3>
+      <p class="mt-1 text-sm text-slate-600">Wider tires increase rolling resistance, which can reduce fuel economy. Taller tires effectively change the final drive ratio, making the engine turn slower at highway speeds — this can improve fuel economy on the highway but may reduce acceleration. Use this calculator to see exactly how a tire swap changes your effective gearing.</p>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for choosing the right tire size</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep the diameter within 3% of original</h3>
+        <p class="mt-1 text-sm text-slate-600">Most automotive manufacturers and tire experts recommend staying within 3% of the original overall diameter. Going beyond this can cause clearance problems, inaccurate speedometer readings, and interference with vehicle safety systems like ABS and traction control. A 3% difference means about 0.75&#8243; on a typical 25&#8243; tire.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Wider tires may rub</h3>
+        <p class="mt-1 text-sm text-slate-600">A wider tire has a larger contact patch, which improves grip in corners and under braking. However, if the tire is too wide for your wheel well, it can rub against the fender liner, suspension components, or the strut housing, especially at full steering lock or when the suspension compresses over bumps. Always test fitment before committing to a purchase.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider load rating and speed rating</h3>
+        <p class="mt-1 text-sm text-slate-600">The tire size is only part of the story. Every tire also carries a load index (the maximum weight it can support) and a speed rating (the maximum safe speed). When upsizing, make sure the replacement tire meets or exceeds the load and speed ratings required by your vehicle. Using a tire with a lower rating than specified is unsafe and may be illegal.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check clearance at full lock and full compression</h3>
+        <p class="mt-1 text-sm text-slate-600">Even if the diameter is within 3%, a tire with a different offset or tread width may contact the inner fender or suspension parts. The best way to verify fitment is to test the wheel and tire combination on the vehicle. Turn the steering wheel to full lock in both directions and check for rubbing. If possible, also compress the suspension to simulate a loaded condition.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Speedometer error compounds over distance</h3>
+        <p class="mt-1 text-sm text-slate-600">A 3% speedometer error means the odometer is also off by 3%. Over 10,000 miles, that&rsquo;s a 300-mile discrepancy. If you sell the vehicle with a non-standard tire size, the odometer reading will not accurately reflect actual mileage. This can affect resale value and, in some jurisdictions, may need to be disclosed to the buyer.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your tire sizes</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the width, aspect ratio, and rim diameter for both your current tire and the one you are considering. The three-number code is printed on the sidewall of every tire.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review the comparison</h3>
+        <p class="mt-1 text-sm text-slate-600">Check the diameter, circumference, and revolutions per mile for both sizes. The color-coded difference tells you immediately if the new tire is taller or shorter.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check speedometer impact</h3>
+        <p class="mt-1 text-sm text-slate-600">See exactly how your speedometer reading changes at 60 mph. If the error is over 3%, consider whether fitment, calibration, or a different size might be better.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/gear-ratio-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#9881;&#65039;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Gear Ratio Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate RPM at speed from gear ratio, final drive, and tire size.</p>
+      </a>
+      <a href="/tools/fuel-cost-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#9971;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Fuel Cost Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Estimate the fuel cost of any trip from distance, efficiency, and price.</p>
+      </a>
+      <a href="/tools/towing-capacity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">&#128667;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Towing Capacity Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Compare trailer weight against towing and payload capacity limits.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const aw = el('aw');
+    const ar = el('ar');
+    const ari = el('ari');
+    const bw = el('bw');
+    const br = el('br');
+    const bri = el('bri');
+    const calcBtn = el('calc');
+    const result = el('result');
+    const warn = el('warn');
+    const rDa = el('r-da');
+    const rDb = el('r-db');
+    const rDiffD = el('r-diff-d');
+    const rCa = el('r-ca');
+    const rCb = el('r-cb');
+    const rDiffC = el('r-diff-c');
+    const rSpeedo = el('r-speedo');
+    const rSpeedoDetail = el('r-speedo-detail');
+    const rRpa = el('r-rpa');
+    const rRpb = el('r-rpb');
+    const rRka = el('r-rka');
+    const rRkb = el('r-rkb');
+    const rTaller = el('r-taller');
+
+    function fmt(n) {
+      return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    }
+
+    function calculate() {
+      warn.classList.add('hidden');
+
+      const wA = parseFloat(aw.value);
+      const rA = parseFloat(ar.value);
+      const riA = parseFloat(ari.value);
+      const wB = parseFloat(bw.value);
+      const rB = parseFloat(br.value);
+      const riB = parseFloat(bri.value);
+
+      if ([wA, rA, riA, wB, rB, riB].some(v => isNaN(v) || v <= 0)) {
+        result.classList.add('hidden');
+        warn.textContent = 'Please enter valid positive numbers for all six fields.';
+        warn.classList.remove('hidden');
+        return;
+      }
+
+      const swA = wA * rA / 100;
+      const swB = wB * rB / 100;
+      const diamA = (2 * swA / 25.4) + riA;
+      const diamB = (2 * swB / 25.4) + riB;
+      const circA = Math.PI * diamA * 25.4;
+      const circB = Math.PI * diamB * 25.4;
+      const diffPct = ((diamB - diamA) / diamA) * 100;
+      const speedoError = diffPct;
+      const speedoRead = 60 / (1 + speedoError / 100);
+
+      const revsPerMileA = 63360 / (Math.PI * diamA);
+      const revsPerMileB = 63360 / (Math.PI * diamB);
+      const revsPerKmA = 1000000 / (Math.PI * diamA * 25.4);
+      const revsPerKmB = 1000000 / (Math.PI * diamB * 25.4);
+
+      rDa.textContent = fmt(diamA) + '"';
+      rDb.textContent = fmt(diamB) + '"';
+      const absDiff = Math.abs(diffPct);
+      rDiffD.textContent = (diffPct > 0 ? '+' : '') + diffPct.toFixed(1) + '% (' + (diffPct > 0 ? 'B is taller' : 'A is taller') + ')';
+      rDiffD.className = 'mt-1 text-xs font-medium ' + (absDiff > 3 ? 'text-red-600' : absDiff > 1.5 ? 'text-amber-600' : 'text-emerald-600');
+
+      rCa.textContent = fmt(circA) + ' mm';
+      rCb.textContent = fmt(circB) + ' mm';
+      rDiffC.textContent = ((circB - circA) / circA * 100 > 0 ? '+' : '') + ((circB - circA) / circA * 100).toFixed(1) + '%';
+
+      rSpeedo.textContent = (speedoError > 0 ? 'Slower' : 'Faster') + ' by ' + absDiff.toFixed(1) + '%';
+      if (speedoError > 0) {
+        rSpeedoDetail.textContent = 'At 60 mph actual, speedo reads ~' + speedoRead.toFixed(1) + ' mph';
+      } else if (speedoError < 0) {
+        rSpeedoDetail.textContent = 'At 60 mph actual, speedo reads ~' + speedoRead.toFixed(1) + ' mph';
+      } else {
+        rSpeedoDetail.textContent = 'No speedometer error';
+      }
+
+      rRpa.textContent = Math.round(revsPerMileA).toLocaleString();
+      rRpb.textContent = Math.round(revsPerMileB).toLocaleString();
+      rRka.textContent = Math.round(revsPerKmA).toLocaleString();
+      rRkb.textContent = Math.round(revsPerKmB).toLocaleString();
+
+      if (diamA > diamB) {
+        rTaller.textContent = 'Tire A (' + fmt(diamA) + '") is ' + absDiff.toFixed(1) + '% taller than Tire B (' + fmt(diamB) + '").';
+      } else if (diamB > diamA) {
+        rTaller.textContent = 'Tire B (' + fmt(diamB) + '") is ' + absDiff.toFixed(1) + '% taller than Tire A (' + fmt(diamA) + '").';
+      } else {
+        rTaller.textContent = 'Both tires are the same diameter.';
+      }
+
+      result.classList.remove('hidden');
+    }
+
+    calcBtn.addEventListener('click', calculate);
+  </script>
+</ToolLayout>

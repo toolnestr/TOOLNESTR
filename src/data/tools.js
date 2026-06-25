@@ -289,6 +289,12 @@ export const tools = [
   // ── Part B: Engineering ──
   { slug: 'capacitor-charge-time-calculator', title: 'Capacitor Charge Time Calculator', short: 'Calculate RC time constant and capacitor charge/discharge time.', category: 'engineering', emoji: '🔋', enabled: true, status: 'live' },
   { slug: 'resistor-color-code-calculator', title: 'Resistor Color Code Calculator', short: 'Decode 4/5/6 band resistor colors to resistance and tolerance.', category: 'engineering', emoji: '🌈', enabled: true, status: 'live' },
+  { slug: 'power-factor-calculator', title: 'Power Factor Calculator', short: 'Calculate real, reactive, apparent power and correction capacitor size.', category: 'engineering', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'solar-panel-output-calculator', title: 'Solar Panel Output Calculator', short: 'Estimate daily/monthly kWh output from panel specs and sun hours.', category: 'engineering', emoji: '☀️', enabled: true, status: 'live' },
+  { slug: 'tire-size-calculator', title: 'Tire Size Calculator', short: 'Compare tire sizes and see diameter, circumference, and speedometer error.', category: 'automotive', emoji: '🛞', enabled: true, status: 'live' },
+  { slug: 'gear-ratio-calculator', title: 'Gear Ratio Calculator', short: 'Calculate RPM at speed from gear ratio, final drive, and tire size.', category: 'automotive', emoji: '⚙️', enabled: true, status: 'live' },
+  { slug: 'car-depreciation-calculator', title: 'Car Depreciation Calculator', short: 'Project a vehicle value over time with a standard depreciation curve.', category: 'automotive', emoji: '📉', enabled: true, status: 'live' },
+  { slug: 'towing-capacity-calculator', title: 'Towing Capacity Calculator', short: 'Compare trailer weight against towing and payload capacity limits.', category: 'automotive', emoji: '🚛', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

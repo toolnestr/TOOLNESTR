@@ -1,0 +1,341 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Towing Capacity Calculator';
+const description = 'Compare trailer weight plus cargo against your vehicle towing/payload capacity. See if your setup is within safe limits.';
+const intro = 'Compare trailer weight against vehicle towing and payload capacity limits.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'What is the difference between towing capacity and payload?', a: 'Towing capacity is the max trailer weight; payload is the max weight the truck can carry (people + cargo in the vehicle).' },
+  { q: 'What is tongue weight?', a: 'The downward force the trailer tongue applies to the hitch — typically 10-15% of trailer weight. It counts against payload.' },
+  { q: 'What is GCWR?', a: 'Gross Combined Weight Rating — the maximum total weight of the fully loaded truck AND trailer combined.' },
+  { q: 'Is it safe to exceed towing capacity?', a: 'No — it stresses brakes, suspension, transmission, and can cause loss of control.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex items-center justify-between">
+      <span class="text-sm font-medium text-slate-700">Unit system</span>
+      <div class="flex overflow-hidden rounded-xl border border-slate-300">
+        <button id="unit-lb" class="unit-btn flex-1 px-5 py-2 text-sm font-medium transition bg-indigo-600 text-white">lb</button>
+        <button id="unit-kg" class="unit-btn flex-1 px-5 py-2 text-sm font-medium transition bg-white text-slate-700">kg</button>
+      </div>
+    </div>
+
+    <fieldset class="border-b border-slate-100 pb-4">
+      <legend class="mb-3 text-sm font-bold text-slate-900">Vehicle specs</legend>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <label class="block"><span class="text-sm font-medium text-slate-700">Towing capacity</span>
+          <input id="towingCap" type="number" step="any" min="0" placeholder="10000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="towingCap-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+        <label class="block"><span class="text-sm font-medium text-slate-700">Payload capacity</span>
+          <input id="payloadCap" type="number" step="any" min="0" placeholder="2000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="payloadCap-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+        <label class="block"><span class="text-sm font-medium text-slate-700">GVWR <span class="text-xs text-slate-400">(optional)</span></span>
+          <input id="gvwr" type="number" step="any" min="0" placeholder="14000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="gvwr-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="border-b border-slate-100 pb-4 pt-4">
+      <legend class="mb-3 text-sm font-bold text-slate-900">Trailer</legend>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <label class="block"><span class="text-sm font-medium text-slate-700">Trailer weight</span>
+          <input id="trailerWt" type="number" step="any" min="0" placeholder="6000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="trailerWt-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+        <label class="block"><span class="text-sm font-medium text-slate-700">Cargo in trailer</span>
+          <input id="cargoInTrailer" type="number" step="any" min="0" placeholder="500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="cargoInTrailer-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+        <label class="block"><span class="text-sm font-medium text-slate-700">Tongue weight <span class="text-xs text-slate-400">%</span></span>
+          <input id="tonguePct" type="number" step="any" min="0" max="100" value="13" placeholder="13" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="pb-4 pt-4">
+      <legend class="mb-3 text-sm font-bold text-slate-900">People &amp; cargo in vehicle</legend>
+      <div class="grid gap-3 sm:grid-cols-1">
+        <label class="block sm:max-w-xs"><span class="text-sm font-medium text-slate-700">Passengers + cargo</span>
+          <input id="passengersCargo" type="number" step="any" min="0" placeholder="400" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <span id="passengersCargo-unit" class="mt-0.5 block text-xs text-slate-400">lbs</span></label>
+      </div>
+    </fieldset>
+
+    <button id="calcBtn" class="w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Check capacity</button>
+
+    <div id="result" class="mt-6 hidden space-y-4">
+      <div id="r-towing" class="rounded-xl border p-4">
+        <div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-900">Total trailer weight</span><span id="r-towing-val" class="text-lg font-bold">—</span></div>
+        <div class="mt-1 flex items-center gap-2"><span id="r-towing-icon" class="text-lg"></span><span id="r-towing-msg" class="text-sm"></span></div>
+      </div>
+      <div id="r-payload" class="rounded-xl border p-4">
+        <div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-900">Payload used</span><span id="r-payload-val" class="text-lg font-bold">—</span></div>
+        <div class="mt-1 flex items-center gap-2"><span id="r-payload-icon" class="text-lg"></span><span id="r-payload-msg" class="text-sm"></span></div>
+      </div>
+      <div id="r-gvwr" class="rounded-xl border p-4 hidden">
+        <div class="flex items-center justify-between"><span class="text-sm font-semibold text-slate-900">Gross combined weight</span><span id="r-gvwr-val" class="text-lg font-bold">—</span></div>
+        <div class="mt-1 flex items-center gap-2"><span id="r-gvwr-icon" class="text-lg"></span><span id="r-gvwr-msg" class="text-sm"></span></div>
+      </div>
+      <div id="r-summary" class="rounded-xl p-4 text-center text-lg font-bold">—</div>
+    </div>
+
+    <div id="empty-hint" class="mt-4 hidden rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-800">Enter your vehicle and trailer specs then click "Check capacity".</div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tow-weight-title tow-weight-desc">
+      <title id="tow-weight-title">Truck and trailer weight diagram</title>
+      <desc id="tow-weight-desc">Side view of a pickup truck towing a trailer with arrows showing tongue weight, GVWR, and GCWR</desc>
+      <defs>
+        <marker id="tow-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0 0 L10 5 L0 10" fill="#64748b" />
+        </marker>
+      </defs>
+      <!-- Truck body -->
+      <path d="M80 155 L120 155 L140 120 L320 120 L350 140 L480 140 L500 155 L530 155" stroke="#475569" stroke-width="3" fill="#e2e8f0" stroke-linejoin="round"/>
+      <path d="M80 155 L80 175 L530 175 L530 155" stroke="#475569" stroke-width="3" fill="#e2e8f0"/>
+      <!-- Truck wheels -->
+      <circle cx="150" cy="175" r="24" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="150" cy="175" r="10" fill="#94a3b8"/>
+      <circle cx="450" cy="175" r="24" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="450" cy="175" r="10" fill="#94a3b8"/>
+      <!-- Trailer -->
+      <rect x="530" y="105" width="220" height="50" rx="4" fill="#f1f5f9" stroke="#475569" stroke-width="3"/>
+      <rect x="540" y="122" width="30" height="20" rx="3" fill="#94a3b8"/>
+      <rect x="580" y="122" width="30" height="20" rx="3" fill="#94a3b8"/>
+      <rect x="620" y="122" width="30" height="20" rx="3" fill="#94a3b8"/>
+      <rect x="660" y="122" width="30" height="20" rx="3" fill="#94a3b8"/>
+      <rect x="700" y="122" width="30" height="20" rx="3" fill="#94a3b8"/>
+      <!-- Trailer wheels -->
+      <circle cx="560" cy="175" r="20" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="560" cy="175" r="8" fill="#94a3b8"/>
+      <circle cx="720" cy="175" r="20" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="720" cy="175" r="8" fill="#94a3b8"/>
+      <!-- Hitch connection -->
+      <line x1="505" y1="140" x2="530" y2="140" stroke="#475569" stroke-width="4"/>
+      <!-- Tongue weight arrow -->
+      <line x1="520" y1="55" x2="520" y2="100" stroke="#0891b2" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#tow-arrow)"/>
+      <polygon points="520,55 514,62 526,62" fill="#0891b2"/>
+      <text x="520" y="48" text-anchor="middle" fill="#0891b2" font-size="12" font-weight="bold">Tongue wt</text>
+      <text x="520" y="36" text-anchor="middle" fill="#0891b2" font-size="10">10-15% of trailer wt</text>
+      <!-- GVWR arrow (truck) -->
+      <line x1="280" y1="65" x2="280" y2="118" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#tow-arrow)"/>
+      <polygon points="280,65 274,72 286,72" fill="#f59e0b"/>
+      <text x="280" y="58" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="bold">GVWR</text>
+      <text x="280" y="46" text-anchor="middle" fill="#f59e0b" font-size="10">truck max</text>
+      <!-- GCWR arrow (combined) -->
+      <line x1="400" y1="210" x2="400" y2="180" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#tow-arrow)"/>
+      <polygon points="400,210 394,203 406,203" fill="#dc2626"/>
+      <text x="400" y="224" text-anchor="middle" fill="#dc2626" font-size="12" font-weight="bold">GCWR</text>
+      <text x="400" y="238" text-anchor="middle" fill="#dc2626" font-size="10">truck + trailer combined</text>
+      <!-- Trailer weight arrow -->
+      <line x1="640" y1="65" x2="640" y2="102" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="4 3" marker-end="url(#tow-arrow)"/>
+      <polygon points="640,65 634,72 646,72" fill="#6366f1"/>
+      <text x="640" y="58" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="bold">Trailer wt</text>
+      <text x="640" y="46" text-anchor="middle" fill="#6366f1" font-size="10">+ cargo</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Tongue weight (hitch downforce) counts against your truck's payload capacity, not its towing capacity</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How towing capacity is calculated</h2>
+    <p class="mt-2 text-slate-600">The calculator evaluates three separate limits to determine whether your towing setup is safe:</p>
+    <div class="mt-4 space-y-1 rounded-xl bg-slate-50 p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">Total trailer weight</span> = Trailer weight + Cargo in trailer</div>
+      <div><span class="font-semibold">Tongue weight</span> = Total trailer weight × Tongue % ÷ 100</div>
+      <div><span class="font-semibold">Payload used</span> = Tongue weight + Passengers + cargo in vehicle</div>
+      <div><span class="font-semibold">Gross combined weight</span> = Vehicle weight + Total trailer weight</div>
+    </div>
+    <p class="mt-3 text-slate-600">Each of these must stay under its respective limit. The tongue weight (the downward force the trailer tongue exerts on the hitch) is often overlooked — it counts against the vehicle's payload, not its towing capacity. A trailer that is well within the towing limit can still overload the truck's payload if the tongue weight plus passengers and gear exceeds the payload capacity.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A truck rated for <strong>10,000 lb</strong> towing and <strong>2,000 lb</strong> payload. Trailer weighs <strong>6,000 lb</strong> with <strong>500 lb</strong> of cargo inside. Tongue weight set to <strong>13%</strong>. Passengers and cargo in the truck total <strong>400 lb</strong>.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Total trailer weight:</span> <span class="text-slate-600">6,000 + 500 = 6,500 lb</span></div>
+        <div><span class="font-medium text-slate-700">Towing capacity check:</span> <span class="text-emerald-600 font-medium">6,500 ≤ 10,000 ✅</span></div>
+        <div><span class="font-medium text-slate-700">Tongue weight:</span> <span class="text-slate-600">6,500 × 13% = 845 lb</span></div>
+        <div><span class="font-medium text-slate-700">Payload used:</span> <span class="text-slate-600">845 + 400 = 1,245 lb</span></div>
+        <div><span class="font-medium text-slate-700">Payload check:</span> <span class="text-emerald-600 font-medium">1,245 ≤ 2,000 ✅</span></div>
+        <div><span class="font-medium text-slate-700">Overall:</span> <span class="text-emerald-600 font-medium">SAFE</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common towing use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4"><span class="text-2xl">🏕️</span><h3 class="mt-2 font-semibold text-slate-900">RV towing</h3><p class="mt-1 text-sm text-slate-600">Travel trailers and fifth-wheels have high tongue weights and large surface areas. Always check payload — many half-ton trucks run out of payload before towing capacity when pulling a large RV.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4"><span class="text-2xl">⛵</span><h3 class="mt-2 font-semibold text-slate-600">Boat towing</h3><p class="mt-1 text-sm text-slate-600">Boat trailers sit lower and have different tongue weight characteristics. Add the weight of fuel, water, gear and the trailer itself — not just the boat's dry weight on the manufacturer's brochure.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4"><span class="text-2xl">🛻</span><h3 class="mt-2 font-semibold text-slate-600">Work trailer safety</h3><p class="mt-1 text-sm text-slate-600">Construction and landscaping trailers often carry heavy, shifting loads. Distribute weight properly — 60% forward of the axle for stable towing — and include tool boxes and equipment in your cargo weight.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for safe towing</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Tongue weight counts against payload</h3><p class="mt-1 text-sm text-slate-600">This is the most common mistake new towers make. Even if the trailer is within the towing limit, the tongue weight — typically 10-15% of total trailer weight — is added to everything else inside the truck (passengers, pets, gear, bed cargo). The total must stay under the payload capacity shown on the tyre pressure sticker inside the driver's door.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Water in RV tanks adds significant weight</h3><p class="mt-1 text-sm text-slate-600">Fresh water weighs 8.34 lb per gallon (1 kg per litre). A 40-gallon fresh water tank adds 334 lb. Waste tanks add even more when full. A "dry" trailer weight from the manufacturer does not include water, propane, batteries, or personal belongings — the real-world loaded weight is always higher.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Use a weight distribution hitch for heavy trailers</h3><p class="mt-1 text-sm text-slate-600">When the tongue weight exceeds 500-600 lb, a weight distribution hitch is recommended. It transfers some of the tongue weight back to the trailer axles and the front of the tow vehicle, improving steering, braking, and reducing sag. Many manufacturers require one for trailers over 5,000 lb.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Never exceed any single rating</h3><p class="mt-1 text-sm text-slate-600">Exceeding towing capacity can overheat the transmission and damage the engine. Exceeding payload overloads tyres, brakes, and suspension. Exceeding GCWR stresses the entire combination. The weakest link determines your safe limit — check tyre load ratings, hitch receiver ratings (Class III, IV, V), and the vehicle manufacturer's specific limits.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the towing capacity calculator</h2>
+    <p class="mt-2 text-slate-600">The towing capacity calculator is essential before hitching up any trailer. Whether you are buying a new travel trailer for weekend getaways, pulling a boat to the lake for the first time, or loading up a work trailer with construction materials, running the numbers beforehand prevents dangerous overloading situations.</p>
+    <p class="mt-3 text-slate-600">Start by finding your vehicle's ratings. The towing capacity is usually listed in the owner's manual or on the manufacturer's website. Payload capacity is printed on the tyre and loading information sticker on the driver's side door jamb. GVWR (Gross Vehicle Weight Rating) and GCWR (Gross Combined Weight Rating) are also listed in the manual. Many half-ton pickup trucks have a towing capacity of 8,000-12,000 lb but only 1,500-2,200 lb of payload — you may hit the payload limit long before you reach the towing limit.</p>
+    <p class="mt-3 text-slate-600">Weigh your trailer at a certified scale (truck stops and recycling centres often have them) to get the actual loaded weight rather than relying on published dry weights. The difference between dry weight and real-world loaded weight is often 1,000-2,000 lb for an RV. Include everything — food, clothing, bedding, tools, spare tyres, propane tanks, batteries, and any modifications added after purchase.</p>
+    <p class="mt-3 text-slate-600">For fifth-wheel and gooseneck trailers, the hitch weight is higher — typically 20-25% of total trailer weight — and these trailers require a special hitch mounted in the truck bed. This increases payload consumption significantly. A fifth-wheel with 14,000 lb gross weight at 22% pin weight uses 3,080 lb of payload, which requires a heavy-duty truck with adequate payload capacity.</p>
+    <p class="mt-3 text-slate-600">Remember that towing affects more than just weight limits. Your stopping distance increases, handling changes, and fuel economy drops. Allow extra following distance, use trailer brakes if equipped (required by law in most states above 3,000 lb), and consider a trailer brake controller. The calculator helps with the weight side — use your judgement for the rest.</p>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/tire-size-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"><span class="text-lg">🔘</span><h3 class="mt-1 font-semibold text-slate-900">Tire Size Calculator</h3><p class="text-sm text-slate-600">Compare tire sizes and see the effect on speedometer readings.</p></a>
+      <a href="/tools/gear-ratio-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"><span class="text-lg">⚙️</span><h3 class="mt-1 font-semibold text-slate-900">Gear Ratio Calculator</h3><p class="text-sm text-slate-600">Find the right gear ratio for your towing setup.</p></a>
+      <a href="/tools/fuel-cost-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm"><span class="text-lg">⛽</span><h3 class="mt-1 font-semibold text-slate-900">Fuel Cost Calculator</h3><p class="text-sm text-slate-600">Estimate trip fuel costs including the impact of towing.</p></a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const LB_TO_KG = 0.453592;
+    const KG_TO_LB = 2.20462;
+
+    const $ = (id) => document.getElementById(id);
+    const unitBtns = document.querySelectorAll('.unit-btn');
+    const inputs = ['towingCap','payloadCap','gvwr','trailerWt','cargoInTrailer','passengersCargo'];
+    const unitLabels = ['towingCap-unit','payloadCap-unit','gvwr-unit','trailerWt-unit','cargoInTrailer-unit','passengersCargo-unit'];
+
+    let currentUnit = 'lb';
+
+    function fmtNum(n) {
+      return Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+    }
+
+    function getVal(id) {
+      return parseFloat($(id).value) || 0;
+    }
+
+    function toggleUnit(unit) {
+      currentUnit = unit;
+      unitBtns.forEach((btn) => {
+        const isActive = btn.id === 'unit-' + unit;
+        btn.classList.toggle('bg-indigo-600', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('bg-white', !isActive);
+        btn.classList.toggle('text-slate-700', !isActive);
+      });
+      unitLabels.forEach((id) => {
+        $(id).textContent = unit === 'lb' ? 'lbs' : 'kg';
+      });
+    }
+
+    unitBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const unit = btn.id.replace('unit-', '');
+        toggleUnit(unit);
+        update();
+      });
+    });
+
+    function toDisplay(val) {
+      return currentUnit === 'kg' ? val * LB_TO_KG : val;
+    }
+
+    function toLb(val) {
+      return currentUnit === 'kg' ? val / LB_TO_KG : val;
+    }
+
+    function resultBox(id) {
+      const el = $(id);
+      el.classList.remove('hidden');
+      return el;
+    }
+
+    function update() {
+      const towingCap = toLb(getVal('towingCap'));
+      const payloadCap = toLb(getVal('payloadCap'));
+      const gvwrLb = toLb(getVal('gvwr'));
+      const trailerWt = toLb(getVal('trailerWt'));
+      const cargoInTrailer = toLb(getVal('cargoInTrailer'));
+      const tonguePct = getVal('tonguePct') || 13;
+      const passengersCargo = toLb(getVal('passengersCargo'));
+
+      const hasVehicleData = towingCap > 0 || payloadCap > 0;
+      const hasTrailerData = trailerWt > 0;
+
+      if (!hasVehicleData || !hasTrailerData) {
+        $('empty-hint').classList.remove('hidden');
+        $('result').classList.add('hidden');
+        return;
+      }
+      $('empty-hint').classList.add('hidden');
+      $('result').classList.remove('hidden');
+
+      const totalTrailerWt = trailerWt + cargoInTrailer;
+      const tongueWt = totalTrailerWt * (tonguePct / 100);
+      const payloadUsed = tongueWt + passengersCargo;
+
+      // Towing check
+      const towPass = towingCap === 0 || totalTrailerWt <= towingCap;
+      resultBox('r-towing');
+      $('r-towing-val').textContent = fmtNum(toDisplay(totalTrailerWt)) + (currentUnit === 'lb' ? ' lbs' : ' kg');
+      $('r-towing-icon').textContent = towPass ? '✅' : '❌';
+      if (towingCap > 0) {
+        const towRemain = towingCap - totalTrailerWt;
+        $('r-towing-msg').textContent = towPass
+          ? (totalTrailerWt === 0 ? 'No trailer weight entered.' : 'Under towing capacity by ' + fmtNum(Math.abs(toDisplay(towRemain))) + (currentUnit === 'lb' ? ' lbs' : ' kg'))
+          : 'Over towing capacity by ' + fmtNum(Math.abs(toDisplay(towRemain))) + (currentUnit === 'lb' ? ' lbs' : ' kg');
+      } else {
+        $('r-towing-msg').textContent = 'No towing capacity entered — cannot verify.';
+      }
+
+      // Payload check
+      const payPass = payloadCap === 0 || payloadUsed <= payloadCap;
+      resultBox('r-payload');
+      $('r-payload-val').textContent = fmtNum(toDisplay(payloadUsed)) + (currentUnit === 'lb' ? ' lbs' : ' kg');
+      $('r-payload-icon').textContent = payPass ? '✅' : '❌';
+      if (payloadCap > 0) {
+        const payRemain = payloadCap - payloadUsed;
+        $('r-payload-msg').textContent = payPass
+          ? (payloadUsed === 0 ? 'No payload entered.' : 'Under payload capacity by ' + fmtNum(Math.abs(toDisplay(payRemain))) + (currentUnit === 'lb' ? ' lbs' : ' kg'))
+          : 'Over payload capacity by ' + fmtNum(Math.abs(toDisplay(payRemain))) + (currentUnit === 'lb' ? ' lbs' : ' kg');
+      } else {
+        $('r-payload-msg').textContent = 'No payload capacity entered — cannot verify.';
+      }
+
+      // GCWR check (optional)
+      if (gvwrLb > 0 && towingCap > 0) {
+        resultBox('r-gvwr');
+        const gcw = totalTrailerWt;
+        const gvwrPass = gcw <= towingCap;
+        $('r-gvwr-val').textContent = fmtNum(toDisplay(gcw)) + (currentUnit === 'lb' ? ' lbs' : ' kg');
+        $('r-gvwr-icon').textContent = gvwrPass ? '✅' : '❌';
+        $('r-gvwr-msg').textContent = gvwrPass ? 'Within combined rating limits.' : 'Exceeds combined rating.';
+      } else {
+        $('r-gvwr').classList.add('hidden');
+      }
+
+      // Summary
+      const allPass = (towingCap === 0 || towPass) && (payloadCap === 0 || payPass);
+      if (towingCap === 0 || payloadCap === 0) {
+        $('r-summary').textContent = 'Enter both towing and payload capacity for a full check.';
+        $('r-summary').className = 'rounded-xl p-4 text-center text-base font-semibold bg-amber-50 text-amber-800';
+      } else if (allPass) {
+        $('r-summary').textContent = '✅ SAFE — Your setup is within all rated limits.';
+        $('r-summary').className = 'rounded-xl p-4 text-center text-lg font-bold bg-emerald-50 text-emerald-700';
+      } else {
+        const over = [];
+        if (!towPass) over.push('total trailer weight by ' + fmtNum(Math.abs(toDisplay(towingCap - totalTrailerWt))) + (currentUnit === 'lb' ? ' lbs' : ' kg'));
+        if (!payPass) over.push('payload by ' + fmtNum(Math.abs(toDisplay(payloadCap - payloadUsed))) + (currentUnit === 'lb' ? ' lbs' : ' kg'));
+        $('r-summary').textContent = '❌ OVER LIMIT — reduce ' + over.join(' and ');
+        $('r-summary').className = 'rounded-xl p-4 text-center text-lg font-bold bg-red-50 text-red-700';
+      }
+    }
+
+    $('calcBtn').addEventListener('click', update);
+    inputs.forEach((id) => $(id).addEventListener('input', update));
+    $('tonguePct').addEventListener('input', update);
+  </script>
+</ToolLayout>

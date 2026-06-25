@@ -1,0 +1,368 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Gear Ratio Calculator';
+const description = 'Calculate engine RPM at a given speed from gear ratio, final drive, and tire size. Solve for any variable.';
+const intro = 'Calculate engine RPM from gear ratio, final drive, and tire size.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'What is the difference between gear ratio and final drive?', a: 'Gear ratio is the transmission gear (e.g. 3rd gear 1.35:1), final drive is the differential ratio (e.g. 3.73:1). Total ratio = gear × final.' },
+  { q: 'How do I find my gear ratios?', a: 'Check your vehicle owner manual or transmission specifications online.' },
+  { q: 'Does tire size affect RPM?', a: 'Yes — larger tires lower RPM at the same speed; smaller tires increase it.' },
+  { q: 'What is a good highway RPM?', a: 'Usually 1500-2500 RPM at 60-70 mph for fuel efficiency, depending on the vehicle.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-center text-sm text-slate-500">Enter any 4 of 5 values to solve for the missing one</p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Engine RPM</span>
+        <input id="rpm" type="number" step="1" placeholder="e.g. 2352" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Vehicle speed</span>
+        <div class="mt-1 flex gap-2">
+          <input id="speed" type="number" step="0.1" placeholder="e.g. 70" class="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+          <select id="unit" class="rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="mph">mph</option>
+            <option value="kmh">km/h</option>
+          </select>
+        </div></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gear ratio</span>
+        <input id="gear" type="number" step="0.01" placeholder="e.g. 0.75" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Final drive ratio</span>
+        <input id="final" type="number" step="0.01" placeholder="e.g. 3.73" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tire diameter (inches)</span>
+        <input id="tire" type="number" step="0.1" placeholder="e.g. 28" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <div class="flex items-end">
+        <button id="calc-btn" class="w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 active:bg-indigo-800">Calculate</button>
+      </div>
+    </div>
+    <div id="result" class="mt-4 min-h-[2.5rem] text-center text-sm text-slate-600"></div>
+    <div id="rpm-detail" class="mt-2 text-center text-xs text-slate-400"></div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How gear ratios work</h2>
+    <p class="mt-2 text-slate-600">
+      A gear ratio is the number of teeth on the output gear divided by the number of teeth on the input gear.
+      In a car, the transmission provides multiple gear ratios (1st, 2nd, 3rd, etc.) that multiply torque for
+      acceleration and reduce RPM for cruising. The final drive ratio (differential) provides a fixed
+      multiplication between the transmission output and the wheel axles.
+    </p>
+    <figure class="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+      <svg width="700" height="260" viewBox="0 0 700 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gear-diagram-title gear-diagram-desc">
+        <title id="gear-diagram-title">Gear train diagram showing input and output gears with labelled teeth counts</title>
+        <desc id="gear-diagram-desc">Two interlocking gears. The smaller input gear has 20 teeth, the larger output gear has 35 teeth, showing a 1.75:1 gear ratio.</desc>
+        <defs>
+          <radialGradient id="g1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#e0e7ff"/><stop offset="100%" stop-color="#818cf8"/></radialGradient>
+          <radialGradient id="g2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#f59e0b"/></radialGradient>
+        </defs>
+        <!-- Input gear (smaller) -->
+        <g transform="translate(200,130)">
+          <circle cx="0" cy="0" r="60" fill="url(#g1)" stroke="#6366f1" stroke-width="2"/>
+          <circle cx="0" cy="0" r="12" fill="#6366f1"/>
+          <line x1="0" y1="-12" x2="0" y2="12" stroke="#6366f1" stroke-width="1.5"/>
+          <line x1="-12" y1="0" x2="12" y2="0" stroke="#6366f1" stroke-width="1.5"/>
+          <!-- Teeth -->
+          <g stroke="#6366f1" stroke-width="3" stroke-linecap="round">
+            <line x1="0" y1="-60" x2="0" y2="-68"/><line x1="18" y1="-57" x2="20" y2="-65"/><line x1="35" y1="-49" x2="40" y2="-55"/>
+            <line x1="49" y1="-35" x2="55" y2="-40"/><line x1="57" y1="-18" x2="65" y2="-20"/><line x1="60" y1="0" x2="68" y2="0"/>
+            <line x1="57" y1="18" x2="65" y2="20"/><line x1="49" y1="35" x2="55" y2="40"/><line x1="35" y1="49" x2="40" y2="55"/>
+            <line x1="18" y1="57" x2="20" y2="65"/><line x1="0" y1="60" x2="0" y2="68"/><line x1="-18" y1="57" x2="-20" y2="65"/>
+            <line x1="-35" y1="49" x2="-40" y2="55"/><line x1="-49" y1="35" x2="-55" y2="40"/><line x1="-57" y1="18" x2="-65" y2="20"/>
+            <line x1="-60" y1="0" x2="-68" y2="0"/><line x1="-57" y1="-18" x2="-65" y2="-20"/><line x1="-49" y1="-35" x2="-55" y2="-40"/>
+            <line x1="-35" y1="-49" x2="-40" y2="-55"/><line x1="-18" y1="-57" x2="-20" y2="-65"/>
+          </g>
+          <!-- Arrow -->
+          <path d="M-40,30 A48,48 0 0,1 -10,45" stroke="#dc2626" stroke-width="2" fill="none" marker-end="url(#arrowRed)"/>
+          <defs><marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker></defs>
+          <text x="0" y="95" text-anchor="middle" fill="#6366f1" font-size="13" font-weight="bold">Input gear</text>
+          <text x="0" y="110" text-anchor="middle" fill="#94a3b8" font-size="11">20 teeth</text>
+        </g>
+        <!-- Output gear (larger) -->
+        <g transform="translate(460,130)">
+          <circle cx="0" cy="0" r="80" fill="url(#g2)" stroke="#d97706" stroke-width="2"/>
+          <circle cx="0" cy="0" r="16" fill="#d97706"/>
+          <line x1="0" y1="-16" x2="0" y2="16" stroke="#d97706" stroke-width="1.5"/>
+          <line x1="-16" y1="0" x2="16" y2="0" stroke="#d97706" stroke-width="1.5"/>
+          <!-- Teeth -->
+          <g stroke="#d97706" stroke-width="3" stroke-linecap="round">
+            <line x1="0" y1="-80" x2="0" y2="-90"/><line x1="22" y1="-77" x2="25" y2="-86"/><line x1="42" y1="-68" x2="47" y2="-76"/>
+            <line x1="59" y1="-54" x2="67" y2="-60"/><line x1="72" y1="-36" x2="81" y2="-40"/><line x1="78" y1="-16" x2="88" y2="-18"/>
+            <line x1="80" y1="0" x2="90" y2="0"/><line x1="78" y1="16" x2="88" y2="18"/><line x1="72" y1="36" x2="81" y2="40"/>
+            <line x1="59" y1="54" x2="67" y2="60"/><line x1="42" y1="68" x2="47" y2="76"/><line x1="22" y1="77" x2="25" y2="86"/>
+            <line x1="0" y1="80" x2="0" y2="90"/><line x1="-22" y1="77" x2="-25" y2="86"/><line x1="-42" y1="68" x2="-47" y2="76"/>
+            <line x1="-59" y1="54" x2="-67" y2="60"/><line x1="-72" y1="36" x2="-81" y2="40"/><line x1="-78" y1="16" x2="-88" y2="18"/>
+            <line x1="-80" y1="0" x2="-90" y2="0"/><line x1="-78" y1="-16" x2="-88" y2="-18"/><line x1="-72" y1="-36" x2="-81" y2="-40"/>
+            <line x1="-59" y1="-54" x2="-67" y2="-60"/><line x1="-42" y1="-68" x2="-47" y2="-76"/><line x1="-22" y1="-77" x2="-25" y2="-86"/>
+          </g>
+          <!-- Arrow -->
+          <path d="M50,-35 A65,65 0 0,0 30,-55" stroke="#16a34a" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+          <defs><marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#16a34a"/></marker></defs>
+          <text x="0" y="105" text-anchor="middle" fill="#d97706" font-size="13" font-weight="bold">Output gear</text>
+          <text x="0" y="120" text-anchor="middle" fill="#94a3b8" font-size="11">35 teeth</text>
+        </g>
+        <!-- Ratio label -->
+        <g transform="translate(330,20)">
+          <rect x="-80" y="-18" width="160" height="36" rx="8" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="0" y="6" text-anchor="middle" fill="#475569" font-size="14" font-weight="bold">Ratio 35:20 = 1.75:1</text>
+        </g>
+        <!-- Meshing point -->
+        <circle cx="280" cy="130" r="5" fill="#dc2626" opacity="0.6"/>
+        <text x="280" y="150" text-anchor="middle" fill="#dc2626" font-size="10">mesh</text>
+        <!-- Rotation labels -->
+        <text x="170" y="60" text-anchor="middle" fill="#dc2626" font-size="11" font-weight="bold">INPUT</text>
+        <text x="490" y="60" text-anchor="middle" fill="#16a34a" font-size="11" font-weight="bold">OUTPUT</text>
+      </svg>
+      <figcaption class="mt-2 text-center text-xs text-slate-400">A gear train with a 1.75:1 ratio. The smaller input gear drives the larger output gear, reducing RPM and increasing torque.</figcaption>
+    </figure>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula</h2>
+    <p class="mt-2 text-slate-600">
+      The relationship between engine RPM, vehicle speed, gear ratio, final drive ratio, and tire diameter
+      is given by the following formula:
+    </p>
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-5 text-center">
+      <code class="text-lg font-mono text-slate-800">
+        RPM = (Speed × Final Drive × Gear Ratio × 336) ÷ Tire Diameter
+      </code>
+    </div>
+    <p class="mt-3 text-slate-600">
+      The constant 336 comes from the unit conversions needed: (5280 ft/mile × 12 in/ft) ÷ (60 min/hr × π) ≈ 336.1.
+      It converts miles per hour and tire diameter in inches into the equivalent revolutions per minute at the wheel,
+      which is then multiplied through the drivetrain ratios to get engine RPM.
+    </p>
+    <p class="mt-2 text-slate-600">
+      To solve for any of the five variables when the other four are known, rearrange the formula:
+    </p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+        <span class="font-medium text-slate-700">Vehicle speed:</span>
+        <code class="mt-1 block font-mono text-slate-600">Speed = (RPM × Tire) ÷ (Final × Gear × 336)</code>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+        <span class="font-medium text-slate-700">Gear ratio:</span>
+        <code class="mt-1 block font-mono text-slate-600">Gear = (RPM × Tire) ÷ (Speed × Final × 336)</code>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+        <span class="font-medium text-slate-700">Final drive:</span>
+        <code class="mt-1 block font-mono text-slate-600">Final = (RPM × Tire) ÷ (Speed × Gear × 336)</code>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+        <span class="font-medium text-slate-700">Tire diameter:</span>
+        <code class="mt-1 block font-mono text-slate-600">Tire = (Speed × Final × Gear × 336) ÷ RPM</code>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <p class="mt-2 text-slate-600">
+      Let us calculate engine RPM for a car cruising at 70 mph in 5th gear. The transmission gear ratio
+      for 5th gear is 0.75:1 (overdrive), the final drive ratio is 3.73:1, and the tire diameter is 28 inches.
+    </p>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Variable</th><th class="p-3">Value</th><th class="p-3">Notes</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Speed</td><td class="p-3">70 mph</td><td class="p-3 text-slate-400">Highway cruising speed</td></tr>
+          <tr><td class="p-3 font-medium">Gear ratio</td><td class="p-3">0.75:1</td><td class="p-3 text-slate-400">5th gear overdrive</td></tr>
+          <tr><td class="p-3 font-medium">Final drive</td><td class="p-3">3.73:1</td><td class="p-3 text-slate-400">Common axle ratio</td></tr>
+          <tr><td class="p-3 font-medium">Tire diameter</td><td class="p-3">28 in</td><td class="p-3 text-slate-400">Typical passenger car tire</td></tr>
+          <tr class="bg-indigo-50"><td class="p-3 font-medium text-indigo-700">Engine RPM</td><td class="p-3 font-bold text-indigo-700">~2,352 RPM</td><td class="p-3 text-indigo-400">Calculated result</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Step-by-step calculation</h3>
+      <div class="mt-3 space-y-1.5 text-sm text-slate-600">
+        <p><span class="font-medium text-slate-700">Step 1:</span> Total drivetrain ratio = Gear ratio × Final drive = 0.75 × 3.73 = 2.7975:1</p>
+        <p><span class="font-medium text-slate-700">Step 2:</span> Apply formula: RPM = (70 × 3.73 × 0.75 × 336) ÷ 28</p>
+        <p><span class="font-medium text-slate-700">Step 3:</span> RPM = (70 × 2.7975 × 336) ÷ 28</p>
+        <p><span class="font-medium text-slate-700">Step 4:</span> RPM = 65,818.8 ÷ 28 ≈ <strong class="text-indigo-700">2,351 RPM</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choosing gears for racing</h3>
+        <p class="mt-1 text-sm text-slate-600">Racers select transmission and final drive ratios to keep the engine in the power band at key track sections. A shorter final drive (higher numeric ratio) provides quicker acceleration out of corners but reduces top speed. Use the calculator to experiment with different combinations and find the optimal gearing for your track layout.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Highway RPM estimation</h3>
+        <p class="mt-1 text-sm text-slate-600">Before buying a car or modifying your drivetrain, estimate what RPM the engine will turn at highway speeds. A lower cruising RPM means less engine noise, better fuel economy, and reduced wear. This is especially important for vehicles used for long-distance commuting or road trips.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Re-gearing for larger tires</h3>
+        <p class="mt-1 text-sm text-slate-600">When you install larger tires on a truck or SUV, the effective gear ratio becomes numerically smaller (taller), which reduces torque at the wheels and increases load on the transmission. Re-gearing with a lower (higher numeric) final drive restores performance and keeps the engine in its efficient operating range. Enter your original tire size and new tire size to find the ideal compensating final drive ratio.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for optimizing gear ratios</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Lower RPM = better fuel economy</h3>
+        <p class="mt-1 text-sm text-slate-600">Engines consume less fuel at lower RPM for the same road speed. An overdrive transmission (gear ratio below 1.0:1) combined with a numerically small final drive (e.g. 2.73:1 instead of 3.73:1) can drop highway RPM by 500-800 RPM, improving fuel economy by 10-20% on the highway. However, if the gearing is too tall, the engine may lug and require downshifting on hills.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-700">Taller gears for highway cruising</h3>
+        <p class="mt-1 text-sm text-slate-600">Taller gears (lower numeric ratios) reduce engine RPM at any given speed, which lowers noise, vibration, and fuel consumption. Modern 8, 9, and 10-speed automatic transmissions use very tall top gears (0.60-0.65:1) combined with a moderate final drive to achieve both strong acceleration in lower gears and low RPM cruising in top gear. A 10-speed automatic in top gear at 70 mph may turn only 1,500-1,800 RPM in many vehicles.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-700">Shorter gears for towing</h3>
+        <p class="mt-1 text-sm text-slate-600">For towing heavy loads, shorter gearing (higher numeric ratios like 4.10:1 or 4.56:1) keeps the engine higher in the RPM range where it produces maximum torque. This reduces strain on the transmission and helps maintain speed on grades. The trade-off is higher RPM at highway speeds and reduced fuel economy when not towing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding the numbers</h2>
+    <p class="mt-2 text-slate-600">
+      The gear ratio is written as the number of drive shaft revolutions to one wheel revolution. For example, a 3.73:1
+      final drive means the drive shaft turns 3.73 times for each wheel revolution. Transmission gear ratios work the
+      same way — a 1st gear of 3.50:1 means the engine turns 3.50 times for each transmission output shaft revolution.
+      Multiply them together to get the total reduction: in 1st gear with a 3.73 final drive, the total ratio is
+      3.50 × 3.73 = 13.06:1. This massive torque multiplication is what allows a small engine to move a heavy vehicle
+      from a standstill.
+    </p>
+    <p class="mt-2 text-slate-600">
+      Tire diameter is measured as the overall height of the tire from the ground to the top of the tread. A larger
+      tire effectively raises the final drive ratio because the wheel covers more ground per revolution. This is why
+      trucks with oversized tires often feel sluggish off the line — the effective gear ratio has become taller.
+      Re-gearing the differential compensates for this by restoring the effective ratio back to a shorter value.
+    </p>
+    <p class="mt-2 text-slate-600">
+      When working with km/h instead of mph, simply convert the speed before applying the formula: 1 mph = 1.60934 km/h.
+      The calculator handles this conversion automatically when you select km/h. The formula with the 336 constant is
+      designed for mph, so km/h values are converted internally before the calculation runs.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/tire-size-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🛞</span>
+        <span class="ml-2 font-medium text-slate-900">Tire Size Calculator</span>
+        <p class="mt-1 text-slate-600">Compare tire sizes and see diameter, circumference, and speedometer error.</p>
+      </a>
+      <a href="/tools/fuel-cost-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">⛽</span>
+        <span class="ml-2 font-medium text-slate-900">Fuel Cost Calculator</span>
+        <p class="mt-1 text-slate-600">Estimate the fuel cost of any trip from distance, efficiency, and price.</p>
+      </a>
+      <a href="/tools/car-depreciation-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">📉</span>
+        <span class="ml-2 font-medium text-slate-900">Car Depreciation Calculator</span>
+        <p class="mt-1 text-slate-600">Project a vehicle value over time with a standard depreciation curve.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const inputs = ['rpm', 'speed', 'gear', 'final', 'tire'];
+    const labels = ['Engine RPM', 'Vehicle speed', 'Gear ratio', 'Final drive ratio', 'Tire diameter'];
+    const units = ['RPM', '', '', ':1', 'in'];
+
+    function round(v, idx) {
+      if (idx === 0) return Math.round(v);
+      if (idx === 1) return Math.round(v * 10) / 10;
+      if (idx === 2 || idx === 3) return Math.round(v * 1000) / 1000;
+      return Math.round(v * 10) / 10;
+    }
+
+    function fmt(v, idx) {
+      if (idx === 0) return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (idx === 1) return v.toFixed(1);
+      if (idx === 2 || idx === 3) return v.toFixed(3);
+      return v.toFixed(1);
+    }
+
+    function calculate() {
+      const unit = el('unit').value;
+      const isKmh = unit === 'kmh';
+      const vals = inputs.map(id => {
+        const v = parseFloat(el(id).value);
+        return isNaN(v) || v <= 0 ? NaN : v;
+      });
+      const filled = vals.filter(v => !isNaN(v)).length;
+
+      const resultDiv = el('result');
+      const detailDiv = el('rpm-detail');
+      inputs.forEach(id => el(id).className = 'mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100');
+
+      if (filled < 4) {
+        resultDiv.innerHTML = '<span class="text-slate-400">Enter any 4 of 5 values to solve for the missing one.</span>';
+        detailDiv.textContent = '';
+        return;
+      }
+
+      if (filled > 4) {
+        resultDiv.innerHTML = '<span class="text-amber-600">All 5 values are filled. Leave one empty to solve for it.</span>';
+        detailDiv.textContent = '';
+        return;
+      }
+
+      const missingIdx = vals.findIndex(v => isNaN(v));
+
+      const gear = vals[2];
+      const finalV = vals[3];
+      const tire = vals[4];
+      let speedMph = isKmh ? vals[1] / 1.60934 : vals[1];
+      const rpm = vals[0];
+
+      let result;
+      try {
+        if (missingIdx === 0) {
+          result = (speedMph * finalV * gear * 336) / tire;
+          if (!isFinite(result) || result <= 0) throw new Error();
+        } else if (missingIdx === 1) {
+          result = (rpm * tire) / (finalV * gear * 336);
+          if (!isFinite(result) || result <= 0) throw new Error();
+          if (isKmh) result *= 1.60934;
+        } else if (missingIdx === 2) {
+          result = (rpm * tire) / (speedMph * finalV * 336);
+          if (!isFinite(result) || result <= 0) throw new Error();
+        } else if (missingIdx === 3) {
+          result = (rpm * tire) / (speedMph * gear * 336);
+          if (!isFinite(result) || result <= 0) throw new Error();
+        } else if (missingIdx === 4) {
+          result = (speedMph * finalV * gear * 336) / rpm;
+          if (!isFinite(result) || result <= 0) throw new Error();
+        }
+
+        const r = round(result, missingIdx);
+        el(inputs[missingIdx]).value = r;
+        el(inputs[missingIdx]).className = 'mt-1 w-full rounded-xl border-2 border-indigo-400 bg-indigo-50 p-3 outline-none';
+
+        const unitLabel = missingIdx === 1 ? (isKmh ? ' km/h' : ' mph') : ' ' + units[missingIdx];
+        resultDiv.innerHTML = `<span class="text-emerald-700 font-semibold">${labels[missingIdx]}</span> = <strong class="text-indigo-700 text-lg">${fmt(r, missingIdx)}</strong>${unitLabel}`;
+
+        if (missingIdx === 0) {
+          const totalRatio = vals[3] * vals[2];
+          detailDiv.textContent = `Total drivetrain ratio: ${totalRatio.toFixed(3)}:1 | Speed: ${isKmh ? (speedMph * 1.60934).toFixed(1) + ' km/h' : vals[1].toFixed(1) + ' mph'} | Tire: ${tire}"`;
+        } else {
+          detailDiv.textContent = '';
+        }
+      } catch (_) {
+        resultDiv.innerHTML = '<span class="text-red-600">Invalid combination. Check your values (no zeros or negative numbers).</span>';
+        detailDiv.textContent = '';
+      }
+    }
+
+    el('calc-btn').addEventListener('click', calculate);
+    inputs.forEach(id => el(id).addEventListener('input', calculate));
+    el('unit').addEventListener('change', calculate);
+  </script>
+</ToolLayout>

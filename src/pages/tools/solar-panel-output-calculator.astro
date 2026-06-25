@@ -1,0 +1,264 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Solar Panel Output Calculator';
+const description = 'Estimate daily and monthly kWh output from your solar panel wattage, peak sun hours, and system losses.';
+const intro = 'Estimate daily and monthly energy output from solar panel specs and sun hours.';
+const category = { id: 'engineering', name: 'Electrical Engineering' };
+const faqs = [
+  { q: 'What are peak sun hours?', a: 'The number of hours per day when solar irradiance averages 1000 W/m\u00b2. Most locations get 3\u20136 peak sun hours daily.' },
+  { q: 'How much loss should I assume?', a: 'Typical system losses are 15\u201325%, including inverter inefficiency, wiring losses, temperature, and soiling.' },
+  { q: 'Does panel orientation matter?', a: 'Yes \u2014 south-facing (northern hemisphere) at the correct tilt maximizes output. This calculator assumes optimal orientation.' },
+  { q: 'Can I use this for a single panel?', a: 'Yes \u2014 enter the panel wattage (e.g. 400 W) for a single panel, or total system wattage.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total panel wattage (W)</span>
+        <input id="wattage" type="number" step="any" placeholder="e.g. 5000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="block"><span class="text-sm font-medium text-slate-700">Peak sun hours per day</span>
+          <input id="sunHours" type="number" step="any" placeholder="5" value="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        <label class="block"><span class="text-sm font-medium text-slate-700">System loss (%)</span>
+          <input id="loss" type="number" step="any" placeholder="20" value="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      </div>
+      <button id="calcBtn" class="w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 active:bg-indigo-800">Calculate</button>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Daily output</div><div id="r-daily" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Monthly output</div><div id="r-monthly" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Annual output</div><div id="r-annual" class="mt-1 text-2xl font-bold">&mdash;</div></div>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="320" viewBox="0 0 800 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="solar-title solar-desc">
+      <title id="solar-title">Solar energy flow diagram: sun to panel to inverter to grid/battery</title>
+      <desc id="solar-desc">Diagram showing sunlight hitting a solar panel, energy flowing through an inverter with loss percentages, then to home grid or battery storage</desc>
+      <g transform="translate(40,20)">
+        <!-- Sun -->
+        <circle cx="60" cy="60" r="35" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+        <text x="60" y="65" text-anchor="middle" fill="#d97706" font-size="14" font-weight="bold">Sun</text>
+        <line x1="60" y1="15" x2="60" y2="5" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="100" y1="30" x2="115" y2="20" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="105" y1="60" x2="120" y2="60" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="100" y1="90" x2="115" y2="100" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="20" y1="30" x2="5" y2="20" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="15" y1="60" x2="0" y2="60" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="20" y1="90" x2="5" y2="100" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="60" y1="105" x2="60" y2="115" stroke="#f59e0b" stroke-width="2"/>
+
+        <!-- Arrow sun to panel -->
+        <path d="M95 60 Q130 60 145 60" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#amberArrow)" fill="none"/>
+        <text x="120" y="55" text-anchor="middle" fill="#d97706" font-size="10">100% irradiance</text>
+
+        <!-- Solar panel -->
+        <rect x="150" y="25" width="120" height="70" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+        <rect x="158" y="33" width="104" height="12" rx="2" fill="#334155"/>
+        <rect x="158" y="49" width="104" height="12" rx="2" fill="#334155"/>
+        <rect x="158" y="65" width="104" height="12" rx="2" fill="#334155"/>
+        <text x="210" y="110" text-anchor="middle" fill="#475569" font-size="11" font-weight="bold">Solar Panel</text>
+        <text x="210" y="122" text-anchor="middle" fill="#94a3b8" font-size="9">DC output</text>
+
+        <!-- Arrow panel to inverter -->
+        <path d="M270 60 Q310 60 330 60" stroke="#6366f1" stroke-width="2.5" marker-end="url(#indigoArrow)" fill="none"/>
+        <text x="300" y="55" text-anchor="middle" fill="#6366f1" font-size="10">DC</text>
+
+        <!-- Inverter -->
+        <rect x="335" y="20" width="130" height="80" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+        <text x="400" y="52" text-anchor="middle" fill="#4338ca" font-size="13" font-weight="bold">Inverter</text>
+        <text x="400" y="68" text-anchor="middle" fill="#6366f1" font-size="10">DC &rarr; AC</text>
+        <rect x="352" y="76" width="96" height="16" rx="4" fill="#6366f1" opacity="0.1"/>
+        <text x="400" y="88" text-anchor="middle" fill="#4338ca" font-size="9">~3&ndash;5% loss</text>
+
+        <!-- Arrow inverter to home -->
+        <path d="M465 40 Q520 40 540 40" stroke="#10b981" stroke-width="2.5" marker-end="url(#greenArrow)" fill="none"/>
+        <text x="500" y="35" text-anchor="middle" fill="#10b981" font-size="10">AC</text>
+
+        <!-- Home -->
+        <rect x="545" y="10" width="100" height="60" rx="8" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+        <polygon points="565,10 595,-5 625,10" fill="#10b981" stroke="#10b981" stroke-width="1.5"/>
+        <rect x="570" y="30" width="12" height="16" rx="1" fill="#a7f3d0"/>
+        <rect x="600" y="25" width="16" height="21" rx="1" fill="#a7f3d0"/>
+        <text x="595" y="80" text-anchor="middle" fill="#10b981" font-size="11" font-weight="bold">Home</text>
+
+        <!-- Arrow inverter to battery -->
+        <path d="M465 80 Q520 130 540 130" stroke="#6366f1" stroke-width="2.5" stroke-dasharray="6 3" marker-end="url(#indigoArrowDashed)" fill="none"/>
+        <text x="495" y="108" text-anchor="middle" fill="#6366f1" font-size="9">excess</text>
+
+        <!-- Battery -->
+        <rect x="545" y="105" width="100" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+        <line x1="570" y1="120" x2="570" y2="140" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+        <line x1="595" y1="115" x2="595" y2="145" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+        <line x1="620" y1="120" x2="620" y2="140" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+        <text x="595" y="165" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="bold">Battery</text>
+
+        <!-- Loss annotation -->
+        <rect x="150" y="140" width="325" height="90" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+        <text x="312" y="158" text-anchor="middle" fill="#dc2626" font-size="11" font-weight="bold">System losses</text>
+        <text x="170" y="176" fill="#b91c1c" font-size="10">&bull; Temperature: 5&ndash;10%</text>
+        <text x="170" y="192" fill="#b91c1c" font-size="10">&bull; Inverter: 3&ndash;5%</text>
+        <text x="170" y="208" fill="#b91c1c" font-size="10">&bull; Wiring &amp; soiling: 2&ndash;5%</text>
+        <text x="340" y="176" fill="#b91c1c" font-size="10">&bull; Shading: 5&ndash;15%</text>
+        <text x="340" y="192" fill="#b91c1c" font-size="10">&bull; Mismatch: 2&ndash;5%</text>
+        <text x="340" y="208" fill="#b91c1c" font-size="10">&bull; Degradation: 0.5%/yr</text>
+        <text x="312" y="222" text-anchor="middle" fill="#b91c1c" font-size="9">Total: 15&ndash;25% combined loss</text>
+
+        <!-- Definitions for markers -->
+        <defs>
+          <marker id="amberArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#f59e0b"/></marker>
+          <marker id="indigoArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#6366f1"/></marker>
+          <marker id="greenArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#10b981"/></marker>
+          <marker id="indigoArrowDashed" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#6366f1"/></marker>
+        </defs>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Solar energy conversion chain with typical loss percentages at each stage</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How solar panel output is calculated</h2>
+    <p class="mt-2 text-slate-600">The energy output of a solar panel system depends on three main factors: the total panel wattage, the number of peak sun hours your location receives per day, and the efficiency losses in the system. The formula is straightforward:</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5 text-center">
+      <div class="font-mono text-lg font-bold text-indigo-700">Daily kWh = (Wattage &times; Sun Hours / 1000) &times; (1 &minus; Loss% / 100)</div>
+    </div>
+    <p class="mt-3 text-slate-600">Dividing by 1000 converts watts to kilowatts. Multiplying by (1 &minus; loss%/100) accounts for system inefficiencies such as inverter losses, wiring resistance, temperature effects, soiling, and shading.</p>
+
+    <h3 class="mt-8 text-lg font-bold text-slate-900">Worked example</h3>
+    <p class="mt-2 text-slate-600">Consider a 5 kW solar system in a location with 5 peak sun hours per day and 20% total system losses:</p>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <div class="grid gap-2 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">System size:</span> <span class="text-slate-600">5000 W (5 kW)</span></div>
+        <div><span class="font-medium text-slate-700">Peak sun hours:</span> <span class="text-slate-600">5 hours/day</span></div>
+        <div><span class="font-medium text-slate-700">System loss:</span> <span class="text-slate-600">20%</span></div>
+        <div><span class="font-medium text-slate-700">Efficiency factor:</span> <span class="text-slate-600">0.80</span></div>
+        <div><span class="font-medium text-slate-700">Daily output:</span> <span class="text-slate-600">(5000 &times; 5 / 1000) &times; 0.80 = 20 kWh/day</span></div>
+        <div><span class="font-medium text-slate-700">Monthly output:</span> <span class="text-slate-600">20 &times; 30 = 600 kWh/month</span></div>
+        <div><span class="font-medium text-slate-700">Annual output:</span> <span class="text-slate-600">20 &times; 365 = 7,300 kWh/year</span></div>
+      </div>
+    </div>
+    <p class="mt-3 text-slate-600">At an average electricity rate of $0.12/kWh, this system would save approximately $876 per year on electricity bills.</p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">📐</span><h3 class="mt-2 font-semibold text-slate-900">Sizing a solar system</h3><p class="mt-1 text-sm text-slate-600">Determine the system wattage needed to meet your energy consumption. Divide your monthly kWh usage by the average monthly production per kW of panels in your area to find the right system size.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">💰</span><h3 class="mt-2 font-semibold text-slate-900">Estimating savings</h3><p class="mt-1 text-sm text-slate-600">Multiply your annual kWh output by your local electricity rate to estimate yearly savings. Factor in net metering policies and time-of-use rates for a more accurate financial picture.</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🌍</span><h3 class="mt-2 font-semibold text-slate-900">Comparing locations</h3><p class="mt-1 text-sm text-slate-600">Compare expected output across different locations by adjusting peak sun hours. A system in Arizona (~6 hours) will produce nearly twice the energy of the same system in Seattle (~3 hours).</p></div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5"><span class="text-2xl">🔋</span><h3 class="mt-2 font-semibold text-slate-900">Battery storage sizing</h3><p class="mt-1 text-sm text-slate-600">Use your daily kWh output to size battery storage for off-grid or hybrid systems. A typical home needs 10&ndash;20 kWh of daily solar production to offset full consumption.</p></div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing solar panel output</h2>
+    <div class="mt-4 space-y-5">
+      <div><h3 class="font-semibold text-slate-900">Orientation and tilt matter significantly</h3><p class="mt-1 text-sm text-slate-600">In the northern hemisphere, panels should face true south at a tilt angle equal to your latitude for maximum annual production. East- or west-facing panels produce 15&ndash;25% less total energy but may better match morning or evening consumption patterns. Adjustable mounting systems let you change tilt seasonally &mdash; steeper in winter to catch low sun, shallower in summer.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Seasonal variation is normal</h3><p class="mt-1 text-sm text-slate-600">Solar output varies significantly across seasons. Summer days are longer with higher sun angles, producing 2&ndash;4 times more energy than short winter days. In winter, snow accumulation can block panels entirely, while cloudy weather reduces output to 10&ndash;30% of clear-sky production. Net metering helps balance seasonal differences by letting you export summer surplus and draw credit in winter.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Panel degradation over time</h3><p class="mt-1 text-sm text-slate-600">Solar panels gradually lose efficiency. Most manufacturers guarantee 80% output after 25 years, meaning an average degradation rate of about 0.5&ndash;0.8% per year. A panel rated at 400 W today will produce roughly 380 W after 10 years and 320 W after 25 years. High-quality monocrystalline panels degrade more slowly than polycrystalline or thin-film panels.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Temperature reduces voltage</h3><p class="mt-1 text-sm text-slate-600">Solar panels are less efficient in high temperatures. Most panels have a temperature coefficient of around &minus;0.3% to &minus;0.5% per degree Celsius above 25&deg;C. On a 40&deg;C rooftop, panels can lose 5&ndash;8% of their rated output. Good airflow behind panels (roof gap) helps dissipate heat and improve performance.</p></div>
+      <div><h3 class="font-semibold text-slate-900">Shading has a disproportionate impact</h3><p class="mt-1 text-sm text-slate-600">Partial shading of even one panel can dramatically reduce output of the entire string if bypass diodes are not used. Modern panels with half-cut cells and multiple bypass diodes limit the impact, but any significant shading from chimneys, trees, or neighbouring buildings should be carefully considered during system design. Microinverters and power optimizers eliminate the string shading problem entirely.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding peak sun hours</h2>
+    <p class="mt-2 text-slate-600">A peak sun hour is defined as one hour of solar irradiance at 1000 W/m&sup2; &mdash; the standard test condition (STC) used to rate solar panels. Most locations in the United States receive between 3 and 6 peak sun hours per day on average. This is not the same as daylight hours; a 12-hour summer day might provide only 5&ndash;6 peak sun hours because morning and evening sun is weaker. The National Renewable Energy Laboratory (NREL) publishes detailed solar insolation maps and data for locations worldwide.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Peak sun hours by region (annual average)</h3>
+    <div class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">Region</th><th class="p-3">Peak sun hours/day</th><th class="p-3">Annual kWh/kWp</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="p-3 font-medium">Arizona, USA</td><td class="p-3">6.0&ndash;6.5</td><td class="p-3">1,750&ndash;1,900</td></tr>
+          <tr><td class="p-3 font-medium">California, USA</td><td class="p-3">5.0&ndash;6.0</td><td class="p-3">1,500&ndash;1,800</td></tr>
+          <tr><td class="p-3 font-medium">Germany</td><td class="p-3">2.5&ndash;3.5</td><td class="p-3">800&ndash;1,100</td></tr>
+          <tr><td class="p-3 font-medium">India</td><td class="p-3">4.5&ndash;5.5</td><td class="p-3">1,400&ndash;1,700</td></tr>
+          <tr><td class="p-3 font-medium">Australia</td><td class="p-3">4.5&ndash;6.0</td><td class="p-3">1,400&ndash;1,800</td></tr>
+          <tr><td class="p-3 font-medium">UK</td><td class="p-3">2.0&ndash;3.0</td><td class="p-3">700&ndash;950</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-sm text-slate-500">kWh/kWp is the annual energy produced per kilowatt of installed panel capacity. Multiply by your system kW size for annual kWh estimate.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Solar Panel Output Calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span><h3 class="mt-3 font-semibold text-slate-900">Enter system wattage</h3><p class="mt-1 text-sm text-slate-600">Input the total rated wattage of your solar panel system. For a single panel, enter its wattage (e.g. 400). For a whole system, add all panel wattages together (e.g. sixteen 400 W panels = 6400 W).</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span><h3 class="mt-3 font-semibold text-slate-900">Set sun hours and loss</h3><p class="mt-1 text-sm text-slate-600">Adjust peak sun hours based on your location (see table above for guidance). Set system loss to account for inverter efficiency, wiring resistance, temperature, and soiling &mdash; 20% is a good starting point.</p></div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center"><span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span><h3 class="mt-3 font-semibold text-slate-900">Review the results</h3><p class="mt-1 text-sm text-slate-600">Click Calculate to see your daily, monthly, and annual kWh output. Use these figures to estimate energy savings, size a battery system, or compare different solar panel configurations.</p></div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding solar energy math</h2>
+    <p class="mt-2 text-slate-600">Solar panel output is rated in watts under Standard Test Conditions (STC): 1000 W/m&sup2; irradiance, 25&deg;C cell temperature, and AM 1.5 spectrum. Real-world conditions rarely match STC exactly, which is why the loss factor is essential for accurate estimates. The formula used here aggregates all losses into a single percentage, making it easy to understand and adjust.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Components of system loss</h3>
+    <p class="mt-1 text-slate-600">Inverter efficiency has improved dramatically, with modern string inverters achieving 96&ndash;98% peak efficiency and microinverters reaching 95&ndash;97%. Temperature losses depend on your climate; hot rooftops in summer can add 5&ndash;10% loss. Wiring losses should be kept under 2% with properly sized conductors. Soiling (dust, pollen, bird droppings) causes 2&ndash;5% loss in dry climates and less where rain cleans panels regularly. Shading from trees, chimneys, or adjacent buildings can cause 5&ndash;15% loss, and panel mismatch (different panels in the same string) adds another 2&ndash;5%.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">The difference between kW and kWh</h3>
+    <p class="mt-1 text-slate-600">A common point of confusion is the difference between kilowatts (kW) and kilowatt-hours (kWh). Kilowatts measure power &mdash; the rate at which energy is produced or consumed at an instant. Kilowatt-hours measure energy &mdash; the total amount of electricity produced or consumed over time. A 5 kW solar system can produce 5 kW at peak output, but over a day with 5 peak sun hours it produces 20 kWh of energy. Your electricity bill charges you for kWh, not kW. Think of it like speed vs distance: kW is how fast you are driving, kWh is how far you have travelled.</p>
+
+    <h3 class="mt-6 font-semibold text-slate-900">Seasonal adjustments for better accuracy</h3>
+    <p class="mt-1 text-slate-600">For a more detailed estimate, adjust the peak sun hours each month rather than using an annual average. Summer months will show higher production, while winter months will be lower. NREL&rsquo;s PVWatts calculator and other professional tools use hourly weather data for precise simulations, but the simple formula here provides a solid first approximation that is within 10&ndash;15% of more detailed models for most locations.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/power-factor-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">📐</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Power Factor Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Calculate real, reactive, and apparent power with power factor correction.</p>
+      </a>
+      <a href="/tools/kva-to-kw-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">📊</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">kVA to kW Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Convert apparent power to real power using power factor.</p>
+      </a>
+      <a href="/tools/battery-runtime-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🔋</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Battery Runtime Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Estimate how long a battery will power your devices.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function fmt(v) {
+      return v.toFixed(1);
+    }
+
+    function calculate() {
+      const wattage = parseFloat(el('wattage').value);
+      const sunHours = parseFloat(el('sunHours').value);
+      const lossPct = parseFloat(el('loss').value);
+
+      const cLoss = Math.min(100, Math.max(0, isNaN(lossPct) ? 20 : lossPct));
+
+      if (isNaN(wattage) || wattage <= 0 || isNaN(sunHours) || sunHours <= 0) {
+        el('r-daily').textContent = '\u2014';
+        el('r-monthly').textContent = '\u2014';
+        el('r-annual').textContent = '\u2014';
+        return;
+      }
+
+      const daily = (wattage * sunHours / 1000) * (1 - cLoss / 100);
+      const monthly = daily * 30;
+      const annual = daily * 365;
+
+      el('r-daily').textContent = fmt(daily) + ' kWh';
+      el('r-monthly').textContent = fmt(monthly) + ' kWh';
+      el('r-annual').textContent = fmt(annual) + ' kWh';
+    }
+
+    el('calcBtn').addEventListener('click', calculate);
+    el('wattage').addEventListener('keydown', function (e) { if (e.key === 'Enter') calculate(); });
+    el('sunHours').addEventListener('keydown', function (e) { if (e.key === 'Enter') calculate(); });
+    el('loss').addEventListener('keydown', function (e) { if (e.key === 'Enter') calculate(); });
+  </script>
+</ToolLayout>
