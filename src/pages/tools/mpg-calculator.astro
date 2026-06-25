@@ -1,0 +1,237 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'MPG / Gas Mileage Calculator';
+const description =
+  'Calculate your car\'s real-world MPG and L/100km from odometer readings and fuel fill-up data.';
+const intro =
+  'Calculate your car\'s real-world fuel economy from odometer and fuel fill-up data.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'How do I get accurate MPG data?', a: 'Fill your tank completely, reset your trip odometer, drive normally, then fill the tank completely again. Use the trip distance and the litres (or gallons) from the second fill.' },
+  { q: 'Should I include the first fill-up?', a: 'No. Track from a full tank to the next full tank. The first fill is just a starting reference point.' },
+  { q: 'Can I use this for L/100km?', a: 'Yes. The calculator shows both MPG and L/100km simultaneously, plus km/L.' },
+  { q: 'Does it work with UK gallons?', a: 'Yes — toggle between US and UK (imperial) gallons for accurate MPG comparisons.' },
+  { q: 'How many fill-ups should I track?', a: 'At least 3–5 fill-ups for a reliable average. Single-trip calculations can vary due to driving conditions.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Distance driven</span>
+        <input id="dist" type="number" step="any" min="0" value="300"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Distance unit</span>
+        <div class="mt-1 flex overflow-hidden rounded-xl border border-slate-300">
+          <button id="unit-km" class="dist-unit flex-1 py-3 text-sm font-medium transition">km</button>
+          <button id="unit-mi" class="dist-unit flex-1 py-3 text-sm font-medium transition">miles</button>
+        </div>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Fuel used</span>
+        <input id="fuel" type="number" step="any" min="0" value="35"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Fuel unit</span>
+        <select id="fuel-unit"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="L">Litres</option>
+          <option value="gal-us">Gallons (US)</option>
+          <option value="gal-uk">Gallons (UK)</option>
+        </select>
+      </label>
+    </div>
+    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">MPG (US)</div>
+        <div id="r-mpgus" class="mt-1 text-2xl font-bold text-slate-800">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600">L/100km</div>
+        <div id="r-lp100k" class="mt-1 text-2xl font-bold text-indigo-700">—</div>
+      </div>
+      <div class="rounded-xl bg-emerald-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-emerald-600">km/L</div>
+        <div id="r-kmpl" class="mt-1 text-2xl font-bold text-emerald-700">—</div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gauge-title gauge-desc">
+      <title id="gauge-title">Fuel gauge with odometer</title>
+      <desc id="gauge-desc">A car dashboard showing a fuel gauge and odometer with data flowing into the MPG calculation</desc>
+      <circle cx="200" cy="100" r="70" fill="#f8fafc" stroke="#e2e8f0" stroke-width="3" />
+      <path d="M200 30 A70 70 0 0 0 200 170" fill="none" stroke="#6366f1" stroke-width="8" stroke-linecap="round" />
+      <line x1="200" y1="100" x2="200" y2="45" stroke="#1e293b" stroke-width="3" stroke-linecap="round" />
+      <circle cx="200" cy="100" r="5" fill="#1e293b" />
+      <text x="200" y="190" text-anchor="middle" fill="#475569" font-size="12" font-weight="bold">Fuel Gauge</text>
+      <text x="200" y="80" text-anchor="middle" fill="#6366f1" font-size="10">3/4</text>
+      <rect x="340" y="50" width="160" height="60" rx="8" fill="#1e293b" />
+      <text x="350" y="75" fill="#94a3b8" font-size="9">Trip Odometer</text>
+      <text x="350" y="95" fill="#a5b4fc" font-size="20" font-weight="bold" font-family="monospace">452.6</text>
+      <text x="510" y="80" fill="#94a3b8" font-size="11">km</text>
+      <path d="M500 80 L540 80" stroke="#94a3b8" stroke-width="2" marker-end="url(#fa)" />
+      <rect x="550" y="40" width="200" height="80" rx="12" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2" />
+      <text x="650" y="65" text-anchor="middle" fill="#4f46e5" font-size="13" font-weight="bold">MPG Calculation</text>
+      <text x="650" y="85" text-anchor="middle" fill="#6366f1" font-size="12">Distance ÷ Fuel Used</text>
+      <text x="650" y="105" text-anchor="middle" fill="#818cf8" font-size="12" font-family="monospace">= 12.9 km/L</text>
+      <defs><marker id="fa" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#94a3b8" /></marker></defs>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">MPG = distance driven divided by fuel used between fill-ups</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How MPG calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      Your car's real-world fuel economy is calculated by dividing the distance travelled between fill-ups by the amount of fuel consumed. This is far more accurate than relying on the manufacturer's quoted figures, which are based on laboratory tests under ideal conditions. Real-world factors like traffic, weather, tyre pressure, and driving style can significantly affect your actual MPG.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator converts all inputs to a common base: kilometres for distance and litres for fuel. If you enter miles, they are converted using 1 mile = 1.60934 km. Gallons are converted using 1 US gallon = 3.785 L or 1 UK gallon = 4.546 L. From the distance in km and fuel in litres, L/100km is calculated, then MPG US, MPG UK, and km/L are derived.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-1 rounded-xl bg-white p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">L/100km</span> = fuel(L) / distance(km) × 100</div>
+      <div><span class="font-semibold">MPG (US)</span> = 235.215 ÷ L/100km</div>
+      <div><span class="font-semibold">MPG (UK)</span> = 282.481 ÷ L/100km</div>
+      <div><span class="font-semibold">km/L</span> = distance(km) ÷ fuel(L)</div>
+    </div>
+    <h3 class="mt-4 font-semibold text-slate-900">Worked example</h3>
+    <p class="mt-1 text-sm text-slate-600"><strong>300 km</strong> driven, <strong>35 L</strong> of fuel used.</p>
+    <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+      <div><span class="font-medium text-slate-700">L/100km:</span> <span class="text-slate-600">35 ÷ 300 × 100 = 11.67 L/100km</span></div>
+      <div><span class="font-medium text-slate-700">MPG (US):</span> <span class="text-slate-600">235.215 ÷ 11.67 = 20.2 MPG</span></div>
+      <div><span class="font-medium text-slate-700">MPG (UK):</span> <span class="text-slate-600">282.481 ÷ 11.67 = 24.2 MPG</span></div>
+      <div><span class="font-medium text-slate-700">km/L:</span> <span class="text-slate-600">300 ÷ 35 = 8.57 km/L</span></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚗</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Personal Mileage Tracking</h3>
+      <p class="mt-1 text-sm text-slate-600">Track your car's real fuel economy over time. Identify if efficiency changes after servicing or tyre changes.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🛒</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Vehicle Shopping</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare a used car's advertised MPG with its real-world figure from a test drive by tracking distance and fuel used.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💰</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fuel Budgeting</h3>
+      <p class="mt-1 text-sm text-slate-600">Use your calculated MPG to estimate monthly and annual fuel costs for better household budgeting.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔧</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Efficiency Diagnostics</h3>
+      <p class="mt-1 text-sm text-slate-600">A sudden drop in MPG can indicate mechanical issues like underinflated tyres, dirty air filters, or oxygen sensor problems.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the MPG calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Fill up completely</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill your tank to the top and reset your trip odometer. Drive normally until your next fill-up.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Record the data</h3>
+        <p class="mt-1 text-sm text-slate-600">At your next fill-up, note the trip distance and the litres (or gallons) you put in to fill the tank again.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Get your results</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the numbers and see your MPG, L/100km, and km/L instantly. Track over multiple fills for accuracy.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate MPG measurement</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Always fill to the same level</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill until the pump clicks off automatically. Using the same pump and technique each time reduces measurement error.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Average multiple fill-ups</h3>
+        <p class="mt-1 text-sm text-slate-600">A single tank may include a mix of city and highway driving. Track 5+ tanks for a reliable average of your car's typical economy.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Account for seasonal changes</h3>
+        <p class="mt-1 text-sm text-slate-600">Winter fuel blends and cold temperatures can reduce MPG by 10–15%. Compare summer and winter figures separately.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check tyre pressure regularly</h3>
+        <p class="mt-1 text-sm text-slate-600">Under-inflated tyres increase rolling resistance and reduce fuel economy. Keeping tyres at the recommended pressure can improve MPG by 3–5%.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/fuel-cost-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">⛽</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Fuel Cost Calculator</h3>
+        <p class="text-sm text-slate-600">Estimate trip fuel cost from efficiency and distance.</p>
+      </a>
+      <a href="/tools/fuel-economy-converter" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">📏</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Fuel Economy Converter</h3>
+        <p class="text-sm text-slate-600">Convert between MPG, L/100km, km/L.</p>
+      </a>
+      <a href="/tools/ev-efficiency-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">⚡</span>
+        <h3 class="mt-1 font-semibold text-slate-900">EV Efficiency Calculator</h3>
+        <p class="text-sm text-slate-600">Track electric vehicle efficiency.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    function fmt(n, d) { return n.toLocaleString(undefined, { maximumFractionDigits: d || 2 }); }
+    function update() {
+      const dist = parseFloat(document.getElementById('dist').value) || 0;
+      const fuel = parseFloat(document.getElementById('fuel').value) || 0;
+      const fuelUnit = document.getElementById('fuel-unit').value;
+      const distUnit = document.querySelector('.dist-unit.bg-indigo-600')?.id === 'unit-mi' ? 'mi' : 'km';
+      if (dist <= 0 || fuel <= 0) {
+        ['r-mpgus','r-lp100k','r-kmpl'].forEach(id => document.getElementById(id).textContent = '—');
+        return;
+      }
+      const distKm = distUnit === 'mi' ? dist * 1.60934 : dist;
+      let fuelL = fuel;
+      if (fuelUnit === 'gal-us') fuelL = fuel * 3.78541;
+      else if (fuelUnit === 'gal-uk') fuelL = fuel * 4.54609;
+      const lp100k = fuelL / distKm * 100;
+      document.getElementById('r-lp100k').textContent = fmt(lp100k) + ' L/100km';
+      document.getElementById('r-kmpl').textContent = fmt(distKm / fuelL) + ' km/L';
+      document.getElementById('r-mpgus').textContent = fmt(235.215 / lp100k) + ' MPG';
+    }
+    document.querySelectorAll('.dist-unit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dist-unit').forEach(b => { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('bg-white', 'text-slate-700'); });
+        btn.classList.remove('bg-white', 'text-slate-700');
+        btn.classList.add('bg-indigo-600', 'text-white');
+        update();
+      });
+    });
+    document.getElementById('unit-km').classList.add('bg-indigo-600', 'text-white');
+    ['dist','fuel','fuel-unit'].forEach(id => document.getElementById(id).addEventListener('input', update));
+    document.getElementById('fuel-unit').addEventListener('change', update);
+    update();
+  </script>
+</ToolLayout>

@@ -1,0 +1,226 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'WACC Calculator';
+const description =
+  'Free WACC calculator. Calculate a company\'s weighted average cost of capital from the cost of equity, cost of debt, and capital structure weights.';
+const intro =
+  'Enter the market value of equity, market value of debt, cost of equity, cost of debt, and corporate tax rate to calculate the weighted average cost of capital.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is WACC?', a: 'WACC (Weighted Average Cost of Capital) is the average rate of return a company must pay to all its capital providers — both debt holders and equity investors. It represents the minimum return a company must earn on its existing asset base to satisfy all investors.' },
+  { q: 'How is WACC calculated?', a: 'WACC = (E/V × Re) + (D/V × Rd × (1 - Tc)). E is equity value, D is debt value, V = E + D, Re is cost of equity, Rd is cost of debt, and Tc is the corporate tax rate. The debt component is tax-adjusted because interest payments are tax-deductible.' },
+  { q: 'What is the cost of equity?', a: 'The cost of equity is the return shareholders expect for investing in the company. It is typically estimated using the Capital Asset Pricing Model (CAPM): Re = Rf + β × (Rm - Rf), where Rf is the risk-free rate, β is the stock\'s volatility relative to the market, and (Rm - Rf) is the market risk premium.' },
+  { q: 'What is the cost of debt?', a: 'The cost of debt is the effective interest rate a company pays on its borrowed funds. It is usually the yield to maturity on existing debt or the average interest rate on current outstanding loans and bonds.' },
+  { q: 'Why is debt tax-adjusted in WACC?', a: 'Interest payments on debt are tax-deductible, which reduces the company\'s tax liability. This "tax shield" makes debt cheaper than equity on an after-tax basis. The formula multiplies the cost of debt by (1 - tax rate) to reflect this benefit.' },
+  { q: 'What is a good WACC?', a: 'A good WACC varies by industry, company size, and market conditions. Generally, a lower WACC indicates cheaper financing and higher company value. Companies with stable cash flows and strong credit ratings typically have lower WACCs than high-growth or risky companies.' },
+  { q: 'How is WACC used in valuation?', a: 'WACC is the discount rate used in Discounted Cash Flow (DCF) analysis to calculate the present value of future cash flows. The enterprise value is calculated by discounting projected free cash flows by the WACC. A higher WACC reduces the present value and vice versa.' },
+  { q: 'Can WACC change over time?', a: 'Yes. WACC changes with market conditions (interest rates, equity risk premium), company-specific factors (credit rating changes, stock price volatility), and capital structure changes (issuing more debt or equity). It should be recalculated periodically.' },
+  { q: 'What is the difference between WACC and cost of capital?', a: 'WACC is specifically the weighted average of all capital costs. Cost of capital is a broader term that can refer to any of the individual components (cost of equity, cost of debt) or the blended rate. WACC is the most commonly used blended measure.' },
+  { q: 'How do I estimate the cost of equity for a private company?', a: 'For private companies, use the build-up method starting with the risk-free rate, adding an equity risk premium, a size premium, and an industry-specific risk premium. Comparable public company betas can also be used as a reference point.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Market value of equity ($)</span>
+        <input id="equity" type="number" step="any" placeholder="50000000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Market value of debt ($)</span>
+        <input id="debt" type="number" step="any" placeholder="20000000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Cost of equity (%)</span>
+        <input id="re" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Cost of debt (%)</span>
+        <input id="rd" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Corporate tax rate (%)</span>
+        <input id="tax" type="number" step="any" placeholder="21" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">WACC</div><div id="r-wacc" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Equity weight</div><div id="r-weightE" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">After-tax cost of debt</div><div id="r-rdAfter" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How WACC is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      WACC is the weighted average of the cost of equity and the after-tax cost of debt:
+      <span class="font-mono">WACC = E/V × Re + D/V × Rd × (1 - Tc)</span>.
+      E is equity value, D is debt value, V = E + D, Re is cost of equity, Rd is cost of debt, and
+      Tc is the corporate tax rate. The debt component is reduced by the tax shield since interest
+      payments are tax-deductible.
+    </p>
+    <p class="mt-3 text-slate-600">
+      WACC reflects the blended return demanded by all of a company's capital providers. It is the
+      critical input for investment decisions — a project should only be pursued if its expected
+      return exceeds the WACC, as only then is the company creating value for its shareholders.
+      A company with a lower WACC has a competitive advantage because it can accept projects with
+      lower returns that competitors with higher WACC would have to reject.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A company has $50M equity, $20M debt, 12% cost of equity, 5% cost of debt, and 21% tax rate.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Total capital (V):</span> <span class="text-slate-600">$70,000,000</span></div>
+        <div><span class="font-medium text-slate-700">Equity weight:</span> <span class="text-slate-600">71.4%</span></div>
+        <div><span class="font-medium text-slate-700">Debt weight:</span> <span class="text-slate-600">28.6%</span></div>
+        <div><span class="font-medium text-slate-700">After-tax cost of debt:</span> <span class="text-slate-600">3.95%</span></div>
+        <div><span class="font-medium text-slate-700">WACC:</span> <span class="text-slate-600">9.69%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="WACC weighted pie chart">
+      <title>WACC Capital Structure Pie</title>
+      <desc>A pie chart showing equity (71.4%) and debt (28.6%) proportions, with labels showing the respective costs and the blended WACC result.</desc>
+      <path d="M 400 110 L 400 30 A 80 80 0 0 1 478 144 Z" fill="#6366f1"/>
+      <path d="M 400 110 L 478 144 A 80 80 0 0 1 400 190 A 80 80 0 0 1 322 144 Z" fill="#94a3b8"/>
+      <text x="440" y="40" fill="#6366f1" font-size="14" font-weight="bold">Equity 71.4%</text>
+      <text x="440" y="56" fill="#6366f1" font-size="12">Cost: 12%</text>
+      <text x="330" y="175" fill="#94a3b8" font-size="14" font-weight="bold">Debt 28.6%</text>
+      <text x="330" y="191" fill="#94a3b8" font-size="12">Cost: 5% (3.95% after tax)</text>
+      <rect x="560" y="60" width="160" height="80" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+      <text x="640" y="100" text-anchor="middle" fill="#22c55e" font-size="16" font-weight="bold">WACC</text>
+      <text x="640" y="122" text-anchor="middle" fill="#22c55e" font-size="14">9.69%</text>
+      <path d="M 480 110 L 560 100" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="400" y="215" text-anchor="middle" fill="#64748b" font-size="13">The weighted average of equity and debt costs determines the company's minimum required return</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">WACC blends the cost of equity and after-tax cost of debt based on their proportion in the capital structure</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About WACC</h2>
+    <p class="mt-2 text-slate-600">
+      WACC is one of the most important concepts in corporate finance. It serves as the discount
+      rate for valuing a company's future cash flows, as the hurdle rate for evaluating new
+      investment projects, and as a benchmark for assessing financial performance. A company that
+      consistently earns returns above its WACC is creating shareholder value; one that earns below
+      WACC is destroying it. Use the
+      <a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a>
+      to apply WACC as a discount rate, or the
+      <a href="/tools/irr-calculator" class="font-medium text-indigo-600 hover:underline">IRR Calculator</a>
+      to find the return rate that matches a project's break-even WACC.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter the market values of equity and debt (share price × shares outstanding for equity; book or market value of debt).</li>
+      <li>Enter the cost of equity (estimated via CAPM or other model) and cost of debt (average interest rate).</li>
+      <li>Enter the corporate tax rate and view your WACC, equity weight, and after-tax cost of debt.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Financial analysts use WACC for DCF valuations, investment bankers use it for deal pricing
+      and merger analysis, CFOs use it to set investment hurdle rates, and investors use it to
+      evaluate whether a company's returns justify its cost of capital.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for WACC</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Use market values (not book values) for the most accurate capital structure weights.</li>
+      <li>Update WACC periodically — risk-free rates, credit spreads, and equity risk premiums change over time.</li>
+      <li>For divisional or project-level analysis, adjust WACC for the specific risk profile rather than using the company-wide rate.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Financial Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate WACC for DCF valuations, comparable company analysis, and fairness opinions. Adjust WACC for different scenarios and capital structure assumptions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏢</span>
+      <h3 class="mt-2 font-semibold text-slate-900">CFO / Finance Team</h3>
+      <p class="mt-1 text-sm text-slate-600">Set the corporate hurdle rate for capital budgeting decisions. Evaluate whether proposed projects and acquisitions will generate returns above the cost of capital.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Investment Banker</h3>
+      <p class="mt-1 text-sm text-slate-600">Determine appropriate discount rates for merger models, LBO analyses, and transaction valuations. Present WACC assumptions in pitch books and fairness opinions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📈</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Equity Investor</h3>
+      <p class="mt-1 text-sm text-slate-600">Evaluate whether a company's return on invested capital (ROIC) exceeds its WACC — a key indicator of competitive advantage and value creation potential.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the WACC calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter capital structure</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the market value of equity and debt. Equity value is the current share price times shares outstanding. Debt value can be the book or estimated market value.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter cost components</h3>
+        <p class="mt-1 text-sm text-slate-600">Provide the cost of equity (from CAPM or build-up method) and the cost of debt (effective interest rate on existing debt). Both as percentages.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Apply the tax rate</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the corporate tax rate. The calculator automatically adjusts the cost of debt for the tax shield, showing the after-tax cost of debt and the final WACC.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate WACC estimation</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use market values, not book values</h3>
+        <p class="mt-1 text-sm text-slate-600">WACC should reflect the current market-based cost of capital. Use the current stock price for equity market value and the current trading price or yield for debt. Book values may misrepresent the true economic cost of capital.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Estimate cost of equity carefully</h3>
+        <p class="mt-1 text-sm text-slate-600">The cost of equity is the most subjective input. Use CAPM with a beta from a reliable source, use a risk-free rate matching the company's duration (10-year Treasury), and an equity risk premium appropriate for the market (typically 4.5-6%).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider the marginal tax rate</h3>
+        <p class="mt-1 text-sm text-slate-900">Use the marginal corporate tax rate rather than the effective rate, since the tax shield benefit applies to the next dollar of interest. In the US, the federal rate is 21%, plus any state taxes that apply.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a> — Discount future cash flows to present value using WACC as the discount rate.</li>
+      <li><a href="/tools/irr-calculator" class="font-medium text-indigo-600 hover:underline">IRR Calculator</a> — Find the internal rate of return and compare it to your WACC for investment decisions.</li>
+      <li><a href="/tools/roi-calculator" class="font-medium text-indigo-600 hover:underline">ROI Calculator</a> — Calculate simple return on investment for quick performance checks.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function update() {
+      const equity = parseFloat(el('equity').value);
+      const debt = parseFloat(el('debt').value);
+      const re = parseFloat(el('re').value);
+      const rd = parseFloat(el('rd').value);
+      const tax = parseFloat(el('tax').value);
+      el('err').textContent = '';
+      if (isNaN(equity) || isNaN(debt) || isNaN(re) || isNaN(rd)) { ['r-wacc', 'r-weightE', 'r-rdAfter'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (equity < 0 || debt < 0) { el('err').textContent = 'Values cannot be negative.'; return; }
+      const total = equity + debt;
+      if (total <= 0) { el('err').textContent = 'Total capital must be greater than zero.'; return; }
+      const wE = equity / total;
+      const wD = debt / total;
+      const t = isNaN(tax) ? 0 : tax / 100;
+      const rdAfter = rd / 100 * (1 - t);
+      const wacc = wE * (re / 100) + wD * rdAfter;
+      el('r-wacc').textContent = (wacc * 100).toFixed(2) + '%';
+      el('r-weightE').textContent = (wE * 100).toFixed(1) + '%';
+      el('r-rdAfter').textContent = (rdAfter * 100).toFixed(2) + '%';
+    }
+    ['equity', 'debt', 're', 'rd', 'tax'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

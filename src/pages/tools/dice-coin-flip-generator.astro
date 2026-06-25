@@ -1,0 +1,227 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Dice Roller & Coin Flip Generator';
+const description =
+  'Roll virtual dice from d4 to d20, flip coins, and keep a tally of all results. Perfect for tabletop RPGs and board games.';
+const intro =
+  'Roll any dice from d4 to d20, flip coins, and track your results with an automatic tally.';
+const category = { id: 'everyday', name: 'Everyday' };
+const faqs = [
+  { q: 'What dice types are supported?', a: 'd4, d6, d8, d10, d12, d20, and d100. Also supports coin flips (d2).' },
+  { q: 'Can I roll multiple dice at once?', a: 'Yes. Use the quantity selector to roll up to 20 dice or coins in one click.' },
+  { q: 'Are the rolls truly random?', a: 'The generator uses Math.random() which provides a good approximation of randomness for gaming purposes. It is not cryptographically secure but is suitable for tabletop RPGs.' },
+  { q: 'Does the tally persist?', a: 'The tally resets when you click "Clear Tally". It persists across individual rolls within the session.' },
+  { q: 'Can I use this for coin flips?', a: 'Yes. Select d2 from the dice type dropdown and quantity 1 for a single coin flip, or more for multiple flips.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Dice type</span>
+        <select id="diceType"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="2">Coin (d2)</option>
+          <option value="4">d4</option>
+          <option value="6" selected>d6</option>
+          <option value="8">d8</option>
+          <option value="10">d10</option>
+          <option value="12">d12</option>
+          <option value="20">d20</option>
+          <option value="100">d100</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Quantity</span>
+        <input id="qty" type="number" min="1" max="20" value="1"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <div class="flex items-end">
+        <button id="rollBtn"
+          class="w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Roll</button>
+      </div>
+    </div>
+    <div id="results" class="mt-6 grid gap-2 sm:grid-cols-5"></div>
+    <div id="totalSection" class="mt-4 hidden rounded-xl bg-indigo-50 p-4 text-center">
+      <span class="text-sm text-indigo-600">Total: </span><span id="rollTotal" class="text-xl font-bold text-indigo-700">0</span>
+    </div>
+    <div class="mt-4">
+      <h3 class="text-sm font-medium text-slate-700">Session tally</h3>
+      <div id="tally" class="mt-2 flex flex-wrap gap-2 text-sm"></div>
+      <button id="clearTally" class="mt-2 text-xs text-slate-500 hover:text-red-600">Clear tally</button>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="dice-title dice-desc">
+      <title id="dice-title">Dice and coin illustration</title>
+      <desc id="dice-desc">A collection of polyhedral dice shapes and a coin arranged artfully, representing a d6, d20, d4, and coin</desc>
+      <rect x="60" y="40" width="60" height="60" rx="10" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
+      <circle cx="90" cy="68" r="5" fill="#6366f1" />
+      <circle cx="78" cy="80" r="5" fill="#6366f1" />
+      <circle cx="102" cy="56" r="5" fill="#6366f1" />
+      <text x="90" y="115" text-anchor="middle" fill="#475569" font-size="12">d6</text>
+      <polygon points="270,50 330,30 370,70 330,110 270,90 250,70" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
+      <text x="310" y="78" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="bold">20</text>
+      <text x="310" y="120" text-anchor="middle" fill="#475569" font-size="12">d20</text>
+      <polygon points="480,60 520,40 560,60 540,100 500,100" fill="#fff" stroke="#cbd5e1" stroke-width="2" />
+      <text x="520" y="83" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="bold">4</text>
+      <text x="520" y="120" text-anchor="middle" fill="#475569" font-size="12">d4</text>
+      <circle cx="690" cy="70" r="30" fill="#fbbf24" stroke="#d97706" stroke-width="2" />
+      <text x="690" y="62" text-anchor="middle" fill="#92400e" font-size="14" font-weight="bold">H</text>
+      <text x="690" y="90" text-anchor="middle" fill="#92400e" font-size="14" font-weight="bold">T</text>
+      <line x1="690" y1="70" x2="690" y2="90" stroke="#d97706" stroke-width="1" />
+      <text x="690" y="120" text-anchor="middle" fill="#475569" font-size="12">Coin</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Polyhedral dice set and coin for random decision making</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How dice rolling and coin flips work</h2>
+    <p class="mt-2 text-slate-600">
+      Digital dice rolling uses pseudo-random number generation to simulate the outcome of a physical die. For a dN die, the generator produces a random integer between 1 and N inclusive. Each value has an equal probability of 1/N, matching the uniform distribution of a fair physical die. The coin flip is simulated as a d2, where 1 represents heads and 2 represents tails.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The session tally tracks the frequency of each result across all rolls in the current session, resetting only when you clear it. The total sum of all current roll values is displayed below each batch of results. When rolling multiple dice, the individual values and the sum are both shown.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h2 class="text-xl font-bold text-slate-900">Probability explained</h2>
+    <div class="mt-3 space-y-1 rounded-xl bg-white p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">Single die:</span> P(value = v) = 1 / N for v ∈ [1, N]</div>
+      <div><span class="font-semibold">Coin flip:</span> P(heads) = P(tails) = 0.5</div>
+      <div><span class="font-semibold">Multiple dice:</span> Sum distribution follows a triangular shape</div>
+    </div>
+    <h3 class="mt-4 font-semibold text-slate-900">Worked example</h3>
+    <p class="mt-1 text-sm text-slate-600">Rolling <strong>3d6</strong> (three six-sided dice):</p>
+    <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+      <div><span class="font-medium text-slate-700">Each die:</span> <span class="text-slate-600">Uniform 1–6, average 3.5</span></div>
+      <div><span class="font-medium text-slate-700">Sum range:</span> <span class="text-slate-600">3 to 18</span></div>
+      <div><span class="font-medium text-slate-700">Average sum:</span> <span class="text-slate-600">3 × 3.5 = 10.5</span></div>
+      <div><span class="font-medium text-slate-700">Most common:</span> <span class="text-slate-600">10 and 11 (each with 27/216 ≈ 12.5%)</span></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎲</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Tabletop RPGs</h3>
+      <p class="mt-1 text-sm text-slate-600">Roll d20 for skill checks, d6 for damage, or any combination for your Dungeons &amp; Dragons or Pathfinder sessions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎯</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Board Games</h3>
+      <p class="mt-1 text-sm text-slate-600">Replace lost dice or add extra randomness to any board game. Roll d6 for Monopoly, d10 for war games, or flip a coin for any binary decision.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🤷</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Decision Making</h3>
+      <p class="mt-1 text-sm text-slate-600">Stuck between two choices? Flip a coin. Need to pick from more options? Assign each to a number and roll the appropriate die.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧮</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Probability Teaching</h3>
+      <p class="mt-1 text-sm text-slate-600">Demonstrate probability concepts like uniform distribution, expected value, and the central limit theorem with live dice rolls.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the dice roller and coin flip generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose your die</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the dice type from d4 to d100, or choose Coin for a d2 coin flip.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set quantity</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter how many dice or coins to roll in one go. Results are shown individually and summed.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Roll and track</h3>
+        <p class="mt-1 text-sm text-slate-600">Roll as many times as you like. The tally builds up automatically until you clear it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for dice and coin flips</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use d100 for percentage rolls</h3>
+        <p class="mt-1 text-sm text-slate-600">A d100 (or percentile die) gives a result from 1 to 100, perfect for percentage-based checks in many RPG systems.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Roll multiple dice for bell curves</h3>
+        <p class="mt-1 text-sm text-slate-600">Rolling multiple dice and summing them creates a bell curve distribution where middle values are more common than extremes — more realistic for many game mechanics.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">The tally helps detect bias</h3>
+        <p class="mt-1 text-sm text-slate-600">After many rolls, the tally should show roughly equal counts for each value. Significant deviations might suggest your physical die is biased.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/random-number" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🔢</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Random Number Generator</h3>
+        <p class="text-sm text-slate-600">Generate random numbers within any range.</p>
+      </a>
+      <a href="/tools/random-string-generator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🔤</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Random String Generator</h3>
+        <p class="text-sm text-slate-600">Generate random strings with custom character sets.</p>
+      </a>
+      <a href="/tools/random-color-generator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🎨</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Random Color Generator</h3>
+        <p class="text-sm text-slate-600">Generate random colors in HEX, RGB, HSL.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const tallyData = {};
+    function roll() {
+      const sides = parseInt(document.getElementById('diceType').value, 10);
+      const qty = parseInt(document.getElementById('qty').value, 10) || 1;
+      const results = [];
+      for (let i = 0; i < qty; i++) {
+        const val = Math.floor(Math.random() * sides) + 1;
+        results.push(val);
+        tallyData[val] = (tallyData[val] || 0) + 1;
+      }
+      const container = document.getElementById('results');
+      container.innerHTML = results.map(v =>
+        `<div class="rounded-lg bg-indigo-50 p-3 text-center"><div class="text-2xl font-bold text-indigo-700">${v}</div><div class="text-xs text-indigo-500">of ${sides}</div></div>`
+      ).join('');
+      const total = results.reduce((a, b) => a + b, 0);
+      const totalSection = document.getElementById('totalSection');
+      totalSection.classList.remove('hidden');
+      document.getElementById('rollTotal').textContent = total;
+      updateTally();
+    }
+    function updateTally() {
+      const container = document.getElementById('tally');
+      const keys = Object.keys(tallyData).sort((a, b) => a - b);
+      if (keys.length === 0) { container.innerHTML = '<span class="text-slate-400 text-xs">No rolls yet</span>'; return; }
+      container.innerHTML = keys.map(k =>
+        `<span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">${k}: ${tallyData[k]}</span>`
+      ).join('');
+    }
+    document.getElementById('rollBtn').addEventListener('click', roll);
+    document.getElementById('clearTally').addEventListener('click', () => {
+      Object.keys(tallyData).forEach(k => delete tallyData[k]);
+      updateTally();
+    });
+    updateTally();
+  </script>
+</ToolLayout>

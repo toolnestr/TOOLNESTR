@@ -1,0 +1,241 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'IRR Calculator';
+const description =
+  'Free IRR calculator. Calculate the internal rate of return for a series of cash flows — the discount rate that makes the net present value zero.';
+const intro =
+  'Enter an initial investment followed by a series of future cash flows to find the internal rate of return — the annualized return rate of the investment.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is IRR?', a: 'Internal Rate of Return (IRR) is the discount rate that makes the net present value (NPV) of a series of cash flows equal to zero. It represents the annualized effective return rate of an investment and is used to compare the profitability of different investments.' },
+  { q: 'How is IRR calculated?', a: 'IRR is found by solving NPV = Σ CFt / (1 + IRR)^t = 0. There is no closed-form formula — it is calculated iteratively using numerical methods like the Newton-Raphson method or trial and error until the NPV converges to zero.' },
+  { q: 'What is a good IRR?', a: 'A good IRR depends on the cost of capital and the risk of the investment. Generally, an IRR higher than the WACC or hurdle rate indicates a value-creating investment. Higher IRRs are better, but very high IRRs may indicate unrealistic projections.' },
+  { q: 'What is the difference between IRR and ROI?', a: 'ROI is the total percentage return without considering time value of money. IRR accounts for the timing of cash flows and provides an annualized return rate. For multi-year investments with uneven cash flows, IRR is more accurate than ROI.' },
+  { q: 'Can IRR be negative?', a: 'Yes. If the total undiscounted cash flows are less than the initial investment, the IRR will be negative, meaning the investment loses money. The calculator will show a negative IRR in such cases.' },
+  { q: 'What is the multiple IRR problem?', a: 'Some cash flow patterns with alternating positive and negative flows (non-conventional cash flows) can produce multiple IRRs. In such cases, use NPV or Modified IRR (MIRR) instead of standard IRR for decision-making.' },
+  { q: 'How is IRR used in venture capital?', a: 'VC firms use IRR to measure fund performance. A target IRR of 20-30% is common for early-stage venture investments. IRR accounts for the timing of capital calls and distributions, making it the standard performance metric in private equity.' },
+  { q: 'What is the reinvestment rate assumption in IRR?', a: 'IRR assumes that intermediate cash flows can be reinvested at the same IRR. If the IRR is very high (e.g., 50%), this assumption may be unrealistic. Modified IRR (MIRR) addresses this by allowing a separate reinvestment rate.' },
+  { q: 'How do I compare IRR across investments?', a: 'When comparing investments, choose the one with the highest IRR, provided it exceeds your minimum acceptable rate of return. However, for mutually exclusive projects, use NPV instead, as IRR can favor smaller projects with higher percentage returns.' },
+  { q: 'What is the IRR for a bond?', a: 'The IRR of a bond is its Yield to Maturity (YTM). If you buy a bond at par ($1,000) with a 5% coupon, the IRR equals the coupon rate. If you buy at a discount or premium, the IRR adjusts to reflect the capital gain or loss at maturity.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial investment ($)</span>
+        <input id="invest" type="number" step="any" placeholder="50000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Cash flows per year (comma separated)</span>
+        <input id="cashflows" type="text" placeholder="10000, 15000, 20000, 25000, 30000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Internal Rate of Return</div><div id="r-irr" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total undiscounted return</div><div id="r-total" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">NPV at 10% discount</div><div id="r-npv" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How IRR is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      IRR is the discount rate that satisfies:
+      <span class="font-mono">0 = Σ CFt / (1 + IRR)^t - Initial Investment</span>.
+      It is found through iterative numerical methods — the calculator starts with a guess and
+      refines the rate until the NPV converges to zero within a tolerance of 0.01%.
+    </p>
+    <p class="mt-3 text-slate-600">
+      IRR is one of the most widely used metrics in finance because it expresses investment returns
+      as an intuitive annual percentage. Unlike NPV which gives a dollar figure, IRR gives a rate
+      of return that can be directly compared across investments of different sizes and durations.
+      However, IRR has limitations — it assumes reinvestment at the IRR rate and can produce
+      multiple values for non-conventional cash flows, which is why NPV is preferred for complex
+      investment decisions.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A $50,000 investment generates $10,000, $15,000, $20,000, $25,000, and $30,000 over 5 years.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Initial investment:</span> <span class="text-slate-600">$50,000</span></div>
+        <div><span class="font-medium text-slate-700">Total cash received:</span> <span class="text-slate-600">$100,000</span></div>
+        <div><span class="font-medium text-slate-700">Undiscounted return:</span> <span class="text-slate-600">$50,000 (100%)</span></div>
+        <div><span class="font-medium text-slate-700">IRR:</span> <span class="text-slate-600">~24.8%</span></div>
+        <div><span class="font-medium text-slate-700">NPV at 10%:</span> <span class="text-slate-600">~$22,346</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NPV curve with IRR marked">
+      <title>NPV Profile Curve</title>
+      <desc>A downward-sloping curve showing NPV on the vertical axis and discount rate on the horizontal axis. The point where the curve crosses zero is the IRR.</desc>
+      <line x1="60" y1="180" x2="740" y2="180" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="60" y1="180" x2="60" y2="30" stroke="#94a3b8" stroke-width="2"/>
+      <path d="M 80 40 Q 200 45 300 80 Q 400 120 440 180 Q 460 210 500 190" stroke="#6366f1" stroke-width="3" fill="none"/>
+      <circle cx="380" cy="180" r="8" fill="#22c55e" stroke="white" stroke-width="2"/>
+      <line x1="380" y1="185" x2="380" y2="200" stroke="#22c55e" stroke-width="2"/>
+      <text x="380" y="212" text-anchor="middle" fill="#22c55e" font-size="14" font-weight="bold">IRR ≈ 24.8%</text>
+      <text x="380" y="180" fill="white" font-size="10" text-anchor="middle">✓</text>
+      <text x="700" y="42" fill="#6366f1" font-size="12">NPV Profile</text>
+      <text x="400" y="198" text-anchor="middle" fill="#64748b" font-size="13">Discount Rate</text>
+      <text x="25" y="105" text-anchor="middle" fill="#64748b" font-size="13" transform="rotate(-90 25 105)">NPV</text>
+      <text x="200" y="65" fill="#22c55e" font-size="11">NPV &gt; 0</text>
+      <text x="500" y="150" fill="#ef4444" font-size="11">NPV &lt; 0</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">The NPV curve crosses zero at the IRR — the discount rate where the investment breaks even</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About internal rate of return</h2>
+    <p class="mt-2 text-slate-600">
+      IRR is a cornerstone metric in corporate finance, private equity, venture capital, and real
+      estate investing. It provides a single percentage figure that summarizes the expected return
+      of an investment, considering both the size and timing of all cash flows. Unlike the simple
+      ROI calculation, IRR captures the time value of money, making it far more accurate for
+      investments with cash flows spread over multiple years. Use the
+      <a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a>
+      to see the dollar value created at any discount rate, and the
+      <a href="/tools/roi-calculator" class="font-medium text-indigo-600 hover:underline">ROI Calculator</a>
+      for a simpler percentage return measure.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter the initial investment amount (positive number for cash outflow).</li>
+      <li>Enter future cash flows as comma-separated values, one per year.</li>
+      <li>View the IRR, total undiscounted return, and NPV at a 10% discount rate.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use IRR</h2>
+    <p class="mt-2 text-slate-600">
+      IRR is ideal for comparing investment opportunities of different sizes, evaluating venture
+      capital and private equity investments, assessing real estate development projects, and
+      determining whether a project's return exceeds the company's cost of capital.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for IRR</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Always compare IRR against your cost of capital or hurdle rate — an IRR of 15% is poor if financing costs 18%.</li>
+      <li>Be cautious with IRR for non-conventional cash flows (alternating positive and negative) — use MIRR or NPV instead.</li>
+      <li>For mutually exclusive projects, use NPV for the final decision since IRR can rank smaller projects higher.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏢</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Private Equity Manager</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate IRR on leveraged buyouts and growth equity investments. Track fund-level IRR across all portfolio companies to report to limited partners.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏠</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Real Estate Developer</h3>
+      <p class="mt-1 text-sm text-slate-600">Evaluate development projects with construction costs followed by sale or rental income over several years. Compare IRR across potential projects to prioritize capital allocation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚀</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Venture Capitalist</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate the IRR of startup investments across multiple funding rounds and exit scenarios. Compare projected IRR against fund return targets of 20-30%.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Financial Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Build IRR models for project evaluation, acquisition analysis, and capital budgeting. Present IRR alongside NPV and payback period for comprehensive investment recommendations.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the IRR calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the investment</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the initial investment amount. This is the cash outflow at time zero before any returns are generated.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter future cash flows</h3>
+        <p class="mt-1 text-sm text-slate-600">Provide the expected annual net cash flows as comma-separated values. The calculator handles any number of periods — add one value per year.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review your return</h3>
+        <p class="mt-1 text-sm text-slate-600">See the IRR as an annualized percentage, the total undiscounted profit, and the NPV at a 10% discount rate for comparison.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using IRR effectively</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use NPV alongside IRR</h3>
+        <p class="mt-1 text-sm text-slate-600">IRR can give misleading results for projects with unconventional cash flows or when comparing mutually exclusive projects of different sizes. Always check NPV as a complementary metric — it tells you the actual dollar value being created.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand the reinvestment assumption</h3>
+        <p class="mt-1 text-sm text-slate-600">IRR assumes intermediate cash flows can be reinvested at the same IRR. If your calculated IRR is very high (40%+), this assumption is likely unrealistic. Consider using Modified IRR (MIRR) with a more conservative reinvestment rate.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for multiple IRRs</h3>
+        <p class="mt-1 text-sm text-slate-900">Cash flows that alternate between positive and negative (e.g., investment, positive returns, then more investment) can produce multiple IRRs. If the calculator shows unexpected results or the IRR seems wrong, check your cash flow pattern and consider using NPV instead.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a> — Calculate the net present value of cash flows at a given discount rate.</li>
+      <li><a href="/tools/roi-calculator" class="font-medium text-indigo-600 hover:underline">ROI Calculator</a> — Simple return on investment calculation without time value adjustments.</li>
+      <li><a href="/tools/wacc-calculator" class="font-medium text-indigo-600 hover:underline">WACC Calculator</a> — Estimate the cost of capital to use as a hurdle rate for IRR comparison.</li>
+      <li><a href="/tools/present-future-value-calculator" class="font-medium text-indigo-600 hover:underline">PV/FV Calculator</a> — Calculate present and future values for single-sum and periodic investments.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function calcIRR(cfs, guess) {
+      const maxIter = 1000;
+      const tol = 1e-8;
+      let r = guess || 0.1;
+      for (let i = 0; i < maxIter; i++) {
+        let npv = 0;
+        let dnpv = 0;
+        for (let t = 0; t < cfs.length; t++) {
+          npv += cfs[t] / Math.pow(1 + r, t);
+          dnpv += -t * cfs[t] / Math.pow(1 + r, t + 1);
+        }
+        if (Math.abs(npv) < tol) return r;
+        if (dnpv === 0) return NaN;
+        r = r - npv / dnpv;
+      }
+      return NaN;
+    }
+    function update() {
+      const invest = parseFloat(el('invest').value);
+      const cfStr = el('cashflows').value.trim();
+      el('err').textContent = '';
+      if (isNaN(invest) || invest <= 0 || !cfStr) { ['r-irr', 'r-total', 'r-npv'].forEach((id) => (el(id).textContent = '—')); return; }
+      const cfs = cfStr.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+      if (cfs.length === 0) { ['r-irr', 'r-total', 'r-npv'].forEach((id) => (el(id).textContent = '—')); return; }
+      const allCfs = [-invest, ...cfs];
+      const totalReturn = cfs.reduce((a, b) => a + b, 0) - invest;
+      let npv10 = -invest;
+      for (let t = 0; t < cfs.length; t++) npv10 += cfs[t] / Math.pow(1.10, t + 1);
+      el('r-total').textContent = fmt(totalReturn);
+      el('r-npv').textContent = fmt(npv10);
+      let irr = calcIRR(allCfs, 0.1);
+      if (isNaN(irr)) irr = calcIRR(allCfs, 0.5);
+      if (isNaN(irr)) irr = calcIRR(allCfs, -0.1);
+      if (!isNaN(irr) && irr > -0.9999) {
+        el('r-irr').textContent = (irr * 100).toFixed(2) + '%';
+      } else {
+        el('r-irr').textContent = 'N/A';
+      }
+    }
+    ['invest', 'cashflows'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

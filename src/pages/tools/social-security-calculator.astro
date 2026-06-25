@@ -1,0 +1,243 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Social Security Calculator';
+const description =
+  'Free Social Security calculator. Estimate your monthly retirement benefit based on your earnings history and claiming age, including early and delayed retirement adjustments.';
+const intro =
+  'Enter your current age, annual income, and expected claiming age to estimate your monthly Social Security retirement benefit. See how claiming early or delaying affects your payment.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'How is Social Security calculated?', a: 'Social Security benefits are based on your highest 35 years of earnings, adjusted for wage inflation (indexed). The Average Indexed Monthly Earnings (AIME) is calculated, then the Primary Insurance Amount (PIA) is determined using progressive bend points that replace a higher percentage of lower earnings.' },
+  { q: 'What is the full retirement age?', a: 'Full Retirement Age (FRA) depends on your birth year. For those born 1960 or later, FRA is 67. For those born 1943-1954, FRA is 66. It gradually increases by 2 months per year for birth years 1955-1959.' },
+  { q: 'What happens if I claim early?', a: 'You can claim as early as age 62, but your benefit is permanently reduced. The reduction is 5/9 of 1% per month for the first 36 months before FRA, plus 5/12 of 1% per month for any additional months. Claiming at 62 (when FRA is 67) results in a 30% reduction.' },
+  { q: 'What happens if I delay claiming?', a: 'Delaying beyond FRA increases your benefit by 8% per year (Delayed Retirement Credits) until age 70. Claiming at 70 when FRA is 67 gives you a 24% increase (3 years × 8%). There is no benefit to delaying past 70.' },
+  { q: 'How does spousal benefits work?', a: 'A spouse can claim up to 50% of the higher-earning spouse\'s PIA at their own FRA. If the spouse claims early, the spousal benefit is reduced. A divorced spouse may qualify if the marriage lasted at least 10 years.' },
+  { q: 'Are Social Security benefits taxable?', a: 'Up to 85% of Social Security benefits may be subject to federal income tax if your combined income (AGI + nontaxable interest + 50% of SS benefits) exceeds certain thresholds: $25,000 for single filers, $32,000 for married filing jointly.' },
+  { q: 'What is the Social Security wage base?', a: 'The Social Security portion of FICA tax (6.2%) is only collected on earnings up to the annual wage base limit, which is $168,600 in 2025. Earnings above this amount are not subject to Social Security tax and are not counted in benefit calculations.' },
+  { q: 'Can I work while receiving Social Security?', a: 'Yes, but if you are under FRA and earn more than the annual limit ($22,320 in 2025), $1 in benefits is withheld for every $2 earned above the limit. In the year you reach FRA, a higher limit applies with $1 withheld per $3 earned.' },
+  { q: 'How do cost-of-living adjustments (COLA) work?', a: 'Social Security benefits are adjusted annually for inflation based on the Consumer Price Index for Urban Wage Earners and Clerical Workers (CPI-W). The 2025 COLA was 2.5%. These adjustments help maintain purchasing power over time.' },
+  { q: 'Is Social Security going to run out?', a: 'According to the 2024 Trustees Report, the Social Security Trust Fund is projected to be depleted by 2035, after which ongoing payroll taxes would cover about 80% of scheduled benefits. Congress may implement changes before then to shore up the system.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current age</span>
+        <input id="curAge" type="number" step="1" placeholder="35" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual income ($)</span>
+        <input id="income" type="number" step="any" placeholder="75000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Claiming age</span>
+        <input id="claimAge" type="number" step="1" placeholder="67" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Monthly benefit at claiming age</div><div id="r-benefit" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">At Full Retirement Age (67)</div><div id="r-fra" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Annual benefit at claiming</div><div id="r-annual" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Social Security benefits are estimated</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator estimates your benefit by projecting your Average Indexed Monthly Earnings (AIME)
+      based on your current income, then applying the progressive PIA formula with bend points:
+      <span class="font-mono">PIA = 90% of first $1,174 of AIME + 32% of AIME between $1,174 and $7,078 + 15% of AIME above $7,078</span>
+      (2025 bend points). Benefits claimed before or after Full Retirement Age are adjusted with
+      early retirement reductions or Delayed Retirement Credits.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Social Security is a progressive system designed to replace a higher percentage of pre-retirement
+      income for lower earners. A low-income worker might receive benefits replacing 50-60% of their
+      pre-retirement income, while a high-income earner might only get 25-35% replacement. This is
+      why Social Security alone is rarely sufficient for retirement — it is designed to be part of a
+      three-legged stool alongside personal savings (401k/IRA) and other income sources.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 35-year-old earning $75,000 who claims at age 67 (Full Retirement Age).</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Current age:</span> <span class="text-slate-600">35</span></div>
+        <div><span class="font-medium text-slate-700">Annual income:</span> <span class="text-slate-600">$75,000</span></div>
+        <div><span class="font-medium text-slate-700">Full Retirement Age:</span> <span class="text-slate-600">67</span></div>
+        <div><span class="font-medium text-slate-700">Estimated PIA at FRA:</span> <span class="text-slate-600">~$1,850/month</span></div>
+        <div><span class="font-medium text-slate-700">If claimed at 62:</span> <span class="text-slate-600">~$1,295/month (30% less)</span></div>
+        <div><span class="font-medium text-slate-700">If claimed at 70:</span> <span class="text-slate-600">~$2,294/month (24% more)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Claiming age slider with benefit curve">
+      <title>Social Security Benefit by Claiming Age</title>
+      <desc>A curve showing monthly benefit amount increasing from age 62 through age 70, with the Full Retirement Age marked at 67 and the benefit rising by 8% per year of delay.</desc>
+      <line x1="60" y1="190" x2="740" y2="190" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="60" y1="190" x2="60" y2="30" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="140" y1="165" x2="140" y2="195" stroke="#94a3b8" stroke-width="1"/>
+      <text x="140" y="210" text-anchor="middle" fill="#64748b" font-size="11">62</text>
+      <line x1="280" y1="165" x2="280" y2="195" stroke="#94a3b8" stroke-width="1"/>
+      <text x="280" y="210" text-anchor="middle" fill="#64748b" font-size="11">64</text>
+      <line x1="420" y1="165" x2="420" y2="195" stroke="#6366f1" stroke-width="2"/>
+      <text x="420" y="210" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="bold">67 FRA</text>
+      <line x1="560" y1="165" x2="560" y2="195" stroke="#94a3b8" stroke-width="1"/>
+      <text x="560" y="210" text-anchor="middle" fill="#64748b" font-size="11">69</text>
+      <line x1="700" y1="165" x2="700" y2="195" stroke="#94a3b8" stroke-width="1"/>
+      <text x="700" y="210" text-anchor="middle" fill="#64748b" font-size="11">70</text>
+      <path d="M 140 170 Q 280 150 420 120 Q 560 90 700 60" stroke="#6366f1" stroke-width="3" fill="none"/>
+      <text x="140" y="163" text-anchor="middle" fill="#ef4444" font-size="10">-30%</text>
+      <text x="420" y="115" text-anchor="middle" fill="#6366f1" font-size="12" font-weight="bold">100% PIA</text>
+      <text x="700" y="55" text-anchor="middle" fill="#22c55e" font-size="10">+24%</text>
+      <text x="400" y="195" text-anchor="middle" fill="#64748b" font-size="13">Claiming Age</text>
+      <text x="25" y="110" text-anchor="middle" fill="#64748b" font-size="13" transform="rotate(-90 25 110)">Monthly Benefit</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Benefits increase the longer you wait to claim, up to age 70 — each year of delay adds 8% to your monthly payment</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About Social Security benefits</h2>
+    <p class="mt-2 text-slate-600">
+      Social Security is a federal social insurance program that provides retirement income, disability
+      benefits, and survivor benefits to American workers and their families. Funded through payroll
+      taxes (FICA), it covers over 180 million workers and pays benefits to more than 65 million
+      people. For most retirees, Social Security provides about 30-40% of their retirement income,
+      making it a critical component of financial security in old age. Use the
+      <a href="/tools/401k-calculator" class="font-medium text-indigo-600 hover:underline">401(k) Calculator</a>
+      and
+      <a href="/tools/roth-ira-calculator" class="font-medium text-indigo-600 hover:underline">Roth IRA Calculator</a>
+      to plan the rest of your retirement income.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter your current age and approximate annual income.</li>
+      <li>Enter the age at which you plan to claim benefits (between 62 and 70).</li>
+      <li>See your estimated monthly benefit at your claiming age and at Full Retirement Age.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use this calculator when planning your retirement timeline, deciding whether to claim early or
+      delay Social Security, creating a retirement income projection, or evaluating how a higher
+      income will affect your future benefits.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for maximizing Social Security</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Delaying benefits from FRA to age 70 increases your monthly payment by 8% per year guaranteed for life.</li>
+      <li>If you expect to live longer than average (past about age 80), delaying maximizes total lifetime benefits.</li>
+      <li>Coordinate spousal benefits — the higher earner should delay while the lower earner claims earlier if needed.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👴</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Pre-Retiree (55+)</h3>
+      <p class="mt-1 text-sm text-slate-600">Decide the optimal claiming age based on your health, life expectancy, and other retirement income sources. Delaying to 70 can significantly increase monthly cash flow.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💑</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Married Couple</h3>
+      <p class="mt-1 text-sm text-slate-600">Coordinate claiming strategies between spouses. Maximize survivor benefits by having the higher earner delay while the lower earner claims spousal benefits at FRA.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💪</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Mid-Career Professional</h3>
+      <p class="mt-1 text-sm text-slate-600">See how your current salary and future earnings growth translate into Social Security benefits. Use this information alongside your 401(k) projections to set savings targets.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔄</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Divorced Individual</h3>
+      <p class="mt-1 text-sm text-slate-600">If your marriage lasted 10+ years, you may qualify for spousal or survivor benefits on your ex-spouse's record. This calculator helps estimate what you might receive.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Social Security calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your age and income</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your current age and estimated annual income. The calculator assumes your income stays relatively stable and you work until your claiming age.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose your claiming age</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the age you plan to start receiving benefits, between 62 (earliest) and 70 (latest). The calculator adjusts for early or delayed claiming.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review your estimate</h3>
+        <p class="mt-1 text-sm text-slate-600">See your estimated monthly and annual benefits at your chosen claiming age and at FRA. Use this to plan your overall retirement income strategy.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for Social Security planning</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider your break-even age</h3>
+        <p class="mt-1 text-sm text-slate-600">The break-even age is when the total benefits received from delaying equals what you would have received by claiming earlier. For most people, the break-even is around age 80-82. If you expect to live past that age, delaying maximizes total lifetime benefits.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Factor in taxes on benefits</h3>
+        <p class="mt-1 text-sm text-slate-600">Up to 85% of Social Security benefits may be taxable if your combined income exceeds certain thresholds. Plan your withdrawals from 401(k) and IRA accounts strategically to minimize the tax impact on your Social Security benefits.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Create a Social Security account</h3>
+        <p class="mt-1 text-sm text-slate-900">Create your account at ssa.gov to see your official earnings record and estimated benefits. The Social Security Administration's estimates are personalized based on your actual work history and are more accurate than any calculator.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/401k-calculator" class="font-medium text-indigo-600 hover:underline">401(k) Calculator</a> — Project your employer-sponsored retirement savings alongside Social Security.</li>
+      <li><a href="/tools/roth-ira-calculator" class="font-medium text-indigo-600 hover:underline">Roth IRA Calculator</a> — Compare Roth IRA growth and plan your tax-free retirement income.</li>
+      <li><a href="/tools/retirement-calculator" class="font-medium text-indigo-600 hover:underline">Retirement Calculator</a> — Comprehensive retirement planning with all income sources.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    function calcPIA(aime) {
+      const bend1 = 1174;
+      const bend2 = 7078;
+      let pia = 0;
+      pia += 0.90 * Math.min(aime, bend1);
+      pia += 0.32 * Math.max(0, Math.min(aime - bend1, bend2 - bend1));
+      pia += 0.15 * Math.max(0, aime - bend2);
+      return pia;
+    }
+    function update() {
+      const curAge = parseFloat(el('curAge').value);
+      const income = parseFloat(el('income').value);
+      const claimAge = parseFloat(el('claimAge').value);
+      el('err').textContent = '';
+      if (isNaN(curAge) || isNaN(income) || isNaN(claimAge)) { ['r-benefit', 'r-fra', 'r-annual'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (claimAge < 62 || claimAge > 70) { el('err').textContent = 'Claiming age must be between 62 and 70.'; return; }
+      if (claimAge < curAge) { el('err').textContent = 'Claiming age cannot be less than current age.'; return; }
+      const aime = Math.min(income * 0.8 / 12, 15000);
+      const pia = calcPIA(aime);
+      const fra = 67;
+      let benefit;
+      if (claimAge >= fra) {
+        const months = (claimAge - fra) * 12;
+        benefit = pia * (1 + months * 0.0067);
+      } else {
+        const months = (fra - claimAge) * 12;
+        const reduction = Math.min(months * 0.00556, 36 * 0.00556) + Math.max(0, months - 36) * 0.00417;
+        benefit = pia * (1 - reduction);
+      }
+      el('r-benefit').textContent = fmt(Math.round(benefit));
+      el('r-fra').textContent = fmt(Math.round(pia));
+      el('r-annual').textContent = fmt(Math.round(benefit * 12));
+    }
+    ['curAge', 'income', 'claimAge'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

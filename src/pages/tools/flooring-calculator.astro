@@ -1,0 +1,233 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Flooring Calculator';
+const description = 'Calculate flooring material needed in square feet and boxes with estimated cost.';
+const intro = 'Estimate how many boxes or square feet of flooring you need including the total cost.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'How much extra flooring should I buy?', a: 'Buy 10-15% extra for waste. Diagonal installations and rooms with many angles need 15%. Simple rectangular rooms need 10%. Store unopened boxes for potential returns.' },
+  { q: 'What is the difference between hardwood and engineered wood?', a: 'Hardwood is solid wood throughout, can be refinished multiple times, and is more expensive. Engineered wood has a real wood veneer over plywood layers, is more moisture-resistant, and works better in basements.' },
+  { q: 'Can I install new flooring over old?', a: 'Yes, but only if the old floor is flat, in good condition, and the added height does not cause issues with doors and transitions. Vinyl and laminate can go over tile. Hardwood usually requires a full subfloor replacement.' },
+  { q: 'How do I account for stairs in flooring?', a: 'Measure each stair tread (depth x width) and riser (height x width). Add them together to get the total area. Stairs use significantly more material per square foot due to cuts and waste.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Box covers (sq ft)</span>
+        <input id="box-cov" type="number" step="any" placeholder="20" value="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Price per box ($)</span>
+        <input id="price" type="number" step="any" placeholder="45" value="45" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Waste (%)</span>
+        <input id="waste" type="number" min="0" step="1" value="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Flooring needed (with waste)</div>
+        <div id="r-total" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-cost" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Room area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Boxes needed</div><div id="r-boxes" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Material cost</div><div id="r-mat" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="floor-title floor-desc">
+      <title id="floor-title">Flooring plank layout diagram</title>
+      <desc id="floor-desc">A rectangular room shown from above with flooring planks laid in parallel rows</desc>
+      <rect x="80" y="60" width="540" height="240" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" rx="4" />
+      <g stroke="#e0e7ff" stroke-width="2">
+        <line x1="80" y1="120" x2="620" y2="120" />
+        <line x1="80" y1="180" x2="620" y2="180" />
+        <line x1="80" y1="240" x2="620" y2="240" />
+      </g>
+      <g stroke="#c7d2fe" stroke-width="1.5">
+        <line x1="180" y1="60" x2="180" y2="120" />
+        <line x1="280" y1="60" x2="280" y2="120" />
+        <line x1="380" y1="60" x2="380" y2="120" />
+        <line x1="500" y1="60" x2="500" y2="120" />
+        <line x1="150" y1="120" x2="150" y2="180" />
+        <line x1="260" y1="120" x2="260" y2="180" />
+        <line x1="370" y1="120" x2="370" y2="180" />
+        <line x1="480" y1="120" x2="480" y2="180" />
+        <line x1="200" y1="180" x2="200" y2="240" />
+        <line x1="310" y1="180" x2="310" y2="240" />
+        <line x1="420" y1="180" x2="420" y2="240" />
+        <line x1="530" y1="180" x2="530" y2="240" />
+        <line x1="160" y1="240" x2="160" y2="300" />
+        <line x1="270" y1="240" x2="270" y2="300" />
+        <line x1="380" y1="240" x2="380" y2="300" />
+        <line x1="490" y1="240" x2="490" y2="300" />
+      </g>
+      <rect x="80" y="60" width="100" height="60" fill="#6366f1" opacity="0.08" rx="2" />
+      <rect x="180" y="60" width="100" height="60" fill="#6366f1" opacity="0.08" rx="2" />
+      <rect x="280" y="60" width="100" height="60" fill="#6366f1" opacity="0.08" rx="2" />
+      <text x="350" y="330" text-anchor="middle" font-size="13" fill="#64748b" font-family="system-ui,sans-serif">Planks laid in staggered rows for strength and appearance</text>
+      <line x1="80" y1="40" x2="620" y2="40" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="350" y="30" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Length (L)</text>
+      <line x1="60" y1="60" x2="60" y2="300" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="48" y="185" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(-90 48 185)">Width (W)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Flooring planks are laid in staggered parallel rows across the room</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the flooring calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The flooring calculator computes the total material needed for any rectangular room based on its dimensions. It calculates the room area, adds your chosen waste percentage, and converts the total into the number of boxes required based on the box coverage. The estimated material cost is calculated by multiplying the number of boxes by the price per box.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Flooring materials come in boxes or cartons that cover a specific square footage. Laminate and luxury vinyl plank (LVP) typically cover 15-25 sq ft per box. Engineered hardwood covers 20-30 sq ft. Solid hardwood is often sold by the board foot or square foot. The calculator adapts to any box coverage value you enter.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The waste factor is critical for flooring installations because planks must be cut at walls and around obstacles. The standard 10% waste accounts for these cuts. Diagonal installations, rooms with irregular shapes, or patterns like herringbone need 15-20% waste. The calculator lets you adjust this percentage for your specific project.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the room</h3>
+        <p class="mt-1 text-sm text-slate-600">Measure length and width in feet. For irregular rooms, divide into rectangles and add them.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter material specs</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the box coverage and price per box from the flooring product label.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Compare costs</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the material cost estimate to compare different flooring options and stay within your budget.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Room area</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Area = L &times; W</span>. A 12&prime; &times; 10&prime; room = <strong>120 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Total with waste</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Total = Area &times; (1 + waste/100)</span>. With 10% waste: 120 &times; 1.1 = <strong>132 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Boxes and cost</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Boxes = ceil(Total / box coverage)</span>. If boxes cover 20 sq ft each: 132 &divide; 20 = 6.6, round up to <strong>7 boxes</strong>. Cost = 7 &times; $45 = <strong>$315</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 16&prime; &times; 14&prime; living room with luxury vinyl plank flooring. Each box covers 22 sq ft at $52 per box. 12% waste for a few corners.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">16 &times; 14 = 224 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">With 12% waste:</span> <span class="text-slate-600">224 &times; 1.12 = 250.88 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Boxes needed:</span> <span class="text-slate-600">250.88 &divide; 22 = 11.4, round to <strong>12 boxes</strong></span></div>
+        <div><span class="font-medium text-slate-700">Total cost:</span> <span class="text-slate-600">12 &times; $52 = <strong>$624</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the flooring calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Home renovation</h3>
+        <p class="mt-1 text-sm text-slate-600">Replace carpet with hardwood or LVP in multiple rooms. Calculate each room separately and add the totals to place one bulk order. Many suppliers offer discounts on full-pallet orders.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💰</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Budget planning</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare material costs across flooring types before making a decision. See how hardwood, laminate, vinyl, and carpet compare for the same room dimensions with accurate box and cost calculations.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">👷</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Contractor quoting</h3>
+        <p class="mt-1 text-sm text-slate-600">Generate accurate material lists and cost estimates for client proposals. Include the flooring material, underlayment, transition strips, and installation labor to create a complete quote.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">New construction</h3>
+        <p class="mt-1 text-sm text-slate-600">Builders need flooring estimates for multiple units. Calculate all rooms in a floor plan and add them together. Ordering in bulk for multiple units reduces per-square-foot costs.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for buying flooring</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Acclimate the flooring first</h3>
+        <p class="mt-1 text-sm text-slate-600">Hardwood, bamboo, and engineered wood need to sit in the room for 48-72 hours before installation to adjust to the temperature and humidity. Stack boxes flat with spacers between them. This prevents gaps or buckling after installation as the wood expands or contracts.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check multiple boxes for color variation</h3>
+        <p class="mt-1 text-sm text-slate-600">Open boxes from different cartons and mix planks from multiple boxes during installation. Natural products like hardwood have inherent color variation, and even manufactured LVP can have dye lot differences. Mixing prevents noticeable color banding across the floor.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider underlayment</h3>
+        <p class="mt-1 text-sm text-slate-600">Most floating floors require an underlayment layer for moisture protection, sound dampening, and minor subfloor leveling. Some LVP has attached underlayment. If not, budget an extra $0.50-$1.00 per square foot for underlayment material.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/tile-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Tile Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/board-foot-lumber-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Board Foot / Lumber Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const W = parseFloat(el('width').value);
+      const boxCov = parseFloat(el('box-cov').value);
+      const price = parseFloat(el('price').value);
+      const waste = parseFloat(el('waste').value);
+      if (!L || !W || L <= 0 || W <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const area = L * W;
+      const wastePct = waste > 0 ? waste : 0;
+      const totalSf = area * (1 + wastePct / 100);
+      const boxes = boxCov > 0 ? Math.ceil(totalSf / boxCov) : 0;
+      const matCost = boxes * price;
+
+      el('r-total').textContent = totalSf.toFixed(1) + ' sq ft';
+      el('r-cost').textContent = '(incl. ' + wastePct + '% waste)';
+      el('r-area').textContent = area.toFixed(1) + ' sq ft';
+      el('r-boxes').textContent = boxes.toLocaleString() + ' boxes';
+      el('r-mat').textContent = '$' + matCost.toFixed(2);
+      el('results').classList.remove('hidden');
+    }
+
+    ['length', 'width', 'box-cov', 'price', 'waste'].forEach((id) => {
+      el(id).addEventListener('input', update);
+    });
+  </script>
+</ToolLayout>

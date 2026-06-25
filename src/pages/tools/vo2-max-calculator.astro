@@ -1,0 +1,273 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'VO2 Max Calculator';
+const description =
+  'Free VO2 max calculator. Estimate your maximal oxygen uptake using the Cooper test (12-minute run) or resting heart rate method.';
+const intro =
+  'Use either the Cooper 12-minute run test or your resting heart rate to estimate your VO2 max and compare against fitness norms.';
+const category = { id: 'health', name: 'Health & Fitness' };
+const faqs = [
+  { q: 'What is VO2 max?', a: 'VO2 max is the maximum amount of oxygen your body can use during intense exercise, measured in mL of oxygen per kg of body weight per minute. It is the gold-standard measure of cardiorespiratory fitness.' },
+  { q: 'How accurate are these estimates?', a: 'The Cooper test formula has a correlation of about 0.90 with lab-measured VO2 max in most populations. The resting HR method is less accurate (+-15%) but gives a useful ballpark without any exercise.' },
+  { q: 'What is a good VO2 max?', a: 'For men aged 30–39, 40–47 mL/kg/min is good, 48+ is excellent. For women aged 30–39, 35–41 is good, 42+ is excellent. Values decline with age and increase with endurance training.' },
+  { q: 'How can I improve my VO2 max?', a: 'High-intensity interval training (HIIT) at 90-95% of max HR is the most effective stimulus. Consistent endurance training (Zone 2) also improves VO2 max, especially in beginners. Genetics sets your upper limit.' },
+  { q: 'Does VO2 max change with training?', a: 'Yes — VO2 max can improve by 10–30% with consistent training in untrained individuals. Highly trained athletes see smaller gains. Detraining causes it to decline back towards baseline over several months.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex rounded-xl bg-slate-100 p-1 text-sm font-medium">
+      <button id="tab-cooper" class="flex-1 rounded-lg bg-white py-2 text-indigo-700 shadow-sm">Cooper Test</button>
+      <button id="tab-hr" class="flex-1 rounded-lg py-2 text-slate-500">Resting HR Method</button>
+    </div>
+
+    <div id="cooper-method">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Sex</span>
+        <select id="sex" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="male">Male</option><option value="female">Female</option></select></label>
+      <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Distance covered in 12 minutes (metres)</span>
+        <input id="cooper-dist" type="number" step="any" placeholder="2400" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Age</span>
+        <input id="age" type="number" step="1" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div id="hr-method" style="display:none">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resting heart rate (bpm)</span>
+        <input id="rest-hr" type="number" step="1" placeholder="60" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Sex</span>
+        <select id="hr-sex" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="male">Male</option><option value="female">Female</option></select></label>
+      <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Age</span>
+        <input id="hr-age" type="number" step="1" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Measure your resting HR first thing in the morning before getting out of bed. Average over 3 days for best results.</p>
+    </div>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Estimated VO2 max</div>
+        <div id="r-vo2" class="mt-1 text-3xl font-bold">—</div>
+        <div class="mt-1 text-sm opacity-80">mL/kg/min</div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Fitness category</div><div id="r-cat" class="mt-1 text-lg font-bold text-emerald-600">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Percentile (approx)</div><div id="r-pctile" class="mt-1 text-xl font-bold text-indigo-600">—</div></div>
+      </div>
+    </div>
+    <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter your details using either method to estimate VO2 max.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About VO2 max</h2>
+    <p class="mt-2 text-slate-600">
+      VO2 max is widely considered the best indicator of cardiovascular fitness and aerobic endurance. It measures the maximum rate at which your body can transport and utilise oxygen during exercise. Higher VO2 max values are associated with better athletic performance, lower risk of cardiovascular disease and greater longevity. This calculator provides two methods: the <a href="https://pubmed.ncbi.nlm.nih.gov/6112483/" rel="noopener">Cooper 12-minute run test</a> (a field test developed by Dr Kenneth Cooper for the US Air Force) and a resting heart rate method for those who cannot run. For more fitness metrics, check the <a href="/tools/heart-rate-zone-calculator" class="font-medium text-indigo-600 hover:underline">Heart Rate Zone Calculator</a> and <a href="/tools/pace-calculator" class="font-medium text-indigo-600 hover:underline">Pace Calculator</a>.
+    </p>
+    <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">For general information only. Lab testing (gas analysis) provides the most accurate VO2 max measurement.</p>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" role="img" aria-labelledby="vo2-title vo2-desc">
+      <title id="vo2-title">VO2 max scale with fitness categories</title>
+      <desc id="vo2-desc">Horizontal bar showing VO2 max ranges from poor to excellent for a 30-year-old man, with the scale from 20 to 60 mL/kg/min.</desc>
+      <rect x="60" y="80" width="680" height="40" rx="6" fill="#e2e8f0" />
+      <rect x="60" y="80" width="160" height="40" rx="6" fill="#ef4444" />
+      <rect x="220" y="80" width="120" height="40" fill="#f59e0b" />
+      <rect x="340" y="80" width="120" height="40" fill="#22c55e" />
+      <rect x="460" y="80" width="120" height="40" fill="#6366f1" />
+      <rect x="580" y="80" width="160" height="40" rx="6" fill="#8b5cf6" />
+      <text x="140" y="68" text-anchor="middle" font-size="12" fill="#dc2626" font-weight="bold">Poor</text>
+      <text x="280" y="68" text-anchor="middle" font-size="12" fill="#d97706" font-weight="bold">Fair</text>
+      <text x="400" y="68" text-anchor="middle" font-size="12" fill="#16a34a" font-weight="bold">Good</text>
+      <text x="520" y="68" text-anchor="middle" font-size="12" fill="#6366f1" font-weight="bold">Excellent</text>
+      <text x="660" y="68" text-anchor="middle" font-size="12" fill="#8b5cf6" font-weight="bold">Superior</text>
+      <text x="60" y="145" font-size="11" fill="#64748b">&lt; 32</text>
+      <text x="220" y="145" font-size="11" fill="#64748b">32–37</text>
+      <text x="340" y="145" font-size="11" fill="#64748b">38–43</text>
+      <text x="460" y="145" font-size="11" fill="#64748b">44–50</text>
+      <text x="580" y="145" font-size="11" fill="#64748b">&gt; 50</text>
+      <text x="400" y="175" text-anchor="middle" font-size="11" fill="#94a3b8">VO2 max categories for men aged 30–39 (mL/kg/min)</text>
+    </svg>
+    <figcaption class="text-center text-sm text-slate-500 mt-2">VO2 max fitness categories — higher values indicate better cardiorespiratory fitness</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How it works</h2>
+    <p class="mt-2 text-slate-600">
+      The Cooper test is simple: run as far as you can in 12 minutes on a flat, measured course. The distance (in metres) is plugged into a formula that estimates VO2 max. For men, the formula is (distance − 504.9) / 44.73. For women, a different coefficient is applied. The resting HR method uses the Uth-Nielsen formula: VO2 max = 15.3 × (max HR / resting HR), where max HR is estimated as 208 − 0.7 × age. Both methods are well-validated field tests with reasonable accuracy for most people. The Cooper test is more accurate for active individuals, while the resting HR method works for anyone.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <p class="mt-2 text-slate-600">
+      <strong>Cooper test (men):</strong> VO2max = (distance_m − 504.9) / 44.73<br>
+      <strong>Cooper test (women):</strong> VO2max = (distance_m − 504.9) / 44.73 × 0.85<br>
+      <strong>Resting HR method:</strong> VO2max = 15.3 × (max HR / resting HR)
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 35-year-old man runs 2,600 metres in 12 minutes on the Cooper test. What is his estimated VO2 max?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Distance:</span> <span class="text-slate-600">2,600 m</span></div>
+        <div><span class="font-medium text-slate-700">Cooper formula:</span> <span class="text-slate-600">(2,600 − 504.9) / 44.73</span></div>
+        <div><span class="font-medium text-slate-700">VO2 max:</span> <span class="text-slate-600">2,095.1 / 44.73 ≈ <strong>46.8 mL/kg/min</strong></span></div>
+        <div><span class="font-medium text-slate-700">Category:</span> <span class="text-slate-600"><strong>Good</strong> for age 35 man (upper end)</span></div>
+        <div><span class="font-medium text-slate-700">Resting HR alternative (60 bpm):</span> <span class="text-slate-600">Max HR = 208 − 0.7×35 = 183.5. VO2 = 15.3 × (183.5/60) ≈ <strong>46.8 mL/kg/min</strong></span></div>
+        <div><span class="font-medium text-slate-700">Interpretation:</span> <span class="text-slate-600">Both methods agree. This runner is above average for their age group.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Persona cards -->
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏃</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Runner tracking fitness</h3>
+      <p class="mt-1 text-sm text-slate-600">Use the Cooper test every 8–12 weeks to track your aerobic fitness progression and see how your training is improving your VO2 max.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚴</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Cyclist</h3>
+      <p class="mt-1 text-sm text-slate-600">Even cyclists can use the Cooper run test. Your running VO2 max correlates well with cycling performance, especially for longer events.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🩺</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fitness assessor</h3>
+      <p class="mt-1 text-sm text-slate-600">Use the resting HR method for clients who cannot run. It provides a useful baseline for cardiovascular health without exercise stress.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎯</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fitness enthusiast</h3>
+      <p class="mt-1 text-sm text-slate-600">Record your VO2 max estimate and compare it to age-matched norms. A rising VO2 max is one of the best signs of improving fitness.</p>
+    </div>
+  </section>
+
+  <!-- 3-step guide -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose a method</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the Cooper test (run 12 min) if you can run. Use the resting HR method if you cannot exercise or want a quick no-effort estimate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">For Cooper test: run exactly 12 min on a flat course and measure the distance. For HR method: use your morning resting heart rate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read your result</h3>
+        <p class="mt-1 text-sm text-slate-600">See your estimated VO2 max, fitness category and percentile. Retest every 8–12 weeks to track improvement.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tips section -->
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for improving VO2 max</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Add interval training</h3>
+        <p class="mt-1 text-sm text-slate-600">HIIT sessions (e.g., 4 × 4 minutes at 90–95% max HR with 3-minute recoveries) are the most effective way to boost VO2 max. Do 1–2 sessions per week.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Build aerobic base first</h3>
+        <p class="mt-1 text-sm text-slate-600">Large volumes of Zone 2 training build the cardiovascular infrastructure (capillaries, mitochondria) that supports higher VO2 max. Beginners see significant gains from easy mileage alone.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consistency over intensity</h3>
+        <p class="mt-1 text-sm text-slate-600">Training consistently for 6–12 months produces far greater VO2 max improvements than short-term high-intensity blocks. Aim for at least 3–4 sessions per week spread across different intensities.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/heart-rate-zone-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Heart Rate Zone Calculator</a>
+      <a href="/tools/race-finish-time-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Race Finish Time Predictor</a>
+      <a href="/tools/pace-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Pace Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let tab = 'cooper';
+
+    function setTab(t) {
+      tab = t;
+      el('cooper-method').style.display = t === 'cooper' ? 'block' : 'none';
+      el('hr-method').style.display = t === 'hr' ? 'block' : 'none';
+      el('tab-cooper').className = 'flex-1 rounded-lg py-2 ' + (t === 'cooper' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      el('tab-hr').className = 'flex-1 rounded-lg py-2 ' + (t === 'hr' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500');
+      update();
+    }
+
+    function getCategory(vo2, male, age) {
+      const norms = [
+        { ages: [20, 29], male: [32, 37, 43, 50], female: [28, 33, 39, 45] },
+        { ages: [30, 39], male: [31, 36, 42, 49], female: [27, 32, 37, 43] },
+        { ages: [40, 49], male: [30, 34, 40, 46], female: [25, 30, 35, 41] },
+        { ages: [50, 59], male: [26, 31, 36, 43], female: [22, 27, 32, 38] },
+        { ages: [60, 99], male: [22, 27, 32, 39], female: [19, 23, 28, 34] },
+      ];
+      const n = norms.find((n) => age >= n.ages[0] && age <= n.ages[1]) || norms[norms.length - 1];
+      const cats = male ? n.male : n.female;
+      if (vo2 < cats[0]) return 'Poor';
+      if (vo2 < cats[1]) return 'Fair';
+      if (vo2 < cats[2]) return 'Good';
+      if (vo2 < cats[3]) return 'Excellent';
+      return 'Superior';
+    }
+
+    function getPctile(vo2, male, age) {
+      if (vo2 < 25) return '~10%';
+      if (vo2 < 30) return '~20%';
+      if (vo2 < 35) return '~35%';
+      if (vo2 < 40) return '~50%';
+      if (vo2 < 45) return '~65%';
+      if (vo2 < 50) return '~80%';
+      if (vo2 < 55) return '~90%';
+      return '~95%+';
+    }
+
+    function update() {
+      let vo2;
+      if (tab === 'cooper') {
+        const dist = parseFloat(el('cooper-dist').value);
+        const male = el('sex').value === 'male';
+        if (!dist || dist <= 0) {
+          el('result').classList.add('hidden'); el('hint').classList.remove('hidden'); return;
+        }
+        vo2 = (dist - 504.9) / 44.73;
+        if (!male) vo2 *= 0.85;
+        const age = parseInt(el('age').value) || 30;
+        const cat = getCategory(vo2, male, age);
+        const pctl = getPctile(vo2, male, age);
+        el('r-vo2').textContent = vo2.toFixed(1);
+        el('r-cat').textContent = cat;
+        el('r-pctile').textContent = pctl;
+      } else {
+        const restHr = parseFloat(el('rest-hr').value);
+        const male = el('hr-sex').value === 'male';
+        const age = parseInt(el('hr-age').value) || 30;
+        if (!restHr || restHr <= 0) {
+          el('result').classList.add('hidden'); el('hint').classList.remove('hidden'); return;
+        }
+        const maxHr = 208 - 0.7 * age;
+        vo2 = 15.3 * (maxHr / restHr);
+        const cat = getCategory(vo2, male, age);
+        const pctl = getPctile(vo2, male, age);
+        el('r-vo2').textContent = vo2.toFixed(1);
+        el('r-cat').textContent = cat;
+        el('r-pctile').textContent = pctl;
+      }
+      el('result').classList.remove('hidden'); el('hint').classList.add('hidden');
+    }
+
+    el('tab-cooper').addEventListener('click', () => setTab('cooper'));
+    el('tab-hr').addEventListener('click', () => setTab('hr'));
+    ['cooper-dist', 'sex', 'age', 'rest-hr', 'hr-sex', 'hr-age'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

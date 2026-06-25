@@ -1,0 +1,238 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Roofing Calculator';
+const description = 'Calculate roofing squares and shingle bundles needed from footprint and roof pitch.';
+const intro = 'Estimate the number of roofing squares, shingle bundles, and materials for your roof.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'What is a roofing square?', a: 'A roofing square is 100 square feet of roof surface. Roofing materials are priced and sold by the square. A 2,000 sq ft home typically needs about 20-25 squares of roofing depending on the roof pitch.' },
+  { q: 'How many shingle bundles are in a square?', a: 'Three bundles of standard 3-tab shingles make one square (100 sq ft). Architectural shingles may require 3-4 bundles per square. Each bundle covers approximately 33 sq ft.' },
+  { q: 'Does roof pitch affect material quantity?', a: 'Yes, steeper roofs have more surface area than the footprint suggests. A 6/12 pitch adds about 12% more area. A 12/12 pitch adds about 40% more. The calculator accounts for this with the pitch multiplier.' },
+  { q: 'Should I include ice and water shield?', a: 'Ice and water shield is required in cold climates along eaves and valleys. It is typically applied 3-6 ft up from the eave edge and in all valleys. Budget extra for this waterproof underlayment.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Building length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="40" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Building width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Roof pitch (rise/12)</span>
+        <input id="pitch" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Eaves overhang (ft)</span>
+        <input id="overhang" type="number" step="any" placeholder="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Waste factor</span>
+      <div class="mt-1 flex gap-2">
+        {['10%', '15%', '20%'].map((w) => (
+          <button data-waste={w.replace('%', '')} class="waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{w}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Roofing squares needed</div>
+        <div id="r-sq" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-mult" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Footprint area</div><div id="r-foot" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Roof surface area</div><div id="r-roof" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Shingle bundles</div><div id="r-bund" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="roof-title roof-desc">
+      <title id="roof-title">Roof cross-section with pitch angle diagram</title>
+      <desc id="roof-desc">A gable roof cross-section showing the rise over run pitch angle with dimensions</desc>
+      <polygon points="100,260 400,60 700,260" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+      <polygon points="100,260 400,60 400,260" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="100" y="260" width="600" height="30" fill="#d1d5db" stroke="#94a3b8" stroke-width="1" />
+      <text x="400" y="280" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Building width</text>
+      <line x1="400" y1="60" x2="400" y2="260" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="390" y="165" text-anchor="end" font-size="13" fill="#4338ca" font-family="system-ui,sans-serif">Rise</text>
+      <line x1="400" y1="260" x2="550" y2="260" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="475" y="253" text-anchor="middle" font-size="13" fill="#4338ca" font-family="system-ui,sans-serif">Run (12")</text>
+      <text x="275" y="150" text-anchor="middle" font-size="13" fill="#4338ca" font-family="system-ui,sans-serif" transform="rotate(-30 275 150)">Rafter length</text>
+      <line x1="100" y1="260" x2="100" y2="300" stroke="#94a3b8" stroke-width="1" />
+      <line x1="700" y1="260" x2="700" y2="300" stroke="#94a3b8" stroke-width="1" />
+      <line x1="100" y1="300" x2="700" y2="300" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3" />
+      <use href="#roof-angle" />
+      <rect x="580" y="20" width="190" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="595" y="45" font-size="12" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Pitch multiplier</text>
+      <text x="595" y="65" font-size="11" fill="#475569" font-family="system-ui,sans-serif">4/12: 1.054</text>
+      <text x="595" y="83" font-size="11" fill="#475569" font-family="system-ui,sans-serif">6/12: 1.118</text>
+      <text x="595" y="101" font-size="11" fill="#475569" font-family="system-ui,sans-serif">8/12: 1.202</text>
+      <text x="595" y="119" font-size="11" fill="#475569" font-family="system-ui,sans-serif">12/12: 1.414</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Gable roof cross-section showing the relationship between rise, run, pitch, and rafter length</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the roofing calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The roofing calculator estimates the surface area of a gable roof based on the building footprint and roof pitch. It calculates the footprint area, applies a pitch multiplier to get the actual roof surface area, converts to roofing squares (100 sq ft each), and estimates the number of shingle bundles needed.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Roof pitch is expressed as inches of rise per 12 inches of horizontal run. A 6/12 pitch rises 6 inches for every 12 inches of run. The pitch multiplier converts the flat footprint area to the sloped roof area. For example, a 6/12 pitch has a multiplier of 1.118, meaning the roof surface is 11.8% larger than the footprint.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the building</h3>
+        <p class="mt-1 text-sm text-slate-600">Get the length and width of the building footprint. Measure the roof pitch from the attic.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter roof details</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the pitch (rise in 12), overhang, and select a waste factor based on your roof complexity.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Order materials</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the square count to order shingles, underlayment, and accessories from your roofing supplier.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Pitch multiplier</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Mult = sqrt((pitch/12)&sup2; + 1)</span>. For a 6/12 pitch: sqrt((6/12)&sup2; + 1) = sqrt(0.25 + 1) = sqrt(1.25) = <strong>1.118</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Roof area</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Roof area = footprint &times; multiplier &times; 2 (for two sides)</span>. For a 40&prime; &times; 30&prime; footprint (1,200 sq ft) with 6/12 pitch: 1,200 &times; 1.118 &times; 2 = <strong>2,683 sq ft</strong> (for two gable sides).
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Squares and bundles</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Squares = roof area / 100</span>. 2,683 / 100 = <strong>26.83 squares</strong>. Round up to 27. <span class="font-mono">Bundles = squares &times; 3</span>. 27 &times; 3 = <strong>81 bundles</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 50&prime; &times; 28&prime; house with an 8/12 roof pitch and 1 ft overhang, 15% waste.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Footprint with overhang:</span> <span class="text-slate-600">(50+2) &times; (28+2) = 1,560 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Pitch multiplier:</span> <span class="text-slate-600">sqrt((8/12)&sup2;+1) = 1.202</span></div>
+        <div><span class="font-medium text-slate-700">Total roof area:</span> <span class="text-slate-600">1,560 &times; 1.202 &times; 2 = 3,750 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Squares with 15% waste:</span> <span class="text-slate-600">3,750 / 100 &times; 1.15 = <strong>43.1 → 44 squares</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the roofing calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Home re-roofing</h3>
+        <p class="mt-1 text-sm text-slate-600">Replace an existing roof with new shingles. The calculator gives you the material quantity for ordering. Add the cost of removing old shingles, underlayment, and flashing to your total budget.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">New construction</h3>
+        <p class="mt-1 text-sm text-slate-600">Builders can estimate roofing materials during the design phase. Compare different roof pitches to see how they affect material costs. Steeper pitches use more shingles but shed snow and rain better.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏭</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Shed and garage</h3>
+        <p class="mt-1 text-sm text-slate-600">Smaller structures like sheds, garages, and workshops use the same roofing materials. The calculator works for any building size. Smaller roofs may use fewer bundles but still require the same flashing and underlayment materials.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Insurance claims</h3>
+        <p class="mt-1 text-sm text-slate-600">After storm damage, use the calculator to estimate the roof area for insurance claims. Accurate square footage helps ensure you receive adequate compensation for roof replacement.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for roofing projects</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Install drip edge along all edges</h3>
+        <p class="mt-1 text-sm text-slate-600">Drip edge metal flashing along the eaves and rakes directs water into the gutters and prevents water from wicking back under the shingles. It is inexpensive but often overlooked by DIY roofers. Install it under the underlayment along the eaves and over it along the rakes.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Proper ventilation extends roof life</h3>
+        <p class="mt-1 text-sm text-slate-600">Attic ventilation with ridge vents and soffit vents keeps the roof deck cool and dry. Without proper ventilation, heat buildup can warp shingles and cause premature failure. The rule of thumb is 1 sq ft of vent for every 300 sq ft of attic floor area.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Nail pattern matters</h3>
+        <p class="mt-1 text-sm text-slate-600">Use 4 nails per shingle in standard areas and 5-6 nails per shingle in high-wind areas. Nail placement follows the manufacturer's nailing pattern — too high and the shingle may lift, too low and the nail head may be exposed. Use corrosion-resistant roofing nails with 1-inch heads.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/board-foot-lumber-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Board Foot / Lumber Calculator</a>
+      <a href="/tools/insulation-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Insulation Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let wastePct = 15;
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const W = parseFloat(el('width').value);
+      const pitch = parseFloat(el('pitch').value);
+      const over = parseFloat(el('overhang').value) || 0;
+      if (!L || !W || !pitch || L <= 0 || W <= 0 || pitch <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const footL = L + 2 * over;
+      const footW = W + 2 * over;
+      const footprint = footL * footW;
+      const mult = Math.sqrt(Math.pow(pitch / 12, 2) + 1);
+      const roofArea = footprint * mult * 2;
+      const sq = roofArea / 100;
+      const sqWaste = sq * (1 + wastePct / 100);
+      const bundles = Math.ceil(sqWaste * 3);
+
+      el('r-sq').textContent = Math.ceil(sqWaste) + ' squares';
+      el('r-mult').textContent = '(pitch mult: ' + mult.toFixed(3) + ')';
+      el('r-foot').textContent = footprint.toFixed(1) + ' sq ft';
+      el('r-roof').textContent = roofArea.toFixed(1) + ' sq ft';
+      el('r-bund').textContent = bundles.toLocaleString() + ' bundles';
+      el('results').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.waste-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.waste-btn').forEach((b) => {
+          b.className = 'waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+        });
+        btn.className = 'waste-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+        wastePct = parseInt(btn.dataset.waste, 10);
+        update();
+      });
+    });
+
+    ['length', 'width', 'pitch', 'overhang'].forEach((id) => {
+      el(id).addEventListener('input', update);
+    });
+    document.querySelector('.waste-btn').click();
+  </script>
+</ToolLayout>

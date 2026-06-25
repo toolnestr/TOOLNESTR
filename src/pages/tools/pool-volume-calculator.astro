@@ -1,0 +1,245 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Pool Volume Calculator';
+const description = 'Calculate the volume of water in gallons for rectangular, circular, and oval pools.';
+const intro = 'Estimate the water volume in gallons for any pool shape to plan chemicals and heating.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'Why is knowing pool volume important?', a: 'Pool volume determines chemical dosage, heater sizing, filtration pump runtime, and water filling cost. Adding the wrong amount of chemicals can damage equipment or create unsafe swimming conditions.' },
+  { q: 'How much water does a typical pool hold?', a: 'An average 15x30 ft inground pool with 4-8 ft depth holds about 13,500-20,000 gallons. A small above-ground pool (12x24 ft) holds about 7,000-10,000 gallons.' },
+  { q: 'Should I include the spa in the pool volume?', a: 'Calculate the spa volume separately since spas have different chemical requirements and higher temperatures. Add the spa volume to the pool volume for the combined total water capacity.' },
+  { q: 'How accurate does the pool volume need to be?', a: 'For chemical dosing, within 10% accuracy is sufficient. For heating calculations, within 5% is ideal. The calculator provides a good estimate — for exact volume, use a water meter when filling.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2">
+      {['Rectangle', 'Circle', 'Oval'].map((s) => (
+        <button data-shape={s.toLowerCase()} class="shape-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{s}</button>
+      ))}
+    </div>
+    <div id="rect-inputs" class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="r-length" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="r-width" type="number" step="any" placeholder="15" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Avg depth (ft)</span>
+        <input id="r-depth" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="circle-inputs" class="hidden grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Diameter (ft)</span>
+        <input id="c-diam" type="number" step="any" placeholder="24" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Depth (ft)</span>
+        <input id="c-depth" type="number" step="any" placeholder="4" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="oval-inputs" class="hidden grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="o-length" type="number" step="any" placeholder="25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="o-width" type="number" step="any" placeholder="13" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Avg depth (ft)</span>
+        <input id="o-depth" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Pool volume</div>
+        <div id="r-gallons" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-shape" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic feet</div><div id="r-cf" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic meters</div><div id="r-cm" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Fill weight (lbs)</div><div id="r-lbs" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pool-title pool-desc">
+      <title id="pool-title">Pool cross-section diagram</title>
+      <desc id="pool-desc">A cross-section of a rectangular pool showing length, depth, and water level</desc>
+      <rect x="100" y="80" width="550" height="200" fill="#bae6fd" stroke="#38bdf8" stroke-width="2" rx="8" />
+      <rect x="100" y="80" width="550" height="200" fill="url(#pool-pat)" opacity="0.1" />
+      <defs>
+        <pattern id="pool-pat" width="30" height="10" patternUnits="userSpaceOnUse">
+          <path d="M0 5 Q7.5 0 15 5 Q22.5 10 30 5" stroke="#0ea5e9" fill="none" stroke-width="1" />
+        </pattern>
+      </defs>
+      <rect x="100" y="80" width="550" height="15" fill="#0284c7" opacity="0.3" rx="2" />
+      <rect x="100" y="280" width="550" height="30" fill="#d1d5db" stroke="#9ca3af" stroke-width="1" />
+      <text x="375" y="300" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Pool floor / ground</text>
+      <line x1="100" y1="60" x2="650" y2="60" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="375" y="50" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Length</text>
+      <line x1="85" y1="80" x2="85" y2="280" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <text x="72" y="185" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(-90 72 185)">Depth</text>
+      <text x="375" y="240" text-anchor="middle" font-size="14" fill="#0ea5e6" font-family="system-ui,sans-serif" font-weight="bold">Water Volume</text>
+      <text x="375" y="258" text-anchor="middle" font-size="12" fill="#0284c7" font-family="system-ui,sans-serif">Gallons = cu ft &times; 7.48</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Pool cross-section showing the water volume calculated from length, width, and average depth</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the pool volume calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The pool volume calculator estimates the water capacity of rectangular, circular, and oval pools. It calculates the volume in cubic feet based on the pool's dimensions and shape, then converts to gallons — one cubic foot of water equals 7.48 US gallons.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For rectangular pools, the volume is length times width times average depth. For circular pools, the formula uses pi times radius squared times depth. For oval pools, the calculator uses length times width times depth times 0.8 (a shape factor that approximates the elliptical area).
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose pool shape</h3>
+        <p class="mt-1 text-sm text-slate-600">Select rectangle, circle, or oval. Most inground pools are rectangular. Above-ground pools are often circular.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter dimensions</h3>
+        <p class="mt-1 text-sm text-slate-600">Measure your pool's length, width or diameter, and average depth in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Get the volume</h3>
+        <p class="mt-1 text-sm text-slate-600">Read the total gallons, cubic feet, and fill weight. Use the gallon figure for chemical dosing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Rectangular pool</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">V = L &times; W &times; D</span>. A 30&prime; &times; 15&prime; pool with 6&prime; depth: 30 &times; 15 &times; 6 = <strong>2,700 cu ft</strong>. Gallons: 2,700 &times; 7.48 = <strong>20,196 gallons</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Circular pool</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">V = &pi; &times; r&sup2; &times; D</span>. A 24&prime; diameter pool (12&prime; radius) at 4&prime; deep: &pi; &times; 144 &times; 4 = <strong>1,809.6 cu ft</strong>. Gallons: 1,809.6 &times; 7.48 = <strong>13,535 gallons</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Oval pool</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">V = L &times; W &times; D &times; 0.8</span>. A 25&prime; &times; 13&prime; oval at 5&prime; deep: 25 &times; 13 &times; 5 &times; 0.8 = <strong>1,300 cu ft</strong>. Gallons: 1,300 &times; 7.48 = <strong>9,724 gallons</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A rectangular pool 40&prime; &times; 20&prime; with a shallow end of 3.5&prime; and deep end of 8&prime;. Average depth = (3.5 + 8) / 2 = 5.75 ft.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">40 &times; 20 &times; 5.75 = 4,600 cu ft</span></div>
+        <div><span class="font-medium text-slate-700">Gallons:</span> <span class="text-slate-600">4,600 &times; 7.48 = <strong>34,408 gallons</strong></span></div>
+        <div><span class="font-medium text-slate-700">Cubic meters:</span> <span class="text-slate-600">4,600 &times; 0.0283 = 130.2 cu m</span></div>
+        <div><span class="font-medium text-slate-700">Fill weight:</span> <span class="text-slate-600">34,408 &times; 8.34 = <strong>286,976 lbs</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the pool volume calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🧪</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Chemical treatment</h3>
+        <p class="mt-1 text-sm text-slate-600">Chlorine, shock, algaecide, and pH adjusters all require exact volume-based dosing. Overdosing wastes chemicals and can irritate swimmers. Underdosing leaves the pool vulnerable to algae and bacteria growth.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔥</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Heater sizing</h3>
+        <p class="mt-1 text-sm text-slate-600">Pool heaters are rated by BTU output per hour. The required BTU depends on pool volume, desired temperature rise, and climate. A larger pool needs a bigger heater or longer heating time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💧</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Water filling cost</h3>
+        <p class="mt-1 text-sm text-slate-600">Know the cost to fill your pool based on local water rates. A 20,000-gallon pool at $0.006 per gallon costs about $120 to fill. Factor in evaporation refills of 500-1,000 gallons per month.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔄</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Filter pump sizing</h3>
+        <p class="mt-1 text-sm text-slate-600">The pool pump should circulate the entire volume in 8-10 hours for optimal filtration. Divide the gallon volume by 480 (8 hours x 60 minutes) to get the minimum flow rate in GPM needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for pool volume accuracy</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Calculate average depth carefully</h3>
+        <p class="mt-1 text-sm text-slate-600">For pools with sloped floors, measure the depth at the shallow end and the deep end, then average them. For pools with multiple depth sections (play pools), calculate each section separately and add the volumes together.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Subtract displacement from features</h3>
+        <p class="mt-1 text-sm text-slate-600">Steps, ladders, benches, and tanning ledges displace water and reduce the total volume. For chemical dosing, the displaced volume is usually small enough to ignore. For exact water billing, estimate displacement at 5-10% of total volume.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Re-measure after renovations</h3>
+        <p class="mt-1 text-sm text-slate-600">If you resurface, add a spa, or modify the pool shape, recalculate the volume. A new plaster layer can reduce depth by 1/2 inch, changing the volume by several hundred gallons. Updated chemical dosing prevents over or under treatment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/cubic-yardage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Cubic Yardage Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/concrete-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let currentShape = 'rectangle';
+
+    function update() {
+      let cf = 0, shape = '—';
+      if (currentShape === 'rectangle') {
+        const L = parseFloat(el('r-length').value);
+        const W = parseFloat(el('r-width').value);
+        const D = parseFloat(el('r-depth').value);
+        if (L > 0 && W > 0 && D > 0) { cf = L * W * D; shape = 'Rectangle'; }
+      } else if (currentShape === 'circle') {
+        const d = parseFloat(el('c-diam').value);
+        const D = parseFloat(el('c-depth').value);
+        if (d > 0 && D > 0) { cf = Math.PI * Math.pow(d / 2, 2) * D; shape = 'Circle'; }
+      } else if (currentShape === 'oval') {
+        const L = parseFloat(el('o-length').value);
+        const W = parseFloat(el('o-width').value);
+        const D = parseFloat(el('o-depth').value);
+        if (L > 0 && W > 0 && D > 0) { cf = L * W * D * 0.8; shape = 'Oval'; }
+      }
+      if (cf > 0) {
+        const gal = cf * 7.48;
+        el('r-gallons').textContent = Math.round(gal).toLocaleString() + ' gallons';
+        el('r-shape').textContent = shape + ' pool';
+        el('r-cf').textContent = cf.toFixed(1) + ' cu ft';
+        el('r-cm').textContent = (cf * 0.0283).toFixed(2) + ' cu m';
+        el('r-lbs').textContent = (gal * 8.34).toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' lbs';
+        el('results').classList.remove('hidden');
+      } else {
+        el('results').classList.add('hidden');
+      }
+    }
+
+    document.querySelectorAll('.shape-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.shape-btn').forEach((b) => {
+          b.className = 'shape-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+        });
+        btn.className = 'shape-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+        currentShape = btn.dataset.shape;
+        ['rect', 'circle', 'oval'].forEach((s) => {
+          el(s + '-inputs').classList.toggle('hidden', s !== currentShape);
+        });
+        update();
+      });
+    });
+    document.querySelector('.shape-btn').click();
+  </script>
+</ToolLayout>

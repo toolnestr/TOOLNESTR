@@ -1,0 +1,238 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = '401(k) Calculator';
+const description =
+  'Free 401(k) calculator. Project your retirement savings balance based on your contributions, employer match, annual return, and time horizon.';
+const intro =
+  'Enter your current age, retirement age, current balance, annual salary, contribution rate, employer match, and expected annual return to project your 401(k) balance at retirement.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is a 401(k) plan?', a: 'A 401(k) is an employer-sponsored retirement savings plan that allows employees to contribute pre-tax dollars from their paycheck. Many employers offer matching contributions, and the money grows tax-deferred until withdrawal in retirement.' },
+  { q: 'How much can I contribute to a 401(k)?', a: 'In 2025, the contribution limit is $23,500 for employees under 50, and $31,000 for those aged 50 and over (including $7,500 catch-up contribution). These limits are adjusted annually for inflation.' },
+  { q: 'What is an employer match?', a: 'An employer match is free money your employer contributes to your 401(k) based on your contributions. A common match is 50% of your contributions up to 6% of your salary. For example, if you earn $100,000 and contribute 6%, your employer adds $3,000 (50% of $6,000).' },
+  { q: 'What is a good annual return for a 401(k)?', a: 'A conservative estimate is 5-7% annual return. A moderate estimate is 7-9%. An aggressive estimate is 9-11%. Historically, the S&P 500 has averaged about 10% annual returns before inflation, but past performance does not guarantee future results.' },
+  { q: 'What happens if I withdraw money before age 59½?', a: 'Early withdrawals are subject to a 10% penalty plus ordinary income tax on the distribution amount. Some exceptions apply, such as for first-time home purchases ($10,000 limit), medical hardship, or substantially equal periodic payments.' },
+  { q: 'What is the difference between traditional and Roth 401(k)?', a: 'Traditional 401(k) contributions are pre-tax — you get a tax deduction now and pay taxes on withdrawals in retirement. Roth 401(k) contributions are after-tax — no deduction now, but withdrawals in retirement are tax-free. Many employers offer both options.' },
+  { q: 'What is vesting?', a: 'Vesting refers to how much of your employer\'s contributions you actually own. Your own contributions are always 100% vested. Employer matching contributions may vest over time — common schedules include cliff vesting (100% after 3 years) or graded vesting (20% per year starting in year 2).' },
+  { q: 'Should I contribute enough to get the full employer match?', a: 'Yes, absolutely. The employer match is free money and an immediate 50-100% return on your contribution. Always contribute at least enough to get the full match before considering other investments.' },
+  { q: 'Can I have multiple 401(k) accounts?', a: 'Yes, from different employers. You can contribute to only one 401(k) per year in total (combined limit). When you leave a job, you can roll over the old 401(k) to your new employer\'s plan or to an IRA.' },
+  { q: 'How are 401(k) withdrawals taxed in retirement?', a: 'Traditional 401(k) withdrawals are taxed as ordinary income at your tax bracket in retirement. This makes traditional 401(k)s ideal if you expect to be in a lower tax bracket in retirement. Required Minimum Distributions (RMDs) start at age 73.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current age</span>
+        <input id="curAge" type="number" step="1" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Retirement age</span>
+        <input id="retAge" type="number" step="1" placeholder="65" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current 401(k) balance ($)</span>
+        <input id="balance" type="number" step="any" placeholder="25000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual salary ($)</span>
+        <input id="salary" type="number" step="any" placeholder="80000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Your contribution (%)</span>
+        <input id="contribRate" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Employer match (%)</span>
+        <input id="match" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Expected annual return (%)</span>
+        <input id="roi" type="number" step="any" placeholder="7" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Projected balance at retirement</div><div id="r-final" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total contributions</div><div id="r-contrib" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Employer match total</div><div id="r-matchTotal" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How your 401(k) growth is projected</h2>
+    <p class="mt-2 text-slate-600">
+      The 401(k) projection calculates the future value of periodic contributions with compound
+      growth: <span class="font-mono">FV = PV × (1 + r)^n + PMT × ((1 + r)^n - 1) / r × (1 + r)</span>.
+      PV is your current balance, PMT is the annual contribution (yours + employer match), r is the
+      annual return rate, and n is the number of years until retirement.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The power of compound growth means that the earlier you start saving, the more dramatic the
+      results. A 25-year-old who saves $500 per month with a 7% annual return will have over
+      $1.3 million by age 65, while a 45-year-old starting the same savings plan would accumulate
+      only about $250,000. Time is the most valuable asset in retirement planning, which is why
+      financial advisors stress the importance of starting early and contributing consistently.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 30-year-old earning $80,000 with $25,000 saved, contributing 10% with a 5% employer match and 7% annual return until age 65.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Your annual contribution:</span> <span class="text-slate-600">$8,000</span></div>
+        <div><span class="font-medium text-slate-700">Employer annual match:</span> <span class="text-slate-600">$4,000</span></div>
+        <div><span class="font-medium text-slate-700">Years of growth:</span> <span class="text-slate-600">35</span></div>
+        <div><span class="font-medium text-slate-700">Total contributions:</span> <span class="text-slate-600">$420,000</span></div>
+        <div><span class="font-medium text-slate-700">Employer match total:</span> <span class="text-slate-600">$140,000</span></div>
+        <div><span class="font-medium text-slate-700">Projected balance at 65:</span> <span class="text-slate-600">~$1,634,000</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="401k growing stacked bar over years">
+      <title>401(k) Growth Over Time</title>
+      <desc>A bar chart showing the 401(k) balance growing at age 30, 40, 50, 60, and 65, with the bar stacked to show contributions versus investment growth.</desc>
+      <line x1="80" y1="190" x2="740" y2="190" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="80" y1="190" x2="80" y2="30" stroke="#94a3b8" stroke-width="2"/>
+      <rect x="100" y="170" width="60" height="20" rx="3" fill="#6366f1"/>
+      <text x="130" y="200" text-anchor="middle" fill="#64748b" font-size="11">Age 30</text>
+      <rect x="200" y="145" width="60" height="45" rx="3" fill="#6366f1"/>
+      <text x="230" y="200" text-anchor="middle" fill="#64748b" font-size="11">Age 40</text>
+      <rect x="300" y="110" width="60" height="80" rx="3" fill="#6366f1"/>
+      <text x="330" y="200" text-anchor="middle" fill="#64748b" font-size="11">Age 50</text>
+      <rect x="400" y="60" width="60" height="130" rx="3" fill="#6366f1"/>
+      <text x="430" y="200" text-anchor="middle" fill="#64748b" font-size="11">Age 60</text>
+      <rect x="500" y="25" width="60" height="165" rx="3" fill="#6366f1"/>
+      <text x="530" y="200" text-anchor="middle" fill="#64748b" font-size="11">Age 65</text>
+      <rect x="500" y="25" width="60" height="165" rx="3" fill="#6366f1"/>
+      <rect x="500" y="90" width="60" height="100" rx="3" fill="#818cf8" opacity="0.6"/>
+      <text x="530" y="15" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="bold">$1.63M</text>
+      <rect x="620" y="80" width="12" height="12" rx="2" fill="#6366f1"/>
+      <text x="640" y="91" fill="#64748b" font-size="11">Contributions</text>
+      <rect x="740" y="80" width="12" height="12" rx="2" fill="#818cf8" opacity="0.6"/>
+      <text x="760" y="91" fill="#64748b" font-size="11">Growth</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">The power of compounding — contributions grow exponentially over time as investment returns accumulate</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About 401(k) planning</h2>
+    <p class="mt-2 text-slate-600">
+      A 401(k) is the most powerful retirement savings tool available to most American workers. The
+      combination of pre-tax contributions, tax-deferred growth, employer matching, and high
+      contribution limits makes it the foundation of retirement planning. The key to maximizing your
+      401(k) is to start early, contribute enough to capture the full employer match, and gradually
+      increase your contribution rate over time. Use the
+      <a href="/tools/roth-ira-calculator" class="font-medium text-indigo-600 hover:underline">Roth IRA Calculator</a>
+      to compare traditional versus Roth savings strategies, and the
+      <a href="/tools/social-security-calculator" class="font-medium text-indigo-600 hover:underline">Social Security Calculator</a>
+      to estimate your additional retirement income from Social Security benefits.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter your current age, retirement age, and current 401(k) balance.</li>
+      <li>Enter your salary, your contribution percentage, and employer match percentage.</li>
+      <li>Set your expected annual return rate and see your projected retirement balance.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use this calculator when setting up your 401(k) to see the long-term impact of different contribution rates, when changing jobs to project the new 401(k) balance, when considering increasing contributions, or when planning your overall retirement strategy.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for 401(k) success</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Always contribute enough to get the full employer match — it's an immediate 50-100% return.</li>
+      <li>Increase your contribution by 1-2% annually, especially when you get a raise.</li>
+      <li>Choose low-cost index funds with expense ratios under 0.10% for maximum long-term growth.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👩‍💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Early-Career Professional</h3>
+      <p class="mt-1 text-sm text-slate-600">Start your 401(k) as soon as you're eligible. See how even a modest 6% contribution with full match can grow to over a million dollars by retirement with decades of compound growth.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💪</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Mid-Career Saver</h3>
+      <p class="mt-1 text-sm text-slate-600">Catch up on retirement savings by increasing your contribution rate. Use the calculator to see how a 15-20% contribution rate can close the gap and get you back on track for retirement.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Married Couple</h3>
+      <p class="mt-1 text-sm text-slate-600">Coordinate 401(k) strategies between spouses. Maximize both matches and consider spousal IRA options to double your household retirement savings capacity.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔄</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Job Changer</h3>
+      <p class="mt-1 text-sm text-slate-600">When switching jobs, decide whether to roll over your old 401(k) to your new employer's plan or to an IRA. Compare fees, investment options, and consolidation benefits.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the 401(k) calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your personal info</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your current age, target retirement age, and current 401(k) balance. If you're just starting, your current balance may be zero.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set your contribution strategy</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your salary, the percentage you plan to contribute, and your employer's match percentage. The match is typically a percentage of your salary, not of your contribution.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See your future balance</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator projects your balance at retirement, showing the power of your contributions, employer match, and compound growth over time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing your 401(k)</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Capture the full employer match first</h3>
+        <p class="mt-1 text-sm text-slate-600">The employer match is the closest thing to free money in personal finance. If your employer offers a 50% match up to 6% of salary, that's an immediate 50% return on your contribution. Always contribute at least enough to max out the match before considering any other investment.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Increase contributions with every raise</h3>
+        <p class="mt-1 text-sm text-slate-600">Whenever you get a raise, increase your 401(k) contribution percentage by at least half the raise amount. You won't miss the money since you never had it in your paycheck, and your retirement savings will grow dramatically over your career.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep fees low</h3>
+        <p class="mt-1 text-sm text-slate-900">High expense ratios can cost you hundreds of thousands of dollars over a career. Choose low-cost index funds or target-date funds with expense ratios under 0.10-0.30%. A 1% fee difference on a $500,000 portfolio is $5,000 per year in lost returns.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/roth-ira-calculator" class="font-medium text-indigo-600 hover:underline">Roth IRA Calculator</a> — Compare Roth IRA growth versus traditional taxable accounts.</li>
+      <li><a href="/tools/social-security-calculator" class="font-medium text-indigo-600 hover:underline">Social Security Calculator</a> — Estimate your Social Security retirement benefits based on your earnings history.</li>
+      <li><a href="/tools/investment-calculator" class="font-medium text-indigo-600 hover:underline">Investment Calculator</a> — Project the future value of any periodic investment with compound interest.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    function update() {
+      const curAge = parseFloat(el('curAge').value);
+      const retAge = parseFloat(el('retAge').value);
+      const balance = parseFloat(el('balance').value);
+      const salary = parseFloat(el('salary').value);
+      const contribRate = parseFloat(el('contribRate').value);
+      const match = parseFloat(el('match').value);
+      const roi = parseFloat(el('roi').value);
+      el('err').textContent = '';
+      if (isNaN(curAge) || isNaN(retAge) || isNaN(salary) || isNaN(contribRate)) { ['r-final', 'r-contrib', 'r-matchTotal'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (retAge <= curAge) { el('err').textContent = 'Retirement age must be greater than current age.'; return; }
+      const years = retAge - curAge;
+      const r = (isNaN(roi) ? 7 : roi) / 100;
+      const bal = isNaN(balance) ? 0 : balance;
+      const yourContrib = salary * (contribRate / 100);
+      const matchContrib = salary * (match / 100);
+      const totalAnnual = yourContrib + matchContrib;
+      const fv = bal * Math.pow(1 + r, years) + totalAnnual * (Math.pow(1 + r, years) - 1) / r;
+      el('r-final').textContent = fmt(fv);
+      el('r-contrib').textContent = fmt(yourContrib * years);
+      el('r-matchTotal').textContent = fmt(matchContrib * years);
+    }
+    ['curAge', 'retAge', 'balance', 'salary', 'contribRate', 'match', 'roi'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

@@ -1,0 +1,231 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Board Foot / Lumber Calculator';
+const description = 'Calculate board feet from lumber dimensions — thickness, width, and length.';
+const intro = 'Convert lumber dimensions to board feet for buying and selling hardwood and softwood.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'What is a board foot?', a: 'A board foot is a unit of lumber volume equal to 1 inch thick x 12 inches wide x 12 inches long (144 cubic inches). It is the standard measurement for buying hardwood lumber in North America.' },
+  { q: 'How do I convert board feet to cubic feet?', a: 'One board foot = 1/12 of a cubic foot. To convert, divide board feet by 12. A 144-board-foot stack of lumber equals 12 cubic feet.' },
+  { q: 'What is the difference between nominal and actual dimensions?', a: 'Nominal dimensions are the rough-sawn size before planing. Actual dimensions are the finished size. A 2x4 is actually 1.5 x 3.5 inches. The calculator uses actual dimensions for accuracy.' },
+  { q: 'How many board feet are in a tree?', a: 'A mature oak tree might contain 200-500 board feet of usable lumber. The Doyle and International 1/4-inch log rules estimate board foot yield from log diameter and length.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Thickness (in)</span>
+        <input id="thick" type="number" step="any" placeholder="1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (in)</span>
+        <input id="width" type="number" step="any" placeholder="5.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Common sizes</span>
+      <div class="mt-1 flex flex-wrap gap-2">
+        {['1x4', '1x6', '2x4', '2x6', '2x8', '2x10', '4x4'].map((s) => (
+          <button data-size={s} class="size-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{s}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Board feet</div>
+        <div id="r-bf" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-vol" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Actual size</div><div id="r-act" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic inches</div><div id="r-ci" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Price (at $/bf)</div><div id="r-price" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Price per board foot ($)</span>
+        <input id="price" type="number" step="any" placeholder="3.50" value="3.50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lumber-title lumber-desc">
+      <title id="lumber-title">Lumber board dimension diagram</title>
+      <desc id="lumber-desc">A 3D view of a lumber board showing thickness, width, and length dimensions</desc>
+      <rect x="180" y="160" width="380" height="80" fill="#d97706" opacity="0.3" rx="4" />
+      <rect x="180" y="120" width="380" height="80" fill="#b45309" opacity="0.4" rx="4" />
+      <rect x="180" y="120" width="380" height="40" fill="#92400e" opacity="0.3" rx="4" />
+      <rect x="180" y="120" width="380" height="120" fill="none" stroke="#78350f" stroke-width="2" rx="4" />
+      <line x1="180" y1="100" x2="560" y2="100" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <polygon points="180,100 192,95 192,105" fill="#94a3b8" />
+      <polygon points="560,100 548,95 548,105" fill="#94a3b8" />
+      <text x="370" y="90" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Length</text>
+      <line x1="165" y1="120" x2="165" y2="200" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <polygon points="165,120 157,132 173,132" fill="#94a3b8" />
+      <polygon points="165,200 157,188 173,188" fill="#94a3b8" />
+      <text x="152" y="165" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(-90 152 165)">Thickness</text>
+      <line x1="560" y1="120" x2="600" y2="120" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <line x1="560" y1="160" x2="600" y2="160" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <line x1="600" y1="120" x2="600" y2="160" stroke="#94a3b8" stroke-width="1.5" />
+      <polygon points="600,120 592,128 608,128" fill="#94a3b8" />
+      <polygon points="600,160 592,152 608,152" fill="#94a3b8" />
+      <text x="615" y="145" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Width</text>
+      <rect x="50" y="240" width="200" height="90" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="65" y="262" font-size="12" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Board foot formula</text>
+      <text x="65" y="282" font-size="11" fill="#475569" font-family="system-ui,sans-serif">BF = T x W x L / 12</text>
+      <text x="65" y="300" font-size="11" fill="#475569" font-family="system-ui,sans-serif">T = thickness in inches</text>
+      <text x="65" y="318" font-size="11" fill="#475569" font-family="system-ui,sans-serif">W = width in inches</text>
+      <text x="65" y="336" font-size="11" fill="#475569" font-family="system-ui,sans-serif">L = length in feet</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A lumber board showing thickness, width, and length — the three dimensions used in the board foot formula</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the board foot calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The board foot calculator converts lumber dimensions into board feet — the standard unit for buying hardwood lumber. It uses the formula: board feet = (thickness in inches x width in inches x length in feet) / 12. The result represents the volume of wood in board foot units.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To use the calculator, enter the actual thickness and width of the lumber in inches and the length in feet. Select a common size preset to quickly fill in standard dimensions. The calculator also shows the actual size (which may differ from nominal), cubic inches, and an estimated total price based on a per-board-foot rate.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the board</h3>
+        <p class="mt-1 text-sm text-slate-600">Measure thickness and width in inches, length in feet. Use actual not nominal dimensions.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Use presets or enter custom</h3>
+        <p class="mt-1 text-sm text-slate-600">Click standard lumber sizes or enter custom dimensions for a precise calculation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Calculate cost</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the price per board foot to get the total cost of your lumber purchase.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Board foot formula</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">BF = (T &times; W &times; L) / 12</span>. For a 2x4 that is actually 1.5&Prime; x 3.5&Prime; and 8 ft long: (1.5 &times; 3.5 &times; 8) / 12 = <strong>3.5 board feet</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Total for multiple boards</p>
+        <p class="mt-1 text-slate-600">
+          Multiply the board feet per board by the number of identical boards. For 10 boards at 3.5 BF each: 10 &times; 3.5 = <strong>35 board feet</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cost calculation</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Cost = BF &times; price per BF</span>. At $3.50/BF: 3.5 &times; $3.50 = <strong>$12.25 per board</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Buying 12 boards of 1x6 oak, each 6 ft long. Actual size is 0.75 x 5.5 inches. Price is $4.25 per board foot.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">BF per board:</span> <span class="text-slate-600">(0.75 &times; 5.5 &times; 6) / 12 = 2.06 BF</span></div>
+        <div><span class="font-medium text-slate-700">Total BF:</span> <span class="text-slate-600">12 &times; 2.06 = 24.75 BF</span></div>
+        <div><span class="font-medium text-slate-700">Total cost:</span> <span class="text-slate-600">24.75 &times; $4.25 = <strong>$105.19</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the board foot calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🪚</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Woodworking</h3>
+        <p class="mt-1 text-sm text-slate-600">Furniture makers calculate board feet for each project to estimate material costs. A dining table might need 40-60 BF of hardwood. The calculator helps you budget before visiting the lumber yard.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Framing lumber</h3>
+        <p class="mt-1 text-sm text-slate-600">Contractors estimate framing lumber in board feet for bidding. A typical 2,000 sq ft house might use 8,000-12,000 BF of dimensional lumber. The calculator handles any size, from 2x4 to 6x6.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌳</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Sawmill and timber</h3>
+        <p class="mt-1 text-sm text-slate-600">Sawmills sell rough-cut lumber by the board foot. The calculator converts log scale estimates into board feet. Use the Doyle or International rule to estimate board foot yield from standing timber.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📦</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Shipping and freight</h3>
+        <p class="mt-1 text-sm text-slate-600">Lumber freight rates are often based on board feet or thousand board feet (MBF). Calculate the total BF for an order to compare shipping quotes and estimate freight costs accurately.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for buying lumber by the board foot</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand nominal vs. actual</h3>
+        <p class="mt-1 text-sm text-slate-600">Softwood lumber (pine, fir, spruce) at home centers is sold by nominal dimensions and linear feet, not board feet. Hardwood lumber at specialty yards is sold by board foot using actual dimensions. Always confirm which measurement the seller uses before comparing prices.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check for defects</h3>
+        <p class="mt-1 text-sm text-slate-600">When buying rough lumber, inspect for knots, checks, splits, and warp. These defects reduce the usable board footage. Factor in 10-20% waste for defects when calculating how much lumber to buy for a project.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Buy S2S for a consistent thickness</h3>
+        <p class="mt-1 text-sm text-slate-600">Surfaced two sides (S2S) lumber has planed faces for consistent thickness. Rough lumber varies in thickness and needs to be planed. When calculating board feet for S2S, use the surfaced dimensions (e.g., 13/16 inch instead of 4/4 rough).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/deck-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Deck Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/flooring-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Flooring Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const actualSizes = { '1x4': [0.75, 3.5], '1x6': [0.75, 5.5], '2x4': [1.5, 3.5], '2x6': [1.5, 5.5], '2x8': [1.5, 7.25], '2x10': [1.5, 9.25], '4x4': [3.5, 3.5] };
+
+    function update() {
+      const T = parseFloat(el('thick').value);
+      const W = parseFloat(el('width').value);
+      const L = parseFloat(el('length').value);
+      const price = parseFloat(el('price').value);
+      if (!T || !W || !L || T <= 0 || W <= 0 || L <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const bf = (T * W * L) / 12;
+      const ci = T * W * L * 12;
+      const totalPrice = price > 0 ? bf * price : 0;
+      el('r-bf').textContent = bf.toFixed(2) + ' BF';
+      el('r-vol').textContent = '(' + (bf / 12).toFixed(3) + ' cu ft)';
+      el('r-act').textContent = T + '" x ' + W + '" x ' + L + "'";
+      el('r-ci').textContent = ci.toFixed(0) + ' cu in';
+      el('r-price').textContent = price > 0 ? '$' + totalPrice.toFixed(2) : '—';
+      el('results').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.size-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const [t, w] = actualSizes[btn.dataset.size] || [1.5, 3.5];
+        el('thick').value = t;
+        el('width').value = w;
+        update();
+      });
+    });
+
+    ['thick', 'width', 'length', 'price'].forEach((id) => {
+      el(id).addEventListener('input', update);
+    });
+  </script>
+</ToolLayout>

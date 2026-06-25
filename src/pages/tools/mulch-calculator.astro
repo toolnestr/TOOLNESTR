@@ -1,0 +1,217 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Mulch Calculator';
+const description = 'Calculate the cubic yards or number of bags of mulch needed for a garden bed.';
+const intro = 'Estimate how much mulch you need in cubic yards or bags for any garden bed.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'How deep should mulch be?', a: '2-3 inches is the ideal depth for most garden beds. Less than 2 inches allows weeds to grow through. More than 4 inches can suffocate plant roots and promote fungus growth.' },
+  { q: 'How many cubic feet are in a bag of mulch?', a: 'Standard bags of mulch are 2 cubic feet. Some bulk bags contain 3 cubic feet. Always check the bag label for the exact volume. This calculator uses 2 cu ft per bag as the default.' },
+  { q: 'Is bulk mulch cheaper than bagged?', a: 'Yes, bulk mulch delivered by the cubic yard is significantly cheaper than bagged mulch. For small gardens (under 50 sq ft), bagged is fine. For larger areas, order bulk delivery and save 30-50%.' },
+  { q: 'What type of mulch is best?', a: 'Hardwood bark mulch is the most common for flower beds. Cedar mulch repels insects naturally. Pine bark nuggets last longer but are more expensive. Rubber mulch never decomposes but does not add nutrients.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Depth (in)</span>
+        <input id="depth" type="number" step="any" placeholder="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Depth presets</span>
+      <div class="mt-1 flex gap-2">
+        {['2" (light)', '3" (standard)', '4" (deep)'].map((p) => (
+          <button data-d={p.match(/\d+/)[0]} class="preset-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{p}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Mulch needed</div>
+        <div id="r-cy" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-alt" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Bags (2 cu ft)</div><div id="r-bags" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Bed area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mulch-title mulch-desc">
+      <title id="mulch-title">Garden bed cross-section diagram</title>
+      <desc id="mulch-desc">A cross-section of a garden bed showing a layer of mulch on top of soil with plant roots below</desc>
+      <rect x="100" y="120" width="550" height="150" fill="#92400e" opacity="0.15" rx="4" />
+      <rect x="100" y="120" width="550" height="150" fill="#a16207" opacity="0.08" rx="4" />
+      <rect x="100" y="100" width="550" height="25" fill="#78350f" stroke="#451a03" stroke-width="1" rx="4" />
+      <circle cx="150" cy="112" r="3" fill="#451a03" opacity="0.3" />
+      <circle cx="220" cy="110" r="4" fill="#451a03" opacity="0.3" />
+      <circle cx="300" cy="115" r="3" fill="#451a03" opacity="0.3" />
+      <circle cx="380" cy="108" r="4" fill="#451a03" opacity="0.3" />
+      <circle cx="450" cy="114" r="3" fill="#451a03" opacity="0.3" />
+      <circle cx="520" cy="111" r="4" fill="#451a03" opacity="0.3" />
+      <circle cx="590" cy="113" r="3" fill="#451a03" opacity="0.3" />
+      <rect x="100" y="270" width="550" height="40" fill="#fcd34d" opacity="0.15" stroke="#d97706" stroke-width="1" rx="2" />
+      <text x="375" y="295" text-anchor="middle" font-size="12" fill="#92400e" font-family="system-ui,sans-serif">Garden soil</text>
+      <line x1="100" y1="85" x2="100" y2="100" stroke="#94a3b8" stroke-width="1" />
+      <line x1="100" y1="85" x2="650" y2="85" stroke="#94a3b8" stroke-width="1" stroke-dasharray="5 3" />
+      <line x1="650" y1="85" x2="650" y2="100" stroke="#94a3b8" stroke-width="1" />
+      <text x="375" y="76" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Mulch depth</text>
+      <text x="375" y="330" text-anchor="middle" font-size="13" fill="#64748b" font-family="system-ui,sans-serif">Mulch layer above soil insulates roots and suppresses weeds</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A garden bed cross-section showing the mulch layer on top of the soil</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the mulch calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The mulch calculator estimates the volume of mulch needed for a garden bed based on its length, width, and desired depth. It calculates cubic feet, converts to cubic yards, and estimates the number of standard 2-cubic-foot bags required.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Mulch is sold both in bags (typically 2 cu ft) and by the cubic yard for bulk delivery. A cubic yard covers approximately 108 square feet at 3 inches deep. The calculator shows both measurements so you can compare the cost of bagged versus bulk mulch for your project.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the bed</h3>
+        <p class="mt-1 text-sm text-slate-600">Measure the length and width of the garden bed in feet. For circular beds, measure the radius.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose depth</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the mulch depth — 2 inches for light coverage, 3 inches standard, or 4 inches for deep beds.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Buy smart</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare bagged vs. bulk cost. For large beds, bulk delivery saves money and reduces plastic waste.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Volume in cubic feet</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">V = L &times; W &times; (D/12)</span>. For a 12&prime; &times; 8&prime; bed at 3 inches: 12 &times; 8 &times; (3/12) = <strong>24 cu ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cubic yards</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">CY = V / 27</span>. 24 / 27 = <strong>0.89 cu yd</strong>. You would order 1 cubic yard from the bulk supplier.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Bag count</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Bags = V &divide; 2</span> (for 2 cu ft bags). 24 / 2 = <strong>12 bags</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A rectangular garden bed 18&prime; long by 10&prime; wide, mulched at 3 inches deep.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">18 &times; 10 = 180 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">180 &times; (3/12) = 45 cu ft</span></div>
+        <div><span class="font-medium text-slate-700">Cubic yards:</span> <span class="text-slate-600">45 / 27 = 1.67 → <strong>2 cu yd</strong></span></div>
+        <div><span class="font-medium text-slate-700">Bags needed:</span> <span class="text-slate-600">45 / 2 = <strong>23 bags</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the mulch calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌸</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Flower beds</h3>
+        <p class="mt-1 text-sm text-slate-600">Annual mulching of flower beds suppresses weeds, retains moisture, and adds a finished look to the landscape. Calculate each bed separately and add the totals for a single order.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌳</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Tree rings</h3>
+        <p class="mt-1 text-sm text-slate-600">Circular tree rings need mulch calculated by the area of the ring around the tree trunk. Measure the radius of the ring subtract the trunk area. The calculator works for any rectangular approximation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌿</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Vegetable garden</h3>
+        <p class="mt-1 text-sm text-slate-600">Mulch vegetable beds with straw, shredded leaves, or compost. A 2-inch layer is sufficient for vegetable gardens. Avoid fresh wood chips in vegetable beds as they can tie up nitrogen as they decompose.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Foundation planting</h3>
+        <p class="mt-1 text-sm text-slate-600">Mulch around the house foundation keeps the soil moist and prevents mud splashing on siding. Keep mulch 6 inches away from wood siding and foundation walls to prevent moisture damage and termite entry.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for mulching</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Do not pile mulch against trunks</h3>
+        <p class="mt-1 text-sm text-slate-600">Volcano mulching — piling mulch high against tree trunks — suffocates the bark and promotes rot, disease, and insect infestation. Keep mulch 2-3 inches away from tree trunks and shrub stems. The mulch ring should be flat and donut-shaped, not piled like a volcano.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Apply mulch after weeding</h3>
+        <p class="mt-1 text-sm text-slate-600">Remove all existing weeds before applying fresh mulch. A layer of cardboard or landscape fabric underneath the mulch provides additional weed suppression. Without this preparation, weed seeds already in the soil will grow up through the new mulch layer.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Top up annually</h3>
+        <p class="mt-1 text-sm text-slate-600">Organic mulch decomposes over time, adding nutrients to the soil but also thinning out. Plan to top up your mulch every spring. The calculator works for both initial application and annual top-ups — just use 1-2 inches for a refresh layer instead of the full 3 inches.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/gravel-sand-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Gravel & Sand Calculator</a>
+      <a href="/tools/cubic-yardage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Cubic Yardage Calculator</a>
+      <a href="/tools/sod-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Sod Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const W = parseFloat(el('width').value);
+      const D = parseFloat(el('depth').value);
+      if (!L || !W || !D || L <= 0 || W <= 0 || D <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const cf = L * W * (D / 12);
+      const cy = cf / 27;
+      const bags = Math.ceil(cf / 2);
+      el('r-cy').textContent = cy.toFixed(2) + ' cu yd';
+      el('r-alt').textContent = 'Order ' + Math.ceil(cy) + ' cu yd bulk or ' + bags + ' bags';
+      el('r-bags').textContent = bags.toLocaleString() + ' bags';
+      el('r-area').textContent = (L * W).toFixed(1) + ' sq ft';
+      el('results').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.preset-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        el('depth').value = btn.dataset.d;
+        update();
+      });
+    });
+
+    ['length', 'width', 'depth'].forEach((id) => {
+      el(id).addEventListener('input', update);
+    });
+  </script>
+</ToolLayout>

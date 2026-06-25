@@ -1,0 +1,242 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Present & Future Value Calculator';
+const description =
+  'Free present value and future value calculator. Calculate the time value of money — what a future sum is worth today or what a present sum will grow to over time.';
+const intro =
+  'Enter a present or future amount, the annual interest rate, and the number of years to calculate the corresponding future value or present value.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is the time value of money?', a: 'The time value of money (TVM) is the concept that money available today is worth more than the same amount in the future due to its potential earning capacity. A dollar today can be invested and grow, making it worth more than a dollar received tomorrow.' },
+  { q: 'How is Future Value calculated?', a: 'Future Value (FV) = PV × (1 + r)^n, where PV is the present value, r is the interest rate per period, and n is the number of periods. For example, $1,000 today at 5% for 10 years grows to $1,628.89.' },
+  { q: 'How is Present Value calculated?', a: 'Present Value (PV) = FV / (1 + r)^n, where FV is the future value, r is the discount rate, and n is the number of periods. For example, $1,000 received in 10 years at a 5% discount rate is worth $613.91 today.' },
+  { q: 'What is the difference between simple and compound interest?', a: 'Simple interest is calculated only on the principal amount: FV = PV × (1 + r × n). Compound interest is calculated on the principal plus accumulated interest: FV = PV × (1 + r)^n. Compound interest grows much faster over long periods.' },
+  { q: 'What does compounding frequency mean?', a: 'Compounding frequency is how often interest is calculated and added. Annual compounding means interest is added once per year. Monthly compounding (12 times per year) results in higher returns: FV = PV × (1 + r/m)^(n×m), where m is the number of compounding periods per year.' },
+  { q: 'How do I choose the right discount rate?', a: 'The discount rate should reflect the opportunity cost of capital or the rate of return you could earn on a comparable investment. Common choices include the risk-free rate (Treasury bonds), your expected investment return, or a company\'s WACC.' },
+  { q: 'What is the rule of 72?', a: 'The rule of 72 is a quick mental shortcut: divide 72 by the annual interest rate to estimate how many years it takes for money to double. For example, at 8%, money doubles in about 9 years (72/8 = 9). At 6%, it takes about 12 years (72/6 = 12).' },
+  { q: 'How does inflation affect present and future value?', a: 'Inflation reduces purchasing power over time. The real (inflation-adjusted) future value is lower than the nominal future value. Use an inflation-adjusted discount rate: real rate ≈ nominal rate - inflation rate.' },
+  { q: 'Can PV/FV calculations help with retirement planning?', a: 'Yes. Calculate how much you need to save today (present value) to reach your retirement goal (future value). Or calculate what your current savings will grow to (future value) by retirement age given an expected return rate.' },
+  { q: 'What is the difference between PV and NPV?', a: 'Present Value (PV) calculates the current worth of a single future sum. Net Present Value (NPV) calculates the current worth of a series of cash flows minus the initial investment. NPV is used for evaluating investments with multiple cash flows.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Calculate</span>
+        <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="fv">Future Value (from present)</option><option value="pv">Present Value (from future)</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Amount ($)</span>
+        <input id="amount" type="number" step="any" placeholder="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual interest / discount rate (%)</span>
+        <input id="rate" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of years</span>
+        <input id="years" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Compounding frequency</span>
+        <select id="freq" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="1">Annually</option><option value="2">Semi-annually</option><option value="4">Quarterly</option><option value="12">Monthly</option><option value="365">Daily</option></select></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80" id="lbl-result">Future Value</div><div id="r-result" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total interest earned</div><div id="r-interest" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Effective annual rate</div><div id="r-ear" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How present and future values are calculated</h2>
+    <p class="mt-2 text-slate-600">
+      The core formula for time value of money calculations is:
+      <span class="font-mono">FV = PV × (1 + r/m)^(n×m)</span> and
+      <span class="font-mono">PV = FV / (1 + r/m)^(n×m)</span>.
+      r is the annual rate, m is the number of compounding periods per year, and n is the number
+      of years. The total interest earned is FV - PV, and the effective annual rate (EAR) is
+      <span class="font-mono">EAR = (1 + r/m)^m - 1</span>.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding the time value of money is fundamental to all financial decision-making. Every
+      financial decision — from taking out a loan to investing for retirement to evaluating a business
+      project — involves comparing money today to money in the future. The PV/FV framework gives
+      you the tools to make these comparisons accurately. More frequent compounding results in higher
+      effective returns, which is why credit card companies use daily compounding and why investors
+      prefer dividend reinvestment plans that compound returns.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">What is the future value of $1,000 invested at 5% annual interest for 10 years with monthly compounding?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Present value:</span> <span class="text-slate-600">$1,000.00</span></div>
+        <div><span class="font-medium text-slate-700">Interest rate:</span> <span class="text-slate-600">5.00%</span></div>
+        <div><span class="font-medium text-slate-700">Time period:</span> <span class="text-slate-600">10 years</span></div>
+        <div><span class="font-medium text-slate-700">Future value:</span> <span class="text-slate-600">$1,647.01</span></div>
+        <div><span class="font-medium text-slate-700">Total interest:</span> <span class="text-slate-600">$647.01</span></div>
+        <div><span class="font-medium text-slate-700">Effective annual rate:</span> <span class="text-slate-600">5.12%</span></div>
+      </div>
+      <p class="mt-2 text-sm text-slate-600">In reverse, the present value of $1,647.01 received in 10 years at 5% monthly compounded is $1,000.00 today.</p>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline showing PV to FV arrow">
+      <title>Present Value to Future Value Timeline</title>
+      <desc>A horizontal timeline with the present value on the left and the future value on the right, connected by an arrow labeled with the interest rate and time period.</desc>
+      <line x1="80" y1="100" x2="720" y2="100" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="80" y1="95" x2="80" y2="105" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="720" y1="95" x2="720" y2="105" stroke="#94a3b8" stroke-width="2"/>
+      <circle cx="80" cy="100" r="5" fill="#6366f1"/>
+      <circle cx="720" cy="100" r="5" fill="#22c55e"/>
+      <rect x="30" y="120" width="100" height="40" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+      <text x="80" y="145" text-anchor="middle" fill="#6366f1" font-size="13" font-weight="bold">PV</text>
+      <text x="80" y="110" text-anchor="middle" fill="#6366f1" font-size="11">$1,000</text>
+      <rect x="670" y="120" width="100" height="40" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+      <text x="720" y="145" text-anchor="middle" fill="#22c55e" font-size="13" font-weight="bold">FV</text>
+      <text x="720" y="110" text-anchor="middle" fill="#22c55e" font-size="11">$1,647</text>
+      <path d="M 85 95 Q 400 40 715 95" stroke="#6366f1" stroke-width="2" fill="none" stroke-dasharray="6 3" marker-end="url(#tvmarrow)"/>
+      <text x="400" y="45" text-anchor="middle" fill="#6366f1" font-size="13">5% interest × 10 years</text>
+      <text x="400" y="60" text-anchor="middle" fill="#64748b" font-size="11">Monthly compounding</text>
+      <defs><marker id="tvmarrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#6366f1"/></marker></defs>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Money grows from present value to future value over time, with interest compounding at the specified rate</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About present and future value</h2>
+    <p class="mt-2 text-slate-600">
+      The time value of money is the single most important concept in finance. Every financial
+      instrument, from savings accounts to bonds to stocks to real estate, is priced based on the
+      present value of its expected future cash flows. Understanding PV and FV allows you to compare
+      investment opportunities, evaluate loans, plan for retirement, and make informed financial
+      decisions. Use the
+      <a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a>
+      for investments with multiple cash flows, and the
+      <a href="/tools/compound-interest" class="font-medium text-indigo-600 hover:underline">Compound Interest Calculator</a>
+      for more detailed compound growth projections with regular contributions.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Select whether to calculate Future Value (from a present amount) or Present Value (from a future amount).</li>
+      <li>Enter the known amount, annual rate, years, and compounding frequency.</li>
+      <li>See the calculated value, total interest, and effective annual rate.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use it to calculate how much a lump sum will grow over time (savings planning), what a future
+      inheritance or payment is worth today (estate planning), or the true cost of a loan with
+      different compounding frequencies. It is also essential for bond valuation, where the present
+      value of future coupon payments and principal determines the bond's fair price.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for TVM calculations</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Use higher compounding frequencies for more accurate results — daily compounding is used by most financial institutions.</li>
+      <li>Always check the effective annual rate (EAR) to compare different compounding frequencies fairly.</li>
+      <li>Remember that higher discount rates reduce present values — riskier investments use higher discount rates.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📈</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Individual Investor</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate how much a lump sum investment today will be worth at retirement, or determine how much you need to invest now to reach a future financial goal.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏦</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Loan / Mortgage Borrower</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare loan offers with different compounding frequencies. See the total interest you'll pay and the effective annual rate to find the most cost-effective borrowing option.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Financial Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Discount future cash flows to present value for valuations, project analysis, and investment decision-making. Use PV as a building block for DCF and NPV models.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎓</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Student / Learner</h3>
+      <p class="mt-1 text-sm text-slate-600">Learn the time value of money concept by experimenting with different rates, time periods, and compounding frequencies. See how small changes dramatically affect results over long periods.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the PV/FV calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose PV or FV mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Select Future Value to see what a present amount grows to. Select Present Value to see what a future amount is worth today at a given discount rate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter rate, time, frequency</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the annual interest rate, the number of years, and how often interest compounds. More frequent compounding produces higher future values and effective rates.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review the results</h3>
+        <p class="mt-1 text-sm text-slate-600">See the calculated PV or FV, the total interest or discount amount, and the effective annual rate which accounts for compounding frequency.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for time value of money calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Compounding frequency matters more than you think</h3>
+        <p class="mt-1 text-sm text-slate-600">Daily compounding versus annual compounding on a $10,000, 10-year, 5% investment results in a difference of about $67 ($16,470 vs $16,289). Over longer periods or larger amounts, this difference grows substantially. Always check the EAR to compare offers accurately.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the right discount rate for present value</h3>
+        <p class="mt-1 text-sm text-slate-600">The discount rate you choose should reflect the risk and opportunity cost of the investment. For risk-free calculations, use the current Treasury yield. For stock investments, use 7-10%. For venture capital, use 20-30% to reflect the high risk and probability of failure.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Remember inflation</h3>
+        <p class="mt-1 text-sm text-slate-900">A dollar today buys more than a dollar in the future due to inflation. Use the real interest rate (nominal rate minus inflation rate) for purchasing power calculations. If inflation is 3% and your investment returns 5%, your real return is only about 2%.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/npv-calculator" class="font-medium text-indigo-600 hover:underline">NPV Calculator</a> — Net Present Value for evaluating investments with multiple cash flows.</li>
+      <li><a href="/tools/compound-interest" class="font-medium text-indigo-600 hover:underline">Compound Interest Calculator</a> — Detailed compound growth with regular monthly contributions.</li>
+      <li><a href="/tools/roi-calculator" class="font-medium text-indigo-600 hover:underline">ROI Calculator</a> — Simple return on investment calculation without time value adjustments.</li>
+      <li><a href="/tools/inflation-calculator" class="font-medium text-indigo-600 hover:underline">Inflation Calculator</a> — See how inflation erodes purchasing power over time.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function update() {
+      const mode = el('mode').value;
+      const amount = parseFloat(el('amount').value);
+      const rate = parseFloat(el('rate').value);
+      const years = parseFloat(el('years').value);
+      const freq = parseFloat(el('freq').value);
+      el('err').textContent = '';
+      if (isNaN(amount) || amount <= 0 || isNaN(rate) || isNaN(years) || years <= 0) { ['r-result', 'r-interest', 'r-ear'].forEach((id) => (el(id).textContent = '—')); return; }
+      const r = rate / 100;
+      const n = years * freq;
+      const periodicRate = r / freq;
+      let result, interest;
+      if (mode === 'fv') {
+        result = amount * Math.pow(1 + periodicRate, n);
+        interest = result - amount;
+        el('lbl-result').textContent = 'Future Value';
+      } else {
+        result = amount / Math.pow(1 + periodicRate, n);
+        interest = amount - result;
+        el('lbl-result').textContent = 'Present Value';
+      }
+      const ear = Math.pow(1 + periodicRate, freq) - 1;
+      el('r-result').textContent = fmt(result);
+      el('r-interest').textContent = fmt(interest);
+      el('r-ear').textContent = (ear * 100).toFixed(3) + '%';
+    }
+    ['mode', 'amount', 'rate', 'years', 'freq'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

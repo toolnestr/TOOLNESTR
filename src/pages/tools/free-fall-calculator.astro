@@ -1,0 +1,187 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Free Fall Calculator';
+const description = 'Free online free fall calculator. Calculate time, final velocity, and distance fallen for an object under gravity. Neglects air resistance.';
+const intro = 'Enter the height, time, or final velocity to calculate the free fall parameters. Leave the field you want to find blank.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is free fall?', a: 'Free fall is the motion of an object under the influence of gravity alone, with no other forces acting. In vacuum, all objects fall at the same rate regardless of mass — a feather and a hammer fall identically.' },
+  { q: 'What is the acceleration due to gravity?', a: "On Earth, g ≈ 9.81 m/s² downward. This means every second, a falling object's velocity increases by 9.81 m/s. On the Moon, g = 1.62 m/s²; on Mars, g = 3.71 m/s²." },
+  { q: 'How far does an object fall in one second?', a: 'From rest, an object falls about 4.9 m in the first second (d = ½ × 9.81 × 1²). After 2 seconds, it has fallen about 19.6 m. The distance increases with the square of the time.' },
+  { q: 'Why does a skydiver reach terminal velocity?', a: 'Air resistance increases with speed. When the upward drag force equals the downward weight, net force is zero and acceleration stops. This is terminal velocity — about 53 m/s (120 mph) for a belly-down skydiver.' },
+  { q: 'How does free fall relate to projectile motion?', a: 'Free fall is the vertical component of projectile motion. A horizontally launched projectile falls at the same rate as an object dropped from rest — both hit the ground at the same time if released from the same height.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter one value to calculate the others</p>
+    <div class="grid gap-4 sm:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Height (h)</span>
+        <input id="height" type="number" step="any" placeholder="m" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Time (t)</span>
+        <input id="time" type="number" step="any" placeholder="s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Final velocity (v)</span>
+        <input id="vel" type="number" step="any" placeholder="m/s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gravity (g)</span>
+        <input id="grav" type="number" step="any" placeholder="9.81" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Height fallen</div><div id="r-height" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Time</div><div id="r-time" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Final velocity</div><div id="r-vel" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="fall-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fall-title fall-desc">
+      <title id="fall-title">Falling object with velocity and height labels</title>
+      <desc id="fall-desc">An object falling from height h, showing the downward velocity v increasing as it falls under gravity g</desc>
+      <g transform="translate(40,10)">
+        <rect x="310" y="40" width="80" height="60" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2.5"/>
+        <text x="350" y="78" text-anchor="middle" fill="#4338ca" font-size="14" font-weight="bold">Object</text>
+        <line x1="350" y1="100" x2="350" y2="230" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 3"/>
+        <polygon points="350,230 345,220 355,220" fill="#f59e0b"/>
+        <text x="370" y="170" fill="#f59e0b" font-size="16" font-weight="bold">h</text>
+        <text x="390" y="170" fill="#64748b" font-size="13">Height</text>
+        <line x1="100" y1="230" x2="600" y2="230" stroke="#94a3b8" stroke-width="4"/>
+        <text x="600" y="235" fill="#64748b" font-size="13">Ground</text>
+        <path d="M 260 100 L 260 160" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="260,165 255,155 265,155" fill="#ef4444"/>
+        <text x="230" y="135" fill="#ef4444" font-size="16" font-weight="bold">v</text>
+        <text x="200" y="155" fill="#64748b" font-size="12">Velocity</text>
+        <path d="M 300 85 L 250 85" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+        <polygon points="250,85 257,80 257,90" fill="#10b981"/>
+        <text x="280" y="75" fill="#10b981" font-size="13" font-weight="bold">g</text>
+        <text x="300" y="280" text-anchor="middle" fill="#4338ca" font-size="18" font-weight="bold">h = ½gt² &nbsp;&nbsp; v = gt &nbsp;&nbsp; v² = 2gh</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">An object in free fall from height h accelerates downward at g, with velocity v increasing linearly with time.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How free fall is calculated</h2>
+    <p class="mt-2 text-slate-600">Free fall motion is governed by the equations of constant acceleration. From rest, the distance fallen is <span class="font-mono">h = ½ × g × t²</span>, the velocity after time t is <span class="font-mono">v = g × t</span>, and the velocity after falling distance h is <span class="font-mono">v² = 2 × g × h</span>. These formulas assume no initial velocity and no air resistance. In vacuum, all objects — regardless of mass — fall at the same rate, as famously demonstrated on the Apollo 15 mission when a hammer and feather were dropped together on the Moon.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A stone is dropped from a 45-metre cliff. How long does it take to hit the ground, and how fast is it going?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Height:</span> <span class="text-slate-600">45 m</span></div>
+        <div><span class="font-medium text-slate-700">Gravity:</span> <span class="text-slate-600">9.81 m/s²</span></div>
+        <div><span class="font-medium text-slate-700">Time:</span> <span class="text-slate-600">t = √(2 × 45 / 9.81) = 3.03 s</span></div>
+        <div><span class="font-medium text-slate-700">Final velocity:</span> <span class="text-slate-600">v = 9.81 × 3.03 = 29.7 m/s</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3D7;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Construction Safety Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate the impact velocity of falling tools and materials at construction sites. Use the results to determine safe working heights and required safety netting and hard hat protection levels.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F680;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Parachute Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Determine the free fall velocity before parachute deployment. This is critical for calculating the forces on the parachute during opening and ensuring the canopy design is strong enough.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3C3;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Stunt Coordinator</h3>
+      <p class="mt-1 text-sm text-slate-600">Plan safe stunt falls by calculating the height needed for a given air time and the impact speed. Ensure air bags and crash mats provide adequate deceleration distance.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4DA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Physics Instructor</h3>
+      <p class="mt-1 text-sm text-slate-600">Create classroom demonstrations of free fall using the calculator. Show students how Galileo's law of falling bodies works and demonstrate that mass does not affect fall rate in a vacuum.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the free fall calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter one known value</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the height, time, or final velocity. You can also adjust gravity — default is Earth's 9.81 m/s². Leave the fields you want to find blank.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">All results at once</h3>
+        <p class="mt-1 text-sm text-slate-600">Height, time, and final velocity are all calculated and displayed. The primary result box shows the variable you asked for.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Works on any planet</h3>
+        <p class="mt-1 text-sm text-slate-600">Change g to Moon (1.62), Mars (3.71), Jupiter (24.79), or any value. See how the same fall height takes much longer on low-gravity worlds.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for free fall calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Air resistance is neglected</h3>
+        <p class="mt-1 text-sm text-slate-600">This calculator assumes no air resistance, which is accurate for dense objects falling short distances. For light objects or long falls, air resistance becomes significant and the actual velocity will be lower than calculated.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Initial velocity can be non-zero</h3>
+        <p class="mt-1 text-sm text-slate-900">If an object is thrown downward instead of dropped, add the initial velocity: h = v₀t + ½gt² and v = v₀ + gt. For upward throws, the formulas are more complex, involving a parabolic trajectory.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Energy approach</h3>
+        <p class="mt-1 text-sm text-slate-600">Free fall can also be analysed using energy conservation: the loss in potential energy (mgh) equals the gain in kinetic energy (½mv²). This gives v = √(2gh), which matches the acceleration approach.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/projectile-motion-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F3AF;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Projectile Motion Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Range, height, and time from launch speed.</p>
+      </a>
+      <a href="/tools/kinetic-energy-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x26A1;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Kinetic Energy Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">KE = ½mv² — solve for any variable.</p>
+      </a>
+      <a href="/tools/potential-energy-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4C8;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Potential Energy Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">PE = mgh — gravitational potential energy.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    function update() {
+      const h = parseFloat(el('height').value);
+      const t = parseFloat(el('time').value);
+      const v = parseFloat(el('vel').value);
+      const g = parseFloat(el('grav').value) || 9.81;
+      const filled = [!isNaN(h), !isNaN(t), !isNaN(v)];
+      const count = filled.filter(Boolean).length;
+      el('fall-err').textContent = '';
+      ['r-height', 'r-time', 'r-vel'].forEach(id => el(id).textContent = '—');
+      if (count < 1) return;
+      if (g <= 0) { el('fall-err').textContent = 'Gravity must be positive.'; return; }
+      let rh = NaN, rt = NaN, rv = NaN;
+      if (filled[0]) { rt = Math.sqrt(2 * h / g); rv = g * rt; rh = h; }
+      else if (filled[1]) { rh = 0.5 * g * t * t; rv = g * t; rt = t; }
+      else if (filled[2]) { rt = v / g; rh = 0.5 * g * rt * rt; rv = v; }
+      if (!isNaN(rh) && rh < 0) { el('fall-err').textContent = 'Height cannot be negative.'; return; }
+      if (!isNaN(rh)) el('r-height').textContent = fmt(rh) + ' m';
+      if (!isNaN(rt)) el('r-time').textContent = fmt(rt) + ' s';
+      if (!isNaN(rv)) el('r-vel').textContent = fmt(rv) + ' m/s';
+    }
+    ['height', 'time', 'vel', 'grav'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

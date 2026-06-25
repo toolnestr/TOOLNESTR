@@ -1,0 +1,236 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'NPV Calculator';
+const description =
+  'Free NPV calculator. Calculate the net present value of a series of cash flows using a discount rate to account for the time value of money.';
+const intro =
+  'Enter an initial investment and a series of future cash flows, plus a discount rate, to calculate the net present value and profitability index.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is Net Present Value?', a: 'Net Present Value (NPV) is the difference between the present value of future cash inflows and the present value of cash outflows over time. A positive NPV means the investment is expected to generate more value than its cost, accounting for the time value of money.' },
+  { q: 'How is NPV calculated?', a: 'NPV = Σ (CFt / (1 + r)^t) - Initial Investment. CFt is the cash flow at time t, r is the discount rate, and t is the time period. Each future cash flow is discounted back to its present value using the discount rate.' },
+  { q: 'What is a good NPV?', a: 'A positive NPV (greater than $0) indicates the investment should be pursued — it is expected to generate returns above the discount rate. Higher positive NPVs represent greater value creation. Negative NPV means the investment would destroy value.' },
+  { q: 'What discount rate should I use?', a: 'The discount rate should reflect the opportunity cost of capital and the risk of the investment. Common choices include WACC (for corporate projects), the expected market return (for equity investments), or a rate reflecting the specific risk profile.' },
+  { q: 'What is the difference between NPV and IRR?', a: 'NPV gives the dollar value of value created at a specific discount rate. IRR gives the percentage return that makes NPV zero. NPV is generally preferred for decision-making because it measures absolute value added, while IRR can be misleading for non-conventional cash flows.' },
+  { q: 'Why is the time value of money important?', a: 'A dollar today is worth more than a dollar tomorrow because you can invest today\'s dollar and earn a return. Discounting future cash flows accounts for this — the further out a cash flow, the less it is worth in today\'s terms.' },
+  { q: 'Can NPV be used for personal investments?', a: 'Yes. NPV can evaluate any investment with predictable cash flows — rental properties, education costs, business purchases, or equipment investments. Use your expected rate of return as the discount rate.' },
+  { q: 'What does NPV = 0 mean?', a: 'An NPV of zero means the investment is expected to generate exactly the discount rate in returns. It neither creates nor destroys value. In practice, investments with NPV = 0 are often accepted since they meet the minimum return threshold.' },
+  { q: 'How do I handle uneven cash flows?', a: 'NPV naturally handles uneven cash flows — each cash flow is discounted individually based on its specific time period. The calculator accepts a comma-separated list of cash flows for each year.' },
+  { q: 'What is the profitability index?', a: 'The profitability index (PI) is NPV divided by the absolute value of the initial investment. PI > 1 indicates a good investment. It is useful when comparing projects of different sizes — a higher PI means more value per dollar invested.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial investment ($)</span>
+        <input id="invest" type="number" step="any" placeholder="50000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Discount rate (%)</span>
+        <input id="rate" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Cash flows per year (comma separated)</span>
+        <input id="cashflows" type="text" placeholder="15000, 18000, 22000, 25000, 28000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Net Present Value</div><div id="r-npv" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Profitability Index</div><div id="r-pi" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Decision</div><div id="r-decision" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How NPV is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      NPV discounts each future cash flow back to its present value using the formula:
+      <span class="font-mono">PV = CFt / (1 + r)^t</span>. The sum of all present values minus the
+      initial investment gives you the NPV. The profitability index is:
+      <span class="font-mono">PI = (NPV + Initial Investment) / |Investment|</span>.
+    </p>
+    <p class="mt-3 text-slate-600">
+      NPV is the gold standard for investment evaluation because it captures the time value of money,
+      considers all cash flows over the entire life of the project, and provides an absolute dollar
+      measure of value creation. Unlike payback period or accounting rate of return, NPV accounts for
+      both the timing and the magnitude of all cash flows, making it the preferred method for
+      capital budgeting decisions in corporate finance.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A $50,000 investment generates $15,000, $18,000, $22,000, $25,000, and $28,000 over 5 years at a 10% discount rate.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Year 1 PV:</span> <span class="text-slate-600">$13,636</span></div>
+        <div><span class="font-medium text-slate-700">Year 2 PV:</span> <span class="text-slate-600">$14,876</span></div>
+        <div><span class="font-medium text-slate-700">Year 3 PV:</span> <span class="text-slate-600">$16,529</span></div>
+        <div><span class="font-medium text-slate-700">Year 4 PV:</span> <span class="text-slate-600">$17,075</span></div>
+        <div><span class="font-medium text-slate-700">Year 5 PV:</span> <span class="text-slate-600">$17,384</span></div>
+        <div><span class="font-medium text-slate-700">NPV:</span> <span class="text-slate-600">$29,500</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cash flow timeline discounted back">
+      <title>NPV Cash Flow Timeline</title>
+      <desc>A timeline showing cash flows at each year with discount arrows curving back to the present, showing how future amounts are worth less today.</desc>
+      <line x1="80" y1="120" x2="740" y2="120" stroke="#94a3b8" stroke-width="2"/>
+      <text x="80" y="145" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="bold">Now</text>
+      <text x="80" y="105" text-anchor="middle" fill="#ef4444" font-size="12">-$50,000</text>
+      <line x1="80" y1="115" x2="80" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <text x="190" y="145" text-anchor="middle" fill="#64748b" font-size="12">Year 1</text>
+      <text x="190" y="100" text-anchor="middle" fill="#22c55e" font-size="12">$15,000</text>
+      <line x1="190" y1="115" x2="190" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <text x="300" y="145" text-anchor="middle" fill="#64748b" font-size="12">Year 2</text>
+      <text x="300" y="100" text-anchor="middle" fill="#22c55e" font-size="12">$18,000</text>
+      <line x1="300" y1="115" x2="300" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <text x="410" y="145" text-anchor="middle" fill="#64748b" font-size="12">Year 3</text>
+      <text x="410" y="100" text-anchor="middle" fill="#22c55e" font-size="12">$22,000</text>
+      <line x1="410" y1="115" x2="410" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <text x="520" y="145" text-anchor="middle" fill="#64748b" font-size="12">Year 4</text>
+      <text x="520" y="100" text-anchor="middle" fill="#22c55e" font-size="12">$25,000</text>
+      <line x1="520" y1="115" x2="520" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <text x="630" y="145" text-anchor="middle" fill="#64748b" font-size="12">Year 5</text>
+      <text x="630" y="100" text-anchor="middle" fill="#22c55e" font-size="12">$28,000</text>
+      <line x1="630" y1="115" x2="630" y2="125" stroke="#94a3b8" stroke-width="2"/>
+      <path d="M 630 90 Q 400 50 80 80" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5 3" fill="none" marker-end="url(#n1)"/>
+      <text x="400" y="45" text-anchor="middle" fill="#6366f1" font-size="11">Discount at 10%</text>
+      <defs><marker id="n1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#6366f1"/></marker></defs>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Future cash flows are discounted back to present value — the further out, the less they are worth today</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About net present value</h2>
+    <p class="mt-2 text-slate-600">
+      NPV is the most reliable method for evaluating investment opportunities because it considers
+      the time value of money, accounts for all cash flows throughout the project life, and provides
+      an absolute measure of value creation. Unlike internal rate of return (IRR), NPV does not
+      suffer from multiple-rate problems with non-conventional cash flows and can be used to compare
+      mutually exclusive projects directly. Use the
+      <a href="/tools/irr-calculator" class="font-medium text-indigo-600 hover:underline">IRR Calculator</a>
+      to find the break-even discount rate, or the
+      <a href="/tools/wacc-calculator" class="font-medium text-indigo-600 hover:underline">WACC Calculator</a>
+      to determine the appropriate discount rate for corporate investments.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter the initial investment (a negative cash outflow or positive number for the amount invested).</li>
+      <li>Enter the discount rate as a percentage (e.g., 10 for 10%).</li>
+      <li>Enter future cash flows as comma-separated values (one per year).</li>
+      <li>See the NPV, profitability index, and whether to accept or reject the project.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use NPV</h2>
+    <p class="mt-2 text-slate-600">
+      Use NPV when evaluating any investment with predictable future cash flows: new business
+      projects, equipment purchases, real estate investments, marketing campaigns, or acquisitions.
+      It is the standard tool in corporate finance for capital budgeting and investment decision-making.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for NPV</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Be realistic with cash flow projections — over-optimistic forecasts lead to misleading NPV.</li>
+      <li>Use a discount rate that reflects the risk of the specific investment, not the company's overall WACC.</li>
+      <li>Compare NPV across mutually exclusive projects and choose the one with the highest positive NPV.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏭</span>
+      <h3 class="mt-2 font-semibold text-slate-900">CFO / Finance Executive</h3>
+      <p class="mt-1 text-sm text-slate-600">Evaluate capital expenditure proposals and acquisition targets. Use NPV to prioritize projects that create the most shareholder value within budget constraints.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📈</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Equity Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate the NPV of projected free cash flows to determine the intrinsic value of a company. Compare market price to NPV-based valuation for buy/sell decisions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏠</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Real Estate Investor</h3>
+      <p class="mt-1 text-sm text-slate-600">Evaluate rental property investments by projecting future rental income and sale proceeds, discounting by your target return rate, and comparing to the purchase price.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚀</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Startup Founder</h3>
+      <p class="mt-1 text-sm text-slate-600">Model the NPV of your business plan to present to investors. Show that the projected cash flows justify the initial investment at a reasonable discount rate.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the NPV calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter initial investment</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the upfront cost of the investment. This is the amount you are committing at time zero, before any returns begin.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set discount rate and cash flows</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your discount rate and the expected net cash flows for each future year as comma-separated values. Cash flows can vary year to year.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review NPV and decision</h3>
+        <p class="mt-1 text-sm text-slate-600">See the total NPV, profitability index per dollar invested, and a clear accept/reject recommendation based on whether NPV is positive.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate NPV analysis</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use realistic cash flow projections</h3>
+        <p class="mt-1 text-sm text-slate-600">NPV is only as good as your cash flow forecasts. Base projections on historical data, market research, and realistic growth assumptions. Consider creating multiple scenarios (base, optimistic, pessimistic) to understand the range of possible outcomes.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Match discount rate to risk</h3>
+        <p class="mt-1 text-sm text-slate-600">Higher-risk investments should use higher discount rates. A 10% rate might be appropriate for a stable business expansion, but a startup or new technology might warrant 20-30% to reflect the higher probability of failure.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider terminal value</h3>
+        <p class="mt-1 text-sm text-slate-900">For investments with indefinite life (like a business), include a terminal value beyond the explicit projection period. For a growing perpetuity, Terminal Value = Final CF × (1 + g) / (r - g), where g is the long-term growth rate.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/irr-calculator" class="font-medium text-indigo-600 hover:underline">IRR Calculator</a> — Find the discount rate that makes NPV zero for any series of cash flows.</li>
+      <li><a href="/tools/roi-calculator" class="font-medium text-indigo-600 hover:underline">ROI Calculator</a> — Calculate simple return on investment as a percentage.</li>
+      <li><a href="/tools/wacc-calculator" class="font-medium text-indigo-600 hover:underline">WACC Calculator</a> — Estimate the weighted average cost of capital for use as a discount rate.</li>
+      <li><a href="/tools/present-future-value-calculator" class="font-medium text-indigo-600 hover:underline">PV/FV Calculator</a> — Calculate present and future values for single-sum investments.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function update() {
+      const invest = parseFloat(el('invest').value);
+      const rate = parseFloat(el('rate').value);
+      const cfStr = el('cashflows').value.trim();
+      el('err').textContent = '';
+      if (isNaN(invest) || isNaN(rate)) { ['r-npv', 'r-pi', 'r-decision'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (!cfStr) { ['r-npv', 'r-pi', 'r-decision'].forEach((id) => (el(id).textContent = '—')); return; }
+      const cfs = cfStr.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+      if (cfs.length === 0) { ['r-npv', 'r-pi', 'r-decision'].forEach((id) => (el(id).textContent = '—')); return; }
+      const r = rate / 100;
+      let pvSum = 0;
+      for (let t = 0; t < cfs.length; t++) {
+        pvSum += cfs[t] / Math.pow(1 + r, t + 1);
+      }
+      const npv = pvSum - invest;
+      const pi = invest > 0 ? (npv + invest) / invest : 0;
+      el('r-npv').textContent = fmt(npv);
+      el('r-pi').textContent = pi.toFixed(2);
+      el('r-decision').textContent = npv >= 0 ? '✓ Accept' : '✗ Reject';
+      el('r-decision').style.color = npv >= 0 ? '#059669' : '#dc2626';
+    }
+    ['invest', 'rate', 'cashflows'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

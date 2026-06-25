@@ -1,0 +1,223 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Molarity Calculator';
+const description = 'Free online molarity calculator. Solve for molarity, moles of solute, or solution volume using M = mol/L. Also handles dilution with M₁V₁ = M₂V₂.';
+const intro = 'Enter any two values — molarity, moles, or volume — to solve for the third. Switch to dilution mode for M₁V₁ = M₂V₂.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is molarity?', a: 'Molarity (M) is the number of moles of solute per litre of solution. M = mol/L. It is the most common unit of concentration in chemistry for solutions.' },
+  { q: 'How do I calculate molarity from mass?', a: 'First convert the mass of solute to moles using the molar mass: moles = mass / molar mass. Then divide by the volume in litres to get molarity.' },
+  { q: 'What is the dilution formula?', a: 'M₁V₁ = M₂V₂, where M₁ and V₁ are the initial concentration and volume, and M₂ and V₂ are the final concentration and volume. The number of moles stays constant during dilution.' },
+  { q: 'What units should I use?', a: 'Molarity in mol/L (M), moles in mol, volume in litres. If your volume is in mL, divide by 1000 to convert to litres before using the formula.' },
+  { q: 'How does temperature affect molarity?', a: 'Molarity changes with temperature because solutions expand or contract, changing the volume. For precise work, use molality (mol/kg of solvent) which is temperature-independent.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2">
+      <button id="mode-mol" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Molarity (M = mol/L)</button>
+      <button id="mode-dil" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Dilution (M₁V₁ = M₂V₂)</button>
+    </div>
+    <div id="mol-fields" class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Molarity (M)</span>
+        <input id="m" type="number" step="any" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Moles (n)</span>
+        <input id="n" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Volume (V)</span>
+        <input id="v" type="number" step="any" placeholder="L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="dil-fields" class="hidden grid gap-4 sm:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">M₁ (initial)</span>
+        <input id="m1" type="number" step="any" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">V₁ (initial)</span>
+        <input id="v1" type="number" step="any" placeholder="L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">M₂ (final)</span>
+        <input id="m2" type="number" step="any" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">V₂ (final)</span>
+        <input id="v2" type="number" step="any" placeholder="L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="mol-result" class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Molarity / M₁</div><div id="r-m1" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Moles / V₁</div><div id="r-v1" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Volume / Final</div><div id="r-v2" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="mol-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mol-title mol-desc">
+      <title id="mol-title">Beaker with solute diagram</title>
+      <desc id="mol-desc">A beaker containing a solution with labelled solute particles, illustrating molarity as moles per litre</desc>
+      <g transform="translate(40,20)">
+        <path d="M 180 50 L 180 230 Q 180 250 200 250 L 340 250 Q 360 250 360 230 L 360 50" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2.5"/>
+        <rect x="190" y="100" width="160" height="20" rx="4" fill="#fef3c7" opacity="0.6"/>
+        <text x="270" y="115" text-anchor="middle" fill="#d97706" font-size="11">Solute</text>
+        <circle cx="220" cy="150" r="8" fill="#fca5a5" opacity="0.7"/>
+        <circle cx="260" cy="170" r="8" fill="#fca5a5" opacity="0.7"/>
+        <circle cx="300" cy="145" r="8" fill="#fca5a5" opacity="0.7"/>
+        <circle cx="240" cy="190" r="8" fill="#fca5a5" opacity="0.7"/>
+        <circle cx="310" cy="175" r="8" fill="#fca5a5" opacity="0.7"/>
+        <text x="270" y="235" text-anchor="middle" fill="#0ea5e9" font-size="14">Volume (L)</text>
+        <text x="450" y="120" fill="#4338ca" font-size="22" font-weight="bold">M = n / V</text>
+        <text x="450" y="150" fill="#64748b" font-size="14">Molarity = moles ÷ volume</text>
+        <rect x="430" y="170" width="200" height="70" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+        <text x="530" y="195" text-anchor="middle" fill="#059669" font-size="13" font-weight="bold">Dilution: M₁V₁ = M₂V₂</text>
+        <text x="530" y="218" text-anchor="middle" fill="#047857" font-size="12">Moles of solute stay constant</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">A solution showing solute particles dissolved in solvent. Molarity is moles of solute per litre of solution.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How molarity is calculated</h2>
+    <p class="mt-2 text-slate-600">Molarity (<span class="font-mono">M = n / V</span>) expresses concentration as moles of solute per litre of solution. One molar (1 M) solution contains one mole of solute dissolved in one litre of solution. When diluting a solution, the number of moles stays constant, giving the dilution formula <span class="font-mono">M₁V₁ = M₂V₂</span>. This means you can calculate how much water to add to a stock solution to achieve a desired concentration.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">You have 0.5 moles of NaCl. What volume of 2 M solution can you prepare?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Moles of NaCl:</span> <span class="text-slate-600">0.5 mol</span></div>
+        <div><span class="font-medium text-slate-700">Desired molarity:</span> <span class="text-slate-600">2 M</span></div>
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">V = 0.5 / 2 = 0.25 L = 250 mL</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F9EA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Lab Scientist</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepare solutions of exact concentrations for experiments. Calculate how much solute to weigh out and what volume to make up to for a target molarity.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3EB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Chemistry Teacher</h3>
+      <p class="mt-1 text-sm text-slate-600">Create dilution problems for students with instant verification. Demonstrate how adding more solvent decreases concentration while the moles remain unchanged.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F48A;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Pharmaceutical Technician</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate the exact dilutions needed to prepare drug formulations from stock solutions. Ensure potency and safety by verifying concentrations at each step.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F33F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Environmental Analyst</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepare calibration standards for water testing instruments. Accurate dilutions from stock solutions ensure reliable measurements of pollutants and nutrients.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the molarity calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose your mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Use "Molarity" for M = n/V calculations. Switch to "Dilution" for M₁V₁ = M₂V₂ problems. The input fields change to match each mode.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your values</h3>
+        <p class="mt-1 text-sm text-slate-600">In molarity mode, enter any two of M, n, V. In dilution mode, enter any three of M₁, V₁, M₂, V₂. The missing value is calculated automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Use with molar mass</h3>
+        <p class="mt-1 text-sm text-slate-600">First use the Molar Mass Calculator to find the molar mass of your solute, then convert the required mass to moles before using this calculator.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for molarity calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Convert volume to litres</h3>
+        <p class="mt-1 text-sm text-slate-600">Always use litres for volume. If you have millilitres (the most common lab measurement), divide by 1000. For example, 250 mL = 0.25 L. Forgetting the conversion is the most common error.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Significant figures matter</h3>
+        <p class="mt-1 text-sm text-slate-600">Report your molarity to the appropriate number of significant figures based on your measurements. A balance reading 5.00 g is more precise than 5 g and justifies more decimal places.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Serial dilutions</h3>
+        <p class="mt-1 text-sm text-slate-600">For very dilute solutions, make a series of stepwise dilutions rather than a single large one. Each step uses the M₁V₁ = M₂V₂ formula, using the previous step's result as the new stock.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/dilution-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4A7;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Dilution Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">C1V1 = C2V2 — solve for any variable.</p>
+      </a>
+      <a href="/tools/atomic-mass-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2697;&#xFE0F;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molar Mass Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Sum atomic masses from chemical formula.</p>
+      </a>
+      <a href="/tools/ph-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F9EA;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">pH Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">pH from hydrogen ion concentration.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+    let mode = 'mol';
+    function switchMode(m) {
+      mode = m;
+      el('mode-mol').className = m === 'mol' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('mode-dil').className = m === 'dil' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('mol-fields').className = m === 'mol' ? 'grid gap-4 sm:grid-cols-3' : 'hidden';
+      el('dil-fields').className = m === 'dil' ? 'grid gap-4 sm:grid-cols-4' : 'hidden';
+      ['r-m1', 'r-v1', 'r-v2'].forEach(id => el(id).textContent = '—');
+      el('mol-err').textContent = '';
+    }
+    function update() {
+      el('mol-err').textContent = '';
+      if (mode === 'mol') {
+        const M = parseFloat(el('m').value);
+        const n = parseFloat(el('n').value);
+        const V = parseFloat(el('v').value);
+        const filled = [!isNaN(M), !isNaN(n), !isNaN(V)];
+        const count = filled.filter(Boolean).length;
+        ['r-m1', 'r-v1', 'r-v2'].forEach(id => el(id).textContent = '—');
+        if (count < 2) return;
+        let rM = NaN, rn = NaN, rV = NaN;
+        if (filled[0] && filled[1]) { rV = n / M; rM = M; rn = n; }
+        else if (filled[0] && filled[2]) { rn = M * V; rM = M; rV = V; }
+        else if (filled[1] && filled[2]) { if (V === 0) { el('mol-err').textContent = 'Volume cannot be zero.'; return; } rM = n / V; rn = n; rV = V; }
+        if (!isNaN(rM)) el('r-m1').textContent = fmt(rM);
+        if (!isNaN(rn)) el('r-v1').textContent = fmt(rn);
+        if (!isNaN(rV)) el('r-v2').textContent = fmt(rV);
+      } else {
+        const m1 = parseFloat(el('m1').value);
+        const v1 = parseFloat(el('v1').value);
+        const m2 = parseFloat(el('m2').value);
+        const v2 = parseFloat(el('v2').value);
+        const filled = [!isNaN(m1), !isNaN(v1), !isNaN(m2), !isNaN(v2)];
+        const count = filled.filter(Boolean).length;
+        ['r-m1', 'r-v1', 'r-v2'].forEach(id => el(id).textContent = '—');
+        if (count < 3) return;
+        let rm1 = NaN, rv1 = NaN, rm2 = NaN, rv2 = NaN;
+        if (!filled[0]) { rm1 = (m2 * v2) / v1; rv1 = v1; rm2 = m2; rv2 = v2; }
+        else if (!filled[1]) { if (m1 === 0) { el('mol-err').textContent = 'M₁ cannot be zero.'; return; } rv1 = (m2 * v2) / m1; rm1 = m1; rm2 = m2; rv2 = v2; }
+        else if (!filled[2]) { if (v2 === 0) { el('mol-err').textContent = 'V₂ cannot be zero.'; return; } rm2 = (m1 * v1) / v2; rm1 = m1; rv1 = v1; rv2 = v2; }
+        else if (!filled[3]) { if (m2 === 0) { el('mol-err').textContent = 'M₂ cannot be zero.'; return; } rv2 = (m1 * v1) / m2; rm1 = m1; rv1 = v1; rm2 = m2; }
+        if (!isNaN(rm1)) el('r-m1').textContent = fmt(rm1);
+        if (!isNaN(rv1)) el('r-v1').textContent = fmt(rv1);
+        if (!isNaN(rv2)) el('r-v2').textContent = fmt(rv2);
+      }
+    }
+    el('mode-mol').addEventListener('click', () => { switchMode('mol'); update(); });
+    el('mode-dil').addEventListener('click', () => { switchMode('dil'); update(); });
+    ['m', 'n', 'v', 'm1', 'v1', 'm2', 'v2'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

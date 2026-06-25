@@ -1,0 +1,225 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Property Tax Calculator';
+const description =
+  'Free property tax calculator. Estimate your annual property tax based on your home\'s assessed value and the local tax rate, including potential exemptions.';
+const intro =
+  'Enter your property\'s assessed value and the local tax rate (mill rate or percentage) to estimate your annual property tax. Add any applicable exemptions.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is property tax?', a: 'Property tax is an ad-valorem tax levied by local governments on real estate. It is based on the assessed value of your property and is the primary funding source for public schools, roads, police, fire departments, and other municipal services.' },
+  { q: 'How is property tax calculated?', a: 'Property tax = (Assessed Value ÷ 1,000) × Mill Rate. A mill is $1 of tax per $1,000 of assessed value. If your home is valued at $300,000 and the mill rate is 20, your annual tax is ($300,000 ÷ 1,000) × 20 = $6,000.' },
+  { q: 'What is a mill rate?', a: 'A mill rate (or millage rate) is the tax per $1,000 of a property\'s assessed value. One mill equals $1 of tax for every $1,000 of value. Mill rates are set by local governments and can include separate rates for schools, county, city, and special districts.' },
+  { q: 'What is the difference between market value and assessed value?', a: 'Market value is what a property would sell for in the open market. Assessed value is the value assigned by the county assessor for tax purposes, which may be a percentage of market value (assessment ratio) or a recent appraisal. Your tax bill is based on assessed value, not market value.' },
+  { q: 'What are common property tax exemptions?', a: 'Common exemptions include homestead exemptions (for primary residences), senior citizen exemptions, veterans exemptions, disability exemptions, and exemptions for religious or charitable organizations. These reduce the assessed value before tax is calculated.' },
+  { q: 'How often are properties reassessed?', a: 'Reassessment schedules vary by jurisdiction — from annually to every few years or only when the property is sold. Some areas have annual adjustments for inflation, while others only reassess after a transfer of ownership.' },
+  { q: 'Can I appeal my property tax assessment?', a: 'Yes. If you believe your assessed value is too high compared to similar properties, you can file an appeal with your county\'s assessment appeals board. You will need evidence like recent comparable sales or an independent appraisal.' },
+  { q: 'Are property taxes deductible?', a: 'Yes, property taxes on real estate are deductible on your federal income tax return if you itemize deductions. The Tax Cuts and Jobs Act capped the deduction for state and local taxes (SALT) at $10,000 per year.' },
+  { q: 'What happens if I don\'t pay property taxes?', a: 'Unpaid property taxes become a lien on your property. The taxing authority can eventually foreclose on the property to collect the unpaid taxes. Most jurisdictions offer payment plans or deferrals for hardship cases.' },
+  { q: 'Do I pay property tax on a new home purchase?', a: 'Yes, but the timing depends on your closing date. At closing, you typically reimburse the seller for taxes they have already paid for the current year (prorated). Going forward, you pay the taxes directly or through your mortgage escrow account.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Assessed property value ($)</span>
+        <input id="value" type="number" step="any" placeholder="350000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tax rate type</span>
+        <select id="rateType" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="mill">Mill rate (per $1,000)</option><option value="percent">Percentage (%)</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tax rate</span>
+        <input id="rate" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Exemption amount ($, optional)</span>
+        <input id="exemption" type="number" step="any" placeholder="25000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Annual property tax</div><div id="r-tax" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Monthly cost</div><div id="r-monthly" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Effective rate</div><div id="r-eff" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How property tax is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      Property tax is calculated using the formula:
+      <span class="font-mono">Annual Tax = (Assessed Value - Exemption) × Rate</span>.
+      When using mill rate: <span class="font-mono">Tax = (Value ÷ 1,000) × Mill Rate</span>.
+      When using percentage: <span class="font-mono">Tax = Value × (Rate / 100)</span>.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Property taxes are typically paid annually or semi-annually, and many lenders collect them as
+      part of your monthly mortgage payment through an escrow account. Understanding your property
+      tax helps you budget for homeownership, compare homes in different tax jurisdictions, and
+      evaluate the impact of exemptions or assessment appeals on your total housing cost.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A home assessed at $350,000 with a mill rate of 20 and a $25,000 homestead exemption.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Assessed value:</span> <span class="text-slate-600">$350,000</span></div>
+        <div><span class="font-medium text-slate-700">Exemption:</span> <span class="text-slate-600">$25,000</span></div>
+        <div><span class="font-medium text-slate-700">Taxable value:</span> <span class="text-slate-600">$325,000</span></div>
+        <div><span class="font-medium text-slate-700">Mill rate:</span> <span class="text-slate-600">20 mills (2.0%)</span></div>
+        <div><span class="font-medium text-slate-700">Annual tax:</span> <span class="text-slate-600">$6,500</span></div>
+        <div><span class="font-medium text-slate-700">Monthly:</span> <span class="text-slate-600">$541.67</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Home with assessed value diagram">
+      <title>Property Tax Home Value</title>
+      <desc>A simple house icon with an assessed value label and a tax rate arrow flowing to the annual tax amount, showing the calculation flow.</desc>
+      <rect x="180" y="60" width="180" height="120" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+      <polygon points="140,120 270,40 400,120" fill="#c7d2fe" stroke="#6366f1" stroke-width="2"/>
+      <rect x="260" y="145" width="40" height="35" rx="2" fill="#dbeafe" stroke="#6366f1" stroke-width="1"/>
+      <rect x="200" y="100" width="30" height="20" rx="2" fill="#dbeafe" stroke="#6366f1" stroke-width="1"/>
+      <text x="270" y="50" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="bold">Assessed Value</text>
+      <text x="270" y="68" text-anchor="middle" fill="#6366f1" font-size="12">$350,000</text>
+      <path d="M 360 130 L 440 130" stroke="#94a3b8" stroke-width="2" marker-end="url(#pa1)"/>
+      <text x="400" y="120" text-anchor="middle" fill="#94a3b8" font-size="12">× Mill Rate</text>
+      <rect x="440" y="90" width="160" height="80" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+      <text x="520" y="130" text-anchor="middle" fill="#22c55e" font-size="14" font-weight="bold">Annual Tax</text>
+      <text x="520" y="150" text-anchor="middle" fill="#22c55e" font-size="12">$6,500</text>
+      <defs><marker id="pa1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#94a3b8"/></marker></defs>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Your home's assessed value is multiplied by the local tax rate to determine annual property tax</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About property taxes</h2>
+    <p class="mt-2 text-slate-600">
+      Property taxes are the lifeblood of local government funding. They pay for public schools (the
+      largest share), roads, bridges, parks, libraries, police, fire departments, emergency services,
+      and local infrastructure. Because property values tend to be stable and visible, property taxes
+      provide a reliable revenue stream that does not fluctuate as much as sales or income tax during
+      economic cycles. Use the
+      <a href="/tools/mortgage-calculator" class="font-medium text-indigo-600 hover:underline">Mortgage Calculator</a>
+      to see how property taxes affect your total monthly housing payment.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter your property's assessed value (found on your county assessor's website or tax bill).</li>
+      <li>Select mill rate or percentage and enter your local rate.</li>
+      <li>Optionally enter any exemptions you qualify for (homestead, senior, veteran, etc.).</li>
+      <li>View your annual property tax, monthly cost, and effective tax rate.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Homebuyers use it to compare property taxes across different neighborhoods and counties before
+      making an offer. Homeowners use it to check if their tax bill is correct and to estimate the
+      impact of exemptions. Sellers use it to provide accurate tax information to potential buyers.
+      It is also useful when appealing an assessment to see what your tax would be at a lower value.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for property taxes</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Always apply for all exemptions you qualify for — they can save hundreds or thousands annually.</li>
+      <li>Check your assessed value against recent comparable sales in your area to ensure accuracy.</li>
+      <li>If you buy a home, verify the property tax history — some properties have grandfathered lower rates.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏠</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Homebuyer</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare property tax estimates for homes in different neighborhoods and counties before making an offer. Know exactly what the annual tax burden will be.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏡</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Current Homeowner</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify your annual tax bill is correct based on your assessed value and rate. Check if exemptions are properly applied and estimate the impact of an assessment appeal.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💰</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Real Estate Investor</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate property tax as part of your total investment cost analysis. Compare tax burdens across different markets to identify the most tax-efficient investment locations.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Senior / Retiree</h3>
+      <p class="mt-1 text-sm text-slate-600">Check if you qualify for senior citizen property tax exemptions or freeze programs in your area. Estimate the savings from exemptions on a fixed retirement income.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the property tax calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the assessed value</h3>
+        <p class="mt-1 text-sm text-slate-600">Find your property's assessed value on your latest tax bill or your county assessor's website. This may differ from market value or your purchase price.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the tax rate</h3>
+        <p class="mt-1 text-sm text-slate-600">Select mill rate or percentage and enter your local rate. Mill rates are typically listed on tax bills. If unsure, check your county website or use the effective rate from your last bill.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add exemptions</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter any homestead, senior, veteran, or other exemptions that reduce your taxable value. Check with your county for all exemptions you may be eligible to claim.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for managing property taxes</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">File for all eligible exemptions</h3>
+        <p class="mt-1 text-sm text-slate-600">Many homeowners miss out on exemptions they qualify for. Homestead exemptions alone can reduce your taxable value by $25,000 to $100,000 depending on your state. Senior, veteran, disability, and solar energy exemptions can provide additional savings.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Appeal if your assessment is too high</h3>
+        <p class="mt-1 text-sm text-slate-600">If comparable homes in your neighborhood have sold for less than your assessed value, or if your assessment increased more than the market justifies, file an appeal. Gather 3-5 recent comparable sales and present them to the assessment board.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider the tax impact before buying</h3>
+        <p class="mt-1 text-sm text-slate-600">Property taxes can vary dramatically between neighboring counties or even streets. A home in a high-tax district might cost thousands more per year than a similar home just across the border. Factor this into your monthly budget when comparing properties.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/sales-tax-calculator" class="font-medium text-indigo-600 hover:underline">Sales Tax Calculator</a> — Estimate sales tax on purchases for any state and local jurisdiction.</li>
+      <li><a href="/tools/income-tax-calculator-us" class="font-medium text-indigo-600 hover:underline">US Income Tax Calculator</a> — Estimate federal income tax with progressive brackets.</li>
+      <li><a href="/tools/mortgage-calculator" class="font-medium text-indigo-600 hover:underline">Mortgage Calculator</a> — See how property taxes, insurance, and PMI affect your total monthly payment.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function update() {
+      const value = parseFloat(el('value').value);
+      const rate = parseFloat(el('rate').value);
+      const rateType = el('rateType').value;
+      const exemption = parseFloat(el('exemption').value);
+      el('err').textContent = '';
+      if (isNaN(value) || value < 0) { ['r-tax', 'r-monthly', 'r-eff'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (isNaN(rate) || rate < 0) { el('err').textContent = 'Please enter a valid tax rate.'; return; }
+      const ex = isNaN(exemption) ? 0 : exemption;
+      const taxable = Math.max(0, value - ex);
+      let annual;
+      if (rateType === 'mill') {
+        annual = (taxable / 1000) * rate;
+      } else {
+        annual = taxable * (rate / 100);
+      }
+      const effRate = value > 0 ? (annual / value) * 100 : 0;
+      el('r-tax').textContent = fmt(annual);
+      el('r-monthly').textContent = fmt(annual / 12);
+      el('r-eff').textContent = effRate.toFixed(3) + '%';
+    }
+    ['value', 'rate', 'rateType', 'exemption'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

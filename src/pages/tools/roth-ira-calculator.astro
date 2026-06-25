@@ -1,0 +1,225 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Roth IRA Calculator';
+const description =
+  'Free Roth IRA calculator. Compare the projected growth of a Roth IRA versus a taxable investment account and see your tax-free retirement savings.';
+const intro =
+  'Enter your current age, retirement age, annual contribution, current balance, and expected return to see how your Roth IRA grows tax-free compared to a taxable account.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is a Roth IRA?', a: 'A Roth IRA is an individual retirement account where contributions are made with after-tax dollars, but withdrawals in retirement are tax-free. It offers tax-free growth and tax-free distributions in retirement, making it one of the most powerful retirement savings vehicles available.' },
+  { q: 'What are the Roth IRA contribution limits?', a: 'In 2025, the contribution limit is $7,000 ($8,000 if age 50+). However, eligibility phases out at higher incomes — for single filers, the phase-out range is $150,000-$165,000 of modified adjusted gross income (MAGI), and for married couples filing jointly, it is $236,000-$246,000.' },
+  { q: 'How is a Roth IRA different from a Traditional IRA?', a: 'Traditional IRA contributions may be tax-deductible now, but withdrawals are taxed as ordinary income. Roth IRA contributions are after-tax (no deduction now), but withdrawals are tax-free. Roth IRAs also have no Required Minimum Distributions (RMDs) during the owner\'s lifetime.' },
+  { q: 'Can I withdraw contributions from a Roth IRA anytime?', a: 'Yes. You can withdraw your direct contributions (not earnings) from a Roth IRA at any time, for any reason, completely tax-free and penalty-free. This makes the Roth IRA more flexible than a 401(k) for emergency access to funds.' },
+  { q: 'What are the rules for withdrawing earnings?', a: 'Earnings can be withdrawn tax-free after age 59½ and a 5-year holding period from your first contribution. Early withdrawals of earnings may be subject to both income tax and a 10% penalty, with certain exceptions for first-time home purchases ($10,000 limit), education expenses, and medical hardship.' },
+  { q: 'Why would a Roth IRA outperform a taxable account?', a: 'A taxable account incurs capital gains taxes on realized gains and dividends each year, reducing the compounding effect. A Roth IRA grows completely tax-free, meaning 100% of your returns compound without annual tax drag. Over decades, this difference can be enormous.' },
+  { q: 'What is the backdoor Roth IRA?', a: 'The backdoor Roth IRA is a strategy for high-income earners who exceed the income limits. You make a non-deductible contribution to a Traditional IRA, then convert it to a Roth IRA. There is no income limit on Roth conversions, making this a legal workaround.' },
+  { q: 'Should I choose Roth or Traditional?', a: 'Choose Roth if you expect to be in a higher tax bracket in retirement than you are now (common for early-career professionals). Choose Traditional if you expect to be in a lower tax bracket in retirement. Many people diversify by having both types of accounts.' },
+  { q: 'What investments should I hold in a Roth IRA?', a: 'Since Roth IRA withdrawals are tax-free, it is best to hold investments with the highest expected growth (stocks, stock ETFs) to maximize the value of tax-free compounding. Bonds and other lower-growth assets are better held in tax-deferred accounts.' },
+  { q: 'Can I have both a Roth IRA and a 401(k)?', a: 'Yes. Having both maximizes your retirement savings. You can contribute to a 401(k) through your employer and also contribute to a Roth IRA (subject to income limits). This gives you both pre-tax and tax-free retirement income streams.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current age</span>
+        <input id="curAge" type="number" step="1" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Retirement age</span>
+        <input id="retAge" type="number" step="1" placeholder="65" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Annual Roth contribution ($)</span>
+        <input id="contrib" type="number" step="any" placeholder="7000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Current Roth balance ($)</span>
+        <input id="balance" type="number" step="any" placeholder="10000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Expected annual return (%)</span>
+        <input id="roi" type="number" step="any" placeholder="7" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Roth IRA value at retirement</div><div id="r-roth" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Taxable account value</div><div id="r-taxable" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Tax savings from Roth</div><div id="r-savings" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Roth IRA growth is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      The Roth IRA projection uses the future value formula:
+      <span class="font-mono">FV = PV × (1 + r)^n + PMT × ((1 + r)^n - 1) / r × (1 + r)</span>.
+      For the taxable account, we reduce the annual return by the capital gains tax drag:
+      <span class="font-mono">Taxable FV = PV × (1 + r × (1 - t))^n + PMT × ((1 + r × (1 - t))^n - 1) / (r × (1 - t))</span>,
+      where t is the effective annual tax drag on investment returns.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The key advantage of a Roth IRA is that all growth is completely tax-free. In a taxable
+      account, dividends and capital gains distributions create an annual tax drag that reduces your
+      compounding. Over decades, this tax drag can reduce your ending balance by 20-40% compared to
+      a tax-free Roth account. The younger you start, the more dramatic this advantage becomes, as
+      tax-free compounding has more time to work its magic.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Age 30, retire at 65, $7,000/year Roth contribution, $10,000 current balance, 7% return, 15% capital gains tax drag.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Years of growth:</span> <span class="text-slate-600">35</span></div>
+        <div><span class="font-medium text-slate-700">Total contributions:</span> <span class="text-slate-600">$255,000</span></div>
+        <div><span class="font-medium text-slate-700">Roth IRA balance at 65:</span> <span class="text-slate-600">~$1,128,000</span></div>
+        <div><span class="font-medium text-slate-700">Taxable account value:</span> <span class="text-slate-600">~$832,000</span></div>
+        <div><span class="font-medium text-slate-700">Tax savings from Roth:</span> <span class="text-slate-600">~$296,000</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two diverging growth curves">
+      <title>Roth vs Taxable Growth Comparison</title>
+      <desc>Two upward-sloping curves starting at the same point and diverging over time, with the Roth IRA curve growing higher than the taxable account curve.</desc>
+      <line x1="60" y1="190" x2="740" y2="190" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="60" y1="190" x2="60" y2="30" stroke="#94a3b8" stroke-width="2"/>
+      <path d="M 60 185 Q 150 165 250 140 Q 350 110 450 80 Q 550 50 650 30" stroke="#22c55e" stroke-width="3" fill="none"/>
+      <text x="660" y="28" fill="#22c55e" font-size="13" font-weight="bold">Roth IRA</text>
+      <path d="M 60 185 Q 150 170 250 150 Q 350 130 450 110 Q 550 90 650 75" stroke="#94a3b8" stroke-width="3" stroke-dasharray="6 3" fill="none"/>
+      <text x="660" y="73" fill="#94a3b8" font-size="13" font-weight="bold">Taxable</text>
+      <text x="400" y="210" text-anchor="middle" fill="#64748b" font-size="13">Time</text>
+      <text x="25" y="110" text-anchor="middle" fill="#64748b" font-size="13" transform="rotate(-90 25 110)">Account Value</text>
+      <path d="M 450 95 L 450 80" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="460" y="92" fill="#ef4444" font-size="11">Tax Drag</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">The Roth IRA (solid green) grows higher than a taxable account (dashed) because there is no annual tax drag on returns</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About Roth IRAs</h2>
+    <p class="mt-2 text-slate-600">
+      The Roth IRA is one of the most powerful tools in personal finance because it offers tax-free
+      growth — a rare combination in a world where most investment earnings are eventually taxed.
+      Named after Senator William Roth, who sponsored the 1997 legislation creating it, the Roth IRA
+      has become a cornerstone of retirement planning for millions of Americans. Unlike Traditional
+      IRAs, Roth IRAs do not require minimum distributions during your lifetime, making them
+      excellent vehicles for estate planning and passing wealth to heirs. Use the
+      <a href="/tools/401k-calculator" class="font-medium text-indigo-600 hover:underline">401(k) Calculator</a>
+      to plan your employer-sponsored retirement savings alongside your Roth IRA.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter your current age and target retirement age.</li>
+      <li>Enter your annual Roth IRA contribution and current balance.</li>
+      <li>Set the expected annual return and see the projected tax-free amount vs a taxable account.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use this calculator when deciding whether to contribute to a Roth IRA or a taxable brokerage
+      account, when planning your annual retirement contribution strategy, when evaluating the
+      long-term impact of the Roth versus Traditional decision, or when setting up a backdoor Roth IRA.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for Roth IRA success</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Max out your Roth IRA every year if you're eligible — the tax-free growth is invaluable.</li>
+      <li>Use the backdoor Roth strategy if your income exceeds the direct contribution limit.</li>
+      <li>Hold high-growth investments (stocks, ETFs) in your Roth IRA to maximize tax-free compounding.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👩‍🎓</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Young Professional</h3>
+      <p class="mt-1 text-sm text-slate-600">Starting early with a Roth IRA gives you decades of tax-free growth. Your low current tax bracket makes Roth contributions especially advantageous now.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">High-Income Earner</h3>
+      <p class="mt-1 text-sm text-slate-600">Use the backdoor Roth IRA strategy to contribute even if your income exceeds the direct contribution limits. Every dollar in a Roth grows tax-free forever.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔄</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Mid-Career Changer</h3>
+      <p class="mt-1 text-sm text-slate-600">If you're in a temporary low-income year (between jobs, sabbatical, starting a business), consider converting Traditional IRA funds to Roth at lower tax rates.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏠</span>
+      <h3 class="mt-2 font-semibold text-slate-900">First-Time Home Buyer</h3>
+      <p class="mt-1 text-sm text-slate-600">Roth IRAs allow penalty-free withdrawals of up to $10,000 in earnings for a first-time home purchase. Your contributions can also be withdrawn anytime without tax or penalty.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the Roth IRA calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your age info</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your current age and the age you plan to retire. The longer your time horizon, the more dramatic the tax-free compounding advantage becomes.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set contributions and return</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your expected annual Roth IRA contribution and current balance. Use a conservative return estimate (5-7%) for realistic projections.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Compare the outcomes</h3>
+        <p class="mt-1 text-sm text-slate-600">See the Roth balance side-by-side with a taxable account. The difference shows the value of tax-free compounding over your investment horizon.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for maximizing your Roth IRA</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Start early and contribute consistently</h3>
+        <p class="mt-1 text-sm text-slate-600">The biggest advantage of a Roth IRA is the number of years your money grows tax-free. A $7,000 annual contribution starting at age 25 grows to over $1.4 million by 65 at 7% return — versus just $661,000 starting at 45.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the backdoor Roth for high incomes</h3>
+        <p class="mt-1 text-sm text-slate-600">If your income exceeds the Roth IRA phase-out limits, you can still contribute via the backdoor method: make a non-deductible Traditional IRA contribution, then convert it to a Roth IRA. There is no income limit on conversions.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Invest aggressively in your Roth IRA</h3>
+        <p class="mt-1 text-sm text-slate-900">Since all growth in a Roth IRA is tax-free, it makes sense to hold your highest-growth potential investments there. Stock ETFs and index funds are ideal candidates. Keep bonds and other lower-growth assets in your tax-deferred accounts where the tax savings matter less.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/401k-calculator" class="font-medium text-indigo-600 hover:underline">401(k) Calculator</a> — Project your employer-sponsored retirement savings with matching contributions.</li>
+      <li><a href="/tools/social-security-calculator" class="font-medium text-indigo-600 hover:underline">Social Security Calculator</a> — Estimate your Social Security retirement income to complete your retirement picture.</li>
+      <li><a href="/tools/investment-calculator" class="font-medium text-indigo-600 hover:underline">Investment Calculator</a> — General investment growth projections for any account type.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    function update() {
+      const curAge = parseFloat(el('curAge').value);
+      const retAge = parseFloat(el('retAge').value);
+      const contrib = parseFloat(el('contrib').value);
+      const balance = parseFloat(el('balance').value);
+      const roi = parseFloat(el('roi').value);
+      el('err').textContent = '';
+      if (isNaN(curAge) || isNaN(retAge) || curAge >= retAge) { ['r-roth', 'r-taxable', 'r-savings'].forEach((id) => (el(id).textContent = '—')); if (curAge >= retAge) el('err').textContent = 'Retirement age must be greater than current age.'; return; }
+      const years = retAge - curAge;
+      const r = (isNaN(roi) ? 7 : roi) / 100;
+      const bal = isNaN(balance) ? 0 : balance;
+      const pmt = isNaN(contrib) ? 0 : contrib;
+      const rothFV = bal * Math.pow(1 + r, years) + pmt * (Math.pow(1 + r, years) - 1) / r * (1 + r);
+      const taxDrag = 0.15;
+      const rAdj = r * (1 - taxDrag);
+      const taxableFV = bal * Math.pow(1 + rAdj, years) + pmt * (Math.pow(1 + rAdj, years) - 1) / rAdj * (1 + rAdj);
+      const savings = rothFV - taxableFV;
+      el('r-roth').textContent = fmt(rothFV);
+      el('r-taxable').textContent = fmt(taxableFV);
+      el('r-savings').textContent = fmt(savings);
+    }
+    ['curAge', 'retAge', 'contrib', 'balance', 'roi'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

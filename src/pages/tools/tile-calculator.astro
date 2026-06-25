@@ -1,0 +1,249 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Tile Calculator';
+const description = 'Calculate the number of tiles needed from area dimensions and tile size with waste factor.';
+const intro = 'Calculate exactly how many tiles you need for flooring, walls, or backsplashes.';
+const category = { id: 'construction', name: 'Construction & Home Improvement' };
+const faqs = [
+  { q: 'How much extra tile should I buy?', a: 'Always buy 10-15% extra for waste. Simple square layouts need 10%. Diagonal layouts, herringbone patterns, and rooms with many corners need 15%. Keep extra tiles for future repairs.' },
+  { q: 'What does "nominal" tile size mean?', a: 'Nominal size is the advertised size, but actual tile dimensions may vary by 1-2 mm. For example, a 12x12 inch tile may actually measure 11.75 x 11.75 inches. Always measure your actual tiles before calculating.' },
+  { q: 'How do I tile around obstacles?', a: 'Measure the full area including the obstacle, calculate tiles for the full area, then subtract waste. It is usually easier to tile the whole area and cut around obstacles than to calculate exact cut pieces.' },
+  { q: 'Do I need to account for grout lines?', a: 'For large tiles (12 inches and up), grout lines of 1/8 inch add minimal difference. For small mosaic tiles, grout lines can reduce the tile count by 5-10%. This calculator does not deduct for grout.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tile length (in)</span>
+        <input id="tile-l" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tile width (in)</span>
+        <input id="tile-w" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Waste factor</span>
+      <div class="mt-1 flex gap-2">
+        {['10%', '15%', '20%'].map((w) => (
+          <button data-waste={w.replace('%', '')} class="waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{w}</button>
+        ))}
+      </div>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Box size (sq ft)</span>
+      <input id="box-size" type="number" step="any" placeholder="10" value="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Tiles needed</div>
+        <div id="r-tiles" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-pct" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Total with waste</div><div id="r-total" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Boxes needed</div><div id="r-boxes" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tile-title tile-desc">
+      <title id="tile-title">Tile floor grid diagram</title>
+      <desc id="tile-desc">A floor area divided into a grid of tiles with some cut pieces shown along edges</desc>
+      <rect x="80" y="60" width="500" height="240" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" rx="4" />
+      <g stroke="#cbd5e1" stroke-width="1">
+        <line x1="180" y1="60" x2="180" y2="300" />
+        <line x1="280" y1="60" x2="280" y2="300" />
+        <line x1="380" y1="60" x2="380" y2="300" />
+        <line x1="480" y1="60" x2="480" y2="300" />
+        <line x1="80" y1="120" x2="580" y2="120" />
+        <line x1="80" y1="180" x2="580" y2="180" />
+        <line x1="80" y1="240" x2="580" y2="240" />
+      </g>
+      <rect x="80" y="60" width="100" height="60" fill="#6366f1" opacity="0.15" />
+      <rect x="180" y="60" width="100" height="60" fill="#6366f1" opacity="0.15" />
+      <rect x="280" y="60" width="100" height="60" fill="#6366f1" opacity="0.08" />
+      <rect x="380" y="60" width="100" height="60" fill="#6366f1" opacity="0.15" />
+      <rect x="480" y="60" width="100" height="60" fill="#818cf8" opacity="0.3" />
+      <text x="530" y="95" text-anchor="middle" font-size="11" fill="#4338ca" font-family="system-ui,sans-serif">Cut tile</text>
+      <rect x="80" y="240" width="100" height="60" fill="#818cf8" opacity="0.3" />
+      <text x="130" y="276" text-anchor="middle" font-size="11" fill="#4338ca" font-family="system-ui,sans-serif">Cut tile</text>
+      <text x="350" y="330" text-anchor="middle" font-size="13" fill="#64748b" font-family="system-ui,sans-serif">Full tiles + edge cuts = total needed</text>
+      <rect x="620" y="60" width="150" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="635" y="85" font-size="12" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Tile math</text>
+      <text x="635" y="105" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Area = L &times; W</text>
+      <text x="635" y="123" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Tile area = TL &times; TW</text>
+      <text x="635" y="141" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Tiles = Area &divide; tile area</text>
+      <text x="635" y="159" font-size="11" fill="#475569" font-family="system-ui,sans-serif">+ waste %</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Tiles are laid in a grid pattern — full tiles fill the center and cut tiles complete the edges</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the tile calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The tile calculator determines how many tiles you need for a floor or wall based on the area dimensions and the tile size. It calculates the total area in square feet, computes how many tiles cover that area, and adds a waste factor for cuts, breakage, and future repairs.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To use the calculator, enter the length and width of the area in feet, then the tile dimensions in inches (most tile is sold by inch measurements). Select your waste factor — 10% for straightforward installations, 15% for diagonal or patterned layouts. If you are buying tiles by the box, enter the box coverage to see how many boxes to purchase.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Tile installation is one of the most precise finishing trades in construction. Unlike paint or flooring, tile cannot be trimmed to fractional sizes easily — each cut requires a wet saw or tile cutter. Having extra tiles is essential not just for installation but for future repairs, as tile dye lots vary and matching old tile years later is nearly impossible.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the area</h3>
+        <p class="mt-1 text-sm text-slate-600">Measure the length and width of the floor or wall space to be tiled.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter tile size</h3>
+        <p class="mt-1 text-sm text-slate-600">Input the tile length and width in inches. Common sizes include 12x12, 6x24, and 18x18.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-600">Buy the right amount</h3>
+        <p class="mt-1 text-sm text-slate-600">Order the calculated number of tiles plus waste. Keep the extra boxes unopened for returns.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Area calculation</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Area = L &times; W</span>. A 10&prime; &times; 8&prime; room = <strong>80 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Tile area in square feet</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Tile sq ft = (TL &times; TW) / 144</span>. A 12&Prime; &times; 12&Prime; tile = 144 / 144 = <strong>1 sq ft</strong>. A 6&Prime; &times; 24&Prime; tile = 144 / 144 = <strong>1 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Tile count</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Tiles = Area &divide; tile sq ft</span>. For 80 sq ft with 12&Prime; tiles: 80 &divide; 1 = <strong>80 tiles</strong>. With 10% waste: 80 &times; 1.1 = <strong>88 tiles</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 12&prime; &times; 10&prime; bathroom floor using 6&Prime; &times; 24&Prime; tiles with 15% waste for a herringbone pattern.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">12 &times; 10 = 120 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Tile area:</span> <span class="text-slate-600">(6 &times; 24) / 144 = 1 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Base tiles:</span> <span class="text-slate-600">120 &divide; 1 = 120</span></div>
+        <div><span class="font-medium text-slate-700">With 15% waste:</span> <span class="text-slate-600">120 &times; 1.15 = <strong>138 tiles</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the tile calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚿</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bathroom renovation</h3>
+        <p class="mt-1 text-sm text-slate-600">Tile the floor, shower walls, and backsplash. Each surface is calculated separately. Subway tile on walls, hexagon on the floor — the calculator works with any tile shape and size.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🍳</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Kitchen backsplash</h3>
+        <p class="mt-1 text-sm text-slate-600">A kitchen backsplash typically covers 30-40 sq ft. Use mosaic tiles on mesh sheets for easy installation. The calculator handles small tiles that come in sheets as well as individual tiles.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Entryway flooring</h3>
+        <p class="mt-1 text-sm text-slate-600">Porcelain or ceramic tile in the entryway creates a durable, waterproof surface. Large-format tiles (24x24 or 36x36) give a modern look and require fewer grout lines.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Commercial spaces</h3>
+        <p class="mt-1 text-sm text-slate-600">Restaurants, retail stores, and offices use heavy-duty commercial tile. Calculate large areas and order in bulk. Always add a full extra box for future maintenance and repairs.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for tiling success</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Dry lay first</h3>
+        <p class="mt-1 text-sm text-slate-600">Lay out a row of tiles without adhesive to check the layout and spacing. This reveals if you will have thin slivers of cut tile at the edges. Adjust the starting point to center the pattern and avoid cuts smaller than half a tile width.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use spacers consistently</h3>
+        <p class="mt-1 text-sm text-slate-600">Tile spacers ensure even grout lines. Choose the spacer size based on the tile: 1/16 inch for rectified tiles (precision-cut with tight joints), 1/8 inch for standard tiles, and 1/4 inch for natural stone or outdoor tiles where thermal expansion is a concern.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep spare tiles for repairs</h3>
+        <p class="mt-1 text-sm text-slate-600">Save at least 5-10 spare tiles from your installation. If a tile cracks or a plumbing leak damages the floor years later, you will have matching tiles available. Tile dye lots change over time and discontinued patterns are common.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/flooring-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Flooring Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/paver-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Paver Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let wastePct = 10;
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const W = parseFloat(el('width').value);
+      const tL = parseFloat(el('tile-l').value);
+      const tW = parseFloat(el('tile-w').value);
+      const boxSf = parseFloat(el('box-size').value);
+      if (!L || !W || !tL || !tW || L <= 0 || W <= 0 || tL <= 0 || tW <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const area = L * W;
+      const tileSf = (tL * tW) / 144;
+      const baseTiles = Math.ceil(area / tileSf);
+      const totalTiles = Math.ceil(baseTiles * (1 + wastePct / 100));
+      const boxes = boxSf > 0 ? Math.ceil((area * (1 + wastePct / 100)) / boxSf) : 0;
+
+      el('r-tiles').textContent = totalTiles.toLocaleString() + ' tiles';
+      el('r-pct').textContent = '(incl. ' + wastePct + '% waste)';
+      el('r-area').textContent = area.toFixed(1) + ' sq ft';
+      el('r-total').textContent = (area * (1 + wastePct / 100)).toFixed(1) + ' sq ft';
+      el('r-boxes').textContent = boxes > 0 ? boxes.toLocaleString() + ' boxes' : '—';
+      el('results').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.waste-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.waste-btn').forEach((b) => {
+          b.className = 'waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+        });
+        btn.className = 'waste-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+        wastePct = parseInt(btn.dataset.waste, 10);
+        update();
+      });
+    });
+
+    ['length', 'width', 'tile-l', 'tile-w', 'box-size'].forEach((id) => {
+      el(id).addEventListener('input', update);
+    });
+    document.querySelector('.waste-btn').click();
+  </script>
+</ToolLayout>

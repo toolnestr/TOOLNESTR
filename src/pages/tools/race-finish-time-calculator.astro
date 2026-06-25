@@ -1,0 +1,228 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Race Finish Time Predictor';
+const description =
+  'Free race finish time predictor. Estimate your race time for any distance based on a recent race result using the Riegel formula.';
+const intro =
+  'Enter a recent race distance, your finish time, and a target distance to predict your finish time using the Riegel formula.';
+const category = { id: 'health', name: 'Health & Fitness' };
+const faqs = [
+  { q: 'How accurate is the Riegel formula?', a: 'The Riegel formula is based on the observation that running speed declines predictably with distance. It is accurate within +-5% for most runners when predicting between common race distances (5K to marathon). Accuracy decreases for very short (< 1 mile) or ultra distances.' },
+  { q: 'Can I use any distance as input?', a: 'Yes — you can use any distance as your reference, but it works best when the input and target distances are within a reasonable range. Using a 5K time to predict a marathon is less accurate than using a half marathon time.' },
+  { q: 'What happens if I enter a shorter target distance?', a: 'The formula works both ways. If you enter a marathon time and use a 5K as the target, it will predict a faster time for the shorter distance. This is useful for estimating your potential on shorter races.' },
+  { q: 'Does the formula account for terrain or weather?', a: 'No — the Riegel formula assumes ideal conditions on a flat course. Real-world factors like hills, heat, humidity and wind will affect your actual performance, especially on longer distances.' },
+  { q: 'Can I use this for other sports?', a: 'The Riegel formula was developed for running but has been adapted for swimming, cycling and rowing. The fatigue factor (1.06) may differ for non-running sports, but it gives a reasonable first estimate.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block"><span class="text-sm font-medium text-slate-700">Recent race distance (km)</span>
+      <select id="in-dist" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="1.609">1 mile (1.609 km)</option>
+        <option value="5" selected>5K (5 km)</option>
+        <option value="10">10K (10 km)</option>
+        <option value="21.097">Half marathon (21.1 km)</option>
+        <option value="42.195">Marathon (42.2 km)</option>
+      </select></label>
+
+    <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Recent finish time (HH:MM:SS)</span>
+      <input id="in-time" type="text" placeholder="00:25:00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+
+    <label class="mt-4 block"><span class="text-sm font-medium text-slate-700">Target distance (km)</span>
+      <select id="tgt-dist" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="1.609">1 mile (1.609 km)</option>
+        <option value="5">5K (5 km)</option>
+        <option value="10">10K (10 km)</option>
+        <option value="21.097">Half marathon (21.1 km)</option>
+        <option value="42.195" selected>Marathon (42.2 km)</option>
+      </select></label>
+
+    <div id="result" class="mt-6 hidden">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Predicted finish time</div>
+        <div id="r-time" class="mt-1 text-3xl font-bold">—</div>
+        <div class="mt-1 text-sm opacity-80">for target distance</div>
+      </div>
+      <div class="mt-3 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Predicted pace</div><div id="r-pace" class="mt-1 text-xl font-bold text-emerald-600">—</div><div class="text-xs text-slate-400">per km</div></div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Fatigue factor</div><div id="r-factor" class="mt-1 text-xl font-bold text-indigo-600">—</div><div class="text-xs text-slate-400">Riegel constant</div></div>
+      </div>
+    </div>
+    <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter a recent race time to predict your target distance time.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About race time prediction</h2>
+    <p class="mt-2 text-slate-600">
+      Predicting your race time from a recent result is a powerful training and pacing tool. The Riegel formula, developed by exercise physiologist Pete Riegel, is based on the observation that running speed declines in a predictable, mathematical way as distance increases. It uses a fatigue factor (typically 1.06) that represents how much your pace slows per doubling of distance. This predictor is widely used by runners, coaches and race organisers. While not perfect, it gives a realistic target for your next race. For pacing during a race, also check the <a href="/tools/pace-calculator" class="font-medium text-indigo-600 hover:underline">Pace Calculator</a>. For fitness assessment, see the <a href="/tools/vo2-max-calculator" class="font-medium text-indigo-600 hover:underline">VO2 Max Calculator</a>.
+    </p>
+    <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Predictions are estimates. Actual race times vary with course, weather, training and race-day conditions.</p>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" role="img" aria-labelledby="rft-title rft-desc">
+      <title id="rft-title">Pace vs distance curve</title>
+      <desc id="rft-desc">A curved line graph showing how running pace naturally slows as race distance increases from 5K to marathon.</desc>
+      <line x1="80" y1="40" x2="80" y2="170" stroke="#cbd5e1" />
+      <line x1="80" y1="170" x2="720" y2="170" stroke="#cbd5e1" />
+      <path d="M100,60 Q250,65 400,80 Q550,100 700,150" fill="none" stroke="#6366f1" stroke-width="3" />
+      <circle cx="100" cy="60" r="4" fill="#6366f1" /><text x="100" y="50" text-anchor="middle" font-size="11" fill="#64748b">5K</text>
+      <circle cx="300" cy="75" r="4" fill="#6366f1" /><text x="300" y="65" text-anchor="middle" font-size="11" fill="#64748b">10K</text>
+      <circle cx="500" cy="100" r="4" fill="#6366f1" /><text x="500" y="90" text-anchor="middle" font-size="11" fill="#64748b">Half</text>
+      <circle cx="680" cy="145" r="4" fill="#6366f1" /><text x="680" y="165" text-anchor="middle" font-size="11" fill="#64748b">Marathon</text>
+    </svg>
+    <figcaption class="text-center text-sm text-slate-500 mt-2">Running pace naturally slows as race distance increases, following the Riegel formula curve</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How it works</h2>
+    <p class="mt-2 text-slate-600">
+      The Riegel formula states that T2 = T1 × (D2 / D1)^1.06, where T1 is your known time for distance D1, and T2 is the predicted time for distance D2. The exponent 1.06 is the fatigue factor — it represents how much your pace slows as distance increases. A higher exponent (like 1.10) would predict a greater slowdown, more typical for less trained runners. A lower exponent (1.03) predicts less slowdown, typical for elite runners who can maintain pace across distances more effectively.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <p class="mt-2 text-slate-600">
+      <strong>Riegel formula:</strong> T₂ = T₁ × (D₂ / D₁)^1.06
+    </p>
+    <p class="mt-3 text-slate-600">
+      Where T₁ = reference time, D₁ = reference distance, D₂ = target distance, and 1.06 is the fatigue factor. The formula can be rearranged to estimate your predicted pace for any distance.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A runner completes a 10K in 45:00. What marathon time does the Riegel formula predict?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">10K time:</span> <span class="text-slate-600">45:00 = 2,700 seconds</span></div>
+        <div><span class="font-medium text-slate-700">Distance ratio:</span> <span class="text-slate-600">42.195 / 10 = <strong>4.2195</strong></span></div>
+        <div><span class="font-medium text-slate-700">Ratio^1.06:</span> <span class="text-slate-600">4.2195^1.06 ≈ <strong>4.59</strong></span></div>
+        <div><span class="font-medium text-slate-700">Predicted time:</span> <span class="text-slate-600">2,700 × 4.59 = <strong>12,393 seconds</strong></span></div>
+        <div><span class="font-medium text-slate-700">Converted:</span> <span class="text-slate-600">12,393 s = <strong>3:26:33</strong> marathon</span></div>
+        <div><span class="font-medium text-slate-700">Pace:</span> <span class="text-slate-600">3:26:33 / 42.195 km = <strong>4:54/km</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Persona cards -->
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏃</span>
+      <h3 class="mt-2 font-semibold text-slate-900">First-time marathoner</h3>
+      <p class="mt-1 text-sm text-slate-600">Use your 10K or half marathon time to predict what you can achieve at the marathon distance and set a realistic goal.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Race pacer</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate finish times for pace group ranges based on the group leader's known race performances.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🎯</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Goal setter</h3>
+      <p class="mt-1 text-sm text-slate-600">Use the predictor to set A, B and C goals for your next race based on your current fitness level.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👨‍🏫</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Running coach</h3>
+      <p class="mt-1 text-sm text-slate-600">Help athletes set realistic target times and understand the relationship between effort and distance.</p>
+    </div>
+  </section>
+
+  <!-- 3-step guide -->
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use this predictor</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter recent race</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the distance and enter your finish time from a recent race. Use a best effort within the last 6–8 weeks for best accuracy.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose target distance</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the distance you want to predict — a longer race (marathon from 10K) or a shorter one (mile from 5K).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read your prediction</h3>
+        <p class="mt-1 text-sm text-slate-600">See your predicted finish time and pace. Adjust your training paces accordingly and aim for the predicted time on race day.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tips section -->
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for accurate prediction</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use a recent, honest effort</h3>
+        <p class="mt-1 text-sm text-slate-600">The most accurate predictions come from a race effort within the past 2 months. Training runs and easy efforts underestimate your potential.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Adjust for tough courses</h3>
+        <p class="mt-1 text-sm text-slate-600">If your target race has significant hills or is on a trail, add 5–10% to the predicted time. The formula assumes a flat, fast course.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Temperature matters</h3>
+        <p class="mt-1 text-sm text-slate-600">Performance declines above 15°C (60°F). For every 5°C above 15°C, expect roughly 1–2% slower times. Hot races require adjusting your expectations.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/pace-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Pace Calculator</a>
+      <a href="/tools/vo2-max-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">VO2 Max Calculator</a>
+      <a href="/tools/calories-burned-calculator" class="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">Calories Burned Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function timeToSeconds(t) {
+      const parts = t.split(':');
+      if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+      if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      return parseInt(parts[0]);
+    }
+
+    function secondsToHms(s) {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = Math.round(s % 60);
+      if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+      return m + ':' + String(sec).padStart(2, '0');
+    }
+
+    function paceString(secsPerKm) {
+      const m = Math.floor(secsPerKm / 60);
+      const s = Math.round(secsPerKm % 60);
+      return m + ':' + String(s).padStart(2, '0') + ' /km';
+    }
+
+    function update() {
+      const d1 = parseFloat(el('in-dist').value);
+      const d2 = parseFloat(el('tgt-dist').value);
+      const tStr = el('in-time').value.trim();
+      if (!tStr) {
+        el('result').classList.add('hidden'); el('hint').classList.remove('hidden'); return;
+      }
+      const t1 = timeToSeconds(tStr);
+      if (!t1 || t1 <= 0) {
+        el('result').classList.add('hidden'); el('hint').classList.remove('hidden'); return;
+      }
+      const factor = 1.06;
+      const t2 = t1 * Math.pow(d2 / d1, factor);
+      const pace = t2 / d2;
+      el('r-time').textContent = secondsToHms(t2);
+      el('r-pace').textContent = paceString(pace);
+      el('r-factor').textContent = factor.toFixed(2);
+      el('result').classList.remove('hidden'); el('hint').classList.add('hidden');
+    }
+
+    ['in-dist', 'in-time', 'tgt-dist'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

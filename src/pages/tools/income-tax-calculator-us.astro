@@ -1,0 +1,226 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'US Income Tax Calculator (Federal)';
+const description =
+  'Free US federal income tax calculator. Estimate your income tax based on filing status and taxable income using current tax brackets.';
+const intro =
+  'Enter your filing status and taxable income to estimate your federal income tax, effective tax rate, and marginal tax bracket.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'How do US federal income tax brackets work?', a: 'The US uses a progressive tax system with marginal brackets. Income is taxed in layers — the first portion is taxed at the lowest rate, and only income above each threshold is taxed at the next higher rate. Your marginal rate is the highest bracket your income reaches.' },
+  { q: 'What is the difference between marginal and effective tax rate?', a: 'Your marginal tax rate is the rate applied to your last dollar of income (your highest bracket). Your effective tax rate is the total tax you pay divided by your total income — it is always lower than your marginal rate because of the progressive bracket structure.' },
+  { q: 'Does this calculator account for deductions?', a: 'This calculator estimates federal income tax on taxable income, which is your gross income minus deductions (standard or itemized). For a rough estimate, enter your expected taxable income after subtracting the standard deduction or your itemized deductions.' },
+  { q: 'What are the 2025 federal income tax brackets?', a: 'The 2025 brackets for single filers are: 10% ($0-$11,925), 12% ($11,925-$48,475), 22% ($48,475-$103,350), 24% ($103,350-$197,300), 32% ($197,300-$250,525), 35% ($250,525-$626,350), and 37% (over $626,350). Married filing jointly has roughly double the thresholds.' },
+  { q: 'What filing statuses are available?', a: 'There are five filing statuses: Single, Married Filing Jointly, Married Filing Separately, Head of Household, and Qualifying Surviving Spouse. This calculator supports Single, Married Filing Jointly, and Head of Household.' },
+  { q: 'Does this include FICA taxes?', a: 'No, this calculator estimates federal income tax only. FICA taxes (Social Security and Medicare) are separate — 7.65% for employees, 15.3% for self-employed. Use our Paycheck Calculator for a comprehensive net pay estimate.' },
+  { q: 'What is the standard deduction?', a: 'The standard deduction reduces your taxable income. For 2025, it is $15,000 for single filers, $30,000 for married couples filing jointly, and $22,500 for heads of household. You can take the standard deduction or itemize, whichever is larger.' },
+  { q: 'How do capital gains affect my tax bracket?', a: 'Long-term capital gains have their own tax rates (0%, 15%, or 20%) and are stacked on top of ordinary income. They do not push ordinary income into higher brackets, but ordinary income can push capital gains into higher capital gains brackets.' },
+  { q: 'What is the Alternative Minimum Tax (AMT)?', a: 'The AMT is a parallel tax system designed to ensure high-income taxpayers pay a minimum amount. It disallows certain deductions and exemptions. This calculator does not compute AMT, which may affect very high-income filers with many deductions.' },
+  { q: 'How often do tax brackets change?', a: 'Tax brackets are adjusted annually for inflation by the IRS. The income thresholds typically increase each year. This calculator uses the most recent brackets, but always check the current IRS guidelines for the tax year you are filing.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Filing status</span>
+        <select id="status" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="single">Single</option><option value="married">Married Filing Jointly</option><option value="hoh">Head of Household</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Taxable income ($)</span>
+        <input id="income" type="number" step="any" placeholder="75000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Estimated tax</div><div id="r-tax" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Effective tax rate</div><div id="r-effective" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Marginal bracket</div><div id="r-marginal" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How federal income tax is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      The US uses a progressive tax system where income is divided into brackets, each taxed at a
+      different rate. Your total tax is the sum of the tax on each bracket layer. The formula for
+      each bracket is: <span class="font-mono">Tax = Σ (income_in_bracket × bracket_rate)</span>.
+      Your effective tax rate is <span class="font-mono">Total Tax / Total Income × 100</span>,
+      and your marginal rate is the highest bracket your income reaches.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This progressive system means that a raise or bonus is only taxed at your marginal rate on the
+      additional dollars, not your entire income. Understanding marginal versus effective rates helps
+      you make informed decisions about retirement contributions, additional income, and tax planning
+      strategies throughout the year.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A single filer with $75,000 in taxable income in 2025.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">10% bracket:</span> <span class="text-slate-600">$11,925 × 10% = $1,192.50</span></div>
+        <div><span class="font-medium text-slate-700">12% bracket:</span> <span class="text-slate-600">$36,550 × 12% = $4,386.00</span></div>
+        <div><span class="font-medium text-slate-700">22% bracket:</span> <span class="text-slate-600">$26,525 × 22% = $5,835.50</span></div>
+        <div><span class="font-medium text-slate-700">Total tax:</span> <span class="text-slate-600">$11,414.00</span></div>
+        <div><span class="font-medium text-slate-700">Effective rate:</span> <span class="text-slate-600">15.2%</span></div>
+        <div><span class="font-medium text-slate-700">Marginal rate:</span> <span class="text-slate-600">22%</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tax bracket staircase">
+      <title>Tax Bracket Staircase</title>
+      <desc>A staircase diagram showing progressive tax brackets as steps, with each step representing a higher tax rate applied to the income layer above the previous threshold.</desc>
+      <rect x="60" y="145" width="680" height="35" rx="4" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+      <text x="65" y="167" fill="#6366f1" font-size="12">10% — $0 to $11,925</text>
+      <rect x="60" y="110" width="540" height="35" rx="4" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+      <text x="65" y="132" fill="#3b82f6" font-size="12">12% — $11,925 to $48,475</text>
+      <rect x="60" y="75" width="400" height="35" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+      <text x="65" y="97" fill="#f59e0b" font-size="12">22% — $48,475 to $103,350</text>
+      <rect x="60" y="40" width="280" height="35" rx="4" fill="#fce7f3" stroke="#ec4899" stroke-width="1"/>
+      <text x="65" y="62" fill="#ec4899" font-size="12">24% — $103,350 to $197,300</text>
+      <path d="M 60 180 L 60 35" stroke="#94a3b8" stroke-width="2"/>
+      <text x="40" y="110" text-anchor="middle" fill="#64748b" font-size="13" transform="rotate(-90 40 110)">Tax Rate</text>
+      <text x="400" y="210" text-anchor="middle" fill="#64748b" font-size="13">Income ▼</text>
+      <path d="M 60 180 L 740 180" stroke="#94a3b8" stroke-width="2"/>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Progressive tax brackets — each layer of income is taxed at its corresponding rate</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About federal income tax</h2>
+    <p class="mt-2 text-slate-600">
+      The US federal income tax is the largest source of government revenue, funding defense,
+      infrastructure, healthcare, education, and social programs. Understanding how your income is
+      taxed helps you plan withholdings, estimate quarterly payments if self-employed, and evaluate
+      the tax impact of financial decisions. Use the
+      <a href="/tools/paycheck-calculator" class="font-medium text-indigo-600 hover:underline">Paycheck Calculator</a>
+      for a full picture including FICA taxes and deductions, or the
+      <a href="/tools/sales-tax-calculator" class="font-medium text-indigo-600 hover:underline">Sales Tax Calculator</a>
+      for state and local sales taxes.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Select your filing status (Single, Married Filing Jointly, or Head of Household).</li>
+      <li>Enter your estimated taxable income (gross income minus deductions).</li>
+      <li>View your estimated federal income tax, effective tax rate, and marginal bracket.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use this calculator when preparing your tax return to estimate what you owe, when planning
+      withholding on a new W-4, when considering a job offer in a different salary range, or when
+      evaluating the tax impact of a bonus, side hustle, or investment sale. It is also useful for
+      comparing how different filing statuses affect your tax liability.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for tax planning</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Contribute to traditional retirement accounts (401k, IRA) to reduce your taxable income in your highest bracket.</li>
+      <li>Consider Roth accounts if you expect to be in a higher tax bracket in retirement than you are now.</li>
+      <li>Harvest investment losses to offset capital gains and up to $3,000 of ordinary income per year.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👔</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Salaried Employee</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate your annual tax liability and check whether your employer's withholding is on target. Avoid surprises at tax time by comparing estimated vs withheld amounts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Freelancer / Self-Employed</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate estimated quarterly tax payments based on your projected annual income. Avoid underpayment penalties by knowing your tax liability in advance.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Newly Married Couple</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare the tax impact of filing jointly versus separately. The marriage bonus or penalty varies by income levels — use this tool to plan your filing strategy.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📈</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Side Hustler</h3>
+      <p class="mt-1 text-sm text-slate-600">Estimate how much additional tax your side hustle income will generate. Know what to set aside for tax season so a side project doesn't become a tax burden.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the income tax calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose your filing status</h3>
+        <p class="mt-1 text-sm text-slate-600">Select the status that matches your situation — this determines which bracket thresholds the calculator uses to compute your tax.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your taxable income</h3>
+        <p class="mt-1 text-sm text-slate-600">This is your gross income minus the standard or itemized deduction. For a quick estimate, subtract the standard deduction from your expected gross income.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review your results</h3>
+        <p class="mt-1 text-sm text-slate-600">See your total estimated tax, effective rate (what you actually pay on average), and marginal bracket (the rate on your next dollar earned).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for reducing your tax bill</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Maximize retirement contributions</h3>
+        <p class="mt-1 text-sm text-slate-600">Contributions to traditional 401k and IRA accounts reduce your taxable income dollar-for-dollar in the year you contribute. In 2025, you can contribute up to $23,500 to a 401k ($31,000 if over 50) and $7,000 to an IRA ($8,000 if over 50).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use tax-advantaged accounts</h3>
+        <p class="mt-1 text-sm text-slate-600">HSAs (Health Savings Accounts) offer a triple tax advantage — contributions are tax-deductible, growth is tax-free, and withdrawals for qualified medical expenses are tax-free. FSAs also reduce taxable income for healthcare and dependent care costs.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Itemize when beneficial</h3>
+        <p class="mt-1 text-sm text-slate-600">If your deductible expenses (mortgage interest, state and local taxes up to $10,000, charitable donations, medical expenses exceeding 7.5% of AGI) exceed the standard deduction, itemizing reduces your taxable income further.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/paycheck-calculator" class="font-medium text-indigo-600 hover:underline">Paycheck Calculator</a> — Calculate net pay after federal tax, FICA, state tax, and all deductions.</li>
+      <li><a href="/tools/sales-tax-calculator" class="font-medium text-indigo-600 hover:underline">Sales Tax Calculator</a> — Estimate sales tax on purchases for any state and local jurisdiction.</li>
+      <li><a href="/tools/income-tax-calculator-us" class="font-medium text-indigo-600 hover:underline">State Income Tax Calculator</a> — Many states have their own income tax; check state-specific calculators for a complete picture.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const brackets = {
+      single: [[0.10, 11925], [0.12, 48475], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]],
+      married: [[0.10, 23850], [0.12, 96950], [0.22, 206700], [0.24, 394600], [0.32, 501050], [0.35, 751600], [0.37, Infinity]],
+      hoh: [[0.10, 17000], [0.12, 64850], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]]
+    };
+    function update() {
+      const status = el('status').value;
+      const income = parseFloat(el('income').value);
+      el('err').textContent = '';
+      if (isNaN(income) || income < 0) { ['r-tax', 'r-effective', 'r-marginal'].forEach((id) => (el(id).textContent = '—')); return; }
+      const bs = brackets[status];
+      let tax = 0;
+      let prev = 0;
+      let marginal = 0;
+      for (const [rate, limit] of bs) {
+        const incInBracket = Math.max(0, Math.min(income, limit) - prev);
+        tax += incInBracket * rate;
+        if (income > prev) marginal = rate * 100;
+        prev = limit;
+        if (income <= limit) break;
+      }
+      el('r-tax').textContent = fmt(tax);
+      el('r-effective').textContent = income > 0 ? (tax / income * 100).toFixed(2) + '%' : '0%';
+      el('r-marginal').textContent = marginal.toFixed(0) + '%';
+    }
+    ['status', 'income'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

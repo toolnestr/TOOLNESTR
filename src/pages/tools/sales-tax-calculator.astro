@@ -1,0 +1,225 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Sales Tax Calculator';
+const description =
+  'Free sales tax calculator. Add sales tax to a price, remove sales tax from a total, or calculate the tax rate. Works in reverse mode too.';
+const intro =
+  'Enter a price, sales tax rate, and choose whether to add tax or remove tax. See the pre-tax price, tax amount, and total with tax.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is sales tax?', a: 'Sales tax is a consumption tax imposed by state and local governments on the sale of goods and certain services. The rate varies by location and can range from 0% to over 10% depending on the state, county, and city.' },
+  { q: 'How is sales tax calculated?', a: 'Sales tax is calculated as: Tax Amount = Price × (Tax Rate / 100). The total is Price + Tax Amount. To remove tax from a total: Pre-tax Price = Total / (1 + Tax Rate / 100).' },
+  { q: 'What is the difference between adding and removing tax?', a: 'Adding tax calculates how much tax to add to a base price (useful when setting retail prices). Removing tax extracts the pre-tax amount from a total (useful when you have a receipt total and need to report untaxed amounts).' },
+  { q: 'Which states have no sales tax?', a: 'Five states have no state-level sales tax: Alaska, Delaware, Montana, New Hampshire, and Oregon. However, some local jurisdictions in Alaska may impose their own sales taxes.' },
+  { q: 'Are services subject to sales tax?', a: 'It varies by state. Some states tax services like haircuts, car repairs, and landscaping, while others only tax tangible goods. Check your state\'s department of revenue for specific rules.' },
+  { q: 'Is sales tax the same as VAT?', a: 'No. Sales tax is collected only at the point of sale to the end consumer. VAT (Value Added Tax) is collected at every stage of production and distribution. The US uses sales tax; most other countries use VAT or GST.' },
+  { q: 'Do online purchases have sales tax?', a: 'Yes, since the 2018 South Dakota v. Wayfair Supreme Court decision, states can require online retailers to collect sales tax based on the buyer\'s location. Most major online stores now collect sales tax on all orders.' },
+  { q: 'How do I find my local sales tax rate?', a: 'Your total sales tax rate = state rate + county rate + city rate + special district rates. Many states have online lookup tools where you can enter an address to find the combined rate.' },
+  { q: 'Is sales tax deductible on my federal taxes?', a: 'Yes, you can deduct state and local sales tax on your federal return if you itemize deductions. You can choose to deduct either sales tax or state income tax — whichever is larger.' },
+  { q: 'What items are exempt from sales tax?', a: 'Common exemptions include most groceries (food for home preparation), prescription medications, medical devices, and some clothing items (varies by state). Many states also have tax holidays for back-to-school or emergency preparedness items.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mode</span>
+        <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="add">Add tax to price</option><option value="remove">Remove tax from total</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Sales tax rate (%)</span>
+        <input id="rate" type="number" step="any" placeholder="8.875" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700" id="lbl-amount">Price before tax ($)</span>
+        <input id="amount" type="number" step="any" placeholder="100" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Pre-tax amount</div><div id="r-pretax" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Tax amount</div><div id="r-taxamt" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total with tax</div><div id="r-total" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How sales tax is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      In Add Tax mode: <span class="font-mono">Tax = Price × Rate / 100</span> and
+      <span class="font-mono">Total = Price + Tax</span>. In Remove Tax mode:
+      <span class="font-mono">Pre-tax = Total / (1 + Rate / 100)</span> and
+      <span class="font-mono">Tax = Total - Pre-tax</span>.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Sales tax is a pass-through tax — businesses collect it from customers and remit it to the
+      government. The rate you pay depends on the jurisdiction where the sale occurs. In many states,
+      the total rate is a combination of state, county, and city rates, which can make the final
+      percentage surprisingly high. Understanding how to add and remove tax is essential for
+      businesses setting prices, accountants preparing tax returns, and consumers verifying receipts.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">You buy an item for $100 with an 8.875% sales tax rate in New York City.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Pre-tax price:</span> <span class="text-slate-600">$100.00</span></div>
+        <div><span class="font-medium text-slate-700">Tax rate:</span> <span class="text-slate-600">8.875%</span></div>
+        <div><span class="font-medium text-slate-700">Sales tax:</span> <span class="text-slate-600">$8.88</span></div>
+        <div><span class="font-medium text-slate-700">Total cost:</span> <span class="text-slate-600">$108.88</span></div>
+      </div>
+      <p class="mt-2 text-sm text-slate-600">In reverse, if your receipt total is $108.88, the pre-tax price is $100.00.</p>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="180" viewBox="0 0 800 180" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sales tax calculation flow diagram">
+      <title>Sales Tax Flow</title>
+      <desc>A flowchart showing price flowing through a tax calculation to total, with a reverse arrow for removing tax mode.</desc>
+      <rect x="60" y="55" width="140" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+      <text x="130" y="90" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="bold">Price</text>
+      <text x="130" y="105" text-anchor="middle" fill="#6366f1" font-size="11">$100.00</text>
+      <path d="M 200 85 L 260 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr1)"/>
+      <rect x="260" y="55" width="100" height="60" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+      <text x="310" y="90" text-anchor="middle" fill="#22c55e" font-size="14" font-weight="bold">+ Tax</text>
+      <text x="310" y="105" text-anchor="middle" fill="#22c55e" font-size="11">8.875%</text>
+      <path d="M 360 85 L 420 85" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr2)"/>
+      <rect x="420" y="55" width="140" height="60" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+      <text x="490" y="90" text-anchor="middle" fill="#ef4444" font-size="14" font-weight="bold">Total</text>
+      <text x="490" y="105" text-anchor="middle" fill="#ef4444" font-size="11">$108.88</text>
+      <path d="M 490 30 L 310 30" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 3" marker-end="url(#arr3)"/>
+      <text x="400" y="24" text-anchor="middle" fill="#94a3b8" font-size="11">Reverse: Total ÷ (1 + rate)</text>
+      <defs><marker id="arr1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#94a3b8"/></marker><marker id="arr2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#94a3b8"/></marker><marker id="arr3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#94a3b8"/></marker></defs>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Add mode: price → add tax rate → total. Reverse mode: total → remove tax → original price</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About sales tax</h2>
+    <p class="mt-2 text-slate-600">
+      Sales tax is the primary source of revenue for most state and local governments, funding
+      schools, roads, public safety, and other essential services. Unlike income tax, sales tax is
+      consumption-based — you only pay it when you spend money. This makes it more stable during
+      economic downturns but also regressive, as lower-income households spend a higher percentage
+      of their income on taxable goods.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Select whether you want to add tax to a price or remove tax from a total.</li>
+      <li>Enter the sales tax rate (combined state + local rate).</li>
+      <li>Enter the price or total amount, depending on your mode.</li>
+      <li>See the pre-tax amount, tax amount, and total with tax.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Businesses use it to set retail prices that include tax, to calculate tax for invoices, and
+      to understand their total tax collection obligation. Consumers use it to verify receipts,
+      compare prices across states, and estimate the tax deduction when itemizing on their federal
+      return. Accountants use it to reconcile sales tax collected versus amounts due by jurisdiction.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for sales tax</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Always use the combined rate (state + county + city + special districts) for accurate results.</li>
+      <li>Keep records of tax collected by jurisdiction — many states require separate reporting.</li>
+      <li>If your business sells in multiple states, you may have nexus and collection obligations in each.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🏪</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Small Business Owner</h3>
+      <p class="mt-1 text-sm text-slate-600">Set retail prices that include sales tax, calculate how much tax to collect on each sale, and ensure you charge the correct rate for your jurisdiction.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🧾</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Shopper / Consumer</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly calculate the total cost of an item including tax, or verify that a receipt's sales tax amount is correct based on your local rate.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Accountant / Bookkeeper</h3>
+      <p class="mt-1 text-sm text-slate-600">Reconcile sales tax collected against amounts owed, calculate reverse tax amounts from total receipts, and prepare accurate sales tax returns for multiple jurisdictions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🌐</span>
+      <h3 class="mt-2 font-semibold text-slate-900">E-commerce Merchant</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate sales tax for online orders based on customer location. Ensure you collect the correct combined rate for each shipping address to stay compliant.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the sales tax calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose add or remove mode</h3>
+        <p class="mt-1 text-sm text-slate-600">"Add tax" calculates the total including tax from a base price. "Remove tax" extracts the pre-tax price from a total you already paid.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the tax rate</h3>
+        <p class="mt-1 text-sm text-slate-600">Type your combined sales tax rate as a percentage. For example, if your rate is 8.875%, enter 8.875. Check your state and local tax authority for the current rate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See the full breakdown</h3>
+        <p class="mt-1 text-sm text-slate-600">View the pre-tax amount, the tax amount, and the total with tax. The calculator updates instantly as you adjust any value.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for sales tax compliance</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Know your combined rate</h3>
+        <p class="mt-1 text-sm text-slate-600">Your total sales tax rate is the sum of state, county, city, and any special district taxes. Many states provide a lookup tool on their Department of Revenue website. Use the correct combined rate for each transaction location.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Understand nexus rules</h3>
+        <p class="mt-1 text-sm text-slate-600">If your business has physical presence, employees, inventory, or significant sales in another state, you likely have "nexus" and must collect that state's sales tax. Economic nexus thresholds vary by state — typically $100,000-$500,000 in sales.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Keep meticulous records</h3>
+        <p class="mt-1 text-sm text-slate-600">Maintain detailed records of all sales transactions including the tax collected, the rate applied, and the jurisdiction. This is essential for audit protection and for preparing accurate sales tax returns, which are typically filed monthly, quarterly, or annually depending on your volume.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/vat-gst-calculator" class="font-medium text-indigo-600 hover:underline">VAT/GST Calculator</a> — Calculate value-added tax for international transactions and non-US jurisdictions.</li>
+      <li><a href="/tools/property-tax-calculator" class="font-medium text-indigo-600 hover:underline">Property Tax Calculator</a> — Estimate annual property taxes based on home value and local millage rates.</li>
+      <li><a href="/tools/tip-calculator" class="font-medium text-indigo-600 hover:underline">Tip Calculator</a> — Quickly calculate gratuity amounts and split bills at restaurants.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function update() {
+      const mode = el('mode').value;
+      const rate = parseFloat(el('rate').value);
+      const amount = parseFloat(el('amount').value);
+      el('err').textContent = '';
+      if (isNaN(amount) || amount <= 0) { ['r-pretax', 'r-taxamt', 'r-total'].forEach((id) => (el(id).textContent = '—')); return; }
+      if (isNaN(rate) || rate < 0) { el('err').textContent = 'Please enter a valid tax rate.'; return; }
+      const r = rate / 100;
+      let pretax, taxamt, total;
+      if (mode === 'add') {
+        pretax = amount;
+        taxamt = amount * r;
+        total = amount + taxamt;
+      } else {
+        total = amount;
+        pretax = amount / (1 + r);
+        taxamt = total - pretax;
+      }
+      el('r-pretax').textContent = fmt(pretax);
+      el('r-taxamt').textContent = fmt(taxamt);
+      el('r-total').textContent = fmt(total);
+      el('lbl-amount').textContent = mode === 'add' ? 'Price before tax ($)' : 'Total including tax ($)';
+    }
+    ['mode', 'rate', 'amount'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

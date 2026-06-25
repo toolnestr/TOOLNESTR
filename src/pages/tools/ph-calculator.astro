@@ -1,0 +1,215 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'pH Calculator';
+const description = 'Free online pH calculator. Calculate pH from hydrogen ion concentration [H⁺] or find [H⁺] from pH. Works for strong acids and bases.';
+const intro = 'Enter either the hydrogen ion concentration to find the pH, or the pH to find the concentration.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is pH?', a: 'pH is a measure of the acidity or basicity of a solution. It is defined as the negative logarithm of the hydrogen ion concentration: pH = −log₁₀[H⁺]. A pH of 7 is neutral, below 7 is acidic, above 7 is basic.' },
+  { q: 'What is the pH scale?', a: 'The pH scale typically runs from 0 to 14. A strong acid like HCl has pH near 0, pure water is pH 7, and a strong base like NaOH has pH near 14. Each whole number represents a tenfold change in acidity.' },
+  { q: 'What does pOH mean?', a: 'pOH is the negative log of hydroxide concentration [OH⁻]. In water at 25°C, pH + pOH = 14. This relationship comes from the ion product of water: Kw = [H⁺][OH⁻] = 1.0 × 10⁻¹⁴.' },
+  { q: 'How do I calculate pH of a weak acid?', a: 'Weak acids do not fully dissociate. Use the acid dissociation constant Ka and the initial concentration: [H⁺] ≈ √(Ka × C) for weak acids. This calculator assumes complete dissociation and is accurate for strong acids and strong bases.' },
+  { q: 'Does temperature affect pH?', a: 'Yes, because the ion product of water Kw changes with temperature. At 0°C, neutral pH is about 7.47; at 60°C, neutral pH is about 6.51. The pH of a specific solution also changes with temperature because dissociation constants vary.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2">
+      <button id="mode-ph" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">pH from [H⁺]</button>
+      <button id="mode-h" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">[H⁺] from pH</button>
+    </div>
+    <div id="ph-fields" class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">[H⁺] (hydrogen ion concentration)</span>
+        <input id="conc" type="number" step="any" placeholder="mol/L (e.g. 0.001)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="h-fields" class="hidden grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">pH value</span>
+        <input id="ph-val" type="number" step="any" placeholder="e.g. 3.0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">pH</div><div id="r-ph" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">[H⁺] (mol/L)</div><div id="r-conc" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <div class="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-slate-600">Classification:</span>
+        <span id="r-class" class="font-semibold text-slate-800">—</span>
+      </div>
+      <div class="mt-3 h-4 w-full rounded-full bg-gradient-to-r from-red-500 via-green-500 to-blue-500"></div>
+      <div class="mt-1 flex justify-between text-xs text-slate-400">
+        <span>0 (Strong acid)</span>
+        <span>7 (Neutral)</span>
+        <span>14 (Strong base)</span>
+      </div>
+    </div>
+    <p id="ph-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ph-title ph-desc">
+      <title id="ph-title">pH scale from 0 to 14 with examples</title>
+      <desc id="ph-desc">A horizontal pH scale bar from 0 to 14, colour-gradient from red (acidic) through green (neutral) to blue (basic), with labelled examples at each pH</desc>
+      <g transform="translate(20,20)">
+        <defs><linearGradient id="ph-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ef4444"/><stop offset="25%" stop-color="#f59e0b"/><stop offset="50%" stop-color="#22c55e"/><stop offset="75%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#6366f1"/></linearGradient></defs>
+        <rect x="40" y="40" width="720" height="36" rx="18" fill="url(#ph-grad)"/>
+        <text x="40" y="100" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="bold">0</text>
+        <text x="220" y="100" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="bold">3.5</text>
+        <text x="400" y="100" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="bold">7</text>
+        <text x="580" y="100" text-anchor="middle" fill="#3b82f6" font-size="11" font-weight="bold">10.5</text>
+        <text x="760" y="100" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="bold">14</text>
+        <text x="130" y="130" text-anchor="middle" fill="#ef4444" font-size="11">Battery acid</text>
+        <text x="300" y="130" text-anchor="middle" fill="#d97706" font-size="11">Vinegar</text>
+        <text x="400" y="130" text-anchor="middle" fill="#16a34a" font-size="11">Water</text>
+        <text x="530" y="130" text-anchor="middle" fill="#2563eb" font-size="11">Baking soda</text>
+        <text x="680" y="130" text-anchor="middle" fill="#6366f1" font-size="11">Ammonia</text>
+        <text x="400" y="165" text-anchor="middle" fill="#4338ca" font-size="16" font-weight="bold">pH = −log₁₀[H⁺]</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">The pH scale from 0 (strongly acidic) to 14 (strongly basic) with common substances referenced for context.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How pH is calculated</h2>
+    <p class="mt-2 text-slate-600">pH is defined as the negative base-10 logarithm of the hydrogen ion concentration: <span class="font-mono">pH = −log₁₀[H⁺]</span>. A solution with [H⁺] = 1.0 × 10⁻³ mol/L has pH = 3.0. Each one-unit change in pH represents a tenfold change in [H⁺]. The relationship works in reverse too: <span class="font-mono">[H⁺] = 10^(−pH)</span>. At 25°C, neutral water has [H⁺] = 1.0 × 10⁻⁷ mol/L, giving pH = 7. The product of [H⁺] and [OH⁻] is always 1.0 × 10⁻¹⁴ at 25°C (the ion product of water, Kw).</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">What is the pH of a solution with [H⁺] = 2.5 × 10⁻⁴ mol/L?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Given [H⁺]:</span> <span class="text-slate-600">2.5 × 10⁻⁴ M</span></div>
+        <div><span class="font-medium text-slate-700">pH:</span> <span class="text-slate-600">−log(2.5 × 10⁻⁴) = 3.60</span></div>
+        <div><span class="font-medium text-slate-700">Classification:</span> <span class="text-slate-600">Acidic (pH < 7)</span></div>
+        <div><span class="font-medium text-slate-700">[OH⁻]:</span> <span class="text-slate-600">1.0 × 10⁻¹⁴ / 2.5 × 10⁻⁴ = 4.0 × 10⁻¹¹ M</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F9EA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Chemistry Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Quickly convert between pH and concentration for homework and lab reports. Understand the logarithmic relationship and how small changes in [H⁺] correspond to large pH shifts.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F33F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Environmental Scientist</h3>
+      <p class="mt-1 text-sm text-slate-600">Monitor water quality by measuring pH of rivers, lakes, and groundwater. Detect acid rain effects and track pollution impacts on aquatic ecosystems and drinking water sources.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F469;&#x200D;&#x1F3EB;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Lab Technician</h3>
+      <p class="mt-1 text-sm text-slate-600">Prepare buffer solutions at specific pH values for experiments and calibration. Calculate the required ratio of weak acid to conjugate base using the Henderson-Hasselbalch equation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F34E;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Food Scientist</h3>
+      <p class="mt-1 text-sm text-slate-600">Control pH in food preservation, fermentation, and beverage production. Ensure product safety by maintaining pH below 4.6 for canned foods to prevent botulism.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the pH calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose the direction</h3>
+        <p class="mt-1 text-sm text-slate-600">Select either "pH from [H⁺]" to calculate pH from concentration, or "[H⁺] from pH" to find the concentration from a known pH value.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your value</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the concentration in mol/L (scientific notation supported) or the pH value. The corresponding value is calculated instantly.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See the classification</h3>
+        <p class="mt-1 text-sm text-slate-600">The solution is automatically classified as strongly acidic, weakly acidic, neutral, weakly basic, or strongly basic. The colour bar gives a visual pH scale reference.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for pH calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">The logarithmic scale is powerful</h3>
+        <p class="mt-1 text-sm text-slate-600">Because pH is logarithmic, a solution at pH 3 is 10 times more acidic than pH 4 and 100 times more acidic than pH 5. This non-linear relationship means small pH changes represent large concentration changes.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">For strong acids, [H⁺] equals concentration</h3>
+        <p class="mt-1 text-sm text-slate-600">Strong acids like HCl and HNO₃ dissociate completely. A 0.01 M HCl solution has [H⁺] = 0.01 M and pH = 2.0. Weak acids only partially dissociate, so [H⁺] is much lower than the nominal concentration.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use the molarity calculator together</h3>
+        <p class="mt-1 text-sm text-slate-600">First use the molarity calculator to prepare an acid or base solution of known concentration. Then use this pH calculator to verify the expected pH. This confirms the solution was made correctly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/molarity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F9EA;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molarity Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">M = mol/L — solve for any variable.</p>
+      </a>
+      <a href="/tools/dilution-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4A7;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Dilution Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">C1V1 = C2V2 — solve for any variable.</p>
+      </a>
+      <a href="/tools/atomic-mass-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2697;&#xFE0F;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molar Mass Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Sum atomic masses from chemical formula.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    function classify(pH) {
+      if (pH < 3) return 'Strongly acidic';
+      if (pH < 6) return 'Weakly acidic';
+      if (pH < 7.5) return 'Neutral';
+      if (pH < 11) return 'Weakly basic';
+      return 'Strongly basic';
+    }
+    let mode = 'ph';
+    function switchMode(m) {
+      mode = m;
+      el('mode-ph').className = m === 'ph' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('mode-h').className = m === 'h' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('ph-fields').className = m === 'ph' ? 'grid gap-4 sm:grid-cols-2' : 'hidden';
+      el('h-fields').className = m === 'h' ? 'grid gap-4 sm:grid-cols-2' : 'hidden';
+      el('r-ph').textContent = '—';
+      el('r-conc').textContent = '—';
+      el('r-class').textContent = '—';
+      el('ph-err').textContent = '';
+    }
+    function update() {
+      el('ph-err').textContent = '';
+      if (mode === 'ph') {
+        const c = parseFloat(el('conc').value);
+        if (isNaN(c) || c <= 0) { el('r-ph').textContent = '—'; el('r-conc').textContent = '—'; el('r-class').textContent = '—'; if (c <= 0 && !isNaN(c)) el('ph-err').textContent = 'Concentration must be positive.'; return; }
+        const pH = -Math.log10(c);
+        el('r-ph').textContent = pH.toFixed(2);
+        el('r-conc').textContent = c.toExponential(4) + ' M';
+        el('r-class').textContent = classify(pH);
+      } else {
+        const pH = parseFloat(el('ph-val').value);
+        if (isNaN(pH) || pH < 0 || pH > 14) { el('r-ph').textContent = '—'; el('r-conc').textContent = '—'; el('r-class').textContent = '—'; if (!isNaN(pH) && (pH < 0 || pH > 14)) el('ph-err').textContent = 'pH must be between 0 and 14.'; return; }
+        const c = Math.pow(10, -pH);
+        el('r-ph').textContent = pH.toFixed(2);
+        el('r-conc').textContent = c.toExponential(4) + ' M';
+        el('r-class').textContent = classify(pH);
+      }
+    }
+    el('mode-ph').addEventListener('click', () => { switchMode('ph'); update(); });
+    el('mode-h').addEventListener('click', () => { switchMode('h'); update(); });
+    ['conc', 'ph-val'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

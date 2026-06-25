@@ -1,0 +1,199 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Ideal Gas Law Calculator';
+const description = 'Free online ideal gas law calculator. Solve for pressure, volume, moles, or temperature using PV = nRT with the ideal gas constant.';
+const intro = 'Enter any four values — pressure, volume, moles, or temperature — to solve for the fifth using PV = nRT.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is the ideal gas law?', a: 'The ideal gas law is PV = nRT, where P is pressure, V is volume, n is number of moles, R is the gas constant, and T is temperature in kelvin.' },
+  { q: 'What value of R should I use?', a: 'R = 0.082057 L·atm/(mol·K) when using L, atm, mol, and K. R = 8.3145 J/(mol·K) when using SI units: m³, Pa, mol, K. The calculator supports both.' },
+  { q: 'When does the ideal gas law break down?', a: 'At high pressures and low temperatures, real gases deviate from ideal behaviour because intermolecular forces and molecular volume become significant. The van der Waals equation provides corrections.' },
+  { q: 'What is STP?', a: 'STP (Standard Temperature and Pressure) is 0°C (273.15 K) and 1 atm. At STP, one mole of an ideal gas occupies 22.414 litres.' },
+  { q: 'Do I need to use kelvin?', a: 'Yes — temperature must be in kelvin for the ideal gas law. To convert from Celsius, add 273.15. From Fahrenheit, convert to Celsius first, then to kelvin.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter any four values to solve for the fifth</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Pressure (P)</span>
+        <input id="p" type="number" step="any" placeholder="atm" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Volume (V)</span>
+        <input id="v" type="number" step="any" placeholder="L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Moles (n)</span>
+        <input id="n" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Temperature (T)</span>
+        <input id="t" type="number" step="any" placeholder="K" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mb-4 mt-4 flex gap-2">
+      <button id="preset-stp" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">STP: 1 atm, 273.15 K, 1 mol, 22.414 L</button>
+      <button id="preset-rt" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">Room temp: 1 atm, 298 K</button>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Pressure</div><div id="r-p" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Volume</div><div id="r-v" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Moles</div><div id="r-n" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Temperature</div><div id="r-t" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="gas-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="igl-title igl-desc">
+      <title id="igl-title">Gas cylinder with piston and labelled variables</title>
+      <desc id="igl-desc">A cylinder with a movable piston containing gas particles, showing pressure P on piston, volume V inside, temperature T, and moles n</desc>
+      <g transform="translate(40,20)">
+        <rect x="100" y="50" width="250" height="200" rx="10" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2.5"/>
+        <rect x="100" y="50" width="250" height="30" rx="8" fill="#94a3b8" stroke="#64748b" stroke-width="2"/>
+        <text x="225" y="70" text-anchor="middle" fill="white" font-size="14" font-weight="bold">Piston</text>
+        <circle cx="170" cy="140" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="240" cy="120" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="290" cy="150" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="200" cy="170" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="270" cy="180" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="150" cy="190" r="6" fill="#fca5a5" opacity="0.6"/>
+        <circle cx="310" cy="130" r="6" fill="#fca5a5" opacity="0.6"/>
+        <text x="225" y="230" text-anchor="middle" fill="#0ea5e9" font-size="14">Gas particles</text>
+        <path d="M 100 50 L 100 20" stroke="#ef4444" stroke-width="2.5"/>
+        <polygon points="100,20 95,30 105,30" fill="#ef4444"/>
+        <text x="80" y="38" fill="#ef4444" font-size="16" font-weight="bold">P</text>
+        <line x1="350" y1="60" x2="370" y2="60" stroke="#f59e0b" stroke-width="2"/>
+        <text x="380" y="65" fill="#f59e0b" font-size="16" font-weight="bold">V</text>
+        <text x="400" y="65" fill="#64748b" font-size="13">Volume</text>
+        <text x="225" y="270" text-anchor="middle" fill="#4338ca" font-size="20" font-weight="bold">PV = nRT</text>
+        <text x="450" y="120" fill="#4338ca" font-size="16" font-weight="bold">R = 0.08206 L·atm/(mol·K)</text>
+        <text x="450" y="145" fill="#64748b" font-size="13">or R = 8.314 J/(mol·K)</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">A gas cylinder with a movable piston. Pressure P pushes down on the piston, volume V is the gas space, n moles at temperature T.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the ideal gas law works</h2>
+    <p class="mt-2 text-slate-600">The ideal gas law <span class="font-mono">PV = nRT</span> combines Boyle's law (PV = constant), Charles's law (V ∝ T), Avogadro's law (V ∝ n), and Gay-Lussac's law (P ∝ T) into one unified equation. R is the universal gas constant, and temperature must be in kelvin. The law describes the behaviour of an ideal gas where particles have negligible volume and no intermolecular forces. At STP (0°C, 1 atm), one mole of ideal gas occupies 22.414 litres.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">What volume does 2.0 moles of an ideal gas occupy at 25°C and 1.5 atm?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Moles:</span> <span class="text-slate-600">2.0 mol</span></div>
+        <div><span class="font-medium text-slate-700">Temperature:</span> <span class="text-slate-600">25°C = 298.15 K</span></div>
+        <div><span class="font-medium text-slate-700">Pressure:</span> <span class="text-slate-600">1.5 atm</span></div>
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">V = nRT/P = (2 × 0.08206 × 298.15) / 1.5 = 32.6 L</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F9EA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Chemistry Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Solve ideal gas law problems for general chemistry. Verify manual calculations, understand the relationships between P, V, n, and T, and explore gas behaviour at different conditions.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F3ED;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Chemical Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design reactors, pipelines, and storage tanks by calculating gas volumes under various pressures and temperatures. Use the ideal gas law as a first approximation for process design.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4A8;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Meteorologist</h3>
+      <p class="mt-1 text-sm text-slate-600">Apply the ideal gas law to atmospheric science. Understand how pressure and temperature changes with altitude affect air density, weather patterns, and cloud formation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F4CA;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Physics Teacher</h3>
+      <p class="mt-1 text-sm text-slate-600">Demonstrate gas laws interactively in the classroom. Show Boyle's, Charles's, and Avogadro's laws as special cases of the ideal gas law by holding different variables constant.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the ideal gas law calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter four values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill in any four of the five fields (P, V, n, T, or R). The calculator uses R = 0.08206 L·atm/(mol·K). Leave the unknown field blank.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Use presets for common conditions</h3>
+        <p class="mt-1 text-sm text-slate-600">Click "STP" to fill standard conditions (0°C, 1 atm) or "Room temp" for 25°C. Then adjust any value to explore the relationships.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Use kelvin for temperature</h3>
+        <p class="mt-1 text-sm text-slate-600">Always convert Celsius to kelvin (add 273.15). The calculator accepts kelvin directly. Trying to use Celsius will give incorrect results.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for ideal gas law calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">STP has changed over time</h3>
+        <p class="mt-1 text-sm text-slate-600">Old textbooks define STP as 0°C and 1 atm (molar volume 22.414 L). IUPAC now defines STP as 0°C and 1 bar (100 kPa), giving a molar volume of 22.711 L. Use the pressure that matches your context.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">The importance of R selection</h3>
+        <p class="mt-1 text-sm text-slate-600">The calculator uses R = 0.08206 L·atm/(mol·K). If using SI units (m³, Pa), switch to R = 8.314 J/(mol·K). Using the wrong R value is a common mistake in gas law problems.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Real gases need corrections</h3>
+        <p class="mt-1 text-sm text-slate-600">At high pressure (>10 atm) or low temperature (near boiling point), real gases deviate from ideal behaviour. The van der Waals equation adds correction terms for molecular volume and attraction.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/gas-laws-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F504;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Boyle's & Charles's Law</h3>
+        <p class="mt-0.5 text-xs text-slate-500">P₁V₁=P₂V₂ and V₁/T₁=V₂/T₂.</p>
+      </a>
+      <a href="/tools/density-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2696;&#xFE0F;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Density Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">ρ = m/V — solve for any variable.</p>
+      </a>
+      <a href="/tools/molarity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F9EA;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molarity Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">M = mol/L — solve for any variable.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const R = 0.082057;
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+    function update() {
+      const p = parseFloat(el('p').value);
+      const v = parseFloat(el('v').value);
+      const n = parseFloat(el('n').value);
+      const t = parseFloat(el('t').value);
+      const filled = [!isNaN(p), !isNaN(v), !isNaN(n), !isNaN(t)];
+      const count = filled.filter(Boolean).length;
+      el('gas-err').textContent = '';
+      ['r-p', 'r-v', 'r-n', 'r-t'].forEach(id => el(id).textContent = '—');
+      if (count < 4) return;
+      let rp = NaN, rv = NaN, rn = NaN, rt = NaN;
+      if (!filled[0]) { if (v === 0 || n === 0) { el('gas-err').textContent = 'Volume and moles cannot be zero.'; return; } rp = n * R * t / v; rv = v; rn = n; rt = t; }
+      else if (!filled[1]) { if (p === 0) { el('gas-err').textContent = 'Pressure cannot be zero.'; return; } rv = n * R * t / p; rp = p; rn = n; rt = t; }
+      else if (!filled[2]) { if (R * t === 0) { el('gas-err').textContent = 'Temperature cannot be zero.'; return; } rn = p * v / (R * t); rp = p; rv = v; rt = t; }
+      else if (!filled[3]) { if (n * R === 0) { el('gas-err').textContent = 'Moles cannot be zero.'; return; } rt = p * v / (n * R); rp = p; rv = v; rn = n; }
+      if (!isNaN(rp)) el('r-p').textContent = fmt(rp);
+      if (!isNaN(rv)) el('r-v').textContent = fmt(rv);
+      if (!isNaN(rn)) el('r-n').textContent = fmt(rn);
+      if (!isNaN(rt)) el('r-t').textContent = fmt(rt);
+    }
+    el('preset-stp').addEventListener('click', () => { el('p').value = '1'; el('t').value = '273.15'; el('n').value = '1'; el('v').value = ''; update(); });
+    el('preset-rt').addEventListener('click', () => { el('t').value = '298.15'; el('p').value = '1'; el('n').value = '1'; el('v').value = ''; update(); });
+    ['p', 'v', 'n', 't'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

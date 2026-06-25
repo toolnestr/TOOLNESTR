@@ -1,0 +1,221 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Momentum & Impulse Calculator';
+const description = 'Free online momentum calculator. Solve for momentum, mass, velocity, or impulse using p = mv and Δp = FΔt.';
+const intro = 'Enter values to calculate momentum or impulse. Choose between momentum (p = mv) and impulse (Δp = FΔt) modes.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is momentum?', a: 'Momentum (p) is the product of an object\'s mass and velocity: p = mv. It is a vector quantity with units of kg·m/s. Momentum is conserved in collisions when no external forces act.' },
+  { q: 'What is impulse?', a: 'Impulse is the change in momentum caused by a force acting over time: Δp = FΔt. It equals the area under a force-time graph. Same units as momentum: N·s or kg·m/s.' },
+  { q: 'Why is momentum conserved in collisions?', a: 'Newton\'s third law says the force on object A from object B equals the opposite force on B from A. The impulses are equal and opposite, so total momentum stays constant.' },
+  { q: 'What is the difference between elastic and inelastic collisions?', a: 'In elastic collisions, both momentum and kinetic energy are conserved. In inelastic collisions, only momentum is conserved — some kinetic energy is converted to heat or deformation.' },
+  { q: 'How is impulse related to safety equipment?', a: 'Airbags, crash barriers, and padding increase the time over which a collision occurs. A longer Δt means a smaller average force F for the same change in momentum, reducing injury risk.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex gap-2">
+      <button id="mode-momentum" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Momentum (p = mv)</button>
+      <button id="mode-impulse" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Impulse (Δp = FΔt)</button>
+    </div>
+    <div id="momentum-fields" class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Momentum (p)</span>
+        <input id="p" type="number" step="any" placeholder="kg·m/s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass (m)</span>
+        <input id="m" type="number" step="any" placeholder="kg" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Velocity (v)</span>
+        <input id="v" type="number" step="any" placeholder="m/s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="impulse-fields" class="hidden grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Impulse (Δp)</span>
+        <input id="imp" type="number" step="any" placeholder="N·s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Force (F)</span>
+        <input id="f" type="number" step="any" placeholder="N" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Time (Δt)</span>
+        <input id="t" type="number" step="any" placeholder="s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Momentum / Impulse</div><div id="r-p" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Mass / Force</div><div id="r-m" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Velocity / Time</div><div id="r-v" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="mom-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mom-title mom-desc">
+      <title id="mom-title">Colliding objects momentum diagram</title>
+      <desc id="mom-desc">Two objects approaching each other with velocity arrows, showing momentum transfer during collision</desc>
+      <g transform="translate(20,20)">
+        <rect x="80" y="100" width="140" height="120" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2.5"/>
+        <text x="150" y="165" text-anchor="middle" fill="#4338ca" font-size="16" font-weight="bold">m₁</text>
+        <path d="M 60 160 L 85 160" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+        <polygon points="85,150 70,160 85,170" fill="#ef4444"/>
+        <text x="40" y="155" fill="#ef4444" font-size="14" font-weight="bold">v₁</text>
+        <rect x="440" y="100" width="140" height="120" rx="10" fill="#fef2f2" stroke="#ef4444" stroke-width="2.5"/>
+        <text x="510" y="165" text-anchor="middle" fill="#b91c1c" font-size="16" font-weight="bold">m₂</text>
+        <path d="M 580 160 L 555 160" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+        <polygon points="575,150 590,160 575,170" fill="#f59e0b"/>
+        <text x="610" y="155" fill="#f59e0b" font-size="14" font-weight="bold">v₂</text>
+        <rect x="270" y="115" width="120" height="90" rx="10" fill="#fdf4ff" stroke="#a855f7" stroke-width="2"/>
+        <text x="330" y="155" text-anchor="middle" fill="#9333ea" font-size="13" font-weight="bold">Collision</text>
+        <text x="330" y="175" text-anchor="middle" fill="#a855f7" font-size="12">p before = p after</text>
+        <text x="300" y="270" text-anchor="middle" fill="#4338ca" font-size="18" font-weight="bold">p = m × v</text>
+        <text x="500" y="270" text-anchor="middle" fill="#b91c1c" font-size="18" font-weight="bold">Δp = F × Δt</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Momentum before a collision equals momentum after. Impulse is force applied over time to change momentum.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How momentum and impulse are calculated</h2>
+    <p class="mt-2 text-slate-600">Momentum (<span class="font-mono">p = m × v</span>) is a vector quantity describing how much motion an object has. Heavier or faster objects have more momentum. Impulse (<span class="font-mono">Δp = F × Δt</span>) is the change in momentum caused by a force acting over a time interval. The impulse-momentum theorem states that the impulse applied to an object equals its change in momentum. This principle explains how airbags work — by increasing the collision time, they reduce the average force on the occupant.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 0.45 kg football is kicked from rest to 20 m/s. The kicker's foot is in contact with the ball for 0.05 s. What force was applied?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Mass:</span> <span class="text-slate-600">0.45 kg</span></div>
+        <div><span class="font-medium text-slate-700">Change in velocity:</span> <span class="text-slate-600">20 m/s</span></div>
+        <div><span class="font-medium text-slate-700">Change in momentum:</span> <span class="text-slate-600">Δp = 0.45 × 20 = 9 kg·m/s</span></div>
+        <div><span class="font-medium text-slate-700">Force:</span> <span class="text-slate-600">F = Δp / Δt = 9 / 0.05 = 180 N</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F697;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Crash Safety Engineer</h3>
+      <p class="mt-1 text-sm text-slate-600">Analyse the forces during vehicle collisions. Design crumple zones, airbags, and seatbelt systems that increase collision time to reduce peak forces on occupants.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x26BD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sports Equipment Designer</h3>
+      <p class="mt-1 text-sm text-slate-600">Design bats, racquets, and clubs that maximise momentum transfer to the ball. The impulse-momentum relationship helps optimise the sweet spot and material stiffness.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F6E1;&#xFE0F;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Ballistics Expert</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate the momentum of bullets and projectiles to understand penetration, stopping power, and the forces involved in impacts. Momentum determines recoil as well.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Physics Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify collision problems, calculate impulse in real-world scenarios, and build intuition for how force, time, and momentum interact through the impulse-momentum theorem.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the momentum calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Choose your mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Select "Momentum (p = mv)" for standard momentum problems, or "Impulse (Δp = FΔt)" for force-time impulse calculations. The fields switch automatically.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter two values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill in any two fields. The third is calculated live. For impulse mode, enter any two of impulse, force, or time.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Interpret the result</h3>
+        <p class="mt-1 text-sm text-slate-600">The highlighted box shows the solved value. Labels change to match each mode, so you always know what each result represents.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for momentum calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Momentum is a vector</h3>
+        <p class="mt-1 text-sm text-slate-600">Direction matters. When calculating total momentum in collisions, assign positive and negative signs to velocities based on direction. This calculator uses magnitude, so consider direction separately.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Conservation of momentum</h3>
+        <p class="mt-1 text-sm text-slate-600">In any closed system with no external forces, total momentum before an event equals total momentum after. This is true even in inelastic collisions where kinetic energy is not conserved.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Impulse is area under F-t curve</h3>
+        <p class="mt-1 text-sm text-slate-600">When force varies over time, the impulse equals the area under the force-time graph. The average force times the time interval gives the same impulse as the varying force.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4A5;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Force Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">F = ma — solve for any variable.</p>
+      </a>
+      <a href="/tools/kinetic-energy-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x26A1;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Kinetic Energy Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">KE = ½mv² — solve for any variable.</p>
+      </a>
+      <a href="/tools/gravitational-force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F30D;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Gravitational Force Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Newton's law of universal gravitation.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    let mode = 'momentum';
+    function switchMode(m) {
+      mode = m;
+      el('mode-momentum').className = m === 'momentum' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('mode-impulse').className = m === 'impulse' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      el('momentum-fields').className = m === 'momentum' ? 'grid gap-4 sm:grid-cols-3' : 'hidden';
+      el('impulse-fields').className = m === 'impulse' ? 'grid gap-4 sm:grid-cols-3' : 'hidden';
+      ['r-p', 'r-m', 'r-v'].forEach(id => el(id).textContent = '—');
+      el('mom-err').textContent = '';
+    }
+    function update() {
+      el('mom-err').textContent = '';
+      if (mode === 'momentum') {
+        const p = parseFloat(el('p').value);
+        const m = parseFloat(el('m').value);
+        const v = parseFloat(el('v').value);
+        const filled = [!isNaN(p), !isNaN(m), !isNaN(v)];
+        const count = filled.filter(Boolean).length;
+        ['r-p', 'r-m', 'r-v'].forEach(id => el(id).textContent = '—');
+        if (count < 2) return;
+        let rp = NaN, rm = NaN, rv = NaN;
+        if (filled[0] && filled[1]) { rv = p / m; rp = p; rm = m; }
+        else if (filled[0] && filled[2]) { rm = p / v; rp = p; rv = v; }
+        else if (filled[1] && filled[2]) { rp = m * v; rm = m; rv = v; }
+        if (!isNaN(rp)) el('r-p').textContent = fmt(rp);
+        if (!isNaN(rm)) el('r-m').textContent = fmt(rm);
+        if (!isNaN(rv)) el('r-v').textContent = fmt(rv);
+      } else {
+        const imp = parseFloat(el('imp').value);
+        const f = parseFloat(el('f').value);
+        const t = parseFloat(el('t').value);
+        const filled = [!isNaN(imp), !isNaN(f), !isNaN(t)];
+        const count = filled.filter(Boolean).length;
+        ['r-p', 'r-m', 'r-v'].forEach(id => el(id).textContent = '—');
+        if (count < 2) return;
+        let ri = NaN, rf = NaN, rt = NaN;
+        if (filled[0] && filled[1]) { if (f === 0) { el('mom-err').textContent = 'Force cannot be zero.'; return; } rt = imp / f; ri = imp; rf = f; }
+        else if (filled[0] && filled[2]) { if (t === 0) { el('mom-err').textContent = 'Time cannot be zero.'; return; } rf = imp / t; ri = imp; rt = t; }
+        else if (filled[1] && filled[2]) { ri = f * t; rf = f; rt = t; }
+        if (!isNaN(ri)) el('r-p').textContent = fmt(ri);
+        if (!isNaN(rf)) el('r-m').textContent = fmt(rf);
+        if (!isNaN(rt)) el('r-v').textContent = fmt(rt);
+      }
+    }
+    el('mode-momentum').addEventListener('click', () => { switchMode('momentum'); update(); });
+    el('mode-impulse').addEventListener('click', () => { switchMode('impulse'); update(); });
+    ['p', 'm', 'v', 'imp', 'f', 't'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

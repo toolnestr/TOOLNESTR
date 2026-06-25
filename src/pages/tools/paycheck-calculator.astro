@@ -1,0 +1,246 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Paycheck Calculator';
+const description =
+  'Free paycheck calculator. Calculate your net take-home pay after federal tax, FICA, state tax, and other deductions based on pay frequency.';
+const intro =
+  'Enter your gross pay, pay frequency, filing status, and deductions to see your net paycheck amount after all taxes and withholdings.';
+const category = { id: 'finance', name: 'Finance' };
+const faqs = [
+  { q: 'What is net pay?', a: 'Net pay (take-home pay) is the amount you receive in your paycheck after all deductions including federal income tax, Social Security, Medicare, state income tax, and any voluntary deductions like health insurance or retirement contributions.' },
+  { q: 'What are FICA taxes?', a: 'FICA (Federal Insurance Contributions Act) taxes fund Social Security and Medicare. The rate is 7.65% for employees — 6.2% for Social Security (up to the wage base limit of $168,600 in 2025) and 1.45% for Medicare (no cap).' },
+  { q: 'How does pay frequency affect my paycheck?', a: 'Pay frequency determines the amount per check. Weekly = annual salary / 52, Bi-weekly = annual / 26, Semi-monthly = annual / 24, Monthly = annual / 12. More frequent pay periods mean smaller checks but more of them.' },
+  { q: 'What is the difference between pre-tax and post-tax deductions?', a: 'Pre-tax deductions (like traditional 401k and health insurance premiums) reduce your taxable income and lower your tax bill. Post-tax deductions (like Roth 401k) do not reduce current taxes but provide tax-free withdrawals later.' },
+  { q: 'Which states have no income tax?', a: 'Nine states have no state income tax: Alaska, Florida, Nevada, New Hampshire, South Dakota, Tennessee, Texas, Washington, and Wyoming. New Hampshire taxes only interest and dividends.' },
+  { q: 'What is the federal withholding allowance?', a: 'The old allowance system was replaced by the W-4 form in 2020. Now you simply enter your filing status, claim dependents, and note any additional withholding or adjustments needed to match your expected tax liability.' },
+  { q: 'How do I calculate my annual salary from my hourly rate?', a: 'Hourly to annual: rate × hours per week × 52 weeks. For example, $25/hour × 40 hours × 52 weeks = $52,000 per year. This calculator handles both hourly and salary inputs.' },
+  { q: 'What is the Social Security wage base?', a: 'The Social Security tax (6.2%) only applies to earnings up to the annual wage base limit, which is $168,600 in 2025. Earnings above this amount are not subject to Social Security tax, though Medicare tax (1.45%) applies to all earnings.' },
+  { q: 'How do retirement contributions affect my paycheck?', a: 'Traditional 401k contributions reduce your taxable income for both federal and state taxes, lowering your current tax bill. Roth contributions are made with after-tax dollars and do not reduce current taxes but grow tax-free for retirement.' },
+  { q: 'Why does my paycheck vary if I\'m salaried?', a: 'If you are paid bi-weekly (26 pay periods), some months have three paychecks due to the calendar. Semi-monthly pay (24 pay periods) provides consistent checks on the same dates each month. Your annual salary remains the same either way.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gross pay per period ($)</span>
+        <input id="gross" type="number" step="any" placeholder="3846.15" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Pay frequency</span>
+        <select id="freq" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="weekly">Weekly (52/year)</option><option value="biweekly" selected>Bi-weekly (26/year)</option><option value="semimonthly">Semi-monthly (24/year)</option><option value="monthly">Monthly (12/year)</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Filing status</span>
+        <select id="status" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="single">Single</option><option value="married">Married Filing Jointly</option><option value="hoh">Head of Household</option></select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Pre-tax deductions per period ($)</span>
+        <input id="pretax" type="number" step="any" placeholder="384.62" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Net pay (take-home)</div><div id="r-net" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total deductions</div><div id="r-ded" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Annual net pay</div><div id="r-annual" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
+    </div>
+    <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How your paycheck is calculated</h2>
+    <p class="mt-2 text-slate-600">
+      Your net pay starts with your gross pay, then subtracts pre-tax deductions, federal income tax,
+      FICA taxes (Social Security + Medicare), and state income tax. The formula:
+      <span class="font-mono">Net Pay = Gross - Pre-tax Deductions - Federal Tax - FICA - State Tax</span>.
+      Pre-tax deductions reduce your taxable income, saving you money on all three tax types.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Understanding each component of your paycheck helps you verify that your employer is withholding
+      correctly, optimize your W-4 allowances, and evaluate how changes like a raise, bonus, or
+      additional 401k contribution affect your take-home pay. This calculator provides estimates and
+      should not be used as official tax advice — always consult a tax professional for your specific
+      situation.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Bi-weekly pay of $3,846.15 ($100,000 annual), single filer, $384.62 pre-tax 401k contribution.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Gross pay:</span> <span class="text-slate-600">$3,846.15</span></div>
+        <div><span class="font-medium text-slate-700">Pre-tax 401k:</span> <span class="text-slate-600">$384.62</span></div>
+        <div><span class="font-medium text-slate-700">Federal tax:</span> <span class="text-slate-600">~$484.00</span></div>
+        <div><span class="font-medium text-slate-700">FICA (7.65%):</span> <span class="text-slate-600">$294.23</span></div>
+        <div><span class="font-medium text-slate-700">Net pay:</span> <span class="text-slate-600">~$2,683.30</span></div>
+        <div><span class="font-medium text-slate-700">Annual net:</span> <span class="text-slate-600">~$69,766</span></div>
+      </div>
+    </div>
+  </section>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paycheck breakdown segments">
+      <title>Paycheck Segmentation</title>
+      <desc>A horizontal bar showing gross pay split into segments: pre-tax deductions, federal tax, FICA, state tax, and net pay.</desc>
+      <rect x="60" y="70" width="680" height="50" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+      <text x="400" y="55" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="bold">$3,846.15 Gross Pay</text>
+      <rect x="62" y="72" width="100" height="46" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1"/>
+      <text x="112" y="100" text-anchor="middle" fill="#3b82f6" font-size="11">401k</text>
+      <rect x="162" y="72" width="120" height="46" rx="0" fill="#fef3c7" stroke="#f59e0b" stroke-width="1"/>
+      <text x="222" y="100" text-anchor="middle" fill="#f59e0b" font-size="11">Federal Tax</text>
+      <rect x="282" y="72" width="100" height="46" rx="0" fill="#fce7f3" stroke="#ec4899" stroke-width="1"/>
+      <text x="332" y="100" text-anchor="middle" fill="#ec4899" font-size="11">FICA</text>
+      <rect x="382" y="72" width="60" height="46" rx="0" fill="#fed7aa" stroke="#f97316" stroke-width="1"/>
+      <text x="412" y="100" text-anchor="middle" fill="#f97316" font-size="11">State</text>
+      <rect x="442" y="72" width="296" height="46" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
+      <text x="590" y="100" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="bold">Net Pay: ~$2,683</text>
+      <text x="400" y="145" text-anchor="middle" fill="#64748b" font-size="13">Each segment represents a portion of your gross pay</text>
+    </svg>
+    <figcaption class="mt-3 text-center text-sm text-slate-500">Your gross pay is split among taxes, deductions, and your take-home net pay</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">About paycheck calculations</h2>
+    <p class="mt-2 text-slate-600">
+      Understanding your paycheck is essential for personal financial planning. Knowing exactly how
+      much you take home helps you budget accurately, plan for expenses, and evaluate job offers.
+      The difference between gross and net pay can be significant — a $100,000 salary may result in
+      only $70,000 to $75,000 of take-home pay depending on your location, deductions, and benefits.
+      Use the
+      <a href="/tools/income-tax-calculator-us" class="font-medium text-indigo-600 hover:underline">US Income Tax Calculator</a>
+      for a detailed federal tax estimate and the
+      <a href="/tools/salary-calculator" class="font-medium text-indigo-600 hover:underline">Salary Calculator</a>
+      to compare hourly versus annual wages.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">How to use it</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+      <li>Enter your gross pay for one pay period (before any deductions).</li>
+      <li>Select your pay frequency, filing status, and any pre-tax deductions.</li>
+      <li>View your net take-home pay, total deductions, and annualized net pay.</li>
+    </ol>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">When to use this tool</h2>
+    <p class="mt-2 text-slate-600">
+      Use it when evaluating a new job offer to compare net pay across opportunities, when adjusting
+      your 401k contribution to see the impact on your paycheck, when changing your W-4 withholding,
+      or when budgeting based on actual take-home pay rather than gross salary.
+    </p>
+
+    <h2 class="mt-8 text-xl font-bold text-slate-900">Tips for maximizing take-home pay</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li>Increase traditional 401k contributions — they reduce your taxable income and save you at your marginal rate.</li>
+      <li>Use an HSA or FSA for healthcare expenses — these are pre-tax and reduce your taxable income.</li>
+      <li>Review your W-4 withholding annually to avoid large refunds (interest-free loan to the government) or underpayment penalties.</li>
+    </ul>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">👩‍💼</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Salaried Employee</h3>
+      <p class="mt-1 text-sm text-slate-600">Understand your true take-home pay and how changes in salary, filing status, or 401k contributions affect each paycheck throughout the year.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🕒</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Hourly Worker</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate net pay for different hourly rates and hours worked. See how overtime, shift differentials, and bonuses affect your take-home amount per check.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">💍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Newly Married Couple</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare net pay under different filing statuses and adjust W-4 withholdings for both spouses to optimize the total household tax situation.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📋</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Job Seeker</h3>
+      <p class="mt-1 text-sm text-slate-600">Compare net pay from multiple job offers — two employers offering the same gross salary may result in different take-home pay due to benefits and location.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the paycheck calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter pay details</h3>
+        <p class="mt-1 text-sm text-slate-600">Input your gross pay per period and select your pay frequency. For hourly workers, use the hourly wage calculator for the gross amount first.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set deductions</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter pre-tax deductions like 401k, HSA, FSA, and health insurance premiums. These reduce your taxable income and lower your tax withholdings.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Review net pay</h3>
+        <p class="mt-1 text-sm text-slate-600">See your take-home pay per period and annualized. Use the breakdown of deductions to understand where your money goes each pay period.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for optimizing your paycheck</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Adjust your W-4 accurately</h3>
+        <p class="mt-1 text-sm text-slate-600">The IRS W-4 form determines how much federal tax is withheld from each paycheck. Filling it out accurately prevents large refunds (which means you overpaid) or underpayment penalties. Update your W-4 after major life changes like marriage, divorce, or a new child.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Maximize pre-tax benefits</h3>
+        <p class="mt-1 text-sm text-slate-600">Pre-tax deductions reduce both federal income tax and FICA taxes. Contributing to a traditional 401k, HSA, or FSA lowers your taxable income. In 2025, you can contribute up to $23,500 to a 401k and $4,300 to an HSA (self-only) or $8,600 (family).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Consider state taxes</h3>
+        <p class="mt-1 text-sm text-slate-600">State income tax rates range from 0% to over 13%. If you work remotely or are considering relocation, the state tax difference can significantly impact your net pay. Use state-specific calculators for accurate estimates in your jurisdiction.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+      <li><a href="/tools/income-tax-calculator-us" class="font-medium text-indigo-600 hover:underline">US Income Tax Calculator</a> — Detailed federal income tax bracket calculation.</li>
+      <li><a href="/tools/salary-calculator" class="font-medium text-indigo-600 hover:underline">Salary Calculator</a> — Convert between hourly, weekly, monthly, and annual salary figures.</li>
+      <li><a href="/tools/overtime-pay-calculator" class="font-medium text-indigo-600 hover:underline">Overtime Pay Calculator</a> — Calculate overtime earnings at time-and-a-half or double-time rates.</li>
+    </ul>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const freqMap = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
+    const brackets = {
+      single: [[0.10, 11925], [0.12, 48475], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]],
+      married: [[0.10, 23850], [0.12, 96950], [0.22, 206700], [0.24, 394600], [0.32, 501050], [0.35, 751600], [0.37, Infinity]],
+      hoh: [[0.10, 17000], [0.12, 64850], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]]
+    };
+    function update() {
+      const gross = parseFloat(el('gross').value);
+      const freq = el('freq').value;
+      const status = el('status').value;
+      const pretax = parseFloat(el('pretax').value);
+      el('err').textContent = '';
+      if (isNaN(gross) || gross <= 0) { ['r-net', 'r-ded', 'r-annual'].forEach((id) => (el(id).textContent = '—')); return; }
+      const p = isNaN(pretax) ? 0 : pretax;
+      const periods = freqMap[freq];
+      const annualGross = gross * periods;
+      const annualPretax = p * periods;
+      const taxableAnnual = Math.max(0, annualGross - annualPretax - 15000); // standard deduction
+      const bs = brackets[status];
+      let fedTax = 0;
+      let prev = 0;
+      for (const [rate, limit] of bs) {
+        const inc = Math.max(0, Math.min(taxableAnnual, limit) - prev);
+        fedTax += inc * rate;
+        prev = limit;
+        if (taxableAnnual <= limit) break;
+      }
+      const ssWageBase = 168600;
+      const ssTax = Math.min(annualGross, ssWageBase) * 0.062;
+      const mcTax = annualGross * 0.0145;
+      const fica = ssTax + mcTax;
+      const stateTax = annualGross * 0.04; // avg state tax estimate
+      const totalAnnualDed = annualPretax + fedTax + fica + stateTax;
+      const annualNet = annualGross - totalAnnualDed;
+      const perNet = annualNet / periods;
+      const perDed = gross - perNet;
+      el('r-net').textContent = fmt(perNet);
+      el('r-ded').textContent = fmt(perDed);
+      el('r-annual').textContent = fmt(annualNet);
+    }
+    ['gross', 'freq', 'status', 'pretax'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

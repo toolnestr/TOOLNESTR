@@ -1,0 +1,191 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Projectile Motion Calculator';
+const description = 'Free online projectile motion calculator. Calculate range, maximum height, and time of flight from launch speed and angle with air resistance neglected.';
+const intro = 'Enter launch speed, angle, and initial height to calculate the range, maximum height, and time of flight.';
+const category = { id: 'engineering', name: 'Engineering & Science' };
+const faqs = [
+  { q: 'What is projectile motion?', a: 'Projectile motion describes the trajectory of an object launched into the air, subject only to gravity (neglecting air resistance). The path is a parabola, with horizontal motion at constant speed and vertical motion with constant acceleration g.' },
+  { q: 'What is the optimum angle for maximum range?', a: 'On level ground with no air resistance, 45° gives the maximum range. This is because 45° splits the initial velocity equally between horizontal and vertical components.' },
+  { q: 'How do I calculate maximum height?', a: 'Maximum height is reached when vertical velocity becomes zero. The formula is h = (v₀² × sin²θ) / (2g), where v₀ is initial speed, θ is the launch angle, and g is gravity.' },
+  { q: 'Why does the horizontal component stay constant?', a: 'In the absence of air resistance, there is no horizontal force acting on the projectile (gravity acts vertically). Newton\'s first law says horizontal velocity remains constant throughout the flight.' },
+  { q: 'How do I calculate range on uneven ground?', a: 'If the landing point is at a different height than the launch point, use the time of flight from the vertical displacement equation and multiply by the horizontal velocity component.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter launch parameters to calculate projectile motion</p>
+    <div class="grid gap-4 sm:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Launch speed (v₀)</span>
+        <input id="speed" type="number" step="any" placeholder="m/s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Angle (θ)</span>
+        <input id="angle" type="number" step="any" placeholder="degrees" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial height</span>
+        <input id="height" type="number" step="any" placeholder="m" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gravity (g)</span>
+        <input id="grav" type="number" step="any" placeholder="9.81" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Range</div><div id="r-range" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Max height</div><div id="r-hmax" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Time of flight</div><div id="r-time" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Impact speed</div><div id="r-imp" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="proj-err" class="mt-3 text-center text-sm text-red-600"></p>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="proj-title proj-desc">
+      <title id="proj-title">Parabolic projectile arc with labelled parameters</title>
+      <desc id="proj-desc">A parabolic trajectory showing launch angle θ, initial velocity v₀, maximum height H, range R, and landing point</desc>
+      <g transform="translate(40,10)">
+        <path d="M 60 240 Q 180 20 400 120 Q 620 220 700 240" stroke="#6366f1" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <line x1="60" y1="240" x2="700" y2="240" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 3"/>
+        <circle cx="60" cy="240" r="6" fill="#6366f1"/>
+        <circle cx="700" cy="240" r="6" fill="#6366f1"/>
+        <line x1="60" y1="240" x2="180" y2="20" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+        <polygon points="180,20 168,35 178,40" fill="#ef4444"/>
+        <text x="130" y="115" fill="#ef4444" font-size="16" font-weight="bold">v₀</text>
+        <path d="M 80 230 Q 100 205 120 210" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4 2"/>
+        <text x="105" y="200" fill="#f59e0b" font-size="14" font-weight="bold">θ</text>
+        <line x1="300" y1="240" x2="300" y2="100" stroke="#10b981" stroke-width="2" stroke-dasharray="6 3"/>
+        <polygon points="300,100 295,110 305,110" fill="#10b981"/>
+        <text x="280" y="175" fill="#10b981" font-size="14" font-weight="bold">H</text>
+        <text x="260" y="195" fill="#64748b" font-size="11">Max height</text>
+        <line x1="60" y1="250" x2="700" y2="250" stroke="#a855f7" stroke-width="2.5"/>
+        <polygon points="700,250 690,245 690,255" fill="#a855f7"/>
+        <text x="380" y="270" text-anchor="middle" fill="#a855f7" font-size="14" font-weight="bold">R (Range)</text>
+      </g>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Parabolic trajectory showing initial velocity v₀ at angle θ, maximum height H, and horizontal range R.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How projectile motion is calculated</h2>
+    <p class="mt-2 text-slate-600">Projectile motion is analysed by splitting the initial velocity into horizontal and vertical components: <span class="font-mono">v₀x = v₀ × cos(θ)</span> and <span class="font-mono">v₀y = v₀ × sin(θ)</span>. Horizontally, velocity is constant because no horizontal force acts. Vertically, gravity accelerates the projectile downward at g = 9.81 m/s². The range R = v₀x × t, where t is the total time of flight. The maximum height H = v₀y² / (2g) occurs when vertical velocity reaches zero at the apex of the parabola.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A ball is kicked at 20 m/s at 30° above horizontal from ground level. What are the range and maximum height?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">v₀x:</span> <span class="text-slate-600">20 × cos(30°) = 17.32 m/s</span></div>
+        <div><span class="font-medium text-slate-700">v₀y:</span> <span class="text-slate-600">20 × sin(30°) = 10.0 m/s</span></div>
+        <div><span class="font-medium text-slate-700">Time of flight:</span> <span class="text-slate-600">t = 2 × 10 / 9.81 = 2.04 s</span></div>
+        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">R = 17.32 × 2.04 = 35.3 m</span></div>
+        <div><span class="font-medium text-slate-700">Max height:</span> <span class="text-slate-600">H = 10² / (2 × 9.81) = 5.10 m</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x26BD;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Sports Coach</h3>
+      <p class="mt-1 text-sm text-slate-600">Optimise launch angles for basketball shots, football kicks, and javelin throws. Use the calculator to find the ideal angle for maximum distance or precise targeting.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F942;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Ballistics Specialist</h3>
+      <p class="mt-1 text-sm text-slate-600">Calculate bullet trajectories for different rifle calibres and shooting angles. Understand how bullet drop affects aiming at different distances and how the sight-in range works.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F680;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Rocket Hobbyist</h3>
+      <p class="mt-1 text-sm text-slate-600">Design model rocket launches by calculating apogee (max height) and landing distance. Ensure the rocket lands in a safe area by choosing the right launch angle and motor power.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">&#x1F393;</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Physics Student</h3>
+      <p class="mt-1 text-sm text-slate-600">Verify calculations for projectile motion homework. Explore how changing the angle and speed affects the trajectory shape, range, and maximum height.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the projectile motion calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter launch parameters</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the initial speed (m/s), launch angle (degrees), initial height (m), and gravity. The default gravity is Earth's 9.81 m/s².</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Instant results</h3>
+        <p class="mt-1 text-sm text-slate-600">Range, maximum height, time of flight, and impact speed are all calculated simultaneously. The primary result box highlights the range.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Try different planets</h3>
+        <p class="mt-1 text-sm text-slate-600">Change gravity to 1.62 (Moon) or 3.71 (Mars) to see how projectile range changes on other worlds. A golf ball on the Moon travels about six times farther.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for projectile motion calculations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Air resistance is neglected</h3>
+        <p class="mt-1 text-sm text-slate-600">This calculator assumes no air resistance. In reality, air drag reduces range by 10-50% depending on the object's shape and speed. The effect is more significant for light, fast projectiles like ping-pong balls.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">45° gives maximum range on flat ground</h3>
+        <p class="mt-1 text-sm text-slate-600">For level ground with no air resistance, 45° is optimal. On uneven ground (launching from a hill), the optimal angle is less than 45° when landing lower and more than 45° when landing higher.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Symmetry of the trajectory</h3>
+        <p class="mt-1 text-sm text-slate-900">For level-ground launches, the trajectory is symmetric. The time up equals the time down, and the impact speed equals the launch speed. Adding initial height breaks this symmetry.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/free-fall-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x2B07;&#xFE0F;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Free Fall Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Time and velocity under gravity.</p>
+      </a>
+      <a href="/tools/kinetic-energy-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x26A1;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Kinetic Energy Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">KE = ½mv² — solve for any variable.</p>
+      </a>
+      <a href="/tools/force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">&#x1F4A5;</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Force Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">F = ma — solve for any variable.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    function update() {
+      const v0 = parseFloat(el('speed').value);
+      const a = parseFloat(el('angle').value);
+      const h0 = parseFloat(el('height').value) || 0;
+      const g = parseFloat(el('grav').value) || 9.81;
+      el('proj-err').textContent = '';
+      if (isNaN(v0) || isNaN(a)) { ['r-range', 'r-hmax', 'r-time', 'r-imp'].forEach(id => el(id).textContent = '—'); return; }
+      if (v0 <= 0 || g <= 0) { el('proj-err').textContent = 'Speed and gravity must be positive.'; return; }
+      const rad = a * Math.PI / 180;
+      const vx = v0 * Math.cos(rad);
+      const vy = v0 * Math.sin(rad);
+      const discriminant = vy * vy + 2 * g * h0;
+      if (discriminant < 0) { el('proj-err').textContent = 'Initial height too low for this angle/speed.'; return; }
+      const tFlight = (vy + Math.sqrt(discriminant)) / g;
+      const range = vx * tFlight;
+      const hMax = h0 > 0 ? h0 + vy * vy / (2 * g) : vy * vy / (2 * g);
+      const vImpact = Math.sqrt(vx * vx + (vy - g * tFlight) ** 2);
+      el('r-range').textContent = fmt(range) + ' m';
+      el('r-hmax').textContent = fmt(hMax) + ' m';
+      el('r-time').textContent = fmt(tFlight) + ' s';
+      el('r-imp').textContent = fmt(vImpact) + ' m/s';
+    }
+    ['speed', 'angle', 'height', 'grav'].forEach(id => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

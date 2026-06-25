@@ -1,0 +1,236 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Air-Fuel Ratio Calculator';
+const description =
+  'Calculate air-fuel ratio (AFR) for internal combustion engines. Compare against stoichiometric (14.7:1) and lambda values.';
+const intro =
+  'Calculate air-fuel ratio (AFR) for any fuel type and compare against the stoichiometric ideal for complete combustion.';
+const category = { id: 'automotive', name: 'Automotive' };
+const faqs = [
+  { q: 'What is the ideal air-fuel ratio?', a: 'For petrol (gasoline), the stoichiometric (ideal) ratio is 14.7:1 — 14.7 parts air to 1 part fuel by mass. This gives complete combustion.' },
+  { q: 'What is lambda?', a: 'Lambda (λ) is the ratio of actual AFR to stoichiometric AFR. λ = 1 is ideal, λ &lt; 1 is rich, λ &gt; 1 is lean.' },
+  { q: 'What happens with a rich mixture?', a: 'A rich mixture (AFR below 14.7:1) has excess fuel. It produces more power but wastes fuel and increases emissions.' },
+  { q: 'What happens with a lean mixture?', a: 'A lean mixture (AFR above 14.7:1) has excess air. It is more fuel-efficient but can cause overheating and engine damage if too lean.' },
+  { q: 'What fuels have different stoichiometric ratios?', a: 'Diesel: ~14.5:1, E85: ~9.8:1, Methanol: ~6.4:1, LPG: ~15.5:1. Each fuel has its own ideal ratio.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Air mass (grams)</span>
+        <input id="air" type="number" step="any" min="0" value="14.7"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Fuel mass (grams)</span>
+        <input id="fuel" type="number" step="any" min="0" value="1"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+    </div>
+    <label class="block mt-3">
+      <span class="text-sm font-medium text-slate-700">Fuel type</span>
+      <select id="fuelType"
+        class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="14.7">Petrol / Gasoline (14.7:1)</option>
+        <option value="14.5">Diesel (14.5:1)</option>
+        <option value="9.8">E85 (9.8:1)</option>
+        <option value="6.4">Methanol (6.4:1)</option>
+        <option value="15.5">LPG (15.5:1)</option>
+      </select>
+    </label>
+    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">AFR</div>
+        <div id="r-afr" class="mt-1 text-2xl font-bold text-slate-800">—</div>
+      </div>
+      <div class="rounded-xl bg-indigo-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Lambda (λ)</div>
+        <div id="r-lambda" class="mt-1 text-2xl font-bold text-indigo-700">—</div>
+      </div>
+      <div class="rounded-xl bg-emerald-50 p-4 text-center">
+        <div class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Status</div>
+        <div id="r-status" class="mt-1 text-lg font-bold text-emerald-700">—</div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="afr-title afr-desc">
+      <title id="afr-title">Air and fuel mixing diagram</title>
+      <desc id="afr-desc">Diagram showing air molecules and fuel molecules mixing in a combustion chamber with the AFR ratio labelled</desc>
+      <rect x="60" y="30" width="180" height="100" rx="12" fill="#e0f2fe" stroke="#7dd3fc" stroke-width="2" />
+      <text x="150" y="55" text-anchor="middle" fill="#0369a1" font-size="14" font-weight="bold">Air</text>
+      <circle cx="110" cy="78" r="6" fill="#38bdf8" opacity="0.7" />
+      <circle cx="140" cy="85" r="6" fill="#38bdf8" opacity="0.7" />
+      <circle cx="170" cy="72" r="6" fill="#38bdf8" opacity="0.7" />
+      <circle cx="125" cy="100" r="6" fill="#38bdf8" opacity="0.7" />
+      <circle cx="155" cy="105" r="6" fill="#38bdf8" opacity="0.7" />
+      <circle cx="185" cy="95" r="6" fill="#38bdf8" opacity="0.7" />
+      <text x="150" y="125" text-anchor="middle" fill="#0369a1" font-size="12">14.7 parts</text>
+      <text x="300" y="85" fill="#64748b" font-size="28" font-weight="bold">+</text>
+      <rect x="340" y="30" width="200" height="100" rx="12" fill="#fef3c7" stroke="#fbbf24" stroke-width="2" />
+      <text x="440" y="55" text-anchor="middle" fill="#b45309" font-size="14" font-weight="bold">Fuel</text>
+      <circle cx="390" cy="80" r="8" fill="#f59e0b" opacity="0.8" />
+      <circle cx="430" cy="75" r="8" fill="#f59e0b" opacity="0.8" />
+      <circle cx="470" cy="90" r="8" fill="#f59e0b" opacity="0.8" />
+      <circle cx="410" cy="105" r="8" fill="#f59e0b" opacity="0.8" />
+      <circle cx="460" cy="110" r="8" fill="#f59e0b" opacity="0.8" />
+      <text x="440" y="125" text-anchor="middle" fill="#b45309" font-size="12">1 part</text>
+      <text x="590" y="85" fill="#64748b" font-size="28" font-weight="bold">=</text>
+      <rect x="630" y="30" width="140" height="100" rx="12" fill="#fef2f2" stroke="#fca5a5" stroke-width="2" />
+      <text x="700" y="85" text-anchor="middle" fill="#dc2626" font-size="16" font-weight="bold">14.7:1</text>
+      <text x="700" y="108" text-anchor="middle" fill="#ef4444" font-size="11">AFR</text>
+      <text x="400" y="175" text-anchor="middle" fill="#64748b" font-size="13">Stoichiometric AFR for petrol: 14.7 parts air to 1 part fuel</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">The ideal air-fuel mixture for complete combustion of petrol</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How air-fuel ratio calculation works</h2>
+    <p class="mt-2 text-slate-600">
+      The air-fuel ratio (AFR) is the mass ratio of air to fuel in an internal combustion engine. It is one of the most critical parameters for engine performance, efficiency, and emissions. The stoichiometric AFR is the chemically ideal ratio where all fuel is completely burned using all available oxygen. For petrol, this is 14.7:1 — meaning 14.7 grams of air for every 1 gram of fuel.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Lambda (λ) is the normalised AFR: actual AFR divided by the stoichiometric AFR for the given fuel. Lambda is a universal tuning metric because it abstracts away the fuel type. A lambda of 1 means ideal combustion regardless of whether the fuel is petrol, diesel, or ethanol. Tuning for maximum power typically targets λ ≈ 0.85–0.90 (rich), while maximum efficiency targets λ ≈ 1.05–1.10 (lean).
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-5">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-1 rounded-xl bg-white p-4 font-mono text-sm text-slate-700">
+      <div><span class="font-semibold">AFR</span> = air mass ÷ fuel mass</div>
+      <div><span class="font-semibold">Lambda (λ)</span> = actual AFR ÷ stoichiometric AFR</div>
+      <div><span class="font-semibold">Equivalence ratio (Φ)</span> = 1 ÷ λ</div>
+    </div>
+    <h3 class="mt-4 font-semibold text-slate-900">Worked example</h3>
+    <p class="mt-1 text-sm text-slate-600"><strong>Air:</strong> 14.7 g &middot; <strong>Fuel:</strong> 1 g &middot; <strong>Petrol (stoich 14.7:1)</strong></p>
+    <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+      <div><span class="font-medium text-slate-700">AFR:</span> <span class="text-slate-600">14.7 ÷ 1 = 14.7:1</span></div>
+      <div><span class="font-medium text-slate-700">Lambda:</span> <span class="text-slate-600">14.7 ÷ 14.7 = 1.00</span></div>
+      <div><span class="font-medium text-slate-700">Rich example:</span> <span class="text-slate-600">13.2 g air, 1 g fuel → AFR 13.2:1, λ = 0.90</span></div>
+      <div><span class="font-medium text-slate-700">Lean example:</span> <span class="text-slate-600">16.2 g air, 1 g fuel → AFR 16.2:1, λ = 1.10</span></div>
+    </div>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔧</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Engine Tuning</h3>
+      <p class="mt-1 text-sm text-slate-600">Tune your carburettor or fuel injection system using lambda as a universal target. Adjust jetting until λ reads correctly.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">📊</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Dyno Testing</h3>
+      <p class="mt-1 text-sm text-slate-600">During dynamometer testing, monitor AFR across the RPM range. Adjust fuel maps to keep lambda in the target window for power or economy.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🔍</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Diagnostics</h3>
+      <p class="mt-1 text-sm text-slate-600">A faulty oxygen sensor or fuel pressure regulator causes abnormal AFR. Compare measured AFR to the ideal to identify system problems.</p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <span class="text-2xl">🚗</span>
+      <h3 class="mt-2 font-semibold text-slate-900">Fuel Economy Optimisation</h3>
+      <p class="mt-1 text-sm text-slate-600">For maximum fuel economy, engines run slightly lean (λ ≈ 1.05–1.10). Calculate your target AFR for optimal cruising efficiency.</p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the air-fuel ratio calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter air and fuel mass</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the mass of air and fuel in grams. These can come from a wideband AFR meter or flow measurement.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Select fuel type</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the fuel from the list. Each fuel has a different stoichiometric ratio used for lambda calculation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read AFR, lambda and status</h3>
+        <p class="mt-1 text-sm text-slate-600">See the AFR ratio, lambda value, and a text description of whether the mixture is rich, lean, or ideal.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for air-fuel ratio tuning</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Use lambda as the universal metric</h3>
+        <p class="mt-1 text-sm text-slate-600">Lambda normalises AFR across fuel types. A lambda of 0.85 means 15% rich regardless of whether you run petrol, E85, or methanol. This makes it the standard for tuning.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Power vs economy targets</h3>
+        <p class="mt-1 text-sm text-slate-600">Maximum power: λ ≈ 0.85–0.90 (rich). Maximum efficiency: λ ≈ 1.05–1.10 (lean). Idle: λ ≈ 1.00. Full throttle: λ ≈ 0.85–0.90 for safety (rich mixture cools the combustion chamber).</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Be careful with lean mixtures</h3>
+        <p class="mt-1 text-sm text-slate-600">Running too lean (λ &gt; 1.15) causes high combustion temperatures that can damage pistons, valves, and spark plugs. Always err on the rich side for safety.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">E85 requires different tuning</h3>
+        <p class="mt-1 text-sm text-slate-600">E85 has a stoichiometric ratio of 9.8:1, much richer than petrol. This means you need approximately 30% more fuel flow when switching from petrol to E85.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 border-t border-slate-200 pt-8">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/compression-ratio-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">⚙️</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Compression Ratio Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate engine compression ratio from volumes.</p>
+      </a>
+      <a href="/tools/engine-displacement-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">🔩</span>
+        <h3 class="mt-1 font-semibold text-slate-900">Engine Displacement Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate cc and litres from bore and stroke.</p>
+      </a>
+      <a href="/tools/mpg-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm">
+        <span class="text-lg">📏</span>
+        <h3 class="mt-1 font-semibold text-slate-900">MPG Calculator</h3>
+        <p class="text-sm text-slate-600">Calculate fuel economy from odometer and fill data.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    function fmt(n) { return n.toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+    function update() {
+      const air = parseFloat(document.getElementById('air').value) || 0;
+      const fuel = parseFloat(document.getElementById('fuel').value) || 0;
+      const stoich = parseFloat(document.getElementById('fuelType').value) || 14.7;
+      if (air <= 0 || fuel <= 0) {
+        document.getElementById('r-afr').textContent = '—';
+        document.getElementById('r-lambda').textContent = '—';
+        document.getElementById('r-status').textContent = '—';
+        return;
+      }
+      const afr = air / fuel;
+      const lambda = afr / stoich;
+      document.getElementById('r-afr').textContent = fmt(afr) + ':1';
+      document.getElementById('r-lambda').textContent = fmt(lambda);
+      let status, color;
+      if (lambda < 0.95) { status = 'Rich'; color = 'text-red-600'; }
+      else if (lambda > 1.05) { status = 'Lean'; color = 'text-amber-600'; }
+      else { status = 'Ideal'; color = 'text-emerald-600'; }
+      const el = document.getElementById('r-status');
+      el.textContent = status;
+      el.className = 'mt-1 text-lg font-bold ' + color;
+    }
+    ['air','fuel','fuelType'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+    update();
+  </script>
+</ToolLayout>
