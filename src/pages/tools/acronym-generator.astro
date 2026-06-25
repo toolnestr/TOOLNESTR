@@ -1,0 +1,565 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Acronym Generator';
+const description = 'Generate acronyms from any phrase or set of words. Choose first-letter or first-N-letters format.';
+const intro = 'Generate acronyms from any phrase or set of words.';
+const category = { id: 'text', name: 'Text Tools' };
+const faqs = [
+  { q: 'How is an acronym generated?', a: 'By taking the first letter (or first N letters) of each word in a phrase.' },
+  { q: 'Can I exclude certain words?', a: 'Common stop words (of, the, and, in) are optionally excluded from the acronym.' },
+  { q: 'What is the difference between an acronym and an initialism?', a: 'Acronyms are pronounced as words (NASA, SCUBA), initialisms are pronounced letter by letter (USA, FBI).' },
+  { q: 'Can I make a backronym?', a: 'Enter words and see what acronym they form — useful for naming projects or companies.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Enter a phrase</span>
+      <textarea id="phrase" rows="3" placeholder="e.g. World Health Organization" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></textarea>
+    </label>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">First N letters per word</span>
+        <input id="n-letters" type="number" min="1" max="5" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="flex items-center gap-3 self-end pb-3">
+        <input id="stop-words" type="checkbox" checked class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+        <span class="text-sm font-medium text-slate-700">Exclude stop words</span>
+      </label>
+      <fieldset class="self-end pb-3">
+        <span class="text-sm font-medium text-slate-700">Case</span>
+        <div class="mt-1 flex gap-3">
+          <label class="flex items-center gap-1.5 text-sm text-slate-700"><input type="radio" name="case" value="upper" checked class="text-indigo-600" /> UPPERCASE</label>
+          <label class="flex items-center gap-1.5 text-sm text-slate-700"><input type="radio" name="case" value="lower" class="text-indigo-600" /> lowercase</label>
+          <label class="flex items-center gap-1.5 text-sm text-slate-700"><input type="radio" name="case" value="title" class="text-indigo-600" /> Title Case</label>
+        </div>
+      </fieldset>
+    </div>
+
+    <button id="gen-btn" class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700">Generate</button>
+
+    <div id="results" class="mt-4 hidden space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-indigo-50 p-4">
+        <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">Acronym</div>
+        <div id="acronym-display" class="mt-1 text-2xl font-bold text-indigo-700"></div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">Stands for</div>
+        <div id="stands-for" class="mt-1 text-sm text-slate-700"></div>
+      </div>
+      <div id="word-status" class="rounded-xl border border-slate-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700 hidden"></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How acronym generation works</h2>
+    <p class="mt-2 text-slate-600">An acronym is formed by taking the first letter (or first few letters) of each word in a phrase and combining them. The most common approach is the first-letter method, where each word contributes its initial character. For example, "World Health Organization" becomes W, H, O — forming the acronym WHO.</p>
+
+    <figure class="mt-6 flex justify-center">
+      <svg viewBox="0 0 520 190" class="w-full max-w-lg" role="img" aria-label="Diagram showing how World Health Organization becomes WHO">
+        <rect x="10" y="10" width="145" height="40" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"/>
+        <text x="82" y="35" text-anchor="middle" font-size="15" font-family="system-ui" fill="#4338ca" font-weight="600">World</text>
+
+        <rect x="187" y="10" width="145" height="40" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"/>
+        <text x="260" y="35" text-anchor="middle" font-size="15" font-family="system-ui" fill="#4338ca" font-weight="600">Health</text>
+
+        <rect x="365" y="10" width="145" height="40" rx="8" fill="#eef2ff" stroke="#c7d2fe" stroke-width="2"/>
+        <text x="437" y="35" text-anchor="middle" font-size="15" font-family="system-ui" fill="#4338ca" font-weight="600">Organization</text>
+
+        <line x1="82" y1="50" x2="82" y2="80" stroke="#c7d2fe" stroke-width="2" stroke-dasharray="4"/>
+        <line x1="260" y1="50" x2="260" y2="80" stroke="#c7d2fe" stroke-width="2" stroke-dasharray="4"/>
+        <line x1="437" y1="50" x2="437" y2="80" stroke="#c7d2fe" stroke-width="2" stroke-dasharray="4"/>
+
+        <circle cx="82" cy="100" r="20" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+        <text x="82" y="106" text-anchor="middle" font-size="18" font-family="system-ui" fill="#4338ca" font-weight="700">W</text>
+
+        <circle cx="260" cy="100" r="20" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+        <text x="260" y="106" text-anchor="middle" font-size="18" font-family="system-ui" fill="#4338ca" font-weight="700">H</text>
+
+        <circle cx="437" cy="100" r="20" fill="#eef2ff" stroke="#818cf8" stroke-width="2"/>
+        <text x="437" y="106" text-anchor="middle" font-size="18" font-family="system-ui" fill="#4338ca" font-weight="700">O</text>
+
+        <line x1="457" y1="100" x2="480" y2="100" stroke="#c7d2fe" stroke-width="2"/>
+        <polygon points="480,94 492,100 480,106" fill="#c7d2fe"/>
+
+        <rect x="400" y="140" width="110" height="40" rx="10" fill="#4f46e5"/>
+        <text x="455" y="166" text-anchor="middle" font-size="20" font-family="system-ui" fill="white" font-weight="700">WHO</text>
+      </svg>
+    </figure>
+
+    <p class="mt-4 text-slate-600">While first-letter acronyms are the most common, some conventions use the first two or more letters from each word. For example, "Joint Photographic Experts Group" uses first letters to form JPEG. "American Standard Code for Information Interchange" uses the first letter of most words to form ASCII. Multi-letter extracts are sometimes used to make the result more pronounceable or to avoid collisions with existing acronyms.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">First-letter vs first-N-letters</h2>
+    <p class="mt-2 text-slate-600">The first-letter approach produces concise, tightly packed acronyms ideal for formal abbreviations. Organizations, government agencies, and technical standards almost always use this method. WHO, NASA, FBI, HTML, and CSS are all first-letter acronyms. The resulting string is short and easy to remember once learned.</p>
+    <p class="mt-3 text-slate-600">The first-N-letters approach gives more flexibility. Taking two or three letters from each word can produce pronounceable results that work better as brand names or project codenames. For example, "Systematic Approach to Learning" with N=2 produces "SYAPLE" — a made-up word that could serve as a project name. This technique is popular in software development for naming internal tools, libraries, and frameworks. The tradeoff is longer acronyms that may be harder to remember.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Comparison</h3>
+      <div class="mt-2 space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-slate-500">First-letter (N=1):</span><span class="font-mono font-medium text-slate-700">WHO</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">First-2-letters (N=2):</span><span class="font-mono font-medium text-slate-700">WOHECO</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">First-3-letters (N=3):</span><span class="font-mono font-medium text-slate-700">WORHEAORG</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for acronym generation</h2>
+    <p class="mt-2 text-slate-600">Acronyms appear everywhere in modern communication. They compress long names into memorable shorthand, saving time and space in written and spoken language. Here are the most common scenarios where generating acronyms is useful.</p>
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Naming projects and products</h3>
+        <p class="mt-1 text-sm text-slate-600">Development teams often use acronyms as codenames for projects, features, or internal tools. A memorable acronym like "SPARK" (Streamlined Processing And Retrieval Kit) is easier to reference in meetings and documentation than a full descriptive name.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Remembering lists and sequences</h3>
+        <p class="mt-1 text-sm text-slate-600">Mnemonics turn ordered lists into memorable words. The acronym "ROYGBIV" helps recall the colors of the rainbow (Red, Orange, Yellow, Green, Blue, Indigo, Violet). Medical students use acronyms to memorize anatomical structures and diagnostic criteria.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Creating mnemonics for study</h3>
+        <p class="mt-1 text-sm text-slate-600">Students and professionals create acronyms to remember complex information. "HOMES" stands for the Great Lakes (Huron, Ontario, Michigan, Erie, Superior). "PEMDAS" recalls the order of operations in mathematics (Parentheses, Exponents, Multiplication, Division, Addition, Subtraction). Generating acronyms transforms abstract lists into sticky, memorable words.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">Technical abbreviations</h3>
+        <p class="mt-1 text-sm text-slate-600">Technology is full of acronyms: HTML, CSS, SQL, API, JSON, YAML. When documenting new systems or standards, teams generate acronyms to label components, protocols, or frameworks consistently. A well-chosen technical acronym becomes part of the industry vocabulary.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Tips for choosing good acronyms</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid ambiguous acronyms</h3>
+        <p class="mt-1 text-sm text-slate-600">Before settling on an acronym, check that it does not already have a strong association in your field. "AIDS" as an acronym for "Automated Information Delivery System" would create confusion with the well-known medical term. Search existing acronym databases and run your candidate past colleagues from different domains.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check existing meanings</h3>
+        <p class="mt-1 text-sm text-slate-600">Many acronyms already carry established meanings. "ASP" could mean Active Server Pages, Application Service Provider, or Aspirin depending on context. If your acronym collides with an existing term in your industry, choose a different combination. The tool lists common English words to help you avoid unintentionally creating a known term that could cause confusion.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Pronounceability matters</h3>
+        <p class="mt-1 text-sm text-slate-600">An acronym that can be spoken as a word (NASA, SCUBA, LASER) is more accessible than one that must be spelled out letter-by-letter (FBI, USA, HTML). If your audience will speak the acronym aloud, aim for pronounceability by choosing vowel-rich combinations. Tools that allow variable letter counts per word help you tune the result for better pronunciation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the acronym generator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter a phrase</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste any phrase. It can be a proper name, a descriptive title, or a list of words.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Adjust options</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose how many letters to take from each word, toggle stop-word filtering, and pick the output case.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate and review</h3>
+        <p class="mt-1 text-sm text-slate-600">Click Generate to see the acronym, what it stands for, and whether it spells an existing English word.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">Generating an acronym for the phrase "North Atlantic Treaty Organization".</p>
+      <div class="mt-3 space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-slate-500">Phrase:</span><span class="font-medium text-slate-700">North Atlantic Treaty Organization</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Tokens:</span><span class="font-medium text-slate-700">North, Atlantic, Treaty, Organization</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">First letters:</span><span class="font-medium text-slate-700">N, A, T, O</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Acronym:</span><span class="font-mono font-bold text-indigo-700">NATO</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">English word?</span><span class="font-medium text-emerald-700">Yes — NATO is a known English word</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What makes a good acronym?</h2>
+    <p class="mt-2 text-slate-600">An effective acronym balances brevity, memorability, and clarity. The best acronyms are short enough to say or type quickly but distinctive enough not to blend in with other abbreviations. A four-character acronym is ideal for most purposes — long enough to be unique but short enough to be convenient. Acronyms that form real words (or word-like sounds) are far more memorable than arbitrary letter sequences. This is why "LASER" (Light Amplification by Stimulated Emission of Radiation) caught on while longer technical names faded. The comprehensibility of an acronym also depends on its audience. A medical acronym like "CABG" (Coronary Artery Bypass Grafting, pronounced "cabbage") works well among cardiologists but would confuse general audiences. Context matters. When generating acronyms, consider who will use them and how. Internal project codenames can be more playful and obscure, while customer-facing acronyms should be intuitive and easy to pronounce. Testing your acronym with actual users before committing to it can save rebranding costs later. A bad acronym can make a product or project harder to discuss, recommend, and remember.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Acronym vs initialism vs abbreviation</h2>
+    <p class="mt-2 text-slate-600">Although often used interchangeably, these three terms have distinct meanings. An <strong>acronym</strong> is an abbreviation pronounced as a word: NASA ("nah-sah"), SCUBA ("skoo-bah"), RADAR ("ray-dar"). An <strong>initialism</strong> is an abbreviation pronounced letter-by-letter: FBI ("eff-bee-eye"), USA ("you-ess-ay"), HTML ("aitch-tee-em-ell"). An <strong>abbreviation</strong> is any shortened form of a word or phrase, which includes both acronyms and initialisms but also clipped words like "Dr." for Doctor or "Ltd." for Limited. The tool generates abbreviation strings from the input phrase. Whether the result functions as an acronym or initialism depends on how it is pronounced. Checking pronounceability helps determine which category your generated abbreviation falls into.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why stop words matter</h2>
+    <p class="mt-2 text-slate-600">Stop words are common, low-information words like "the", "of", "and", "in", and "for". When generating acronyms, these words often dilute the result without adding meaningful distinction. For example, "United States of America" without stop-word filtering would use every word including "of", producing "USOA" — which is less recognizable than the standard "USA". The tool optionally skips stop words so you get the cleanest, most conventional acronym for your phrase. When building backronyms or creative project names, you might prefer to keep stop words for longer, more distinctive results. The toggle lets you decide based on your specific use case.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Stop words excluded</h2>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+      <div class="flex flex-wrap gap-2 bg-slate-50 p-4 text-sm text-slate-600">
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">a</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">an</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">the</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">of</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">in</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">on</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">at</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">and</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">or</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">for</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">to</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">with</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">by</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">from</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">is</span>
+        <span class="rounded-full bg-white px-3 py-1 border border-slate-200">are</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/text-to-slug-generator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">URL Slug Generator</a>
+      <a href="/tools/grammar-readability-checker" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Grammar &amp; Readability Checker</a>
+      <a href="/tools/citation-generator" class="rounded-xl border border-slate-200 bg-white p-4 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700">Citation Generator</a>
+    </div>
+  </section>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var stopWords = new Set(['a', 'an', 'the', 'of', 'in', 'on', 'at', 'and', 'or', 'for', 'to', 'with', 'by', 'from', 'is', 'are']);
+
+      var commonWords = new Set([
+        'a', 'abandon', 'able', 'about', 'above', 'abroad', 'absence', 'absolute', 'absorb', 'abstract',
+        'abuse', 'academic', 'accept', 'access', 'accident', 'account', 'achieve', 'acid', 'acoustic',
+        'acquire', 'across', 'act', 'action', 'active', 'actor', 'actual', 'adapt', 'add', 'address',
+        'adept', 'adjust', 'admit', 'adopt', 'adult', 'advance', 'advantage', 'adventure', 'advice',
+        'affair', 'affect', 'afford', 'after', 'again', 'against', 'age', 'agency', 'agent', 'agree',
+        'ahead', 'aid', 'aim', 'air', 'album', 'alert', 'alien', 'align', 'alive', 'all', 'alley',
+        'allow', 'almost', 'alone', 'along', 'already', 'also', 'alter', 'always', 'amaze', 'among',
+        'amount', 'ample', 'amuse', 'anchor', 'ancient', 'anger', 'angle', 'animal', 'ankle', 'annual',
+        'answer', 'any', 'apart', 'apology', 'appear', 'apple', 'apply', 'approach', 'approve', 'apron',
+        'aqua', 'area', 'argue', 'arise', 'arm', 'armor', 'army', 'around', 'arrange', 'arrest',
+        'arrive', 'arrow', 'art', 'article', 'artist', 'aside', 'ask', 'asleep', 'aspect', 'assault',
+        'assert', 'assess', 'assign', 'assist', 'assume', 'assure', 'attach', 'attack', 'attempt',
+        'attend', 'attract', 'aunt', 'author', 'auto', 'autumn', 'avail', 'average', 'avoid', 'awake',
+        'award', 'aware', 'awful', 'baby', 'back', 'bad', 'bag', 'bake', 'balance', 'ball', 'ban',
+        'band', 'bank', 'bar', 'bare', 'bark', 'barn', 'base', 'basic', 'basin', 'basis', 'basket',
+        'batch', 'bath', 'battle', 'bay', 'beach', 'bear', 'beat', 'beauty', 'become', 'bed', 'beef',
+        'before', 'begin', 'behalf', 'behave', 'being', 'belief', 'bell', 'belong', 'below', 'belt',
+        'bench', 'bend', 'benefit', 'best', 'better', 'beyond', 'bias', 'big', 'bill', 'bind', 'bird',
+        'birth', 'bit', 'bite', 'black', 'blade', 'blame', 'blank', 'blast', 'blaze', 'bleed', 'blend',
+        'bless', 'blind', 'block', 'blood', 'bloom', 'blow', 'blue', 'board', 'boast', 'boat', 'body',
+        'bold', 'bolt', 'bomb', 'bond', 'bone', 'bonus', 'book', 'boost', 'border', 'bore', 'born',
+        'borrow', 'boss', 'both', 'bother', 'bottle', 'bottom', 'bounce', 'box', 'boy', 'brain',
+        'branch', 'brand', 'brave', 'bread', 'break', 'breath', 'breed', 'brick', 'bridge', 'brief',
+        'bright', 'bring', 'broad', 'broke', 'bronze', 'brown', 'brush', 'buddy', 'budget', 'build',
+        'bullet', 'bunch', 'burden', 'burn', 'burst', 'bus', 'bush', 'business', 'busy', 'butter',
+        'button', 'buy', 'cabin', 'cable', 'cake', 'call', 'calm', 'camera', 'camp', 'can', 'canal',
+        'cancel', 'candle', 'cap', 'capital', 'captain', 'capture', 'carbon', 'card', 'care', 'career',
+        'cargo', 'carpet', 'carry', 'case', 'cash', 'cast', 'castle', 'casual', 'cat', 'catalog',
+        'catch', 'category', 'cattle', 'cause', 'cease', 'ceiling', 'cell', 'cement', 'center', 'cereal',
+        'certain', 'certify', 'chain', 'chair', 'chalk', 'chamber', 'champion', 'chance', 'change',
+        'channel', 'chaos', 'chapter', 'charge', 'charity', 'chart', 'chase', 'cheap', 'check', 'cheese',
+        'chest', 'chicken', 'chief', 'child', 'chip', 'choice', 'choose', 'chronic', 'chunk', 'circle',
+        'circus', 'cite', 'citizen', 'city', 'civil', 'claim', 'clap', 'clarify', 'class', 'clause',
+        'clay', 'clean', 'clear', 'clerk', 'clever', 'click', 'client', 'cliff', 'climate', 'climb',
+        'cling', 'clinic', 'clip', 'clock', 'clone', 'close', 'cloth', 'cloud', 'club', 'clue',
+        'cluster', 'coach', 'coal', 'coast', 'code', 'coffee', 'coil', 'coin', 'cold', 'collar',
+        'collect', 'college', 'colon', 'colony', 'color', 'column', 'combat', 'combine', 'come', 'comic',
+        'command', 'comment', 'commit', 'common', 'company', 'compare', 'compel', 'compete', 'complain',
+        'complex', 'compute', 'concept', 'concern', 'conduct', 'confess', 'confirm', 'conflict', 'congress',
+        'connect', 'consent', 'consist', 'consult', 'contact', 'contain', 'content', 'contest', 'context',
+        'control', 'convert', 'convict', 'cook', 'cool', 'copper', 'copy', 'coral', 'core', 'corner',
+        'correct', 'corrupt', 'cost', 'cotton', 'couch', 'cough', 'could', 'council', 'count', 'counter',
+        'country', 'county', 'couple', 'courage', 'course', 'court', 'cousin', 'cover', 'cow', 'crack',
+        'craft', 'crash', 'crazy', 'cream', 'create', 'credit', 'crew', 'crime', 'crisis', 'critic',
+        'crop', 'cross', 'crowd', 'crown', 'cruel', 'crush', 'cry', 'crystal', 'cube', 'culture',
+        'cup', 'cure', 'curious', 'current', 'curtain', 'curve', 'cushion', 'custom', 'customer', 'cycle',
+        'dad', 'damage', 'damp', 'dance', 'danger', 'dare', 'dark', 'data', 'date', 'dawn', 'day',
+        'dead', 'deal', 'dear', 'death', 'debate', 'debt', 'decade', 'decay', 'decent', 'decide',
+        'deck', 'declare', 'decline', 'decoy', 'deed', 'deep', 'defeat', 'defend', 'define', 'degree',
+        'delay', 'deliver', 'demand', 'denial', 'deny', 'depart', 'depend', 'deploy', 'deposit', 'depress',
+        'deputy', 'derive', 'descend', 'desert', 'design', 'desire', 'desk', 'despair', 'despite',
+        'destroy', 'detail', 'detect', 'develop', 'device', 'devote', 'dial', 'diamond', 'diary', 'dictate',
+        'diet', 'differ', 'digest', 'dinner', 'direct', 'dirt', 'disable', 'disagree', 'disaster',
+        'discuss', 'disease', 'dismiss', 'display', 'dispute', 'distant', 'dive', 'diverse', 'divide',
+        'divine', 'dock', 'doctor', 'dollar', 'domain', 'donate', 'donor', 'door', 'dose', 'double',
+        'doubt', 'down', 'draft', 'dragon', 'drain', 'drama', 'drank', 'draw', 'dream', 'dress',
+        'dried', 'drift', 'drill', 'drink', 'drive', 'drop', 'drought', 'drown', 'drug', 'drum',
+        'drunk', 'dry', 'duck', 'due', 'dull', 'dump', 'during', 'dust', 'duty', 'dwarf', 'drawer',
+        'each', 'eager', 'eagle', 'ear', 'early', 'earn', 'earth', 'ease', 'east', 'eastern', 'easy',
+        'eat', 'echo', 'ecology', 'economy', 'edge', 'edit', 'editor', 'educate', 'effect', 'effort',
+        'egg', 'eight', 'either', 'elbow', 'elder', 'elect', 'elegant', 'element', 'elephant', 'elite',
+        'else', 'embrace', 'emerge', 'emotion', 'employ', 'empty', 'enable', 'enclose', 'end', 'endure',
+        'enemy', 'energy', 'enforce', 'engage', 'engine', 'enjoy', 'enormous', 'enough', 'enrich',
+        'enroll', 'ensure', 'enter', 'entire', 'entry', 'envelope', 'episode', 'equal', 'equip', 'era',
+        'erase', 'erect', 'error', 'erupt', 'escape', 'essay', 'estate', 'estimate', 'evaluate', 'even',
+        'evening', 'event', 'ever', 'every', 'evict', 'evidence', 'evil', 'evolve', 'exact', 'exam',
+        'exceed', 'excellent', 'except', 'exchange', 'exclude', 'excuse', 'execute', 'exercise', 'exhibit',
+        'exist', 'exit', 'expand', 'expect', 'expense', 'expert', 'explain', 'explode', 'exploit',
+        'explore', 'export', 'expose', 'extend', 'extra', 'extreme', 'eye', 'fabric', 'face', 'fact',
+        'factor', 'factory', 'fade', 'fail', 'fair', 'faith', 'fake', 'fall', 'false', 'family',
+        'famine', 'famous', 'fan', 'fancy', 'fantasy', 'far', 'farm', 'fashion', 'fast', 'fatal',
+        'father', 'fault', 'favor', 'fear', 'feast', 'feature', 'federal', 'fee', 'feed', 'feel',
+        'fellow', 'female', 'fence', 'fertile', 'fever', 'few', 'fiber', 'fiction', 'field', 'fierce',
+        'fight', 'figure', 'file', 'fill', 'film', 'filter', 'final', 'find', 'fine', 'finger',
+        'finish', 'fire', 'firm', 'first', 'fish', 'fit', 'fixed', 'flag', 'flame', 'flash', 'flat',
+        'flavor', 'flee', 'fleet', 'flesh', 'flex', 'flight', 'flip', 'float', 'flock', 'flood',
+        'floor', 'flour', 'flow', 'flower', 'fluid', 'flush', 'fly', 'foam', 'focus', 'fog',
+        'fold', 'folk', 'follow', 'food', 'foot', 'force', 'foreign', 'forest', 'forge', 'forget',
+        'forgive', 'fork', 'form', 'formal', 'former', 'formula', 'forth', 'fortune', 'forward', 'fossil',
+        'foster', 'found', 'four', 'fox', 'fraction', 'frame', 'free', 'freedom', 'freeze', 'french',
+        'frequent', 'fresh', 'friend', 'frog', 'from', 'front', 'frost', 'frown', 'frozen', 'fruit',
+        'fuel', 'full', 'fun', 'function', 'fund', 'funeral', 'funny', 'fur', 'furnish', 'fury',
+        'future', 'gain', 'galaxy', 'gallery', 'gallon', 'game', 'gang', 'gap', 'garage', 'garbage',
+        'garden', 'garlic', 'gas', 'gate', 'gather', 'gauge', 'gaze', 'gear', 'gender', 'gene',
+        'general', 'genius', 'genre', 'gentle', 'genuine', 'gesture', 'ghost', 'giant', 'gift', 'glad',
+        'glance', 'glass', 'glide', 'globe', 'glory', 'glove', 'glow', 'glue', 'goal', 'gold',
+        'golden', 'good', 'govern', 'grab', 'grace', 'grade', 'grain', 'grand', 'grant', 'grape',
+        'graph', 'grasp', 'grass', 'grave', 'great', 'green', 'greet', 'grew', 'gray', 'grid',
+        'grief', 'grill', 'grin', 'grip', 'grocery', 'gross', 'ground', 'group', 'grow', 'growth',
+        'guard', 'guess', 'guest', 'guide', 'guilt', 'guitar', 'gun', 'gut', 'guy', 'gym',
+        'habit', 'hair', 'half', 'hall', 'halt', 'hammer', 'hand', 'handle', 'hang', 'happy',
+        'harbor', 'hard', 'harm', 'harvest', 'hat', 'hate', 'haunt', 'have', 'haven', 'head',
+        'health', 'hear', 'heart', 'heat', 'heaven', 'heavy', 'height', 'hello', 'help', 'herb',
+        'here', 'hero', 'hide', 'high', 'highlight', 'hill', 'hint', 'hip', 'hire', 'history',
+        'hit', 'hobby', 'hold', 'hole', 'holiday', 'home', 'honest', 'honor', 'hook', 'hope',
+        'horizon', 'horror', 'horse', 'hospital', 'host', 'hot', 'hotel', 'hour', 'house', 'huge',
+        'human', 'humor', 'hundred', 'hunger', 'hunt', 'hurry', 'hurt', 'husband', 'hybrid', 'ice',
+        'icon', 'idea', 'identify', 'ignore', 'image', 'imagine', 'impact', 'import', 'impose', 'impress',
+        'improve', 'impulse', 'include', 'income', 'increase', 'indeed', 'index', 'indicate', 'indoor',
+        'industry', 'infant', 'inflict', 'inform', 'inhabit', 'inherit', 'initial', 'inject', 'injure',
+        'inmate', 'inner', 'input', 'inquiry', 'insect', 'insert', 'inside', 'insist', 'inspect',
+        'install', 'instant', 'instead', 'insult', 'insure', 'intact', 'intake', 'intend', 'interest',
+        'internal', 'interpret', 'interval', 'intervene', 'intimate', 'invade', 'invent', 'invest',
+        'invite', 'involve', 'iron', 'island', 'isolate', 'issue', 'item', 'itself', 'jacket',
+        'jail', 'jam', 'jar', 'jaw', 'jazz', 'jealous', 'jeans', 'jet', 'jewel', 'job',
+        'join', 'joke', 'journal', 'journey', 'joy', 'judge', 'juice', 'jump', 'jungle', 'junior',
+        'jury', 'just', 'justice', 'keen', 'keep', 'kettle', 'key', 'kick', 'kid', 'kill',
+        'kind', 'king', 'kiss', 'kit', 'kitchen', 'knight', 'knock', 'knot', 'know', 'knowledge',
+        'label', 'labor', 'lack', 'ladder', 'lady', 'lake', 'lamp', 'land', 'landscape', 'lane',
+        'language', 'large', 'laser', 'last', 'late', 'later', 'latter', 'laugh', 'launch', 'law',
+        'lawn', 'lawsuit', 'lawyer', 'lay', 'layer', 'lazy', 'lead', 'leader', 'leaf', 'league',
+        'leak', 'lean', 'learn', 'lease', 'leave', 'lecture', 'left', 'legal', 'legacy', 'legend',
+        'lemon', 'lend', 'length', 'lesson', 'letter', 'level', 'liable', 'liberal', 'liberty', 'library',
+        'license', 'lid', 'lie', 'life', 'lift', 'light', 'like', 'likely', 'limit', 'line',
+        'link', 'lion', 'lip', 'liquid', 'list', 'listen', 'little', 'live', 'lively', 'load',
+        'loan', 'local', 'locate', 'lock', 'lodge', 'log', 'logic', 'lonely', 'long', 'look',
+        'loop', 'loose', 'lord', 'lose', 'loss', 'lost', 'lot', 'loud', 'love', 'lovely',
+        'lover', 'low', 'lower', 'loyal', 'luck', 'lucky', 'lunch', 'lung', 'luxury', 'machine',
+        'mad', 'magazine', 'magic', 'major', 'make', 'male', 'mall', 'manage', 'manner', 'maple',
+        'marble', 'march', 'margin', 'marine', 'mark', 'market', 'marriage', 'mask', 'mass', 'master',
+        'match', 'mate', 'matter', 'mature', 'mayor', 'meal', 'mean', 'measure', 'meat', 'mechanic',
+        'medal', 'media', 'medical', 'medium', 'meet', 'meeting', 'mellow', 'melon', 'member', 'memory',
+        'mental', 'mention', 'menu', 'mercy', 'merge', 'merit', 'merry', 'mess', 'message', 'metal',
+        'method', 'middle', 'might', 'mild', 'milk', 'mind', 'mine', 'mineral', 'minimal', 'minor',
+        'minute', 'miracle', 'mirror', 'miss', 'mission', 'mistake', 'mix', 'mixture', 'mobile', 'model',
+        'modern', 'modest', 'modify', 'module', 'moment', 'monitor', 'month', 'mood', 'moon', 'moral',
+        'more', 'morning', 'mortal', 'most', 'mother', 'motion', 'motor', 'mountain', 'mouse', 'mouth',
+        'move', 'movie', 'much', 'mud', 'muscle', 'museum', 'music', 'musical', 'mutual', 'mystery',
+        'myth', 'nail', 'naked', 'name', 'narrow', 'nation', 'native', 'natural', 'nature', 'navy',
+        'near', 'neat', 'necessary', 'neck', 'need', 'needle', 'negative', 'neighbor', 'neither', 'nerve',
+        'nest', 'net', 'network', 'neutral', 'never', 'news', 'next', 'nice', 'night', 'noble',
+        'noise', 'nominate', 'noon', 'nor', 'normal', 'north', 'nose', 'note', 'nothing', 'notice',
+        'notion', 'novel', 'now', 'nuclear', 'number', 'nurse', 'nut', 'oak', 'object', 'observe',
+        'obtain', 'obvious', 'occupy', 'occur', 'ocean', 'odd', 'off', 'offend', 'offer', 'office',
+        'officer', 'official', 'often', 'oil', 'old', 'olive', 'once', 'onion', 'only', 'open',
+        'operate', 'opinion', 'oppose', 'option', 'orange', 'orbit', 'order', 'organ', 'organic', 'origin',
+        'other', 'outcome', 'output', 'outside', 'oval', 'oven', 'overcome', 'overlook', 'owner', 'oxygen',
+        'pace', 'pack', 'package', 'page', 'paid', 'pain', 'paint', 'pair', 'palace', 'palm',
+        'pan', 'panel', 'panic', 'paper', 'parade', 'parent', 'parish', 'park', 'parrot', 'part',
+        'partner', 'party', 'pass', 'passage', 'passion', 'passive', 'past', 'path', 'patient', 'pattern',
+        'pause', 'pay', 'payment', 'peace', 'peak', 'peanut', 'peasant', 'pebble', 'peel', 'peer',
+        'penalty', 'pencil', 'people', 'pepper', 'perfect', 'perform', 'permit', 'person', 'pet', 'petrol',
+        'phase', 'phone', 'photo', 'phrase', 'physical', 'piano', 'pick', 'picture', 'piece', 'pier',
+        'pigeon', 'pile', 'pill', 'pilot', 'pin', 'pine', 'pink', 'pioneer', 'pipe', 'pistol',
+        'pitch', 'pizza', 'place', 'plain', 'plan', 'planet', 'plant', 'plastic', 'plate', 'play',
+        'player', 'please', 'pledge', 'plenty', 'plot', 'plug', 'plus', 'pocket', 'poem', 'poet',
+        'poetry', 'point', 'poison', 'police', 'policy', 'polish', 'polite', 'poll', 'pool', 'poor',
+        'popular', 'porch', 'pork', 'port', 'portion', 'pose', 'position', 'positive', 'possess', 'possible',
+        'post', 'potato', 'potential', 'pound', 'pour', 'poverty', 'powder', 'power', 'practice', 'praise',
+        'pray', 'prayer', 'preach', 'precious', 'predict', 'prefer', 'premier', 'premise', 'premium',
+        'prepare', 'present', 'preserve', 'press', 'pressure', 'pretend', 'pretty', 'prevent', 'previous',
+        'price', 'pride', 'priest', 'prime', 'prince', 'principle', 'print', 'prior', 'prison', 'privacy',
+        'private', 'prize', 'problem', 'process', 'produce', 'product', 'profession', 'profit', 'program',
+        'project', 'promise', 'promote', 'prompt', 'proof', 'proper', 'property', 'proposal', 'propose',
+        'protest', 'proud', 'prove', 'provide', 'provoke', 'proxy', 'prune', 'psychic', 'public', 'pull',
+        'pulse', 'pump', 'punch', 'pupil', 'puppet', 'purchase', 'pure', 'purpose', 'purse', 'pursue',
+        'push', 'put', 'puzzle', 'quality', 'quantity', 'quarter', 'queen', 'quest', 'question', 'queue',
+        'quick', 'quiet', 'quit', 'quite', 'quote', 'rabbit', 'race', 'radar', 'radical', 'radio',
+        'rage', 'raid', 'rail', 'rain', 'raise', 'rally', 'ranch', 'random', 'range', 'rank',
+        'rapid', 'rare', 'rate', 'rather', 'ratio', 'raw', 'reach', 'react', 'read', 'ready',
+        'real', 'reality', 'realize', 'really', 'reason', 'rebel', 'receipt', 'receive', 'recent', 'recipe',
+        'reckon', 'record', 'recover', 'red', 'reduce', 'reflect', 'reform', 'refuge', 'refuse', 'region',
+        'register', 'regret', 'regular', 'reject', 'relate', 'relax', 'release', 'relief', 'rely', 'remain',
+        'remark', 'remedy', 'remember', 'remind', 'remote', 'remove', 'render', 'rental', 'repair', 'repeat',
+        'replace', 'report', 'represent', 'republic', 'request', 'require', 'rescue', 'research', 'resign',
+        'resist', 'resolve', 'resort', 'resource', 'respond', 'rest', 'restore', 'result', 'retail', 'retain',
+        'retire', 'retreat', 'return', 'reveal', 'revenue', 'reverse', 'review', 'revise', 'revolution',
+        'reward', 'rhythm', 'ribbon', 'rice', 'rich', 'ride', 'rifle', 'right', 'rigid', 'ring',
+        'riot', 'rip', 'ripe', 'rise', 'risk', 'ritual', 'rival', 'river', 'road', 'roar',
+        'robot', 'robust', 'rock', 'rocket', 'rod', 'role', 'roll', 'romance', 'roof', 'room',
+        'root', 'rope', 'rose', 'rotate', 'rough', 'round', 'route', 'row', 'royal', 'rub',
+        'rubber', 'rude', 'rug', 'ruin', 'rule', 'ruler', 'rumor', 'run', 'rural', 'rust',
+        'sad', 'safe', 'safety', 'sail', 'saint', 'salad', 'salary', 'sale', 'salt', 'salute',
+        'same', 'sample', 'sand', 'satellite', 'satisfy', 'save', 'scale', 'scandal', 'scare', 'scatter',
+        'scene', 'schedule', 'scheme', 'scholar', 'school', 'science', 'scissors', 'scope', 'score', 'scratch',
+        'scream', 'screen', 'script', 'search', 'season', 'seat', 'second', 'secret', 'section', 'secure',
+        'see', 'seed', 'seek', 'segment', 'select', 'self', 'sell', 'senate', 'senior', 'sense',
+        'sentence', 'separate', 'sequence', 'serial', 'series', 'serious', 'serve', 'service', 'session',
+        'settle', 'setup', 'seven', 'severe', 'shade', 'shadow', 'shake', 'shall', 'shallow', 'shame',
+        'shape', 'share', 'sharp', 'shed', 'sheep', 'sheet', 'shelf', 'shell', 'shelter', 'shield',
+        'shift', 'shine', 'ship', 'shirt', 'shock', 'shoe', 'shoot', 'shop', 'shore', 'short',
+        'shot', 'should', 'shoulder', 'shout', 'show', 'shower', 'shrimp', 'shrink', 'shrug', 'shut',
+        'shy', 'sibling', 'sick', 'side', 'siege', 'sight', 'signal', 'silence', 'silicon', 'silk',
+        'silly', 'silver', 'similar', 'simple', 'since', 'sing', 'single', 'sink', 'sister', 'site',
+        'situate', 'six', 'size', 'sketch', 'skill', 'skin', 'skip', 'skirt', 'skull', 'slave',
+        'sleep', 'slice', 'slide', 'slight', 'slip', 'slope', 'slow', 'small', 'smart', 'smell',
+        'smile', 'smoke', 'smooth', 'snack', 'snake', 'snap', 'snow', 'soak', 'soap', 'social',
+        'sock', 'soda', 'soft', 'soil', 'solar', 'soldier', 'solid', 'solution', 'solve', 'some',
+        'son', 'song', 'soon', 'sophisticated', 'sorry', 'sort', 'soul', 'sound', 'source', 'south',
+        'space', 'spare', 'spark', 'speak', 'special', 'speech', 'speed', 'spell', 'spend', 'sphere',
+        'spice', 'spider', 'spill', 'spin', 'spine', 'spirit', 'split', 'spoken', 'sponsor', 'spoon',
+        'sport', 'spot', 'spray', 'spread', 'spring', 'square', 'stable', 'stack', 'stage', 'stain',
+        'stair', 'stake', 'stall', 'stamp', 'stand', 'standard', 'stapler', 'star', 'stare', 'start',
+        'state', 'station', 'statue', 'status', 'stay', 'steady', 'steal', 'steam', 'steel', 'steep',
+        'steer', 'stem', 'step', 'stick', 'stiff', 'still', 'sting', 'stock', 'stomach', 'stone',
+        'stool', 'stop', 'storage', 'store', 'storm', 'story', 'stove', 'strange', 'stranger', 'strategy',
+        'straw', 'stream', 'street', 'strength', 'stress', 'stretch', 'strict', 'strike', 'string', 'strip',
+        'stroke', 'strong', 'structure', 'struggle', 'student', 'studio', 'study', 'stuff', 'style', 'subject',
+        'submit', 'subtle', 'suburb', 'succeed', 'success', 'suck', 'sudden', 'suffer', 'sugar', 'suggest',
+        'suit', 'summer', 'summit', 'sunset', 'super', 'supply', 'support', 'suppose', 'sure', 'surface',
+        'surgery', 'surplus', 'surprise', 'surround', 'survey', 'survive', 'suspect', 'suspend', 'sweet',
+        'swim', 'swing', 'switch', 'symbol', 'system', 'table', 'tablet', 'tackle', 'tactic', 'tail',
+        'take', 'tale', 'talent', 'talk', 'tank', 'tape', 'target', 'task', 'taste', 'tax',
+        'teach', 'teacher', 'team', 'tear', 'temple', 'temporary', 'tempt', 'tenant', 'tend', 'tender',
+        'tennis', 'tension', 'tent', 'terminal', 'terrain', 'terrible', 'territory', 'terror', 'test', 'text',
+        'thank', 'theme', 'theory', 'therapy', 'thick', 'thief', 'thin', 'thing', 'think', 'third',
+        'thirst', 'thorn', 'thought', 'thousand', 'thread', 'threat', 'three', 'thrill', 'thrive', 'throat',
+        'throne', 'through', 'throw', 'thumb', 'thunder', 'ticket', 'tide', 'tiger', 'tight', 'timber',
+        'time', 'tin', 'tiny', 'tip', 'tire', 'tired', 'tissue', 'title', 'today', 'toilet',
+        'token', 'tolerance', 'tomorrow', 'tone', 'tongue', 'tonight', 'tool', 'tooth', 'top', 'topic',
+        'toss', 'total', 'touch', 'tough', 'tour', 'tourist', 'toward', 'tower', 'town', 'toy',
+        'trace', 'track', 'trade', 'tradition', 'traffic', 'trail', 'train', 'transfer', 'transform',
+        'transit', 'translate', 'trap', 'trash', 'travel', 'tray', 'treasure', 'treat', 'treatment', 'treaty',
+        'tree', 'trend', 'trial', 'tribe', 'trick', 'trigger', 'trim', 'trip', 'triumph', 'troop',
+        'trophy', 'trouble', 'truck', 'true', 'truly', 'trump', 'trunk', 'trust', 'truth', 'tube',
+        'tuck', 'tune', 'tunnel', 'turn', 'twice', 'twin', 'twist', 'type', 'typical', 'ugly',
+        'umbrella', 'unable', 'uncle', 'under', 'undo', 'unfair', 'unicorn', 'uniform', 'union', 'unique',
+        'unit', 'unite', 'unity', 'universal', 'universe', 'unknown', 'unlock', 'until', 'unusual', 'update',
+        'upgrade', 'uphold', 'upon', 'upper', 'upset', 'urban', 'urge', 'usage', 'use', 'used',
+        'useful', 'useless', 'usual', 'utility', 'vacant', 'vacuum', 'vague', 'valid', 'valley', 'valuable',
+        'value', 'valve', 'van', 'vanish', 'vapor', 'various', 'vast', 'vault', 'vehicle', 'vendor',
+        'venture', 'verbal', 'verify', 'version', 'vessel', 'veteran', 'viable', 'vibrant', 'vice', 'victim',
+        'victor', 'victory', 'video', 'view', 'village', 'violate', 'violent', 'violet', 'violin', 'virtual',
+        'virtue', 'virus', 'visible', 'vision', 'visit', 'visual', 'vital', 'vivid', 'vocal', 'voice',
+        'volume', 'volunteer', 'vote', 'wage', 'wagon', 'wait', 'walk', 'wall', 'wallet', 'wander',
+        'want', 'war', 'warm', 'warn', 'warrior', 'wash', 'waste', 'watch', 'water', 'wave',
+        'wax', 'way', 'weak', 'wealth', 'weapon', 'wear', 'weather', 'weave', 'web', 'wedding',
+        'weed', 'week', 'weekend', 'weight', 'weird', 'welcome', 'welfare', 'well', 'west', 'western',
+        'wet', 'whale', 'wheat', 'wheel', 'when', 'where', 'which', 'while', 'whip', 'whisper',
+        'white', 'whole', 'why', 'wide', 'widen', 'widow', 'width', 'wife', 'wild', 'will',
+        'win', 'window', 'wine', 'wing', 'winner', 'winter', 'wire', 'wisdom', 'wise', 'wish',
+        'witch', 'witness', 'wolf', 'woman', 'wonder', 'wood', 'wool', 'word', 'work', 'worker',
+        'world', 'worry', 'worse', 'worst', 'worth', 'worthy', 'wound', 'wrap', 'wreck', 'write',
+        'writer', 'wrong', 'yard', 'year', 'yellow', 'yes', 'yield', 'young', 'youth', 'zone',
+      ]);
+
+      var phraseEl = document.getElementById('phrase');
+      var nLettersEl = document.getElementById('n-letters');
+      var stopWordsEl = document.getElementById('stop-words');
+      var caseRadios = document.querySelectorAll('input[name="case"]');
+      var genBtn = document.getElementById('gen-btn');
+      var resultsEl = document.getElementById('results');
+      var acronymDisplay = document.getElementById('acronym-display');
+      var standsFor = document.getElementById('stands-for');
+      var wordStatus = document.getElementById('word-status');
+
+      function applyCase(str, caseType) {
+        if (caseType === 'upper') return str.toUpperCase();
+        if (caseType === 'lower') return str.toLowerCase();
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+      }
+
+      function generate() {
+        var phrase = phraseEl.value.trim();
+        if (!phrase) {
+          resultsEl.classList.add('hidden');
+          return;
+        }
+
+        var n = parseInt(nLettersEl.value, 10) || 1;
+        var excludeStop = stopWordsEl.checked;
+        var caseType = 'upper';
+        for (var i = 0; i < caseRadios.length; i++) {
+          if (caseRadios[i].checked) {
+            caseType = caseRadios[i].value;
+            break;
+          }
+        }
+
+        var words = phrase.split(/\s+/).filter(Boolean);
+        var filteredWords = [];
+        for (var j = 0; j < words.length; j++) {
+          var w = words[j].replace(/[^a-zA-Z0-9]/g, '');
+          if (!w) continue;
+          if (excludeStop && stopWords.has(w.toLowerCase())) continue;
+          filteredWords.push(w);
+        }
+
+        if (filteredWords.length === 0) {
+          resultsEl.classList.add('hidden');
+          return;
+        }
+
+        var letters = [];
+        var fullForms = [];
+        for (var k = 0; k < filteredWords.length; k++) {
+          var fw = filteredWords[k];
+          var take = Math.min(n, fw.length);
+          letters.push(fw.slice(0, take));
+          fullForms.push(fw);
+        }
+
+        var acronym = letters.join('');
+        acronym = applyCase(acronym, caseType);
+
+        var expanded = [];
+        for (var m = 0; m < filteredWords.length; m++) {
+          expanded.push(applyCase(filteredWords[m], caseType));
+        }
+
+        acronymDisplay.textContent = acronym;
+        standsFor.textContent = expanded.join(' ');
+
+        var lower = acronym.toLowerCase();
+        if (commonWords.has(lower)) {
+          wordStatus.textContent = '"' + acronym + '" is a known English word';
+          wordStatus.className = 'rounded-xl border border-slate-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700';
+        } else if (lower.length >= 2) {
+          wordStatus.textContent = '"' + acronym + '" is not a common English word';
+          wordStatus.className = 'rounded-xl border border-slate-200 bg-amber-50 p-4 text-sm font-medium text-amber-700';
+        } else {
+          wordStatus.classList.add('hidden');
+        }
+
+        resultsEl.classList.remove('hidden');
+      }
+
+      genBtn.addEventListener('click', generate);
+
+      phraseEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          generate();
+        }
+      });
+    });
+  </script>
+</ToolLayout>

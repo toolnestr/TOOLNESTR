@@ -1,0 +1,409 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Box Plot Generator';
+const description = 'Generate box-and-whisker plots from a list of numbers. Shows median, quartiles, and outliers.';
+const intro = 'Generate box-and-whisker plots from a list of numbers.';
+const category = { id: 'charts', name: 'Charts & Graphs' };
+const faqs = [
+  { q: 'What is a box plot?', a: 'A standardized way to display data distribution based on a five-number summary: minimum, Q1, median, Q3, maximum.' },
+  { q: 'What are quartiles?', a: 'Q1 is the 25th percentile, median is the 50th, Q3 is the 75th. The box spans Q1 to Q3.' },
+  { q: 'What are whiskers?', a: 'Lines extending from the box to the furthest data point within 1.5&times;IQR from the box edges.' },
+  { q: 'What are outliers?', a: 'Data points beyond the whiskers — more than 1.5&times;IQR from Q1 or Q3, shown as individual dots.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Data (one per line or comma-separated)</span>
+      <textarea id="data" rows="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="55&#10;62&#10;71&#10;68&#10;73&#10;85&#10;59&#10;64&#10;77&#10;65&#10;70&#10;92&#10;48&#10;120"></textarea>
+    </label>
+    <button id="generateBtn" class="mt-4 w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-700">Generate Box Plot</button>
+  </div>
+
+  <section id="result" class="mt-6 hidden">
+    <canvas id="chartCanvas" width="700" height="400" class="w-full rounded-xl border border-slate-200"></canvas>
+    <div id="stats" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+    <button id="downloadBtn" class="mt-4 rounded-xl bg-emerald-600 px-6 py-2 font-semibold text-white transition hover:bg-emerald-700">Download as PNG</button>
+  </section>
+
+  <p id="hint" class="mt-4 text-center text-sm text-slate-400">Enter data (at least 4 numbers) and click Generate.</p>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Annotated box plot diagram</h2>
+    <figure class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="220" viewBox="0 0 800 220" role="img" aria-label="Annotated box plot diagram showing median, quartiles, whiskers and outliers">
+        <rect width="800" height="220" fill="#f8fafc" rx="8"/>
+        <text x="400" y="22" font-family="sans-serif" font-size="14" fill="#1e293b" text-anchor="middle" font-weight="bold">Anatomy of a Box Plot</text>
+        <line x1="100" y1="100" x2="700" y2="100" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="100" y1="140" x2="700" y2="140" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="140" y1="100" x2="140" y2="140" stroke="#475569" stroke-width="2"/>
+        <line x1="660" y1="100" x2="660" y2="140" stroke="#475569" stroke-width="2"/>
+        <line x1="140" y1="120" x2="340" y2="120" stroke="#475569" stroke-width="2"/>
+        <line x1="530" y1="120" x2="660" y2="120" stroke="#475569" stroke-width="2"/>
+        <rect x="340" y="100" width="190" height="40" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" rx="2"/>
+        <line x1="440" y1="100" x2="440" y2="140" stroke="#ef4444" stroke-width="3"/>
+        <circle cx="90" cy="120" r="5" fill="#ef4444"/>
+        <circle cx="98" cy="112" r="5" fill="#ef4444"/>
+        <circle cx="690" cy="120" r="5" fill="#ef4444"/>
+        <text x="90" y="150" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">Outliers</text>
+        <text x="140" y="168" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">&#8592; Whisker</text>
+        <text x="340" y="168" font-family="sans-serif" font-size="10" fill="#6366f1" text-anchor="middle">Q1</text>
+        <text x="440" y="168" font-family="sans-serif" font-size="10" fill="#ef4444" text-anchor="middle">Median</text>
+        <text x="530" y="168" font-family="sans-serif" font-size="10" fill="#6366f1" text-anchor="middle">Q3</text>
+        <text x="660" y="168" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">&#8592; Whisker</text>
+        <text x="86" y="195" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">&#8226;</text>
+        <text x="240" y="195" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">&#8592; 1.5&times;IQR &#8594;</text>
+        <text x="435" y="195" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">IQR</text>
+        <text x="590" y="195" font-family="sans-serif" font-size="10" fill="#64748b" text-anchor="middle">&#8592; 1.5&times;IQR &#8594;</text>
+        <path d="M 240 186 L 240 192 M 240 186 L 340 186" stroke="#64748b" stroke-width="1" fill="none" marker-start="url(#arrowL)"/>
+        <path d="M 435 186 L 435 192 M 340 186 L 435 186 M 435 186 L 530 186" stroke="#64748b" stroke-width="1" fill="none"/>
+        <path d="M 530 186 L 590 186 M 590 186 L 590 192" stroke="#64748b" stroke-width="1" fill="none"/>
+        <defs>
+          <marker id="arrowL" markerWidth="6" markerHeight="6" refX="0" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6" fill="none" stroke="#64748b" stroke-width="1"/></marker>
+        </defs>
+      </svg>
+      <figcaption class="mt-2 text-center text-xs text-slate-500">Annotated box plot showing all components: outliers, whiskers, Q1, median, Q3, and IQR.</figcaption>
+    </figure>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding box plots</h2>
+    <p class="mt-2 text-slate-600">A box plot (also called a box-and-whisker plot) is a standardized way of displaying the distribution of data based on a five-number summary: minimum, first quartile (Q1), median, third quartile (Q3), and maximum. It was invented by the statistician John Tukey in 1970 as part of his exploratory data analysis toolkit. The box represents the interquartile range (IQR) which contains the middle 50% of the data. The line inside the box marks the median. The whiskers extend from the box to the farthest data points that are within 1.5 times the IQR from the box edges. Any points beyond the whiskers are plotted individually as outliers.</p>
+    <p class="mt-3 text-slate-600">The box plot is a powerful tool because it shows the spread and skewness of the data at a glance. If the median is closer to the bottom of the box, the data is positively skewed (right-skewed). If it is closer to the top, the data is negatively skewed (left-skewed). A symmetric distribution has the median roughly in the centre of the box. The length of the whiskers relative to the box also reveals how spread out the tails of the distribution are relative to the middle 50%.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to read a box plot</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">1</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Five-number summary</h3>
+        <p class="mt-1 text-sm text-slate-600">The five numbers shown in a box plot are the minimum (excluding outliers), Q1 (25th percentile), median (50th percentile), Q3 (75th percentile), and maximum (excluding outliers). Together they summarize the location and spread of the data with just five values.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">2</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Check the box position</h3>
+        <p class="mt-1 text-sm text-slate-600">The box spans Q1 to Q3 and represents the middle 50% of the data. A narrow box means the data is tightly clustered around the median. A wide box means greater variability in the central half of the distribution.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">3</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Watch the median line</h3>
+        <p class="mt-1 text-sm text-slate-600">The median line inside the box tells you about symmetry. If it sits in the centre, the central half is roughly symmetric. If it is much closer to Q1 or Q3, the data is skewed in that direction.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">4</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Examine the whiskers</h3>
+        <p class="mt-1 text-sm text-slate-600">Whiskers show the range of non-outlier data points. Long whiskers indicate a spread-out tail. Unequal whisker lengths suggest skewness. Points beyond the whiskers are plotted as individual dots and are potential outliers.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for box plots</h2>
+    <p class="mt-2 text-slate-600">Box plots are widely used across many fields because they provide a compact visual summary of a dataset. Here are some common applications:</p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📊</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Comparing distributions</h3>
+        <p class="mt-1 text-sm text-slate-600">Side-by-side box plots let you compare multiple groups visually. For example, compare test scores across different classrooms, salaries across departments, or response times across system configurations. The compact format makes group comparisons immediate and intuitive.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔍</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Identifying outliers</h3>
+        <p class="mt-1 text-sm text-slate-600">The Tukey method flags points beyond 1.5&times;IQR as outliers. These may indicate data entry errors, measurement issues, or genuinely exceptional observations worth investigating. In quality control, outlier detection helps identify defective products or process anomalies.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚙️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Quality control</h3>
+        <p class="mt-1 text-sm text-slate-600">Manufacturing processes use box plots to monitor consistency across batches. A widening box indicates increasing variability. Outliers may signal a process going out of control. Comparing box plots before and after process changes helps quantify improvement.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📈</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Exploratory data analysis</h3>
+        <p class="mt-1 text-sm text-slate-600">Before applying statistical tests, analysts use box plots to understand the shape, spread, and anomalies in their data. The five-number summary guides decisions about transformations, hypothesis tests, and model selection.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips and limitations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Box plots hide multimodality</h3>
+        <p class="mt-1 text-sm text-slate-600">A box plot cannot show multiple peaks in the data. A distribution with two distinct clusters can have the same box plot as a unimodal distribution. Always use a histogram alongside a box plot to see the full shape of the data.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Sample size matters</h3>
+        <p class="mt-1 text-sm text-slate-600">Box plots work best with at least 10&ndash;15 data points. With very small samples, the quartile estimates become unreliable and the IQR may not meaningfully represent the spread. Consider a dot plot or strip chart for small datasets.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">The 1.5&times;IQR rule is a convention</h3>
+        <p class="mt-1 text-sm text-slate-600">The Tukey rule of 1.5&times;IQR is a heuristic, not a statistical test. In normally distributed data, about 0.7% of points fall beyond this threshold. For certain distributions, the expected outlier rate differs. Adjust the threshold if your domain demands a different sensitivity.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use alongside other visualizations</h3>
+        <p class="mt-1 text-sm text-slate-600">Combine box plots with histograms, violin plots, or strip charts for a complete picture. A histogram reveals the shape (unimodal, bimodal, uniform) while the box plot provides the concise five-number summary. Together they give both the overview and the detail.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How box plots work</h2>
+    <p class="mt-2 text-slate-600">The generator sorts your data in ascending order and calculates quartiles using linear interpolation. This method, also called the CDF method or percentile interpolation, gives consistent results regardless of sample size. Here is the step-by-step process:</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Data:</span> <span class="text-slate-600">[3, 7, 8, 12, 15, 18, 21, 22, 27, 30]</span></div>
+        <div><span class="font-medium text-slate-700">Sorted:</span> <span class="text-slate-600">same order (already sorted)</span></div>
+        <div><span class="font-medium text-slate-700">Q1 (25th):</span> <span class="text-slate-600">8 (value at position 2.25, interpolated)</span></div>
+        <div><span class="font-medium text-slate-700">Median:</span> <span class="text-slate-600">(15 + 18) / 2 = 16.5</span></div>
+        <div><span class="font-medium text-slate-700">Q3 (75th):</span> <span class="text-slate-600">22.5 (value at position 6.75, interpolated)</span></div>
+        <div><span class="font-medium text-slate-700">IQR:</span> <span class="text-slate-600">22.5 - 8 = 14.5</span></div>
+        <div><span class="font-medium text-slate-700">Lower fence:</span> <span class="text-slate-600">8 - 1.5(14.5) = -13.75</span></div>
+        <div><span class="font-medium text-slate-700">Upper fence:</span> <span class="text-slate-600">22.5 + 1.5(14.5) = 44.25</span></div>
+        <div><span class="font-medium text-slate-700">Outliers:</span> <span class="text-slate-600">none (all values within fences)</span></div>
+        <div><span class="font-medium text-slate-700">Lower whisker:</span> <span class="text-slate-600">3 (minimum data point)</span></div>
+        <div><span class="font-medium text-slate-700">Upper whisker:</span> <span class="text-slate-600">30 (maximum data point)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use this tool</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">Type or paste numbers one per line or separated by commas. The tool accepts decimals and ignores empty lines automatically. Enter at least 4 numbers for a meaningful box plot.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Generate the plot</h3>
+        <p class="mt-1 text-sm text-slate-600">Click the generate button to compute quartiles, IQR, whisker bounds, and identify outliers. The canvas renders the box plot with labelled statistics below the chart.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Export and share</h3>
+        <p class="mt-1 text-sm text-slate-600">Click &ldquo;Download as PNG&rdquo; to save the box plot as a high-resolution image suitable for reports, presentations, and publications.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/scatter-plot-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Scatter Plot Generator</a>
+      <a href="/tools/pie-chart-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Pie Chart Generator</a>
+      <a href="/tools/radar-chart-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Radar Chart Generator</a>
+      <a href="/tools/histogram-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Histogram Generator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data');
+    const canvas = $('chartCanvas');
+    const result = $('result');
+    const hint = $('hint');
+    const statsEl = $('stats');
+
+    function quantile(sorted, p) {
+      const n = sorted.length;
+      const pos = p * (n - 1);
+      const k = Math.floor(pos);
+      const f = pos - k;
+      if (k + 1 >= n) return sorted[k];
+      return sorted[k] * (1 - f) + sorted[k + 1] * f;
+    }
+
+    function fmt(v) {
+      return Number.isInteger(v) ? String(v) : v.toFixed(2);
+    }
+
+    function draw() {
+      const raw = dataEl.value.trim();
+      const nums = raw.split(/[\n,]+/).map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+
+      if (nums.length < 4) {
+        result.classList.add('hidden');
+        hint.classList.remove('hidden');
+        hint.textContent = 'Enter at least 4 numbers.';
+        return;
+      }
+
+      nums.sort((a, b) => a - b);
+
+      const q1 = quantile(nums, 0.25);
+      const median = quantile(nums, 0.5);
+      const q3 = quantile(nums, 0.75);
+      const iqr = q3 - q1;
+      const lowerFence = q1 - 1.5 * iqr;
+      const upperFence = q3 + 1.5 * iqr;
+
+      let lowerWhisker = nums[0];
+      for (let i = 0; i < nums.length; i++) {
+        if (nums[i] >= lowerFence) { lowerWhisker = nums[i]; break; }
+      }
+
+      let upperWhisker = nums[nums.length - 1];
+      for (let i = nums.length - 1; i >= 0; i--) {
+        if (nums[i] <= upperFence) { upperWhisker = nums[i]; break; }
+      }
+
+      const outliers = nums.filter(n => n < lowerFence || n > upperFence);
+
+      const dpr = window.devicePixelRatio || 1;
+      const w = 700, h = 400;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      const pad = { top: 50, bottom: 90, left: 60, right: 40 };
+      const plotW = w - pad.left - pad.right;
+      const boxY = 110;
+      const boxH = 70;
+      const midY = boxY + boxH / 2;
+
+      const minData = Math.min(lowerWhisker, q1);
+      const maxData = Math.max(upperWhisker, q3);
+      const range = maxData - minData || 1;
+
+      function mapX(val) {
+        return pad.left + ((val - minData) / range) * plotW;
+      }
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Box Plot', w / 2, 12);
+
+      const q1x = mapX(q1);
+      const q3x = mapX(q3);
+      const medx = mapX(median);
+      const lwx = mapX(lowerWhisker);
+      const uwx = mapX(upperWhisker);
+
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(lwx, boxY);
+      ctx.lineTo(lwx, boxY + boxH);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(uwx, boxY);
+      ctx.lineTo(uwx, boxY + boxH);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(lwx, midY);
+      ctx.lineTo(q1x, midY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(q3x, midY);
+      ctx.lineTo(uwx, midY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#e0e7ff';
+      ctx.fillRect(q1x, boxY, q3x - q1x, boxH);
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(q1x, boxY, q3x - q1x, boxH);
+
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(medx, boxY);
+      ctx.lineTo(medx, boxY + boxH);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ef4444';
+      for (const o of outliers) {
+        const ox = mapX(o);
+        ctx.beginPath();
+        ctx.arc(ox, midY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#991b1b';
+      ctx.lineWidth = 1;
+      for (const o of outliers) {
+        const ox = mapX(o);
+        ctx.beginPath();
+        ctx.arc(ox, midY, 5, 0, 2 * Math.PI);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#475569';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const labelData = [
+        { val: lowerWhisker, label: 'Min' },
+        { val: q1, label: 'Q1' },
+        { val: median, label: 'Median' },
+        { val: q3, label: 'Q3' },
+        { val: upperWhisker, label: 'Max' },
+      ];
+
+      for (const { val, label } of labelData) {
+        const x = mapX(val);
+        ctx.fillText(fmt(val), x, boxY + boxH + 8);
+        ctx.fillText(label, x, boxY + boxH + 22);
+      }
+
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.textBaseline = 'top';
+
+      if (outliers.length > 0) {
+        const leftMost = Math.min(...outliers.map(o => mapX(o)));
+        ctx.fillStyle = '#991b1b';
+        ctx.fillText(outliers.length + ' outlier' + (outliers.length !== 1 ? 's' : ''), leftMost, midY + 10);
+      }
+
+      let html = '';
+      const statItems = [
+        { label: 'Min', value: fmt(lowerWhisker) },
+        { label: 'Q1 (25th)', value: fmt(q1) },
+        { label: 'Median', value: fmt(median) },
+        { label: 'Q3 (75th)', value: fmt(q3) },
+        { label: 'Max', value: fmt(upperWhisker) },
+        { label: 'IQR', value: fmt(iqr) },
+        { label: 'Data points', value: nums.length },
+        { label: 'Outliers', value: outliers.length },
+      ];
+
+      for (const s of statItems) {
+        html += '<div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">'
+          + '<div class="text-xs text-slate-500">' + s.label + '</div>'
+          + '<div class="mt-0.5 text-lg font-bold text-slate-800">' + s.value + '</div>'
+          + '</div>';
+      }
+      statsEl.innerHTML = html;
+
+      result.classList.remove('hidden');
+      hint.classList.add('hidden');
+    }
+
+    $('generateBtn').addEventListener('click', draw);
+    $('downloadBtn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'box-plot.png';
+      a.click();
+    });
+  </script>
+</ToolLayout>

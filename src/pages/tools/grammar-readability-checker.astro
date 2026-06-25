@@ -1,0 +1,367 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Grammar & Readability Checker';
+const description = 'Analyse text for Flesch-Kincaid, Gunning Fog, word count, sentence stats, and potential issue detection.';
+const intro = 'Analyze text for readability scores, word count, sentence stats, and issues.';
+const category = { id: 'text', name: 'Text Tools' };
+const faqs = [
+  { q: 'What is Flesch-Kincaid?', a: 'A readability test that scores text from 0-100 based on sentence length and syllable count. 60-70 is plain English.' },
+  { q: 'What is Gunning Fog?', a: 'An index estimating years of education needed to understand the text. A score of 12 = high school level.' },
+  { q: 'Can it detect grammar issues?', a: 'It highlights potential issues like passive voice, complex words, and long sentences — not full grammar checking.' },
+  { q: 'Is my text uploaded?', a: 'No — everything runs in your browser.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <textarea
+      id="text-input"
+      rows="10"
+      placeholder="Paste your text here to analyse readability..."
+      class="w-full resize-y rounded-xl border border-slate-300 p-4 text-base leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+    ></textarea>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+    </div>
+
+    <div id="results" class="mt-6 space-y-6">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+          <div id="flesch-score" class="text-2xl font-bold text-indigo-600">--</div>
+          <p class="text-xs text-slate-500">Flesch-Kincaid (0-100)</p>
+          <div id="flesch-bar" class="mt-2 h-2 w-full rounded-full bg-slate-200"><div class="h-2 rounded-full" style="width:0%"></div></div>
+          <span id="flesch-label" class="text-xs text-slate-400"></span>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+          <div id="gunning-score" class="text-2xl font-bold text-indigo-600">--</div>
+          <p class="text-xs text-slate-500">Gunning Fog Index</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+          <div id="smog-score" class="text-2xl font-bold text-indigo-600">--</div>
+          <p class="text-xs text-slate-500">SMOG Index</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+          <div id="grade-score" class="text-2xl font-bold text-indigo-600">--</div>
+          <p class="text-xs text-slate-500">Grade Level</p>
+        </div>
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-words" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Words</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-chars" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Characters</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-sentences" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Sentences</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-syllables" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Syllables</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-avg-word-len" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Avg word length</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-avg-sent-len" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Avg sentence length</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-complex" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Complex words (3+ syl)</p>
+        </div>
+        <div class="rounded-lg border border-slate-100 bg-white p-3">
+          <div id="stat-long-sents" class="text-lg font-bold text-slate-800">0</div>
+          <p class="text-xs text-slate-500">Long sentences (&gt;40 words)</p>
+        </div>
+      </div>
+
+      <div id="highlighted-text" class="hidden rounded-xl border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700"></div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="280" viewBox="0 0 800 280" role="img" aria-label="Document with magnifying glass highlighting sections by readability level">
+      <title>Readability analysis diagram — document with magnifying glass</title>
+      <desc>A document page with three text sections: a green 'Easy' section with short sentences, a yellow 'Moderate' section, and a red 'Complex' section with long sentences. A magnifying glass zooms in on the complex section.</desc>
+      <rect width="800" height="280" fill="#f8fafc" rx="12"/>
+      <rect x="80" y="20" width="400" height="240" rx="6" fill="#fff" stroke="#e2e8f0" stroke-width="2"/>
+      <rect x="100" y="35" width="360" height="50" rx="4" fill="#dcfce7"/>
+      <text x="120" y="52" font-family="sans-serif" font-size="10" fill="#15803d" font-weight="bold">EASY</text>
+      <line x1="120" y1="60" x2="440" y2="60" stroke="#bbf7d0" stroke-width="1"/>
+      <text x="120" y="72" font-family="sans-serif" font-size="8" fill="#166534">The cat sat on the mat. It was a sunny day.</text>
+      <rect x="100" y="95" width="360" height="50" rx="4" fill="#fef9c3"/>
+      <text x="120" y="112" font-family="sans-serif" font-size="10" fill="#854d0e" font-weight="bold">MODERATE</text>
+      <line x1="120" y1="120" x2="440" y2="120" stroke="#fef08a" stroke-width="1"/>
+      <text x="120" y="132" font-family="sans-serif" font-size="8" fill="#713f12">The committee considered several options before</text>
+      <text x="120" y="142" font-family="sans-serif" font-size="8" fill="#713f12">reaching a unanimous decision on the matter.</text>
+      <rect x="100" y="155" width="360" height="50" rx="4" fill="#fecaca"/>
+      <text x="120" y="172" font-family="sans-serif" font-size="10" fill="#991b1b" font-weight="bold">COMPLEX</text>
+      <line x1="120" y1="180" x2="440" y2="180" stroke="#fca5a5" stroke-width="1"/>
+      <text x="120" y="192" font-family="sans-serif" font-size="8" fill="#7f1d1d">The implementation of comprehensive readability</text>
+      <text x="120" y="202" font-family="sans-serif" font-size="8" fill="#7f1d1d">methodologies requires careful consideration.</text>
+      <rect x="490" y="30" width="280" height="180" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <circle cx="630" cy="90" r="60" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+      <line x1="672" y1="132" x2="710" y2="170" stroke="#64748b" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="630" cy="90" r="20" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="620" y1="80" x2="640" y2="100" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="630" y="210" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#64748b" font-weight="bold">Magnified view</text>
+      <text x="630" y="225" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#94a3b8">Red section = hard to read</text>
+      <text x="400" y="272" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">Text is colour-coded by readability level. Shorter sentences and simpler words score green (easy). Longer sentences and complex vocabulary score red (difficult).</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-xs text-slate-400">Text sections colour-coded by readability level with magnified detail view of a complex passage</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How readability scores work</h2>
+    <p class="mt-2 text-slate-600">
+      Readability formulas estimate text complexity based on sentence length and word difficulty. The <strong>Flesch-Kincaid Reading Ease</strong> formula scores text from 0 (very difficult) to 100 (very easy): <code>206.835 − 1.015 × (words ÷ sentences) − 84.6 × (syllables ÷ words)</code>. A score of 60-70 is considered plain English that most adults can read comfortably.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The <strong>Gunning Fog Index</strong> estimates years of education needed to understand text. It counts complex words (three or more syllables) and uses the formula: <code>0.4 × ((words ÷ sentences) + 100 × (complex words ÷ words))</code>. A score of 12 corresponds to a high school reading level. The <strong>SMOG Index</strong> is a similar measure developed for health literacy: <code>1.0430 × √(30 × complex sentences ÷ sentences) + 3.1291</code>.
+    </p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Text: "The quick brown fox jumps over the lazy dog. It was a warm summer afternoon. The sun shone brightly through the trees."</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-3">
+        <div><span class="font-medium text-slate-700">Words:</span> <span class="text-slate-600">20</span></div>
+        <div><span class="font-medium text-slate-700">Sentences:</span> <span class="text-slate-600">3</span></div>
+        <div><span class="font-medium text-slate-700">Syllables:</span> <span class="text-slate-600">23</span></div>
+        <div><span class="font-medium text-slate-700">Flesch-Kincaid:</span> <span class="text-slate-600"><strong>82.9</strong> (Easy)</span></div>
+        <div><span class="font-medium text-slate-700">Grade Level:</span> <span class="text-slate-600"><strong>5.3</strong> (5th grade)</span></div>
+        <div><span class="font-medium text-slate-700">Gunning Fog:</span> <span class="text-slate-600"><strong>6.4</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1f310;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Website content</h3>
+        <p class="mt-1 text-sm text-slate-600">Ensure your web copy targets a Grade Level of 8-9 to reach the widest audience. Most adults read at this level, and simpler content improves engagement, reduces bounce rate, and makes your message accessible to non-native speakers.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1f4d6;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Academic writing</h3>
+        <p class="mt-1 text-sm text-slate-600">Academic papers typically score 30-50 on the Flesch-Kincaid scale. While some complexity is expected in scholarly work, readability tools help identify unnecessarily dense passages that could be clarified without losing precision.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1f4c4;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Technical documentation</h3>
+        <p class="mt-1 text-sm text-slate-600">Documentation should balance precision with clarity. Use readability scores to spot sections that are harder to read than necessary. Aim for a Flesch-Kincaid score above 40 for general technical docs, and above 60 for end-user guides.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">What the readability checker detects</h2>
+    <p class="mt-2 text-slate-600">
+      The tool analyses your text for several potential readability issues. It counts <strong>complex words</strong> (those with three or more syllables) which tend to make text harder to read, and highlights them with an underline so you can review each one. Long sentences (over 40 words) are highlighted in yellow as they often signal run-on constructions or overly complex ideas that could be split into shorter, clearer sentences.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Beyond sentence and word analysis, the tool also calculates your <strong>average word length</strong> and <strong>average sentence length</strong>, giving you baseline metrics to track improvements. The syllable count helps identify dense vocabulary: English text with an average syllable count above 1.8 per word is considered complex. By monitoring these metrics over time, you can develop a clearer, more accessible writing style that communicates effectively with your intended audience.
+    </p>
+    <p class="mt-3 text-slate-600">
+      While this tool does not perform full grammatical analysis (it will not catch subject-verb agreement errors or misplaced modifiers), it provides a strong quantitative foundation for understanding your text's readability profile. Combined with careful proofreading and an understanding of your audience's needs, the readability scores and highlighted feedback give you actionable insights for improving your writing.
+    </p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for improving readability</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Short sentences improve readability</h3>
+        <p class="mt-1 text-sm text-slate-600">Aim for an average of 15-20 words per sentence. If a sentence exceeds 40 words, consider splitting it into two or three shorter ones. Shorter sentences are easier to parse and reduce cognitive load on the reader. The tool highlights sentences longer than 40 words in yellow so you can spot them quickly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Simple words score better</h3>
+        <p class="mt-1 text-sm text-slate-600">Replace multi-syllable words with shorter alternatives where possible. For example, use "use" instead of "utilize", "help" instead of "facilitate", and "show" instead of "demonstrate". Complex words (three or more syllables) significantly lower readability scores and can make text feel formal or academic.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Write for your audience</h3>
+        <p class="mt-1 text-sm text-slate-600">There is no single perfect readability score. General web content should target Grade Level 8-9 (Flesch-Kincaid 60-70). Marketing copy can target 70-80 for broad appeal. Academic and technical content will naturally score lower (30-50), which is appropriate for specialist audiences who expect complexity.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Avoid passive voice</h3>
+        <p class="mt-1 text-sm text-slate-600">Passive constructions like "the report was written by the team" are longer and harder to read than active alternatives like "the team wrote the report." Passive voice also tends to create longer sentences by adding extra words without adding meaning.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Use transition words carefully</h3>
+        <p class="mt-1 text-sm text-slate-600">Transition words like "however", "therefore", "nevertheless", and "consequently" are useful for showing relationships between ideas, but overusing them can increase sentence length and complexity. Use transitions sparingly and prefer simple connectors like "but" and "so" where appropriate.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding your results</h2>
+    <p class="mt-2 text-slate-600">
+      When you paste text into the tool, the scores update live as you type. The <strong>Flesch-Kincaid Reading Ease</strong> score is the most intuitive: it ranges from 0 to 100, with higher scores indicating easier readability. A score of 60-70 is considered "standard" and is appropriate for most general audiences. Below 30 is "very difficult" and typical of legal or scientific documents. Above 80 is "easy" and suitable for children's content or simplified instructions.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The <strong>Grade Level</strong> score estimates the US school grade required to understand the text. A score of 8 means an eighth grader (around 13-14 years old) can comfortably read the text. Most newspapers aim for grade level 8-10, while academic journals may target grade 12-16. The <strong>Gunning Fog Index</strong> works similarly, with 12 being high school level and 17+ being university graduate level.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The <strong>highlighted view</strong> below the scores shows your text with visual markers: sentences over 40 words have a yellow background, and complex words (three or more syllables) are underlined. This makes it easy to scan your text and identify specific areas that may need rewriting, without having to read through every score in detail.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/reading-time-calculator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Reading Time Calculator</a>
+      <a href="/tools/text-to-slug-generator" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Text to Slug Generator</a>
+      <a href="/tools/syllable-counter" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Syllable Counter</a>
+      <a href="/tools/readability-checker" class="rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100">Readability Checker</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    document.addEventListener('DOMContentLoaded', function () {
+      var input = document.getElementById('text-input');
+      var clearBtn = document.getElementById('clear-btn');
+      var el = function (id) { return document.getElementById(id); };
+
+      function countSyllables(word) {
+        word = word.toLowerCase().replace(/[^a-z]/g, '');
+        if (!word) return 0;
+        if (word.length <= 3) return 1;
+        var vowels = word.match(/[aeiouy]+/g);
+        var count = vowels ? vowels.length : 0;
+        if (word.endsWith('e') && !word.endsWith('le')) count--;
+        if (word.endsWith('le') && word.length > 2 && 'aeiouy'.indexOf(word[word.length - 3]) === -1) count++;
+        if (word.endsWith('es') || word.endsWith('ed')) count = Math.max(count - 1, 1);
+        return Math.max(count, 1);
+      }
+
+      function analyze(text) {
+        if (!text.trim()) { return; }
+
+        var sentences = text.split(/[.!?]+/).filter(function (s) { return s.trim().length > 0; });
+        var words = text.split(/[\s\n\r]+/).filter(function (w) { return w.length > 0 && /[a-zA-Z]/.test(w); });
+        if (!words.length) return;
+
+        var chars = text.length;
+        var totalSentences = sentences.length;
+        var totalWords = words.length;
+        var totalSyllables = words.reduce(function (s, w) { return s + countSyllables(w); }, 0);
+        var complexWords = words.filter(function (w) { return countSyllables(w) >= 3; });
+        var complexCount = complexWords.length;
+        var avgWordLen = totalWords ? words.reduce(function (s, w) { return s + w.length; }, 0) / totalWords : 0;
+        var avgSentLen = totalSentences ? totalWords / totalSentences : 0;
+
+        var flesch = 206.835 - 1.015 * avgSentLen - 84.6 * (totalSyllables / totalWords);
+        var fleschClamped = Math.round(Math.max(0, Math.min(100, flesch)));
+        var gradeLevel = 0.39 * avgSentLen + 11.8 * (totalSyllables / totalWords) - 15.59;
+        var gradeClamped = Math.round(Math.max(1, Math.min(20, gradeLevel)) * 10) / 10;
+        var gunning = 0.4 * (avgSentLen + 100 * (complexCount / totalWords));
+        var gunningClamped = Math.round(Math.max(1, Math.min(20, gunning)) * 10) / 10;
+        var smogRaw = 1.0430 * Math.sqrt(complexCount * (30 / totalSentences)) + 3.1291;
+        var smogClamped = Math.round(Math.max(1, Math.min(20, smogRaw)) * 10) / 10;
+
+        el('flesch-score').textContent = fleschClamped;
+        el('gunning-score').textContent = gunningClamped;
+        el('smog-score').textContent = smogClamped;
+        el('grade-score').textContent = gradeClamped;
+        el('stat-words').textContent = totalWords;
+        el('stat-chars').textContent = chars;
+        el('stat-sentences').textContent = totalSentences;
+        el('stat-syllables').textContent = totalSyllables;
+        el('stat-avg-word-len').textContent = avgWordLen.toFixed(1);
+        el('stat-avg-sent-len').textContent = avgSentLen.toFixed(1);
+        el('stat-complex').textContent = complexCount;
+
+        var longSentences = sentences.filter(function (s) {
+          return s.split(/\s+/).filter(function (w) { return w.length > 0; }).length > 40;
+        });
+        el('stat-long-sents').textContent = longSentences.length;
+
+        var bar = el('flesch-bar').querySelector('div');
+        bar.style.width = fleschClamped + '%';
+        if (fleschClamped >= 70) bar.className = 'h-2 rounded-full bg-emerald-500';
+        else if (fleschClamped >= 50) bar.className = 'h-2 rounded-full bg-indigo-500';
+        else if (fleschClamped >= 30) bar.className = 'h-2 rounded-full bg-amber-400';
+        else bar.className = 'h-2 rounded-full bg-rose-500';
+
+        var label;
+        if (fleschClamped >= 90) label = 'Very easy';
+        else if (fleschClamped >= 80) label = 'Easy';
+        else if (fleschClamped >= 70) label = 'Fairly easy';
+        else if (fleschClamped >= 60) label = 'Standard';
+        else if (fleschClamped >= 50) label = 'Fairly difficult';
+        else if (fleschClamped >= 30) label = 'Difficult';
+        else label = 'Very difficult';
+        el('flesch-label').textContent = label;
+
+        renderHighlighted(text, sentences, complexWords, longSentences);
+      }
+
+      function renderHighlighted(text, sentences, complexWords, longSentences) {
+        var container = el('highlighted-text');
+        var longSet = {};
+        longSentences.forEach(function (s) { longSet[s.trim().toLowerCase()] = true; });
+        var complexSet = {};
+        complexWords.forEach(function (w) { complexSet[w.toLowerCase()] = true; });
+
+        var html = sentences.map(function (s, i) {
+          var trimmed = s.trim();
+          var isLong = longSet[trimmed.toLowerCase()];
+          var words = trimmed.split(/\s+/);
+          var sentenceHtml = words.map(function (w) {
+            var clean = w.replace(/[^a-zA-Z]/g, '').toLowerCase();
+            if (clean && complexSet[clean]) {
+              return '<span class="border-b-2 border-amber-400 font-medium text-amber-700" title="Complex word (3+ syllables)">' + escapeHtml(w) + '</span>';
+            }
+            return escapeHtml(w);
+          }).join(' ');
+          if (isLong) {
+            return '<span class="bg-yellow-100 px-0.5 rounded" title="Long sentence (>40 words)">' + sentenceHtml + '</span>';
+          }
+          return sentenceHtml;
+        }).join('. ') + '.';
+
+        container.innerHTML = '<div class="mb-2 text-xs font-semibold text-slate-500">Highlighted view — <span class="bg-yellow-100 px-1 rounded">yellow = long sentence</span> <span class="border-b-2 border-amber-400 font-medium text-amber-700">underline = complex word</span></div><div class="leading-relaxed">' + html + '</div>';
+        container.classList.remove('hidden');
+      }
+
+      function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      var debounceTimer;
+      function update() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          analyze(input.value);
+        }, 100);
+      }
+
+      input.addEventListener('input', update);
+      clearBtn.addEventListener('click', function () {
+        input.value = '';
+        el('results').querySelectorAll('div').forEach(function (d) {
+          if (d.id !== 'highlighted-text') {
+            d.textContent = d.id === 'flesch-score' || d.id === 'gunning-score' || d.id === 'smog-score' || d.id === 'grade-score' ? '--' : '0';
+          }
+        });
+        el('highlighted-text').classList.add('hidden');
+        var bar = el('flesch-bar').querySelector('div');
+        bar.style.width = '0%';
+        el('flesch-label').textContent = '';
+        input.focus();
+      });
+
+      if (input.value.trim()) update();
+    });
+  </script>
+</ToolLayout>

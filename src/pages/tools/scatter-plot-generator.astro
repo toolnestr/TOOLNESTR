@@ -1,0 +1,761 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Scatter Plot Generator';
+const description =
+  'Generate scatter plots from XY data points with optional trend lines. ' +
+  'Download as PNG. Free online chart tool.';
+const intro =
+  'Generate scatter plots from XY data points with trend lines.';
+const category = { id: 'charts', name: 'Chart Generators' };
+const faqs = [
+  {
+    q: 'What is a scatter plot?',
+    a: 'A graph that plots individual data points on X and Y axes to show relationships between two variables.',
+  },
+  {
+    q: 'Can I add a trend line?',
+    a: 'Yes — toggle a linear regression trend line to see correlation direction and strength.',
+  },
+  {
+    q: 'What data format is required?',
+    a: 'Enter one point per line as "x, y" — e.g. "1, 2.5" or "10, 20".',
+  },
+  {
+    q: 'Can I download the chart?',
+    a: 'Yes — download as PNG image or copy the chart URL.',
+  },
+  {
+    q: 'How is the trend line calculated?',
+    a: 'The tool computes a linear regression (least squares) through your data points and plots the best-fit line.',
+  },
+  {
+    q: 'What is the correlation coefficient?',
+    a: 'Pearson\'s r measures the strength and direction of the linear relationship between X and Y, from -1 (perfect negative) to +1 (perfect positive).',
+  },
+  {
+    q: 'What happens if I enter invalid data?',
+    a: 'Lines that do not contain two comma-separated numbers are skipped. An error shows if no valid data points are found.',
+  },
+  {
+    q: 'Is my data stored or uploaded?',
+    a: 'No. Charts are rendered entirely in your browser using Chart.js. Your data never leaves your computer.',
+  },
+];
+---
+
+<ToolLayout
+  title={title}
+  description={description}
+  intro={intro}
+  category={category}
+  faqs={faqs}
+>
+  <div
+    class="mt-6 grid gap-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6"
+  >
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700"
+          >Data (one x, y pair per line)</span
+        >
+        <textarea
+          id="data"
+          rows="8"
+          class="mt-1 w-full resize-y rounded-xl border border-slate-300 p-3 text-sm font-mono outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          placeholder="1, 2.5&#10;2, 3.8&#10;3, 5.1&#10;4, 4.2&#10;5, 6.0&#10;6, 7.3&#10;7, 6.8&#10;8, 8.5&#10;9, 9.1&#10;10, 10.2"
+        ></textarea>
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium text-slate-700">Chart Title</span>
+        <input
+          id="title"
+          type="text"
+          placeholder="My Scatter Plot"
+          class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+        />
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">X-axis Label</span>
+          <input
+            id="xlabel"
+            type="text"
+            placeholder="X Variable"
+            class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Y-axis Label</span>
+          <input
+            id="ylabel"
+            type="text"
+            placeholder="Y Variable"
+            class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          />
+        </label>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          id="trendline"
+          type="checkbox"
+          checked
+          class="h-4 w-4 accent-indigo-600"
+        />
+        Show trend line
+      </label>
+      <button
+        id="generate"
+        class="w-full rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+      >
+        Generate
+      </button>
+      <div id="stats" class="hidden rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <span>Data points: <strong id="count">0</strong></span>
+        <span class="ml-4">Correlation: <strong id="correlation">--</strong></span>
+      </div>
+      <p id="err" class="hidden text-sm text-red-600"></p>
+    </div>
+    <div class="flex flex-col items-center justify-center">
+      <div class="w-full overflow-hidden rounded-xl border border-slate-200">
+        <canvas id="canvas" class="w-full"></canvas>
+      </div>
+      <button
+        id="download"
+        class="mt-4 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
+      >
+        Download as PNG
+      </button>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="800"
+      height="400"
+      viewBox="0 0 800 400"
+    >
+      <title>Scatter Plot with Trend Line</title>
+      <desc
+      >Cartesian plane with ten scattered data points showing a positive
+        correlation and a dashed linear regression trend line</desc
+      >
+      <rect width="800" height="400" fill="#f8fafc" rx="8" />
+      <text
+        x="400"
+        y="28"
+        font-family="sans-serif"
+        font-size="15"
+        fill="#1e293b"
+        text-anchor="middle"
+        font-weight="bold"
+      >Scatter Plot with Trend Line</text>
+      <rect x="130" y="50" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="100" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="150" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="200" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="250" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="300" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="350" width="640" height="1" fill="#e2e8f0" />
+      <rect x="130" y="48" width="2" height="304" fill="#94a3b8" />
+      <rect x="130" y="350" width="642" height="2" fill="#94a3b8" />
+      <text
+        x="120"
+        y="54"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >100</text>
+      <text
+        x="120"
+        y="104"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >80</text>
+      <text
+        x="120"
+        y="154"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >60</text>
+      <text
+        x="120"
+        y="204"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >40</text>
+      <text
+        x="120"
+        y="254"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >20</text>
+      <text
+        x="120"
+        y="354"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#64748b"
+        text-anchor="end"
+      >0</text>
+      <circle cx="192" cy="320" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="254" cy="275" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="316" cy="230" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="378" cy="200" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="440" cy="245" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="502" cy="185" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="564" cy="140" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="626" cy="170" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="688" cy="110" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <circle cx="750" cy="80" r="6" fill="#6366f1" stroke="#fff" stroke-width="2" />
+      <line
+        x1="130"
+        y1="345"
+        x2="770"
+        y2="68"
+        stroke="#ef4444"
+        stroke-width="2.5"
+        stroke-dasharray="8,5"
+      />
+      <text
+        x="100"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >0</text>
+      <text
+        x="200"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >10</text>
+      <text
+        x="300"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >20</text>
+      <text
+        x="400"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >30</text>
+      <text
+        x="500"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >40</text>
+      <text
+        x="600"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >50</text>
+      <text
+        x="700"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >60</text>
+      <text
+        x="800"
+        y="380"
+        font-family="sans-serif"
+        font-size="11"
+        fill="#475569"
+        text-anchor="middle"
+      >70</text>
+    </svg>
+    <figcaption
+    >Example scatter plot with ten data points (indigo circles) showing a
+      positive upward correlation with a red dashed linear regression trend
+      line</figcaption
+    >
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">
+      What is a scatter plot?
+    </h2>
+    <p class="mt-2 text-slate-600">
+      A scatter plot displays individual data points as dots on a
+      two-dimensional Cartesian plane. Each point represents one observation
+      with two numeric variables: one plotted along the X-axis (horizontal)
+      and the other along the Y-axis (vertical). The arrangement of points
+      reveals whether a relationship or correlation exists between the two
+      variables.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The pattern formed by the points tells you what kind of correlation
+      exists. A <strong>positive correlation</strong> appears as a cluster of
+      points sloping upward from left to right — as X increases, Y tends to
+      increase. A <strong>negative correlation</strong> slopes downward — as X
+      increases, Y tends to decrease. When the points form a shapeless cloud
+      with no discernible direction, the variables show
+      <strong>no correlation</strong>.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">
+      Understanding correlation with the trend line
+    </h2>
+    <p class="mt-2 text-slate-600">
+      The trend line — also called a line of best fit or linear regression
+      line — is calculated using the least squares method. It minimises the
+      sum of squared vertical distances between each data point and the line
+      itself. The result is a straight line that best represents the overall
+      direction of your data.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The <strong>correlation coefficient (Pearson's r)</strong> quantifies
+      the strength of the linear relationship on a scale from -1 to +1. A
+      value of +1 means a perfect positive relationship, -1 means a perfect
+      negative relationship, and 0 means no linear relationship. In practice,
+      values above 0.7 or below -0.7 indicate a strong correlation, while
+      values between -0.3 and 0.3 suggest a weak relationship.
+    </p>
+  </section>
+
+  <section class="mt-10 grid gap-4 sm:grid-cols-2">
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Positive correlation</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Points trend upward from bottom-left to top-right. As one variable
+        increases, the other also increases. Example: study hours vs. exam
+        scores.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Negative correlation</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Points trend downward from top-left to bottom-right. As one variable
+        increases, the other decreases. Example: speed vs. travel time.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">No correlation</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Points form a random scatter with no clear direction. The variables
+        appear unrelated. Example: shoe size vs. salary.
+      </p>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">Non-linear relationship</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        Points follow a curve rather than a straight line. A linear trend line
+        may show weak correlation even when a clear pattern exists.
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">
+      How to create a scatter plot
+    </h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700"
+        >1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your data</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Type each data point as "x, y" on a separate line. Use decimal
+          numbers for precise plotting. The tool accepts any number of points.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700"
+        >2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Customise your chart</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Set the chart title, axis labels, and toggle the trend line on or
+          off. Click "Generate" to render the scatter plot instantly.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700"
+        >3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Download or share</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Click "Download as PNG" to save the chart as a high-resolution image
+          for reports, presentations, or sharing online.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">
+      Use cases for scatter plots
+    </h2>
+    <ul class="mt-3 space-y-3 text-sm text-slate-600">
+      <li>
+        <strong class="text-slate-900">Statistical analysis</strong> —
+        Researchers use scatter plots to explore relationships between
+        variables before applying formal statistical tests. The visual pattern
+        guides hypothesis formation and model selection.
+      </li>
+      <li>
+        <strong class="text-slate-900">Scientific data</strong> — In physics,
+        chemistry, and biology, scatter plots reveal how one measured quantity
+        responds to changes in another, such as temperature vs. pressure or
+        dosage vs. response.
+      </li>
+      <li>
+        <strong class="text-slate-900">Quality control</strong> — Manufacturing
+        processes use scatter plots to monitor relationships between
+        production parameters and product quality metrics, helping identify
+        root causes of defects.
+      </li>
+      <li>
+        <strong class="text-slate-900">Business metrics</strong> — Marketing
+        teams plot ad spend against conversions, sales teams compare call
+        volume vs. deals closed, and product teams analyse user engagement
+        against feature adoption rates.
+      </li>
+      <li>
+        <strong class="text-slate-900">Healthcare</strong> — Clinical
+        researchers plot biomarker levels against patient outcomes, or
+        treatment dosage against recovery time, to identify significant
+        correlations.
+      </li>
+      <li>
+        <strong class="text-slate-900">Finance and economics</strong> —
+        Analysts examine relationships between economic indicators, stock
+        returns vs. risk metrics, or inflation against unemployment rates
+        using scatter plots.
+      </li>
+    </ul>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">
+      Tips for effective scatter plots
+    </h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">
+          More data points = better trend
+        </h3>
+        <p class="mt-1 text-sm text-slate-600">
+          A trend line becomes more reliable as the number of data points
+          increases. With fewer than ten points, outliers can easily skew the
+          regression line and the correlation coefficient may be misleading.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Outliers are visible</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          One advantage of scatter plots is that outliers stand out
+          immediately as points far from the main cluster. Investigate
+          outliers before drawing conclusions — they may indicate data entry
+          errors or important edge cases.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Axis scaling matters</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Always examine the axis ranges. By default this tool auto-fits axes
+          to your data, but you should verify that the scale does not
+          exaggerate or minimise the apparent strength of the relationship.
+          Include zero on both axes where meaningful.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">
+          Correlation does not imply causation
+        </h3>
+        <p class="mt-1 text-sm text-slate-600">
+          A strong correlation between two variables does not mean one causes
+          the other. There may be a hidden third variable driving both, or the
+          relationship may be coincidental. Always apply domain knowledge when
+          interpreting results.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Check for non-linearity</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          If the data points form a curve (U-shaped, exponential, or
+          logarithmic), the linear trend line and Pearson's r will
+          underestimate the true relationship. Consider transforming your
+          variables before analysis.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">
+      Related chart tools
+    </h2>
+    <p class="mt-2 text-slate-600">
+      If scatter plots are useful for your work, you may also find these
+      related tools helpful:
+    </p>
+    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-slate-600">
+      <li>
+        <a
+          href="/tools/line-chart-generator"
+          class="font-medium text-indigo-600 hover:text-indigo-700"
+        >Line Chart Generator</a
+        >
+        — Connect data points with lines to emphasise trends over time.
+      </li>
+      <li>
+        <a
+          href="/tools/pie-chart-generator"
+          class="font-medium text-indigo-600 hover:text-indigo-700"
+        >Pie Chart Generator</a
+        >
+        — Show proportions and percentages of a whole.
+      </li>
+      <li>
+        <a
+          href="/tools/box-plot-generator"
+          class="font-medium text-indigo-600 hover:text-indigo-700"
+        >Box Plot Generator</a
+        >
+        — Visualise data distribution, quartiles, and outliers.
+      </li>
+      <li>
+        <a
+          href="/tools/bar-chart-generator"
+          class="font-medium text-indigo-600 hover:text-indigo-700"
+        >Bar Chart Generator</a
+        >
+        — Compare categorical data with vertical bars.
+      </li>
+      <li>
+        <a
+          href="/tools/histogram-generator"
+          class="font-medium text-indigo-600 hover:text-indigo-700"
+        >Histogram Generator</a
+        >
+        — Show the frequency distribution of a single variable.
+      </li>
+    </ul>
+  </section>
+</ToolLayout>
+
+<script is:inline>
+  (async function () {
+    const { Chart, registerables } = await import(
+      'https://esm.sh/chart.js@4.4.4'
+    );
+    Chart.register(...registerables);
+
+    const $ = (id) => document.getElementById(id);
+    const dataEl = $('data');
+    const titleEl = $('title');
+    const xlabelEl = $('xlabel');
+    const ylabelEl = $('ylabel');
+    const trendCheck = $('trendline');
+    const canvas = $('canvas');
+    const err = $('err');
+    const stats = $('stats');
+    const countEl = $('count');
+    const corrEl = $('correlation');
+
+    let chart = null;
+
+    function parseData(text) {
+      const lines = text.trim().split('\n').filter(Boolean);
+      const points = [];
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length < 2) continue;
+        const x = parseFloat(parts[0].trim());
+        const y = parseFloat(parts[1].trim());
+        if (isNaN(x) || isNaN(y)) continue;
+        points.push({ x, y });
+      }
+      return points;
+    }
+
+    function linearRegression(points) {
+      const n = points.length;
+      const sumX = points.reduce((s, p) => s + p.x, 0);
+      const sumY = points.reduce((s, p) => s + p.y, 0);
+      const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+      const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+      const sumY2 = points.reduce((s, p) => s + p.y * p.y, 0);
+      const denom = n * sumX2 - sumX * sumX;
+      if (denom === 0) return null;
+      const slope = (n * sumXY - sumX * sumY) / denom;
+      const intercept = (sumY - slope * sumX) / n;
+      const rNum = n * sumXY - sumX * sumY;
+      const rDen = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+      const r = rDen === 0 ? 0 : rNum / rDen;
+      return { slope, intercept, r };
+    }
+
+    function generate() {
+      const points = parseData(dataEl.value);
+      if (points.length < 2) {
+        err.textContent = 'Enter at least two valid data points (x, y).';
+        err.classList.remove('hidden');
+        stats.classList.add('hidden');
+        return;
+      }
+      err.classList.add('hidden');
+
+      const showTrend = trendCheck.checked;
+      const chartTitle = titleEl.value || 'Scatter Plot';
+      const xLabel = xlabelEl.value || 'X';
+      const yLabel = ylabelEl.value || 'Y';
+
+      const datasets = [
+        {
+          label: 'Data',
+          data: points,
+          backgroundColor: 'rgba(99, 102, 241, 0.7)',
+          borderColor: 'rgba(99, 102, 241, 1)',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+      ];
+
+      let rValue = null;
+
+      if (showTrend) {
+        const reg = linearRegression(points);
+        if (reg) {
+          rValue = reg.r;
+          const minX = Math.min(...points.map((p) => p.x));
+          const maxX = Math.max(...points.map((p) => p.x));
+          const trendData = [
+            { x: minX, y: reg.slope * minX + reg.intercept },
+            { x: maxX, y: reg.slope * maxX + reg.intercept },
+          ];
+          datasets.push({
+            label: 'Trend Line',
+            data: trendData,
+            type: 'line',
+            showLine: true,
+            borderColor: 'rgba(239, 68, 68, 0.9)',
+            borderWidth: 2.5,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            pointHitRadius: 0,
+            fill: false,
+            tension: 0,
+          });
+        }
+      }
+
+      if (chart) {
+        chart.destroy();
+      }
+
+      const ctx = canvas.getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 300 },
+          plugins: {
+            title: {
+              display: true,
+              text: chartTitle,
+              font: { size: 16, weight: 'bold' },
+              padding: { bottom: 12 },
+            },
+            legend: {
+              display: datasets.length > 1,
+              position: 'top',
+              labels: { font: { size: 12 }, padding: 12 },
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  if (context.dataset.label === 'Trend Line') return '';
+                  return '(' + context.parsed.x + ', ' + context.parsed.y + ')';
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom',
+              title: {
+                display: true,
+                text: xLabel,
+                font: { size: 13 },
+              },
+              grid: { color: 'rgba(0,0,0,0.06)' },
+            },
+            y: {
+              type: 'linear',
+              title: {
+                display: true,
+                text: yLabel,
+                font: { size: 13 },
+              },
+              grid: { color: 'rgba(0,0,0,0.06)' },
+              beginAtZero: false,
+            },
+          },
+        },
+      });
+
+      countEl.textContent = points.length;
+      if (rValue !== null) {
+        const abs = Math.abs(rValue);
+        let strength = '';
+        if (abs > 0.8) strength = ' (strong)';
+        else if (abs > 0.5) strength = ' (moderate)';
+        else if (abs > 0.3) strength = ' (weak)';
+        else strength = ' (very weak)';
+        corrEl.textContent = rValue.toFixed(4) + strength;
+      } else {
+        corrEl.textContent = '--';
+      }
+      stats.classList.remove('hidden');
+    }
+
+    $('generate').addEventListener('click', generate);
+    $('download').addEventListener('click', function () {
+      if (!chart) return;
+      const a = document.createElement('a');
+      chart.canvas.toBlob(function (blob) {
+        a.href = URL.createObjectURL(blob);
+        a.download = 'scatter-plot.png';
+        a.click();
+      });
+    });
+
+    generate();
+  })();
+</script>

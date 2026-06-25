@@ -329,6 +329,16 @@ export const tools = [
   { slug: 'http-status-code-lookup', title: 'HTTP Status Code Lookup', short: 'Look up any HTTP status code with description and common use cases.', category: 'developers', emoji: '🌐', enabled: true, status: 'live' },
   // ── Part B: Automotive ──
   { slug: 'ev-vs-gas-break-even-calculator', title: 'EV vs Gas Break-Even', short: 'Compare EV and gas car costs to find your break-even mileage.', category: 'automotive', emoji: '⚡', enabled: true, status: 'live' },
+  // ── Part B: Charts ──
+  { slug: 'scatter-plot-generator', title: 'Scatter Plot Generator', short: 'Generate scatter plots from XY data points with trend lines.', category: 'charts', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'radar-chart-generator', title: 'Radar Chart Generator', short: 'Create radar/spider charts for multivariate data comparison.', category: 'charts', emoji: '🕸️', enabled: true, status: 'live' },
+  { slug: 'box-plot-generator', title: 'Box Plot Generator', short: 'Generate box-and-whisker plots from a list of numbers.', category: 'charts', emoji: '📦', enabled: true, status: 'live' },
+  // ── Part B: Text & Writing ──
+  { slug: 'grammar-readability-checker', title: 'Grammar & Readability Checker', short: 'Analyze text for readability scores, word count, sentence stats, and issues.', category: 'text', emoji: '📝', enabled: true, status: 'live' },
+  { slug: 'text-to-slug-generator', title: 'URL Slug Generator', short: 'Convert any text to a clean URL-friendly slug.', category: 'text', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'acronym-generator', title: 'Acronym Generator', short: 'Generate acronyms from any phrase or set of words.', category: 'text', emoji: '🔤', enabled: true, status: 'live' },
+  { slug: 'citation-generator', title: 'APA & MLA Citation Generator', short: 'Generate formatted citations in APA, MLA, and Chicago styles.', category: 'text', emoji: '📚', enabled: true, status: 'live' },
+  { slug: 'pig-latin-translator', title: 'Pig Latin Translator', short: 'Convert English text to Pig Latin with real-time translation.', category: 'text', emoji: '🐷', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

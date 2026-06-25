@@ -1,0 +1,403 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Pig Latin Translator';
+const description = 'Convert English text to Pig Latin with real-time translation. Understand the rules and see the transformations.';
+const intro = 'Convert English text to Pig Latin with real-time translation.';
+const category = { id: 'text', name: 'Text Tools' };
+const faqs = [
+  { q: 'What are the rules of Pig Latin?', a: 'Words starting with consonants move the first consonant cluster to the end and add "ay". Words starting with vowels add "way" to the end.' },
+  { q: 'Is there a standard dialect?', a: 'There are minor variations. This tool uses the most common North American rules.' },
+  { q: 'Does it handle punctuation?', a: 'Yes — punctuation is preserved and re-attached after translation.' },
+  { q: 'Can I translate back from Pig Latin?', a: 'Yes — the reverse translation attempts to reconstruct the original English.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <textarea id="input" rows="5" placeholder="Type or paste English or Pig Latin text here..." class="w-full resize-y rounded-xl border border-slate-300 p-4 text-base leading-relaxed outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></textarea>
+
+    <div class="mt-4 flex flex-wrap items-center gap-4">
+      <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input type="radio" name="direction" value="to-pig" checked class="h-4 w-4 text-indigo-600" />
+        English &#x2192; Pig Latin
+      </label>
+      <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input type="radio" name="direction" value="from-pig" class="h-4 w-4 text-indigo-600" />
+        Pig Latin &#x2192; English
+      </label>
+      <button id="translate-btn" class="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Translate</button>
+    </div>
+
+    <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+      <button id="copy-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">Copy result</button>
+      <button id="clear-btn" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Clear</button>
+      <span id="word-info" class="ml-auto text-sm text-slate-400"></span>
+    </div>
+
+    <textarea id="output" rows="5" readonly placeholder="Translated text will appear here..." class="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none"></textarea>
+
+    <div id="steps" class="mt-4 hidden rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+      <h3 class="text-sm font-semibold text-indigo-800">Step-by-step transformation</h3>
+      <div id="steps-list" class="mt-2 space-y-1 text-sm text-indigo-700"></div>
+    </div>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How Pig Latin translation works</h2>
+    <p class="mt-2 text-slate-600">Pig Latin is a language game that alters English words based on a simple phonetic rule. The diagram below shows the two transformation paths every word takes depending on its first sound.</p>
+
+    <div class="mt-5 flex justify-center">
+      <svg viewBox="0 0 640 220" class="w-full max-w-lg" role="img" aria-label="Pig Latin transformation flow diagram">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" />
+          </marker>
+        </defs>
+        <rect x="10" y="10" width="160" height="50" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+        <text x="90" y="42" text-anchor="middle" font-size="14" font-weight="600" fill="#4338ca">English Words</text>
+
+        <line x1="170" y1="35" x2="230" y2="35" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+
+        <rect x="230" y="10" width="180" height="50" rx="8" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+        <text x="320" y="42" text-anchor="middle" font-size="14" font-weight="600" fill="#15803d">Rules Applied</text>
+
+        <line x1="410" y1="35" x2="470" y2="35" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
+
+        <rect x="470" y="10" width="160" height="50" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="2" />
+        <text x="550" y="42" text-anchor="middle" font-size="14" font-weight="600" fill="#b91c1c">Pig Latin</text>
+
+        <rect x="240" y="90" width="160" height="36" rx="6" fill="#fefce8" stroke="#eab308" stroke-width="1.5" />
+        <text x="320" y="113" text-anchor="middle" font-size="12" fill="#854d0e">Starts with consonant</text>
+        <line x1="320" y1="60" x2="320" y2="90" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arrow)" />
+
+        <rect x="240" y="140" width="160" height="36" rx="6" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5" />
+        <text x="320" y="163" text-anchor="middle" font-size="12" fill="#0369a1">Starts with vowel</text>
+        <line x1="320" y1="60" x2="320" y2="140" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4" />
+
+        <line x1="320" y1="126" x2="320" y2="140" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arrow)" />
+
+        <text x="420" y="113" font-size="11" fill="#854d0e">move cluster + &quot;ay&quot;</text>
+        <text x="420" y="163" font-size="11" fill="#0369a1">add &quot;way&quot;</text>
+
+        <line x1="400" y1="108" x2="440" y2="108" stroke="#eab308" stroke-width="1" />
+        <line x1="400" y1="158" x2="440" y2="158" stroke="#0ea5e9" stroke-width="1" />
+      </svg>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The rules of Pig Latin</h2>
+    <p class="mt-2 text-slate-600">Pig Latin follows two simple rules that are applied to each word independently:</p>
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">1. Words starting with consonants</h3>
+        <p class="mt-1 text-sm text-slate-600">Identify the initial consonant cluster (one or more consonants at the start of the word), move it to the end, then add "ay". A consonant cluster can be a single letter like "h" in "hello" or multiple letters like "sch" in "school" or "str" in "strong".</p>
+        <div class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+          <div><span class="font-medium text-slate-700">"hello"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">move "h" &#x2192; "elloh" + "ay"</span> <span class="font-medium text-indigo-600">"ellohay"</span></div>
+          <div><span class="font-medium text-slate-700">"school"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">move "sch" &#x2192; "oolsch" + "ay"</span> <span class="font-medium text-indigo-600">"oolschay"</span></div>
+          <div><span class="font-medium text-slate-700">"strong"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">move "str" &#x2192; "ongstr" + "ay"</span> <span class="font-medium text-indigo-600">"ongstray"</span></div>
+          <div><span class="font-medium text-slate-700">"pig"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">move "p" &#x2192; "igp" + "ay"</span> <span class="font-medium text-indigo-600">"igpay"</span></div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">2. Words starting with vowels</h3>
+        <p class="mt-1 text-sm text-slate-600">If the word begins with a vowel sound (a, e, i, o, u), simply append "way" to the end. The word itself remains unchanged — no letters are moved.</p>
+        <div class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+          <div><span class="font-medium text-slate-700">"apple"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">add "way"</span> <span class="font-medium text-indigo-600">"appleway"</span></div>
+          <div><span class="font-medium text-slate-700">"egg"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">add "way"</span> <span class="font-medium text-indigo-600">"eggway"</span></div>
+          <div><span class="font-medium text-slate-700">"I"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">add "way"</span> <span class="font-medium text-indigo-600">"Iway"</span></div>
+          <div><span class="font-medium text-slate-700">"under"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">add "way"</span> <span class="font-medium text-indigo-600">"underway"</span></div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">3. Compound words and special cases</h3>
+        <p class="mt-1 text-sm text-slate-600">Compound words and hyphenated terms are treated as individual words. Each part is translated independently according to the same rules. Words with no vowels (like "myth" where Y acts as a vowel) are handled by treating Y as a consonant — the whole word is treated as a consonant cluster and moved.</p>
+        <div class="mt-3 grid gap-1 text-sm sm:grid-cols-2">
+          <div><span class="font-medium text-slate-700">"ice-cream"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">"iceway-eamcray"</span></div>
+          <div><span class="font-medium text-slate-700">"myth"</span> <span class="text-slate-400">&#x2192;</span> <span class="text-slate-600">"ythm" + "ay"</span> <span class="font-medium text-indigo-600">"ythmay"</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 overflow-hidden rounded-xl border border-slate-200">
+    <table class="w-full text-left text-sm">
+      <thead class="bg-slate-50 text-slate-500"><tr><th class="p-3">English</th><th class="p-3">Pig Latin</th><th class="p-3">Rule applied</th></tr></thead>
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        <tr><td class="p-3 font-medium">hello</td><td class="p-3 font-mono">ellohay</td><td class="p-3 text-slate-500">move "h" + "ay"</td></tr>
+        <tr><td class="p-3 font-medium">apple</td><td class="p-3 font-mono">appleway</td><td class="p-3 text-slate-500">add "way"</td></tr>
+        <tr><td class="p-3 font-medium">school</td><td class="p-3 font-mono">oolschay</td><td class="p-3 text-slate-500">move "sch" + "ay"</td></tr>
+        <tr><td class="p-3 font-medium">I love Pig Latin</td><td class="p-3 font-mono">Iway ovelay Igpay Atinlay</td><td class="p-3 text-slate-500">mixed rules</td></tr>
+        <tr><td class="p-3 font-medium">strong</td><td class="p-3 font-mono">ongstray</td><td class="p-3 text-slate-500">move "str" + "ay"</td></tr>
+        <tr><td class="p-3 font-medium">egg</td><td class="p-3 font-mono">eggway</td><td class="p-3 text-slate-500">add "way"</td></tr>
+        <tr><td class="p-3 font-medium">yellow</td><td class="p-3 font-mono">ellowyay</td><td class="p-3 text-slate-500">move "y" + "ay"</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the Pig Latin translator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Fun ciphers</h3>
+        <p class="mt-1 text-sm text-slate-600">Use Pig Latin as a simple cipher to send playful messages between friends. It is easy to learn but looks like nonsense to the uninitiated, making it perfect for notes and social media posts.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Language games</h3>
+        <p class="mt-1 text-sm text-slate-600">Pig Latin is one of the best-known language games in English. Teachers use it to introduce concepts like phonemes, syllable boundaries, and consonant clusters in a fun, memorable way.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Teaching linguistics</h3>
+        <p class="mt-1 text-sm text-slate-600">Linguistics educators use Pig Latin to demonstrate morphological processes, phonotactic constraints, and how languages systematically transform words through rule-based operations.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Practical applications</h2>
+    <p class="mt-2 text-slate-600">Beyond simple wordplay, Pig Latin has a surprising range of practical uses. Children and adults alike use it to create secret languages that are easy to learn but hard for outsiders to decode. Online communities sometimes adopt Pig Latin for mild obfuscation of spoilers or sensitive content, since it can be read by anyone who knows the rules but requires deliberate effort to parse.</p>
+    <p class="mt-3 text-slate-600">In linguistic research, Pig Latin serves as a model for understanding how natural languages handle syllable structure and consonant clusters. The rules of Pig Latin directly manipulate onset consonants, which is analogous to certain real-world phonological processes found in languages like French (liaison) and Korean (resyllabification). Studying Pig Latin helps researchers understand how children acquire phonological rules and how the brain processes word boundaries.</p>
+    <p class="mt-3 text-slate-600">Developers and computer science students also encounter Pig Latin as a classic programming exercise. Implementing a Pig Latin translator touches on fundamental concepts: string manipulation, regular expressions, edge case handling, and reversible transformations. It is a commonly assigned problem in introductory programming courses and technical interviews because it requires careful decomposition of a seemingly simple task into precise algorithmic steps.</p>
+    <p class="mt-3 text-slate-600">For creative writers, Pig Latin can be a tool for generating character dialogue that feels foreign yet comprehensible. Fantasy and science fiction stories sometimes feature conlangs (constructed languages) that use Pig Latin-like transformations as their core grammatical rule, giving the language a learnable structure that readers can intuitively understand.</p>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips and limitations</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Compound words are tricky</h3>
+        <p class="mt-1 text-sm text-slate-600">Hyphenated words and compounds like "ice-cream" or "mother-in-law" should ideally be split at hyphens and translated component by component. This tool handles hyphens by treating each segment as an independent word.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Hyphens can break rules</h3>
+        <p class="mt-1 text-sm text-slate-600">When a hyphen sits between two parts of a word, the translation treats the hyphen as a word boundary. This means "x-ray" becomes "xway-ayray" rather than attempting to treat "x-ray" as a single word.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Reverse translation is best-effort</h3>
+        <p class="mt-1 text-sm text-slate-600">Reversing Pig Latin to English is inherently lossy. Words like "school" (which becomes "oolschay") can be ambiguous during reversal because the boundary between the original rest and the consonant cluster is not always clear. The reverse algorithm does its best using standard heuristics, but some words may not reconstruct perfectly.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Numbers and special characters</h3>
+        <p class="mt-1 text-sm text-slate-600">Numbers, symbols, and emoji pass through the translator unchanged. Only alphabetic words are transformed. Punctuation marks are preserved and re-attached to the correct position after translation.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <p class="mt-2 text-slate-600">If you enjoy language games and text transformations, try these related tools:</p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <a href="/tools/upside-down-text" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Upside Down Text</a>
+      <a href="/tools/text-reverser" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Text Reverser</a>
+      <a href="/tools/strikethrough-generator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Strikethrough Generator</a>
+      <a href="/tools/morse-code-converter" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700">Morse Code Converter</a>
+    </div>
+  </section>
+</ToolLayout>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const el = (id) => document.getElementById(id);
+  const input = el('input'), output = el('output'), wordInfo = el('word-info');
+  const steps = el('steps'), stepsList = el('steps-list');
+  const translateBtn = el('translate-btn');
+  const dirRadios = document.querySelectorAll('input[name="direction"]');
+
+  const VOWELS = /^[aeiou]/i;
+
+  function getConsonantCluster(word) {
+    const m = word.match(/^([^aeiou]+)/i);
+    return m ? m[1] : '';
+  }
+
+  function isCapitalized(word) {
+    return word.length > 0 && word[0] === word[0].toUpperCase() && word[0] !== word[0].toLowerCase();
+  }
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  function toPigLatin(text) {
+    return text.split(/(\s+)/).map(word => {
+      if (!word.trim()) return word;
+      const leading = (word.match(/^([^\w]*)/) || ['', ''])[1];
+      const trailing = (word.match(/([^\w]*)$/) || ['', ''])[1];
+      const core = word.slice(leading.length, word.length - trailing.length || word.length);
+      if (!core) return word;
+
+      const capped = isCapitalized(core);
+      const lower = core.toLowerCase();
+
+      let result;
+      if (VOWELS.test(lower)) {
+        result = lower + 'way';
+      } else {
+        const cluster = getConsonantCluster(lower);
+        const rest = lower.slice(cluster.length);
+        result = rest + cluster + 'ay';
+      }
+
+      if (capped) result = capitalize(result);
+
+      return leading + result + trailing;
+    }).join('');
+  }
+
+  function fromPigLatin(text) {
+    return text.split(/(\s+)/).map(word => {
+      if (!word.trim()) return word;
+      const leading = (word.match(/^([^\w]*)/) || ['', ''])[1];
+      const trailing = (word.match(/([^\w]*)$/) || ['', ''])[1];
+      const core = word.slice(leading.length, word.length - trailing.length || word.length);
+      if (!core) return word;
+
+      const capped = isCapitalized(core);
+      const lower = core.toLowerCase();
+
+      let result;
+      if (lower.endsWith('way') && /^[aeiou]/.test(lower)) {
+        result = lower.slice(0, -3);
+      } else if (lower.endsWith('ay')) {
+        let base = lower.slice(0, -2);
+        let cluster = '';
+        let i = base.length - 1;
+        while (i >= 0 && !'aeiou'.includes(base[i])) {
+          cluster = base[i] + cluster;
+          i--;
+        }
+        result = cluster + base.slice(0, i + 1);
+      } else {
+        result = lower;
+      }
+
+      if (capped) result = capitalize(result);
+
+      return leading + result + trailing;
+    }).join('');
+  }
+
+  function getSteps(text, toPig) {
+    const words = text.split(/\s+/).filter(w => w.trim());
+    return words.map(word => {
+      const leading = (word.match(/^([^\w]*)/) || ['', ''])[1];
+      const trailing = (word.match(/([^\w]*)$/) || ['', ''])[1];
+      const core = word.slice(leading.length, word.length - trailing.length || word.length);
+      if (!core) return { original: word, rule: '', result: word };
+
+      const capped = isCapitalized(core);
+      const lower = core.toLowerCase();
+
+      if (toPig) {
+        if (VOWELS.test(lower)) {
+          let r = lower + 'way';
+          if (capped) r = capitalize(r);
+          return { original: core, rule: 'starts with vowel, add "way"', result: r };
+        } else {
+          const cluster = getConsonantCluster(lower);
+          const rest = lower.slice(cluster.length);
+          let r = rest + cluster + 'ay';
+          if (capped) r = capitalize(r);
+          return { original: core, rule: 'move cluster "' + cluster + '" to end + "ay"', result: r };
+        }
+      } else {
+        if (lower.endsWith('way') && /^[aeiou]/.test(lower)) {
+          let r = lower.slice(0, -3);
+          if (capped) r = capitalize(r);
+          return { original: core, rule: 'remove "way" (vowel-starting word)', result: r };
+        } else if (lower.endsWith('ay')) {
+          let base = lower.slice(0, -2);
+          let cluster = '';
+          let i = base.length - 1;
+          while (i >= 0 && !'aeiou'.includes(base[i])) {
+            cluster = base[i] + cluster;
+            i--;
+          }
+          let r = cluster + base.slice(0, i + 1);
+          if (capped) r = capitalize(r);
+          return { original: core, rule: 'remove "ay", move "' + cluster + '" to front', result: r };
+        }
+        return { original: core, rule: 'not Pig Latin, left unchanged', result: lower };
+      }
+    });
+  }
+
+  function translate() {
+    const text = input.value;
+    const toPig = document.querySelector('input[name="direction"]:checked').value === 'to-pig';
+
+    if (!text) {
+      output.value = '';
+      wordInfo.textContent = '';
+      steps.classList.add('hidden');
+      return;
+    }
+
+    let result;
+    if (toPig) {
+      result = toPigLatin(text);
+    } else {
+      result = fromPigLatin(text);
+    }
+    output.value = result;
+
+    const inWords = text.split(/\s+/).filter(w => w.trim()).length;
+    const outWords = result.split(/\s+/).filter(w => w.trim()).length;
+    wordInfo.textContent = inWords + ' words  \u00b7  ' + text.length + ' chars \u2192 ' + outWords + ' words  \u00b7 ' + result.length + ' chars';
+
+    const stepData = getSteps(text, toPig);
+    let hasRules = false;
+    stepsList.innerHTML = '';
+    stepData.forEach(s => {
+      if (!s.rule) return;
+      hasRules = true;
+      const d = document.createElement('div');
+      d.className = 'flex items-baseline gap-2';
+      d.innerHTML = '<span class="font-mono text-indigo-800">' + escapeHtml(s.original) + '</span> <span class="text-indigo-400">\u2192</span> <span class="font-mono font-medium text-indigo-700">' + escapeHtml(s.result) + '</span> <span class="text-xs text-indigo-500">(' + escapeHtml(s.rule) + ')</span>';
+      stepsList.appendChild(d);
+    });
+    if (hasRules) {
+      steps.classList.remove('hidden');
+    } else {
+      steps.classList.add('hidden');
+    }
+  }
+
+  function escapeHtml(str) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return str.replace(/[&<>"']/g, m => map[m]);
+  }
+
+  translateBtn.addEventListener('click', translate);
+
+  dirRadios.forEach(r => r.addEventListener('change', translate));
+
+  let debounceTimer;
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(translate, 200);
+  });
+
+  el('clear-btn').addEventListener('click', () => {
+    input.value = '';
+    output.value = '';
+    wordInfo.textContent = '';
+    steps.classList.add('hidden');
+    input.focus();
+  });
+
+  el('copy-btn').addEventListener('click', async () => {
+    if (!output.value) return;
+    try {
+      await navigator.clipboard.writeText(output.value);
+      const b = el('copy-btn');
+      const o = b.textContent;
+      b.textContent = 'Copied!';
+      setTimeout(() => (b.textContent = o), 1200);
+    } catch (e) {}
+  });
+});
+</script>
