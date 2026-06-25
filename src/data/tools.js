@@ -241,6 +241,7 @@ export const tools = [
   { slug: 'week-number-calculator', title: 'Week Number Calculator', short: 'Find the ISO week number for any date.', category: 'time-date', emoji: '📅', enabled: true, status: 'live' },
   { slug: 'day-of-year-calculator', title: 'Day of Year Calculator', short: 'Day number, week number and days remaining in the year.', category: 'time-date', emoji: '🗓️', enabled: true, status: 'live' },
   { slug: 'work-hours-calculator', title: 'Work Hours Calculator', short: 'Calculate total work hours between start and end times with breaks.', category: 'time-date', emoji: '💼', enabled: true, status: 'live' },
+  { slug: 'world-clock-comparator', title: 'World Clock Comparator', short: 'Compare current times across multiple cities with a visual timeline.', category: 'time-date', emoji: '🕐', enabled: true, status: 'live' },
   { slug: 'meeting-time-planner', title: 'Meeting Time Planner', short: 'Find overlapping available times across multiple timezones.', category: 'time-date', emoji: '🤝', enabled: true, status: 'live' },
   { slug: 'business-days-calculator', title: 'Business Days Calculator', short: 'Add or subtract business days from any date.', category: 'time-date', emoji: '📆', enabled: true, status: 'live' },
   { slug: 'age-in-seconds', title: 'Age in Seconds Calculator', short: 'Your exact age in seconds, minutes, hours, days and more.', category: 'time-date', emoji: '⏰', enabled: true, status: 'live' },
@@ -339,6 +340,14 @@ export const tools = [
   { slug: 'acronym-generator', title: 'Acronym Generator', short: 'Generate acronyms from any phrase or set of words.', category: 'text', emoji: '🔤', enabled: true, status: 'live' },
   { slug: 'citation-generator', title: 'APA & MLA Citation Generator', short: 'Generate formatted citations in APA, MLA, and Chicago styles.', category: 'text', emoji: '📚', enabled: true, status: 'live' },
   { slug: 'pig-latin-translator', title: 'Pig Latin Translator', short: 'Convert English text to Pig Latin with real-time translation.', category: 'text', emoji: '🐷', enabled: true, status: 'live' },
+  // ── Part B: Time & Date ──
+  { slug: 'countdown-to-event-widget-generator', title: 'Countdown Widget Generator', short: 'Generate an embeddable countdown timer widget for any future date.', category: 'time-date', emoji: '⏳', enabled: true, status: 'live' },
+  { slug: 'world-clock-comparator', title: 'World Clock Comparator', short: 'Compare current times across multiple cities worldwide side by side.', category: 'time-date', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'moon-phase-calculator', title: 'Moon Phase Calculator', short: 'Find the moon phase for any date — new, quarter, gibbous, full moon.', category: 'time-date', emoji: '🌙', enabled: true, status: 'live' },
+  { slug: 'zodiac-sign-calculator', title: 'Zodiac Sign Calculator', short: 'Find your Western zodiac sign based on your birth date.', category: 'time-date', emoji: '♈', enabled: true, status: 'live' },
+  // ── Part B: Miscellaneous ──
+  { slug: 'tip-pooling-calculator', title: 'Tip Pooling Calculator', short: 'Split tips fairly among staff by hours worked or contribution level.', category: 'tools', emoji: '💵', enabled: true, status: 'live' },
+  { slug: 'paint-coverage-calculator', title: 'Paint Coverage Calculator', short: 'Estimate how many gallons of paint you need for any room.', category: 'tools', emoji: '🎨', enabled: true, status: 'live' },
 ];
 
 // Helpers used by pages

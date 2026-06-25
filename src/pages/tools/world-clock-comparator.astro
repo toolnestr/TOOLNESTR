@@ -1,0 +1,454 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'World Clock Comparator';
+const description = 'Compare current times across multiple cities worldwide with a visual business hours overlap timeline.';
+const intro = 'Compare current times across multiple cities worldwide side by side.';
+const category = { id: 'time-date', name: 'Time & Date Tools' };
+const faqs = [
+  { q: 'How many cities can I compare?', a: 'Up to 6 cities at once. Add and remove cities freely from a predefined list of 50+ major world cities.' },
+  { q: 'How do I see business hours overlap?', a: 'Each city has a 24-hour bar showing 9 AM–5 PM highlighted in green, making it easy to see overlapping work hours.' },
+  { q: 'How accurate are the timezones?', a: 'They use the browser\'s Intl API for current IANA timezone data, accounting for DST.' },
+  { q: 'Does it auto-refresh?', a: 'Yes — times update every 10 seconds to keep current.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="relative flex-1">
+        <input id="city-search" type="text" placeholder="Search cities..." class="w-full rounded-xl border border-slate-300 p-3 pr-10 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        <svg class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <div id="city-dropdown" class="absolute z-10 mt-1 hidden max-h-48 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
+      </div>
+      <button id="add-city-btn" class="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Add city</button>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Select up to 6 cities. Click a city in the dropdown or type to filter.</p>
+  </div>
+
+  <div id="cities-container" class="mt-4 space-y-3"></div>
+
+  <div id="empty-state" class="mt-6 rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center">
+    <svg class="mx-auto h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+    <p class="mt-3 text-sm font-medium text-slate-500">No cities added yet</p>
+    <p class="text-xs text-slate-400">Search and add cities above to compare times.</p>
+  </div>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the world clock comparator works</h2>
+    <p class="mt-2 text-slate-600">The world clock comparator displays the current time simultaneously for every city you add. Each city card shows the local time down to the second, the current date, the UTC offset, and whether daylight saving time (DST) is currently in effect. A 24-hour horizontal timeline sits below each city, with the 9 AM to 5 PM business hours highlighted in green and a red marker indicating the current local time position. This layout makes it instantly clear which cities share overlapping working hours at a glance.</p>
+    <div class="mt-6 flex justify-center">
+      <svg class="w-full max-w-2xl" viewBox="0 0 600 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing three stacked timeline bars for London, New York and Tokyo with business hours highlighted and current time markers">
+        <rect x="0" y="0" width="600" height="200" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+        <text x="16" y="28" font-size="13" font-weight="700" fill="#1E293B" font-family="system-ui">London (UTC+1)</text>
+        <text x="500" y="28" font-size="11" fill="#64748B" font-family="monospace">14:32:18</text>
+        <rect x="16" y="40" width="568" height="28" rx="6" fill="#F1F5F9"/>
+        <rect x="16" y="40" width="568" height="28" rx="6" fill="#E2E8F0"/>
+        <rect x="172" y="40" width="227" height="28" rx="6" fill="#BBF7D0"/>
+        <rect x="370" y="40" width="6" height="28" rx="3" fill="#EF4444"/>
+        <text x="22" y="84" font-size="11" fill="#94A3B8" font-family="monospace">00</text>
+        <text x="148" y="84" font-size="11" fill="#94A3B8" font-family="monospace">06</text>
+        <text x="296" y="84" font-size="11" fill="#94A3B8" font-family="monospace">12</text>
+        <text x="444" y="84" font-size="11" fill="#94A3B8" font-family="monospace">18</text>
+        <text x="560" y="84" font-size="11" fill="#94A3B8" font-family="monospace">24</text>
+        <line x1="16" y1="88" x2="584" y2="88" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="16" y="112" font-size="13" font-weight="700" fill="#1E293B" font-family="system-ui">New York (UTC-4)</text>
+        <text x="500" y="112" font-size="11" fill="#64748B" font-family="monospace">09:32:18</text>
+        <rect x="16" y="124" width="568" height="28" rx="6" fill="#F1F5F9"/>
+        <rect x="16" y="124" width="568" height="28" rx="6" fill="#E2E8F0"/>
+        <rect x="88" y="124" width="140" height="28" rx="6" fill="#BBF7D0"/>
+        <rect x="173" y="124" width="6" height="28" rx="3" fill="#EF4444"/>
+        <text x="16" y="168" font-size="13" font-weight="700" fill="#1E293B" font-family="system-ui">Tokyo (UTC+9)</text>
+        <text x="500" y="168" font-size="11" fill="#64748B" font-family="monospace">22:32:18</text>
+        <rect x="16" y="180" width="568" height="28" rx="6" fill="#F1F5F9"/>
+        <rect x="16" y="180" width="568" height="28" rx="6" fill="#E2E8F0"/>
+        <rect x="458" y="180" width="126" height="28" rx="6" fill="#BBF7D0"/>
+        <rect x="510" y="180" width="6" height="28" rx="3" fill="#EF4444"/>
+        <rect x="16" y="196" width="568" height="4" rx="2" fill="#E2E8F0"/>
+        <rect x="16" y="196" width="142" height="4" rx="2" fill="#E2E8F0"/>
+        <rect x="158" y="196" width="142" height="4" rx="2" fill="#BBF7D0"/>
+        <rect x="300" y="196" width="284" height="4" rx="2" fill="#E2E8F0"/>
+      </svg>
+    </div>
+    <p class="mt-3 text-center text-sm text-slate-500">Three cities at 14:32 UTC showing their local times and business hour overlaps</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Why use a world clock comparator?</h2>
+    <p class="mt-2 text-slate-600">Time zone differences are one of the biggest challenges in global communication. When you manage a remote team spread across continents, knowing the current time in each location is not enough — you need to understand how those times relate to each other. A world clock comparator solves this by showing every city on the same visual axis. The 24-hour timeline with business hours highlighting reveals overlaps at a glance. If London is at 14:00 and New York is at 09:00, you can immediately see they share four hours of working time. The same visual logic applies to any set of cities.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common use cases</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F91D;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Remote team stand-ups</h3>
+        <p class="mt-1 text-sm text-slate-600">Find a daily stand-up time that works for engineers in San Francisco, London, and Bangalore. The overlap view shows which hours are viable for everyone without requiring anyone to join before 6 AM or after 10 PM.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x2708;&#xFE0F;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Travel planning</h3>
+        <p class="mt-1 text-sm text-slate-600">When traveling, keep track of home time versus destination time. Avoid calling family and friends at 3 AM their time by checking the comparator before dialing.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F3AE;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Global event scheduling</h3>
+        <p class="mt-1 text-sm text-slate-600">Schedule webinars, gaming sessions, or live streams that accommodate audiences across the Americas, Europe, and Asia-Pacific. The green overlap zone tells you exactly when to go live.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">&#x1F4CA;</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Financial market tracking</h3>
+        <p class="mt-1 text-sm text-slate-600">Track the opening hours of stock exchanges in New York, London, Tokyo, and Hong Kong. See when trading sessions overlap for maximum liquidity periods.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Understanding timezone offsets</h2>
+    <p class="mt-2 text-slate-600">Timezone offsets are expressed as the difference from Coordinated Universal Time (UTC). A location at UTC+5 is five hours ahead of UTC, meaning when it is noon UTC, it is 5 PM there. Offsets can be positive (east of the prime meridian) or negative (west). Daylight saving time adds further complexity. During DST, clocks are set forward by one hour, effectively changing the offset. For example, New York shifts from UTC-5 (EST) in winter to UTC-4 (EDT) in summer. The world clock comparator uses the browser native Intl API, which queries the latest IANA timezone database on your device, so DST transitions are applied automatically and accurately.</p>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Offset examples</h3>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">New York:</span> <span class="text-slate-600">UTC-5 (EST) / UTC-4 (EDT)</span></div>
+        <div><span class="font-medium text-slate-700">London:</span> <span class="text-slate-600">UTC+0 (GMT) / UTC+1 (BST)</span></div>
+        <div><span class="font-medium text-slate-700">Mumbai:</span> <span class="text-slate-600">UTC+5:30 (all year, no DST)</span></div>
+        <div><span class="font-medium text-slate-700">Tokyo:</span> <span class="text-slate-600">UTC+9 (all year, no DST)</span></div>
+        <div><span class="font-medium text-slate-700">Sydney:</span> <span class="text-slate-600">UTC+10 (AEST) / UTC+11 (AEDT)</span></div>
+        <div><span class="font-medium text-slate-700">Kathmandu:</span> <span class="text-slate-600">UTC+5:45 (all year, no DST)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for using the comparator</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Focus on the green zone</h3>
+        <p class="mt-1 text-sm text-slate-600">The green highlighted section on each timeline represents 9 AM to 5 PM local business hours. Wherever green bars overlap across cities, that is the window where meetings are most likely to work. The red marker shows the current time so you can see where you are right now relative to everyone else working day.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Watch for half-hour offsets</h3>
+        <p class="mt-1 text-sm text-slate-600">Not all timezones use whole-hour offsets. India (UTC+5:30), Nepal (UTC+5:45), Iran (UTC+3:30), and Newfoundland (UTC-3:30) are common examples. The Intl API handles these correctly, but be mindful when doing mental math.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">DST changes shift the timeline</h3>
+        <p class="mt-1 text-sm text-slate-600">When a city enters or exits DST, its offset changes by one hour. This shifts the entire timeline relative to UTC. The comparator updates automatically, but if you are planning a meeting weeks ahead, check the expected DST transition dates for the relevant cities.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Add cities strategically</h3>
+        <p class="mt-1 text-sm text-slate-600">Start with cities that are most important to your schedule, then add others to find the common overlap. If you are comparing across six cities and the overlap is tiny or nonexistent, consider removing the least flexible participant or rotating the meeting time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Limitations to be aware of</h2>
+    <p class="mt-2 text-slate-600">While the world clock comparator is a powerful visualization tool, it has some limits. First, the 9 AM–5 PM default business hours are a Western convention and may not reflect local working customs in many parts of the world. In Spain, businesses often break for lunch from 2 PM to 4 PM. In Japan, the workday commonly starts earlier and includes overtime culture. In the Middle East, the workweek runs Sunday through Thursday. The tool does not account for these cultural variations. Second, the tool cannot factor in lunch breaks or individual availability. Someone may appear available based on business hours but be in a meeting or on leave. Third, the accuracy depends on the IANA timezone data shipped with the user browser. While this is generally reliable, it may lag behind last-minute government DST changes. For the most current data, ensure your operating system is up to date.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to use the comparator effectively</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add cities</h3>
+        <p class="mt-1 text-sm text-slate-600">Type to search from 50+ worldwide cities. Add up to 6 cities that matter to your schedule.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the cards</h3>
+        <p class="mt-1 text-sm text-slate-600">Each card shows the current time, date, UTC offset, DST status, and a 24-hour timeline.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Find overlap</h3>
+        <p class="mt-1 text-sm text-slate-600">Look for green zones that align across cities. That is your window for meetings and calls.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Business hours by region reference</h2>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="border-b border-slate-200 text-slate-500"><th class="pb-2 pr-4 font-medium">Region</th><th class="pb-2 pr-4 font-medium">Local Business Hours</th><th class="pb-2 font-medium">UTC Equivalent</th></tr></thead>
+        <tbody class="text-slate-700">
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">US East Coast</td><td class="py-2 pr-4">9 AM – 5 PM ET</td><td class="py-2">13:00 – 21:00 UTC (winter) / 12:00 – 20:00 UTC (summer)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">US West Coast</td><td class="py-2 pr-4">9 AM – 5 PM PT</td><td class="py-2">17:00 – 01:00 UTC (winter) / 16:00 – 00:00 UTC (summer)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Western Europe</td><td class="py-2 pr-4">9 AM – 5 PM CET/CEST</td><td class="py-2">08:00 – 16:00 UTC (winter) / 07:00 – 15:00 UTC (summer)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">United Kingdom</td><td class="py-2 pr-4">9 AM – 5 PM GMT/BST</td><td class="py-2">09:00 – 17:00 UTC (winter) / 08:00 – 16:00 UTC (summer)</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">India</td><td class="py-2 pr-4">9 AM – 5 PM IST</td><td class="py-2">03:30 – 11:30 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">China / Singapore</td><td class="py-2 pr-4">9 AM – 5 PM CST/SGT</td><td class="py-2">01:00 – 09:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Japan / Korea</td><td class="py-2 pr-4">9 AM – 5 PM JST/KST</td><td class="py-2">00:00 – 08:00 UTC</td></tr>
+          <tr class="border-b border-slate-100"><td class="py-2 pr-4">Australia East</td><td class="py-2 pr-4">9 AM – 5 PM AEST/AEDT</td><td class="py-2">23:00 – 07:00 UTC (winter) / 22:00 – 06:00 UTC (summer)</td></tr>
+          <tr><td class="py-2 pr-4">New Zealand</td><td class="py-2 pr-4">9 AM – 5 PM NZST/NZDT</td><td class="py-2">21:00 – 05:00 UTC (winter) / 20:00 – 04:00 UTC (summer)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <a href="/tools/time-zone-converter" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">Time Zone Converter</a>
+      <a href="/tools/meeting-time-planner" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">Meeting Time Planner</a>
+      <a href="/tools/countdown-timer" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600">Countdown Timer</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const cities = [
+      { name: 'London', tz: 'Europe/London' },
+      { name: 'New York', tz: 'America/New_York' },
+      { name: 'Tokyo', tz: 'Asia/Tokyo' },
+      { name: 'Dubai', tz: 'Asia/Dubai' },
+      { name: 'Sydney', tz: 'Australia/Sydney' },
+      { name: 'Paris', tz: 'Europe/Paris' },
+      { name: 'Berlin', tz: 'Europe/Berlin' },
+      { name: 'Mumbai', tz: 'Asia/Kolkata' },
+      { name: 'Singapore', tz: 'Asia/Singapore' },
+      { name: 'Los Angeles', tz: 'America/Los_Angeles' },
+      { name: 'Shanghai', tz: 'Asia/Shanghai' },
+      { name: 'Sao Paulo', tz: 'America/Sao_Paulo' },
+      { name: 'Hong Kong', tz: 'Asia/Hong_Kong' },
+      { name: 'Istanbul', tz: 'Europe/Istanbul' },
+      { name: 'Seoul', tz: 'Asia/Seoul' },
+      { name: 'Toronto', tz: 'America/Toronto' },
+      { name: 'Moscow', tz: 'Europe/Moscow' },
+      { name: 'Mexico City', tz: 'America/Mexico_City' },
+      { name: 'Chicago', tz: 'America/Chicago' },
+      { name: 'San Francisco', tz: 'America/Los_Angeles' },
+      { name: 'Amsterdam', tz: 'Europe/Amsterdam' },
+      { name: 'Madrid', tz: 'Europe/Madrid' },
+      { name: 'Rome', tz: 'Europe/Rome' },
+      { name: 'Stockholm', tz: 'Europe/Stockholm' },
+      { name: 'Zurich', tz: 'Europe/Zurich' },
+      { name: 'Cairo', tz: 'Africa/Cairo' },
+      { name: 'Lagos', tz: 'Africa/Lagos' },
+      { name: 'Johannesburg', tz: 'Africa/Johannesburg' },
+      { name: 'Nairobi', tz: 'Africa/Nairobi' },
+      { name: 'Bangkok', tz: 'Asia/Bangkok' },
+      { name: 'Kuala Lumpur', tz: 'Asia/Kuala_Lumpur' },
+      { name: 'Jakarta', tz: 'Asia/Jakarta' },
+      { name: 'Manila', tz: 'Asia/Manila' },
+      { name: 'Taipei', tz: 'Asia/Taipei' },
+      { name: 'Auckland', tz: 'Pacific/Auckland' },
+      { name: 'Honolulu', tz: 'Pacific/Honolulu' },
+      { name: 'Anchorage', tz: 'America/Anchorage' },
+      { name: 'Denver', tz: 'America/Denver' },
+      { name: 'Vancouver', tz: 'America/Vancouver' },
+      { name: 'Buenos Aires', tz: 'America/Argentina/Buenos_Aires' },
+      { name: 'Santiago', tz: 'America/Santiago' },
+      { name: 'Lisbon', tz: 'Europe/Lisbon' },
+      { name: 'Warsaw', tz: 'Europe/Warsaw' },
+      { name: 'Prague', tz: 'Europe/Prague' },
+      { name: 'Athens', tz: 'Europe/Athens' },
+      { name: 'Helsinki', tz: 'Europe/Helsinki' },
+      { name: 'Tel Aviv', tz: 'Asia/Tel_Aviv' },
+      { name: 'Karachi', tz: 'Asia/Karachi' },
+      { name: 'Dhaka', tz: 'Asia/Dhaka' },
+      { name: 'Kathmandu', tz: 'Asia/Kathmandu' },
+      { name: 'Perth', tz: 'Australia/Perth' },
+      { name: 'Melbourne', tz: 'Australia/Melbourne' },
+      { name: 'Reykjavik', tz: 'Atlantic/Reykjavik' },
+    ];
+
+    const MAX_CITIES = 6;
+    const addedCities = [];
+
+    const searchInput = document.getElementById('city-search');
+    const dropdown = document.getElementById('city-dropdown');
+    const addBtn = document.getElementById('add-city-btn');
+    const container = document.getElementById('cities-container');
+    const emptyState = document.getElementById('empty-state');
+
+    function getFilteredCities(query) {
+      const q = query.toLowerCase();
+      const addedNames = new Set(addedCities.map((c) => c.name));
+      return cities.filter((c) => {
+        if (addedNames.has(c.name)) return false;
+        if (!q) return true;
+        return c.name.toLowerCase().includes(q) || c.tz.toLowerCase().includes(q);
+      });
+    }
+
+    function renderDropdown(query) {
+      const filtered = getFilteredCities(query);
+      if (filtered.length === 0 || addedCities.length >= MAX_CITIES) {
+        dropdown.classList.add('hidden');
+        return;
+      }
+      dropdown.innerHTML = filtered
+        .map(
+          (c) =>
+            `<button class="city-option flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-indigo-50" data-tz="${c.tz}" data-name="${c.name}"><span class="font-medium text-slate-700">${c.name}</span><span class="text-xs text-slate-400">${c.tz}</span></button>`
+        )
+        .join('');
+      dropdown.classList.remove('hidden');
+    }
+
+    function setup() {
+      const now = new Date();
+      const nowMs = now.getTime();
+
+      addedCities.forEach((city) => {
+        city.now = new Date(nowMs);
+      });
+      renderAll();
+    }
+
+    function getOffset(tz) {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(now);
+      const off = parts.find((p) => p.type === 'timeZoneName')?.value || 'UTC';
+      return off.replace('GMT', 'UTC');
+    }
+
+    function getDST(tz) {
+      const jan = new Date(new Date().getFullYear(), 0, 1);
+      const jul = new Date(new Date().getFullYear(), 6, 1);
+      const fmt = (d) => new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'short' }).formatToParts(d).find((p) => p.type === 'timeZoneName')?.value || '';
+      return fmt(jan) !== fmt(jul);
+    }
+
+    function renderAll() {
+      if (addedCities.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      const now = new Date();
+      const nowMs = now.getTime();
+
+      let html = '';
+      addedCities.forEach((city, idx) => {
+        const cityNow = new Date(nowMs);
+        const tz = city.tz;
+
+        const timeFmt = new Intl.DateTimeFormat('en', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+        const dateFmt = new Intl.DateTimeFormat('en', { timeZone: tz, weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+        const timeStr = timeFmt.format(cityNow);
+        const dateStr = dateFmt.format(cityNow);
+        const offset = getOffset(tz);
+        const dst = getDST(tz);
+
+        const localHour = parseInt(new Intl.DateTimeFormat('en', { timeZone: tz, hour: 'numeric', hour12: false }).format(cityNow), 10);
+        const localMin = cityNow.getMinutes();
+        const totalMin = localHour * 60 + localMin;
+
+        const barSegments = [];
+        for (let h = 0; h < 24; h++) {
+          const startMin = h * 60;
+          const endMin = (h + 1) * 60;
+          const isBiz = h >= 9 && h < 17;
+          const hasMarker = totalMin >= startMin && totalMin < endMin;
+          barSegments.push({ h, isBiz, hasMarker });
+        }
+
+        const nowPct = (totalMin / (24 * 60)) * 100;
+
+        html += `<div class="city-card rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all" data-idx="${idx}">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-lg font-bold text-slate-900">${city.name}</h3>
+                <span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-500">${offset}</span>
+                ${dst ? '<span class="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">DST</span>' : ''}
+              </div>
+              <p class="text-sm text-slate-500">${dateStr}</p>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-mono font-bold tabular-nums text-slate-900">${timeStr}</div>
+              <button class="remove-city mt-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50" data-idx="${idx}">Remove</button>
+            </div>
+          </div>
+
+          <div class="mt-3 relative">
+            <div class="flex h-7 w-full overflow-hidden rounded-lg bg-slate-100">
+              ${barSegments
+                .map(
+                  (seg) =>
+                    `<div class="h-full flex-1 ${seg.isBiz ? 'bg-emerald-300' : 'bg-slate-100'}" title="${String(seg.h).padStart(2, '0')}:00" style="border-right:1px solid rgba(255,255,255,0.4)"></div>`
+                )
+                .join('')}
+            </div>
+            <div class="absolute top-0 h-7 w-0.5 bg-red-500 shadow-sm" style="left:${nowPct}%;transform:translateX(-50%);z-index:2"></div>
+            <div class="absolute -top-1 h-2 w-2 rounded-full bg-red-500 shadow" style="left:${nowPct}%;transform:translateX(-50%);z-index:3"></div>
+            <div class="mt-1 flex justify-between text-[10px] text-slate-400">
+              <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('.remove-city').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          addedCities.splice(idx, 1);
+          renderAll();
+          renderDropdown(searchInput.value);
+        });
+      });
+    }
+
+    searchInput.addEventListener('input', () => {
+      renderDropdown(searchInput.value);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      renderDropdown(searchInput.value);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#city-search') && !e.target.closest('#city-dropdown') && !e.target.closest('#add-city-btn')) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    dropdown.addEventListener('click', (e) => {
+      const option = e.target.closest('.city-option');
+      if (!option) return;
+      const name = option.dataset.name;
+      const tz = option.dataset.tz;
+      addCity(name, tz);
+    });
+
+    addBtn.addEventListener('click', () => {
+      const filtered = getFilteredCities(searchInput.value);
+      if (filtered.length > 0) {
+        const c = filtered[0];
+        addCity(c.name, c.tz);
+      }
+    });
+
+    function addCity(name, tz) {
+      if (addedCities.length >= MAX_CITIES) return;
+      if (addedCities.some((c) => c.name === name)) return;
+      addedCities.push({ name, tz });
+      searchInput.value = '';
+      dropdown.classList.add('hidden');
+      renderAll();
+      renderDropdown('');
+    }
+
+    let interval = null;
+
+    function startTimer() {
+      if (interval) clearInterval(interval);
+      interval = setInterval(() => {
+        if (addedCities.length > 0) {
+          renderAll();
+        }
+      }, 10000);
+    }
+
+    setup();
+    startTimer();
+  </script>
+</ToolLayout>

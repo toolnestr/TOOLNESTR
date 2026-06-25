@@ -1,0 +1,354 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Paint Coverage Calculator';
+const description = 'Estimate how many gallons of paint you need for a room — walls, ceiling, and trim.';
+const intro = 'Estimate how many gallons of paint you need for any room.';
+const category = { id: 'tools', name: 'General Tools' };
+const faqs = [
+  { q: 'How much area does a gallon cover?', a: 'One gallon typically covers 350-400 sq ft for a single coat.' },
+  { q: 'How many coats do I need?', a: 'Two coats are recommended for most colors. Dark-to-light or light-to-dark may need 3.' },
+  { q: 'Should I include windows and doors?', a: 'Yes, but we subtract their area — standard door = 20 sq ft, standard window = 15 sq ft.' },
+  { q: 'Does the paint calculator account for waste?', a: 'Yes — an extra 10% is added for waste, touch-ups, and roller loss.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Height (ft)</span>
+        <input id="height" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Doors</span>
+        <input id="doors" type="number" min="0" step="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Windows</span>
+        <input id="windows" type="number" min="0" step="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input id="ceil" type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300" /> Paint ceiling?
+      </label>
+      <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input id="trim" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-300" /> Paint trim?
+      </label>
+    </div>
+
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Coats</span>
+      <div class="mt-1 flex gap-2">
+        {[1, 2, 3].map((n) => (
+          <button data-coats={n} class="coat-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{n}</button>
+        ))}
+      </div>
+    </div>
+
+    <button id="calc-btn" class="mt-5 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700">Calculate</button>
+
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Wall area</div><div id="r-walls" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Ceiling area</div><div id="r-ceil" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Deductions</div><div id="r-deduct" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Total area (incl. waste & coats)</div><div id="r-total" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      </div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Gallons needed</div>
+        <div id="r-per" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-total-g" class="text-sm opacity-80"></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="room-title room-desc">
+      <title id="room-title">Room dimensions diagram</title>
+      <desc id="room-desc">A rectangular room showing wall area, ceiling area, and window openings with their measurements</desc>
+
+      <!-- Floor -->
+      <polygon points="50,280 450,280 400,340 100,340" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2" />
+      <text x="250" y="320" text-anchor="middle" font-size="13" fill="#64748b" font-family="system-ui,sans-serif">Floor</text>
+      <text x="250" y="334" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="system-ui,sans-serif">Length &times; Width</text>
+
+      <!-- Left wall -->
+      <polygon points="50,280 100,340 100,120 50,60" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="72" y="200" text-anchor="middle" font-size="13" fill="#4338ca" font-family="system-ui,sans-serif" transform="rotate(-90 72 200)">Wall</text>
+      <text x="68" y="210" text-anchor="end" font-size="11" fill="#6366f1" font-family="system-ui,sans-serif" transform="rotate(-90 68 210)">H &times; W</text>
+
+      <!-- Back wall -->
+      <polygon points="50,60 100,120 400,120 450,60" fill="#c7d2fe" stroke="#6366f1" stroke-width="2" />
+      <text x="250" y="78" text-anchor="middle" font-size="13" fill="#4338ca" font-family="system-ui,sans-serif">Ceiling</text>
+      <text x="250" y="94" text-anchor="middle" font-size="11" fill="#6366f1" font-family="system-ui,sans-serif">L &times; W</text>
+
+      <!-- Right wall -->
+      <polygon points="450,60 400,120 400,340 450,280" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" opacity="0.4" />
+
+      <!-- Window on left wall -->
+      <rect x="78" y="210" width="18" height="40" fill="#bae6fd" stroke="#38bdf8" stroke-width="1.5" rx="2" />
+      <text x="87" y="236" text-anchor="middle" font-size="9" fill="#0284c7" font-family="system-ui,sans-serif" transform="rotate(-90 87 236)">Window</text>
+
+      <!-- Window on back wall -->
+      <rect x="210" y="140" width="40" height="30" fill="#bae6fd" stroke="#38bdf8" stroke-width="1.5" rx="2" />
+      <text x="230" y="160" text-anchor="middle" font-size="9" fill="#0284c7" font-family="system-ui,sans-serif">Window</text>
+
+      <!-- Dimensions on back wall -->
+      <line x1="50" y1="55" x2="450" y2="55" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" />
+      <text x="250" y="48" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Length (L)</text>
+
+      <line x1="45" y1="60" x2="45" y2="280" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" />
+      <text x="36" y="170" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(-90 36 170)">Width (W)</text>
+
+      <!-- Height dimension on left wall -->
+      <line x1="45" y1="60" x2="45" y2="280" stroke="#94a3b8" stroke-width="1" />
+      <line x1="42" y1="60" x2="48" y2="60" stroke="#94a3b8" stroke-width="1" />
+      <line x1="42" y1="280" x2="48" y2="280" stroke="#94a3b8" stroke-width="1" />
+      <text x="32" y="175" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(-90 32 175)">Height (H)</text>
+
+      <!-- Annotation callout -->
+      <rect x="530" y="20" width="240" height="90" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="545" y="42" font-size="12" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Room surface areas</text>
+      <text x="545" y="60" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Walls: 2 &times; (L + W) &times; H</text>
+      <text x="545" y="76" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Ceiling: L &times; W</text>
+      <text x="545" y="92" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Doors: -20 sq ft each</text>
+      <text x="545" y="108" font-size="11" fill="#475569" font-family="system-ui,sans-serif">Windows: -15 sq ft each</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Room surfaces included in the paint calculation — walls, ceiling, and openings are measured separately</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the paint coverage calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator estimates the total paintable surface area of any rectangular room and divides it by the
+      typical coverage of a gallon of paint (350 sq ft). It accounts for the number of coats you plan to apply,
+      subtracts the area of doors and windows, and adds 10% extra for waste, roller absorption, and touch-ups.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To get started, measure your room's <strong>length</strong>, <strong>width</strong>, and <strong>height</strong>
+      in feet. Count the number of doors and standard-sized windows. Decide whether you are painting the ceiling
+      and trim, then choose how many coats you need. Click "Calculate" and the tool shows your wall area, ceiling
+      area, total adjusted area, and the exact gallons required per coat and for all coats combined.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the room</h3>
+        <p class="mt-1 text-sm text-slate-600">Use a tape measure to get the length, width and ceiling height in feet. Count doors and windows.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter your values</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the dimensions, choose surfaces, pick the number of coats, and click Calculate.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Buy the right amount</h3>
+        <p class="mt-1 text-sm text-slate-600">Take the gallon total to the store — you will know exactly how many cans to buy without guessing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <p class="mt-2 text-slate-600">
+      The paint calculation follows a straightforward set of steps. Each one converts a room measurement into
+      the number of square feet that paint must cover:
+    </p>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Wall area</p>
+        <p class="mt-1 text-slate-600">
+          Multiply the perimeter by the ceiling height: <span class="font-mono">2 &times; (L + W) &times; H</span>.
+          For a 12&prime; &times; 10&prime; room with 8&prime; ceilings, that is 2 &times; (12 + 10) &times; 8 = <strong>352 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Ceiling area</p>
+        <p class="mt-1 text-slate-600">
+          Length &times; width: <span class="font-mono">L &times; W</span>. The same 12&prime; &times; 10&prime; room
+          has a ceiling of 12 &times; 10 = <strong>120 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Door &amp; window deductions</p>
+        <p class="mt-1 text-slate-600">
+          A standard interior door covers about 20 sq ft (roughly 3&prime; &times; 6.67&prime;). A standard window
+          covers about 15 sq ft. Subtract doors &times; 20 and windows &times; 15 from the total area. For 1 door
+          and 1 window: -20 - 15 = <strong>-35 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Coats &amp; waste</p>
+        <p class="mt-1 text-slate-600">
+          Multiply the net area by the number of coats (1, 2 or 3), then multiply by 1.1 to add 10% for waste.
+          With 2 coats: net area &times; 2 &times; 1.1 = <strong>final square footage</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Gallons needed</p>
+        <p class="mt-1 text-slate-600">
+          Divide the final square footage by 350 (the typical coverage of one gallon) and round up to the nearest
+          whole number. This ensures you always have enough paint.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 12&prime; &times; 14&prime; bedroom with 8&prime; ceilings, 1 door, 2 windows, painting walls and ceiling with 2 coats.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Wall area:</span> <span class="text-slate-600">2 &times; (12 + 14) &times; 8 = 416 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Ceiling area:</span> <span class="text-slate-600">12 &times; 14 = 168 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Deductions:</span> <span class="text-slate-600">-1 door (20) - 2 windows (30) = -50 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Net area:</span> <span class="text-slate-600">416 + 168 - 50 = 534 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">With waste & coats:</span> <span class="text-slate-600">534 &times; 2 coats &times; 1.1 = 1,174.8 sq ft</span></div>
+        <div><span class="font-medium text-slate-700">Gallons:</span> <span class="text-slate-600">1,174.8 &divide; 350 = 3.36, round up to <strong>4 gallons</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for the paint calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Home improvement</h3>
+        <p class="mt-1 text-sm text-slate-600">Planning to repaint a bedroom, living room, or entire floor? Measure each room and add up the gallons needed. This calculator prevents you from buying too much (wasted money) or too little (extra trips to the store).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎨</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Interior design</h3>
+        <p class="mt-1 text-sm text-slate-600">When designing a color scheme for a space, knowing the exact paint quantity helps budget accurately. Factor in accent walls, ceiling color changes, and trim paint for a complete room transformation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">👷</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Contractor estimates</h3>
+        <p class="mt-1 text-sm text-slate-600">Professional painters can use this tool to generate quick material estimates for client proposals. Include labor, primer, and supplies on top of the paint gallons to build a complete quote from one quick calculation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">New construction</h3>
+        <p class="mt-1 text-sm text-slate-600">Builders and developers painting multiple units can batch-calculate paint needs room by room. The uniform ceiling heights and standard window sizes in new builds make the estimates especially accurate.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for buying paint</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Buy extra for touch-ups</h3>
+        <p class="mt-1 text-sm text-slate-600">Even with the 10% waste buffer built into the calculator, it is smart to buy one extra quart of each color for future touch-ups. Store it in a cool, dry place with the lid sealed and the can labeled with the room and color name. Minor scuffs and marks happen — having matching paint on hand saves a frustrating color-matching trip later.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Primer adds a coat</h3>
+        <p class="mt-1 text-sm text-slate-600">If you are painting over a dark color, bare drywall, or a porous surface like fresh spackle, you need a coat of primer first. Primer covers about the same area as paint (350-400 sq ft per gallon), so count it as an extra coat in the calculator. Many paints now include primer, but dedicated primer is still better for blocking stains and ensuring even coverage.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Textured walls need more paint</h3>
+        <p class="mt-1 text-sm text-slate-600">Popcorn ceilings, knockdown texture, orange peel walls, and brick all absorb significantly more paint than smooth drywall. Expect to use 20-30% more paint for heavily textured surfaces. You can adjust for this by increasing the waste factor mentally — for example, choose a higher coverage estimate or simply add 20% to the gallon total the calculator gives you.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Sheen matters for coverage</h3>
+        <p class="mt-1 text-sm text-slate-600">Flat and matte paints tend to hide imperfections well and apply evenly. Higher sheens (eggshell, satin, semi-gloss, gloss) may require more careful application but are easier to clean. The coverage per gallon is roughly the same across sheens from the same brand, so the calculator works for any finish.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the paint coverage calculator</h2>
+    <p class="mt-2 text-slate-600">
+      This calculator is most useful before any painting project — large or small. For a single bedroom, it tells
+      you whether one gallon is enough or if you need two. For a whole-house repaint, you can run each room
+      separately and add up the totals to place a single accurate order at the paint store. The calculator also
+      helps you compare costs between different paint brands and quality tiers: once you know you need 4 gallons,
+      you can multiply by the per-gallon price of each option to see the true material cost of your project.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Renters painting a room back to its original color before moving out can use the calculator to buy exactly
+      what they need. DIYers planning a weekend project can avoid the frustration of running out of paint halfway
+      through the second coat. Even experienced painters benefit from a quick check — mental math mistakes are
+      easy to make when you are estimating multiple rooms, and a single gallon of premium paint can cost $50 or
+      more, so accuracy matters.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The paint calculator is also helpful when deciding between paint and wallpaper, or when budgeting for a
+      full interior renovation. By converting room dimensions into a precise gallon count, you remove one of
+      the biggest uncertainties in any painting project. Combine it with our other home improvement tools to
+      plan your entire renovation budget from start to finish.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/tip-pooling-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Tip Pooling Calculator</a>
+      <a href="/tools/moon-phase-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Moon Phase Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function ceil(n) {
+      return Math.ceil(n);
+    }
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const W = parseFloat(el('width').value);
+      const H = parseFloat(el('height').value);
+      const doors = parseInt(el('doors').value, 10) || 0;
+      const windows = parseInt(el('windows').value, 10) || 0;
+      const paintCeil = el('ceil').checked;
+      const paintTrim = el('trim').checked;
+      const coatsBtn = document.querySelector('.coat-btn.bg-indigo-100');
+      const coats = coatsBtn ? parseInt(coatsBtn.dataset.coats, 10) : 2;
+
+      if (!L || !W || !H || L <= 0 || W <= 0 || H <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+
+      const walls = 2 * (L + W) * H;
+      const ceiling = paintCeil ? L * W : 0;
+      const deductions = doors * 20 + windows * 15;
+      let trimArea = 0;
+      if (paintTrim) {
+        trimArea = (2 * (L + W)) * 0.5;
+      }
+      const netArea = walls + ceiling - deductions + trimArea;
+      const totalArea = netArea * coats * 1.1;
+      const perCoat = Math.ceil(netArea * 1.1 / 350);
+      const totalGallons = Math.ceil(totalArea / 350);
+
+      el('r-walls').textContent = walls.toFixed(0) + ' sq ft';
+      el('r-ceil').textContent = ceiling.toFixed(0) + ' sq ft';
+      el('r-deduct').textContent = '-' + deductions.toFixed(0) + ' sq ft';
+      el('r-total').textContent = totalArea.toFixed(0) + ' sq ft';
+      el('r-per').textContent = totalGallons + ' gallon' + (totalGallons !== 1 ? 's' : '');
+      el('r-total-g').textContent = perCoat + ' gallon' + (perCoat !== 1 ? 's' : '') + ' per coat';
+
+      el('results').classList.remove('hidden');
+    }
+
+    el('calc-btn').addEventListener('click', update);
+
+    document.querySelectorAll('.coat-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.coat-btn').forEach((b) => {
+          b.className = 'coat-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+        });
+        btn.className = 'coat-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+      });
+    });
+
+    [el('length'), el('width'), el('height'), el('doors'), el('windows'), el('ceil'), el('trim')].forEach((e) => {
+      e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') update(); });
+    });
+  </script>
+</ToolLayout>

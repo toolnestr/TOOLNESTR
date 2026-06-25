@@ -1,0 +1,431 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+
+const title = 'Tip Pooling Calculator';
+const description = 'Split tips fairly among staff members based on hours worked or contribution points.';
+const intro = 'Split tips fairly among staff by hours worked or contribution level.';
+const category = { id: 'tools', name: 'General Tools' };
+const faqs = [
+  { q: 'How are tips divided?', a: 'By proportional share — each person gets a percentage of the total based on their contribution.' },
+  { q: 'What distribution methods are available?', a: 'By hours worked or by points (for different roles with different weights).' },
+  { q: 'Can I include tips from multiple days?', a: 'Yes — enter total tips for the period, days, and hours per person.' },
+  { q: 'Is the calculation fair?', a: 'Points-based distribution accounts for different role contributions, not just time.' },
+];
+---
+
+<ToolLayout {title} {description} {intro} {category} {faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="space-y-4">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Total tip amount ($)</span>
+          <input id="total-tip" type="number" min="0" step="any" placeholder="e.g. 500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Distribution method</span>
+          <select id="method" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="hours">By Hours Worked</option>
+            <option value="points">By Contribution Points</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm font-medium text-slate-700">Number of staff</span>
+          <input id="staff-count" type="number" min="1" max="50" value="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+        </label>
+      </div>
+
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-sm font-medium text-slate-700">Staff members</span>
+          <span id="method-label" class="text-xs text-slate-400">Enter hours worked per person</span>
+        </div>
+        <div id="staff-rows" class="space-y-2"></div>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="calc-btn" class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300">Calculate split</button>
+        <button id="reset-btn" class="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50">Reset</button>
+      </div>
+
+      <div id="results" class="hidden">
+        <div class="mb-3 flex items-center justify-between">
+          <span class="text-sm font-medium text-slate-700">Results</span>
+          <span class="text-xs text-slate-400">Total tip: <span id="r-total-tip" class="font-semibold text-slate-700"></span></span>
+        </div>
+        <div class="overflow-hidden rounded-xl border border-slate-200">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+                <th class="px-4 py-3">Staff member</th>
+                <th class="px-4 py-3" id="th-value">Hours</th>
+                <th class="px-4 py-3">Share %</th>
+                <th class="px-4 py-3">Tip amount</th>
+                <th class="px-4 py-3" id="th-rate">Eff. hourly rate</th>
+              </tr>
+            </thead>
+            <tbody id="results-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="warn" class="hidden rounded-xl bg-amber-50 p-3 text-sm text-amber-800"></div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="800" height="220" role="img" aria-labelledby="pool-title pool-desc">
+      <title id="pool-title">Tip Pool Proportional Split Diagram</title>
+      <desc id="pool-desc">Flow diagram showing a tip pool divided proportionally among three staff members by their share percentage</desc>
+      <defs>
+        <marker id="pool-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0 0 L8 3 L0 6" fill="#94a3b8" />
+        </marker>
+      </defs>
+
+      <rect x="300" y="20" width="200" height="50" rx="10" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <text x="400" y="44" text-anchor="middle" fill="#4338ca" font-family="system-ui, sans-serif" font-size="15" font-weight="700">Tip Pool</text>
+      <text x="400" y="60" text-anchor="middle" fill="#6366f1" font-family="system-ui, sans-serif" font-size="12">$500.00 total</text>
+
+      <path d="M400 70 L400 95" stroke="#94a3b8" stroke-width="2" marker-end="url(#pool-arrow)" />
+      <path d="M400 95 L160 95 L160 112" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#pool-arrow)" />
+      <path d="M400 95 L400 112" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#pool-arrow)" />
+      <path d="M400 95 L640 95 L640 112" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#pool-arrow)" />
+
+      <rect x="90" y="115" width="140" height="70" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="160" y="138" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Staff A</text>
+      <text x="160" y="156" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12">40 hrs – 50%</text>
+      <text x="160" y="174" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="13" font-weight="600">$250.00</text>
+
+      <rect x="330" y="115" width="140" height="70" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="400" y="138" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Staff B</text>
+      <text x="400" y="156" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12">24 hrs – 30%</text>
+      <text x="400" y="174" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="13" font-weight="600">$150.00</text>
+
+      <rect x="570" y="115" width="140" height="70" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+      <text x="640" y="138" text-anchor="middle" fill="#92400e" font-family="system-ui, sans-serif" font-size="14" font-weight="600">Staff C</text>
+      <text x="640" y="156" text-anchor="middle" fill="#b45309" font-family="system-ui, sans-serif" font-size="12">16 hrs – 20%</text>
+      <text x="640" y="174" text-anchor="middle" fill="#d97706" font-family="system-ui, sans-serif" font-size="13" font-weight="600">$100.00</text>
+
+      <line x1="50" y1="200" x2="750" y2="200" stroke="#cbd5e1" stroke-width="1" />
+      <text x="400" y="216" text-anchor="middle" fill="#64748b" font-family="system-ui, sans-serif" font-size="12">The tip pool is split proportionally — each person's share matches their contribution to the total</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Proportional split of a $500 tip pool among three staff members based on hours worked</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the tip pooling calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Tip pooling is a method of distributing collective gratuities among a group of staff members based on their relative contribution. Instead of each person keeping only the tips they personally receive, all tips are combined into a single pool and then divided according to a fair formula. This ensures that everyone is compensated proportionally for their effort, even if some staff members had quieter sections or different roles during the shift.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator uses a straightforward proportional formula. First, it sums up the total contribution across all staff — either the total hours worked or the total points assigned. Then, each person's share is calculated as their individual contribution divided by the total, multiplied by the tip pool amount. The formula is: <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-mono">share = (individual / total) * tipPool</code>. This guarantees that the sum of all shares equals the original pool amount with no rounding discrepancies.
+    </p>
+
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Tip pool: <strong>$500.00</strong> &nbsp;|&nbsp; Staff: <strong>3</strong> &nbsp;|&nbsp; Method: <strong>By hours</strong></p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Total hours:</span> <span class="text-slate-600">40 + 24 + 16 = 80 hours</span></div>
+        <div><span class="font-medium text-slate-700">Staff A (40 hrs):</span> <span class="text-slate-600">40/80 &times; $500 = <strong>$250.00</strong> (50%)</span></div>
+        <div><span class="font-medium text-slate-700">Staff B (24 hrs):</span> <span class="text-slate-600">24/80 &times; $500 = <strong>$150.00</strong> (30%)</span></div>
+        <div><span class="font-medium text-slate-700">Staff C (16 hrs):</span> <span class="text-slate-600">16/80 &times; $500 = <strong>$100.00</strong> (20%)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Distribution methods compared</h2>
+    <p class="mt-2 text-slate-600">
+      The calculator supports two distribution methods, each suited to different workplace structures. Understanding the difference helps you choose the right approach for your team.
+    </p>
+
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">By hours worked</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          This method divides the tip pool in proportion to the number of hours each person worked during the period. It is the simplest and most transparent approach. Everyone's time is valued equally, so a person who worked 30 hours receives twice the share of someone who worked 15 hours. This method works well when all staff have similar roles or when the primary variable in contribution is time on the clock.
+        </p>
+        <p class="mt-2 text-sm text-slate-600">
+          The effective hourly tip rate is the same for everyone in this method, which makes it easy to explain and justify. If the pool is $500 and total hours are 100, each hour is worth $5.00, so each person earns $5.00 per hour in tips regardless of their role.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">By contribution points</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          This method assigns different point values to different roles, reflecting their relative contribution to the guest experience. For example, a server might be assigned 1.0 point per hour, a bartender 1.2 points per hour, and a busser 0.8 points per hour. The total points for each person are multiplied by the hours they worked, and tips are distributed proportionally to those weighted points.
+        </p>
+        <p class="mt-2 text-sm text-slate-600">
+          This approach recognizes that not all roles contribute equally to the service experience. A bartender crafting complex cocktails or a server managing multiple tables may have a higher impact on tips than a food runner. Points-based distribution is more nuanced and fair in multi-role environments, but it requires agreement on the point values upfront.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Use cases for tip pooling</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🍽️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Restaurant and bar staff</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Restaurant tip pooling is the most common use case. Front-of-house staff like servers, bartenders, and hosts, along with back-of-house staff like cooks and dishwashers, may all share in the tip pool. Using the hours-based method keeps things simple for a front-of-house pool, while the points-based method allows you to factor in role differences when including both front and back of house. Many restaurants pool tips for an entire shift and split them based on hours worked, sometimes with a points multiplier for senior staff or specialized roles.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎪</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Event catering and banquets</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Event catering often involves a large team working across multiple functions. A wedding caterer, for example, may have servers, bartenders, chefs, and setup staff each working different hours over the course of the event. The tip pool might include a service charge or gratuity added to the catering bill. The hours-based method works well here because the event has a defined duration and each staff member's hours are tracked. The calculator makes it easy to compute each person's share even when the team size varies significantly between events.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💇</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Salon and spa staff</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Salons and spas frequently pool tips among stylists, nail technicians, massage therapists, and support staff. The points-based method is particularly useful here because different services have different rates and gratuity expectations. A master stylist with a higher service price may attract larger tips than a junior stylist or a shampoo assistant. Assigning point values based on role, experience, or service type ensures that the tip distribution reflects each person's contribution to the overall client experience. The calculator handles this gracefully by letting you enter points per person rather than just hours.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚚</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Food trucks and pop-ups</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          Food trucks and pop-up restaurants often operate with a small, rotating team. Since team members may work different shifts on different days, a daily or weekly tip pool ensures fair compensation regardless of which specific service generated the tips. The hours-based method is straightforward for these small teams. The calculator lets you quickly recompute the split each day as the team composition and hours change. Being transparent about the tip pool formula also helps build trust in small teams where everyone wears multiple hats.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for fair tip pooling</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Agree on the method beforehand</h3>
+        <p class="mt-1 text-sm text-slate-600">The most important step in tip pooling is deciding on the distribution method before the shift or pay period begins. Changing the formula after tips have been collected can lead to disputes and resentment. Present the chosen method to all staff members, explain how it works, and get their agreement. Whether you choose hours-based or points-based, consistency and transparency are essential for maintaining team morale.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Document the tip pooling policy</h3>
+        <p class="mt-1 text-sm text-slate-600">Put your tip pooling policy in writing. Include details such as which roles are included in the pool, how points are assigned (if using the points method), what period the pool covers, and how disputes will be resolved. A written policy protects both the business and the employees, and it serves as a reference when questions arise. Many jurisdictions have specific legal requirements around tip pooling, so consult local labor laws to ensure compliance.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Adjust point values for different roles</h3>
+        <p class="mt-1 text-sm text-slate-600">If using the points method, review your point values periodically to ensure they still reflect the relative contributions of each role. A role that has grown in responsibility or difficulty may need a higher point value. Similarly, if you introduce new roles or change job descriptions, update the points accordingly. Fairness is not static — it evolves with your team and operations.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Communicate the results transparently</h3>
+        <p class="mt-1 text-sm text-slate-600">After calculating the tip pool, share the breakdown with the team. Showing each person's hours or points, their share percentage, and their final tip amount fosters trust and accountability. When staff members can see exactly how the math works, they are more likely to accept the outcome even if their individual share is smaller than they might have expected. The calculator's results table makes this easy to present.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">When to use the tip pooling calculator</h2>
+    <p class="mt-2 text-slate-600">
+      The tip pooling calculator is essential for any hospitality or service business where tips are shared among multiple staff members. Instead of manually calculating each person's share with a calculator or spreadsheet, you can enter the total tip amount, choose your distribution method, list the staff with their hours or points, and get an instant, error-free breakdown. This saves time at the end of every shift and ensures that the math is always correct.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For small business owners and managers, the calculator simplifies payroll preparation by providing a clear record of the tip distribution for each pay period. You can use it to answer questions from staff about how their tip amount was determined, and you can save the results for your records. Having a transparent, documented tip pool calculation also helps with tax reporting and labor law compliance in jurisdictions where tip pooling is regulated.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For staff members who want to verify their tip payout, the calculator puts the math in their own hands. If you worked a 25-hour week at a restaurant that pools tips and you want to confirm that your $187.50 payout is correct given the total pool and other staff hours, you can enter the numbers yourself and see the breakdown. This transparency reduces disputes and helps everyone feel confident that the system is fair.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Legal considerations for tip pooling</h2>
+    <p class="mt-2 text-slate-600">
+      Tip pooling is subject to various laws and regulations depending on your location. In the United States, the Fair Labor Standards Act (FLSA) permits tip pooling among employees who customarily and regularly receive tips, such as servers, bartenders, and bussers. However, employers cannot include managers or owners in the tip pool. Some states have additional requirements, such as California's prohibition on tip pooling that includes non-tipped employees like cooks and dishwashers. Always check federal, state, and local regulations before implementing a tip pooling policy.
+    </p>
+    <p class="mt-3 text-slate-600">
+      In many other countries, service charges or gratuities are handled differently. In the United Kingdom, for example, employers must distribute all service charges and tips to staff in a transparent manner, and they cannot deduct administrative fees. In Australia, tips are generally the property of the employee who receives them, but voluntary pooling arrangements are common. Understanding the legal framework in your jurisdiction is essential before setting up any tip-sharing arrangement.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <a href="/tools/paint-coverage-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">🎨</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Paint Coverage Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Estimate how much paint you need for any room or surface area.</p>
+      </a>
+      <a href="/tools/ev-vs-gas-break-even-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">⚡</span>
+        <h3 class="mt-2 font-semibold text-slate-900">EV vs Gas Break-Even Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Compare total cost of ownership between electric and gas vehicles.</p>
+      </a>
+      <a href="/tools/tip-calculator" class="rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-2xl">💵</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Tip Calculator</h3>
+        <p class="mt-1 text-xs text-slate-500">Calculate individual bill tips and per-person split for group dining.</p>
+      </a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const totalTip = $('total-tip');
+    const method = $('method');
+    const staffCount = $('staff-count');
+    const staffRows = $('staff-rows');
+    const calcBtn = $('calc-btn');
+    const resetBtn = $('reset-btn');
+    const results = $('results');
+    const resultsBody = $('results-body');
+    const warn = $('warn');
+    const methodLabel = $('method-label');
+    const thValue = $('th-value');
+    const thRate = $('th-rate');
+    const rTotalTip = $('r-total-tip');
+
+    function fmt(n) {
+      return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtPct(n) {
+      return n.toFixed(1) + '%';
+    }
+
+    function generateRows(count, usePoints) {
+      const label = usePoints ? 'Points (role weight)' : 'Hours worked';
+      methodLabel.textContent = usePoints
+        ? 'Enter points per person (e.g. server=1, bartender=1.2, busser=0.8)'
+        : 'Enter hours worked per person';
+      thValue.textContent = usePoints ? 'Points' : 'Hours';
+      thRate.style.display = usePoints ? 'none' : 'table-cell';
+
+      let html = '';
+      const names = usePoints
+        ? ['Alex (Server)', 'Jordan (Bartender)', 'Casey (Busser)']
+        : ['Alex', 'Jordan', 'Casey'];
+      const vals = usePoints ? ['40', '24', '16'] : ['40', '24', '16'];
+
+      for (let i = 0; i < count; i++) {
+        const n = names[i] || 'Staff ' + (i + 1);
+        const v = vals[i] || '';
+        html += '<div class="staff-row flex items-center gap-2">';
+        html += '<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">' + (i + 1) + '</span>';
+        html += '<input type="text" placeholder="Name" value="' + n + '" class="staff-name w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />';
+        html += '<input type="number" min="0" step="any" placeholder="' + (usePoints ? 'Points' : 'Hours') + '" value="' + v + '" class="staff-value w-28 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />';
+        html += '<button class="remove-staff rounded-lg border border-red-200 px-2 py-2 text-xs text-red-500 transition hover:bg-red-50" title="Remove">&#10005;</button>';
+        html += '</div>';
+      }
+
+      staffRows.innerHTML = html;
+
+      document.querySelectorAll('.remove-staff').forEach(function (btn, idx) {
+        btn.addEventListener('click', function () {
+          const currentCount = parseInt(staffCount.value, 10) || 1;
+          if (currentCount <= 1) return;
+          staffCount.value = currentCount - 1;
+          generateRows(currentCount - 1, method.value === 'points');
+        });
+      });
+
+      if (!usePoints) {
+        document.querySelectorAll('.staff-value').forEach(function (input) {
+          input.addEventListener('input', function () {
+            updateRateHeaders();
+          });
+        });
+      }
+    }
+
+    function updateRateHeaders() {
+      const usePoints = method.value === 'points';
+      thRate.style.display = usePoints ? 'none' : 'table-cell';
+    }
+
+    function calculate() {
+      warn.classList.add('hidden');
+      results.classList.add('hidden');
+
+      const tip = parseFloat(totalTip.value);
+      if (isNaN(tip) || tip <= 0) {
+        warn.textContent = 'Please enter a valid total tip amount greater than zero.';
+        warn.classList.remove('hidden');
+        return;
+      }
+
+      const usePoints = method.value === 'points';
+      const rows = document.querySelectorAll('.staff-row');
+
+      if (rows.length === 0) {
+        warn.textContent = 'Please add at least one staff member.';
+        warn.classList.remove('hidden');
+        return;
+      }
+
+      const staff = [];
+      let total = 0;
+
+      rows.forEach(function (row) {
+        const name = row.querySelector('.staff-name').value.trim() || 'Staff';
+        const val = parseFloat(row.querySelector('.staff-value').value) || 0;
+        staff.push({ name: name, value: val });
+        total += val;
+      });
+
+      if (total <= 0) {
+        warn.textContent = 'Total ' + (usePoints ? 'points' : 'hours') + ' must be greater than zero.';
+        warn.classList.remove('hidden');
+        return;
+      }
+
+      rTotalTip.textContent = fmt(tip);
+      const valueLabel = usePoints ? 'Points' : 'Hours';
+
+      let bodyHtml = '';
+      staff.forEach(function (s) {
+        const sharePct = (s.value / total) * 100;
+        const tipAmt = (s.value / total) * tip;
+        const hourlyRate = (!usePoints && s.value > 0) ? tipAmt / s.value : null;
+
+        bodyHtml += '<tr>';
+        bodyHtml += '<td class="px-4 py-3 font-medium text-slate-900">' + s.name + '</td>';
+        bodyHtml += '<td class="px-4 py-3 text-slate-700">' + s.value.toFixed(1) + '</td>';
+        bodyHtml += '<td class="px-4 py-3 text-slate-700">' + fmtPct(sharePct) + '</td>';
+        bodyHtml += '<td class="px-4 py-3 font-semibold text-indigo-700">' + fmt(tipAmt) + '</td>';
+        bodyHtml += '<td class="px-4 py-3 text-slate-700">' + (hourlyRate !== null ? fmt(hourlyRate) + '/hr' : '&mdash;') + '</td>';
+        bodyHtml += '</tr>';
+      });
+
+      bodyHtml += '<tr class="bg-slate-50 font-semibold text-slate-900">';
+      bodyHtml += '<td class="px-4 py-3">Total</td>';
+      bodyHtml += '<td class="px-4 py-3">' + total.toFixed(1) + '</td>';
+      bodyHtml += '<td class="px-4 py-3">100%</td>';
+      bodyHtml += '<td class="px-4 py-3 text-indigo-700">' + fmt(tip) + '</td>';
+      bodyHtml += '<td class="px-4 py-3">&mdash;</td>';
+      bodyHtml += '</tr>';
+
+      resultsBody.innerHTML = bodyHtml;
+      results.classList.remove('hidden');
+    }
+
+    function reset() {
+      totalTip.value = '';
+      method.value = 'hours';
+      staffCount.value = 3;
+      results.classList.add('hidden');
+      warn.classList.add('hidden');
+      generateRows(3, false);
+    }
+
+    method.addEventListener('change', function () {
+      const count = parseInt(staffCount.value, 10) || 2;
+      generateRows(count, method.value === 'points');
+    });
+
+    staffCount.addEventListener('change', function () {
+      let count = parseInt(staffCount.value, 10) || 1;
+      count = Math.max(1, Math.min(50, count));
+      staffCount.value = count;
+      generateRows(count, method.value === 'points');
+    });
+
+    calcBtn.addEventListener('click', calculate);
+
+    resetBtn.addEventListener('click', reset);
+
+    generateRows(3, false);
+  </script>
+</ToolLayout>
