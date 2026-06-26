@@ -76,7 +76,7 @@ export const tools = [
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: false, status: 'soon' },
 
   // ── Networking & IP Tools ──
-  { slug: 'ip-tracker', title: 'IP Address Tracker', short: 'Trace any IP address — location, ISP, ASN and timezone.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
+  { slug: 'ip-tracker', title: 'IP Address Tracker', short: 'Trace any IP address — location, ISP, ASN and timezone.', category: 'networking', emoji: '🌐', enabled: true, status: 'live', flagship: true },
   { slug: 'what-is-my-ip', title: 'What Is My IP Address', short: 'See your public IP, location, ISP and browser info instantly.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
   { slug: 'subnet-calculator', title: 'IPv4 Subnet Calculator', short: 'Calculate subnet masks, network ranges and host counts.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'cidr-calculator', title: 'CIDR / IP Range Calculator', short: 'Calculate CIDR notation, IP ranges and prefix lengths.', category: 'networking', emoji: '📐', enabled: true, status: 'live' },
@@ -221,7 +221,7 @@ export const tools = [
   { slug: 'readability-checker', title: 'Text Readability Checker', short: 'Flesch-Kincaid, Gunning Fog & SMOG readability scores.', category: 'seo', emoji: '📖', enabled: true, status: 'live' },
   { slug: 'keyword-extractor', title: 'Keyword Extractor', short: 'Extract most frequent words and phrases from text.', category: 'seo', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'heading-hierarchy-checker', title: 'Heading Hierarchy Checker', short: 'Validate H1 to H6 heading structure from pasted HTML.', category: 'seo', emoji: '📐', enabled: true, status: 'live' },
-  { slug: 'seo-analyzer', title: 'SEO Analyzer', short: 'Full-page SEO audit — content, technical, performance & accessibility scores.', category: 'seo', emoji: '🔬', enabled: true, status: 'live' },
+  { slug: 'seo-analyzer', title: 'SEO Analyzer', short: 'Full-page SEO audit — content, technical, performance & accessibility scores.', category: 'seo', emoji: '🔬', enabled: true, status: 'live', flagship: true },
 
   // ── Converters ──
   { slug: 'csv-to-json', title: 'CSV ↔ JSON Converter', short: 'Convert CSV data to JSON and back — bidirectional.', category: 'converters', emoji: '📊', enabled: true, status: 'live' },
