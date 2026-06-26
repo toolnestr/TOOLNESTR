@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ToolCard from '../components/ToolCard.astro';
-import { categories, toolsByCategory, liveTools, tools } from '../data/tools.js';
+import { categories, toolsByCategory, liveTools, tools, featuredTools, totalInCategory } from '../data/tools.js';
 import { site } from '../data/site.js';
 
 const faqs = [
@@ -32,6 +32,12 @@ const catIcons = {
   'time-date': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
   charts: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" /><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" /></svg>',
 };
+
+// Pre-compute featured tool slugs per category
+const featuredSlugs = {};
+categories.forEach((cat) => {
+  featuredSlugs[cat.id] = new Set(featuredTools(cat.id).map((t) => t.slug));
+});
 
 // Structured data: tells Google this is a website + a list of FAQs.
 const jsonLd = {
@@ -77,22 +83,59 @@ const jsonLd = {
     </div>
   </section>
 
-  <!-- Tool categories -->
-  <div class="mx-auto max-w-6xl px-4 pb-20">
-    {categories.map((cat, idx) => (
-      <section
-        id={cat.id}
-        class="category-section scroll-mt-16 pt-2 sm:pt-12"
-      >
-        <h2 class="mb-5 flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
-          <span class="inline-flex h-7 w-7 items-center justify-center text-indigo-500 dark:text-indigo-400" set:html={catIcons[cat.id]} />
+  <!-- Category filter pills -->
+  <div class="sticky top-[57px] z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
+    <div class="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 py-3 text-sm font-medium scrollbar-hide">
+      <button data-pill="all" class="cat-pill rounded-full bg-indigo-600 px-4 py-1.5 text-white shadow-sm transition dark:bg-indigo-500">All</button>
+      {categories.map((cat) => (
+        <button data-pill={cat.id} class="cat-pill rounded-full border border-slate-300 bg-white px-4 py-1.5 text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
           {cat.name}
-        </h2>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {toolsByCategory(cat.id).filter((t) => t.enabled).map((tool) => <ToolCard tool={tool} />)}
-        </div>
-      </section>
-    ))}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <!-- Tool categories -->
+  <div id="cat-container" class="mx-auto max-w-6xl px-4 pb-20">
+    {categories.map((cat, idx) => {
+      const catTools = toolsByCategory(cat.id).filter((t) => t.enabled);
+      const featured = catTools.filter((t) => featuredSlugs[cat.id].has(t.slug));
+      const extra = catTools.filter((t) => !featuredSlugs[cat.id].has(t.slug));
+      const total = totalInCategory(cat.id);
+      return (
+        <section
+          id={cat.id}
+          class="category-section scroll-mt-16 pt-2 sm:pt-12"
+        >
+          <h2 class="mb-5 flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
+            <span class="inline-flex h-7 w-7 items-center justify-center text-indigo-500 dark:text-indigo-400" set:html={catIcons[cat.id]} />
+            {cat.name}
+          </h2>
+          <div class="cat-grid grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((tool) => (
+              <div class="tool-wrapper"><ToolCard tool={tool} /></div>
+            ))}
+          </div>
+          {extra.length > 0 && (
+            <>
+              <div class="cat-grid extra-grid mt-4 hidden">
+                {extra.map((tool) => (
+                  <div class="tool-wrapper"><ToolCard tool={tool} /></div>
+                ))}
+              </div>
+              <div class="mt-5 text-center">
+                <button
+                  class="view-all-btn inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-5 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                  data-category={cat.id}
+                >
+                  View all {total} {cat.name} tools →
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      );
+    })}
 
     <p id="no-results" class="hidden py-16 text-center text-slate-500">
       No tools match your search yet — more are on the way!
@@ -212,24 +255,83 @@ const jsonLd = {
     });
 
     // ── Search filter ──
-    var input = document.getElementById('tool-search');
-    var cards = Array.from(document.querySelectorAll('.tool-card'));
-    var sections = Array.from(document.querySelectorAll('.category-section'));
-    var noResults = document.getElementById('no-results');
+    (function () {
+      var input = document.getElementById('tool-search');
+      if (!input) return;
+      var wrappers = Array.from(document.querySelectorAll('.tool-wrapper'));
+      var sections = Array.from(document.querySelectorAll('.category-section'));
+      var noResults = document.getElementById('no-results');
+      var extraGrids = Array.from(document.querySelectorAll('.extra-grid'));
+      var viewAllBtns = Array.from(document.querySelectorAll('.view-all-btn'));
 
-    input.addEventListener('input', function () {
-      var q = input.value.trim().toLowerCase();
-      cards.forEach(function (card) {
-        var match = card.dataset.name.includes(q);
-        card.style.display = match ? '' : 'none';
+      input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        // Show all extras when searching
+        extraGrids.forEach(function (g) { g.classList.remove('hidden'); });
+        viewAllBtns.forEach(function (b) { b.classList.add('hidden'); });
+
+        wrappers.forEach(function (w) {
+          var card = w.querySelector('.tool-card');
+          var match = card && card.dataset.name && card.dataset.name.includes(q);
+          w.style.display = match ? '' : 'none';
+        });
+
+        var anyVisible = false;
+        sections.forEach(function (s) {
+          var visible = s.querySelectorAll('.tool-wrapper:not([style*="display: none"])').length;
+          s.style.display = visible ? '' : 'none';
+          if (visible) anyVisible = true;
+        });
+        noResults.classList.toggle('hidden', anyVisible);
+
+        // Reset category pills when searching
+        var catPills = Array.from(document.querySelectorAll('.cat-pill'));
+        catPills.forEach(function (p) { p.classList.remove('bg-indigo-600', 'text-white', 'dark:bg-indigo-500'); });
+        var allPill = document.querySelector('[data-pill="all"]');
+        if (allPill) allPill.classList.add('bg-indigo-600', 'text-white', 'dark:bg-indigo-500');
       });
-      var anyVisible = false;
-      sections.forEach(function (section) {
-        var visible = section.querySelectorAll('.tool-card:not([style*="display: none"])').length;
-        section.style.display = visible ? '' : 'none';
-        if (visible) anyVisible = true;
+    })();
+
+    // ── View all toggle ──
+    document.querySelectorAll('.view-all-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var cat = btn.dataset.category;
+        var grid = btn.parentElement.previousElementSibling;
+        if (grid && grid.classList.contains('extra-grid')) {
+          var hidden = grid.classList.contains('hidden');
+          grid.classList.toggle('hidden');
+          btn.textContent = hidden ? 'Show less ↑' : 'View all ' + btn.textContent.split(' ')[2] + ' ' + cat.charAt(0).toUpperCase() + cat.slice(1) + ' tools →';
+        }
       });
-      noResults.classList.toggle('hidden', anyVisible);
     });
+
+    // ── Category filter pills ──
+    (function () {
+      var pills = Array.from(document.querySelectorAll('.cat-pill'));
+      var sections = Array.from(document.querySelectorAll('.category-section'));
+      var extraGrids = Array.from(document.querySelectorAll('.extra-grid'));
+      var viewAllBtns = Array.from(document.querySelectorAll('.view-all-btn'));
+      var noResults = document.getElementById('no-results');
+      var inactiveClass = 'cat-pill rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300';
+      var activeClass = 'cat-pill rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition dark:bg-indigo-500';
+
+      pills.forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          pills.forEach(function (p) { p.className = inactiveClass; });
+          pill.className = activeClass;
+
+          var target = pill.dataset.pill;
+          var searchInput = document.getElementById('tool-search');
+          if (searchInput) searchInput.value = '';
+          extraGrids.forEach(function (g) { g.classList.add('hidden'); });
+          viewAllBtns.forEach(function (b) { b.classList.remove('hidden'); });
+
+          sections.forEach(function (s) {
+            s.style.display = target === 'all' || s.id === target ? '' : 'none';
+          });
+          noResults.classList.add('hidden');
+        });
+      });
+    })();
   </script>
 </BaseLayout>

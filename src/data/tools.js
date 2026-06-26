@@ -482,7 +482,89 @@ export const tools = [
   { slug: 'yeast-converter', title: 'Yeast Converter', short: 'Active dry to instant yeast conversion.', category: 'cooking', emoji: '🧫', enabled: true, status: 'live' },
 ];
 
+// Search-priority ranking (higher = more Google search volume).
+// Only the top ~4 tools per category appear on the homepage.
+const priorities = {
+  // ── Everyday ──
+  'word-counter': 100, 'percentage-calculator': 90, 'age-calculator': 80, 'unit-converter': 70,
+  'discount-calculator': 60, 'tip-calculator': 50, 'gpa-calculator': 50, 'case-converter': 40,
+  'tax-calculator': 40, 'date-difference': 30, 'hours-calculator': 30,
+  // ── Health ──
+  'bmi-calculator': 100, 'calorie-calculator': 90, 'bmr-calculator': 80, 'ideal-weight': 70,
+  'body-fat': 60, 'sleep-calculator': 60, 'calorie-deficit-calculator': 60, 'water-intake-calculator': 50,
+  'dog-age-calculator': 40, 'ovulation-calculator': 40, 'pace-calculator': 30,
+  // ── Finance ──
+  'compound-interest': 100, 'salary-calculator': 90, 'profit-margin': 80, 'inflation-calculator': 70,
+  'investment-calculator': 60, 'mortgage-calculator': 60, 'break-even': 50, 'roas-calculator': 40,
+  'savings-goal-calculator': 40, 'crypto-profit-calculator': 40,
+  // ── Networking ──
+  'what-is-my-ip': 100, 'ip-tracker': 90, 'dns-lookup': 80, 'whois-lookup': 70,
+  'port-checker': 60, 'ssl-certificate-checker': 60, 'subnet-calculator': 50, 'mac-address-lookup': 50,
+  'blacklist-checker': 40, 'dns-propagation-checker': 40, 'uptime-checker': 40,
+  // ── Math ──
+  'scientific-calculator': 100, 'fraction-calculator': 90, 'standard-deviation': 80, 'average-calculator': 70,
+  'random-number': 60, 'quadratic-equation-solver': 60, 'prime-number-checker': 60,
+  'triangle-calculator': 50, 'gcd-lcm-calculator': 40,
+  // ── PDF ──
+  'merge-pdf': 100, 'jpg-to-pdf': 90, 'split-pdf': 80, 'pdf-to-jpg': 70,
+  'pdf-password-protect': 60, 'pdf-watermark': 50, 'pdf-to-text': 50,
+  // ── Creators ──
+  'fancy-text': 100, 'hashtag-generator': 90, 'emoji-picker': 80, 'love-calculator': 70,
+  'text-repeater': 60,
+  // ── Developers ──
+  'json-formatter': 100, 'password-generator': 90, 'qr-generator': 80, 'base64': 70,
+  'color-converter': 60, 'timestamp-converter': 60, 'temporary-email': 50,
+  'number-base-converter': 40,
+  // ── Engineering ──
+  'ohms-law-calculator': 100, 'resistor-color-code': 90, 'power-calculator': 80, 'voltage-drop-calculator': 70,
+  'solar-panel-output-calculator': 60, 'led-resistor-calculator': 50, 'wire-gauge-calculator': 50,
+  'conduit-fill-calculator': 40,
+  // ── Automotive ──
+  'ev-range-calculator': 100, 'ev-charging-time-calculator': 90, 'tire-size-calculator': 80, 'ev-charging-cost-calculator': 70,
+  'ev-vs-gas-savings': 60, 'fuel-cost-calculator': 60, 'car-depreciation-calculator': 50,
+  'gear-ratio-calculator': 50,
+  // ── Construction ──
+  'square-footage-calculator': 100, 'concrete-calculator': 90, 'tile-calculator': 80, 'roofing-calculator': 70,
+  'flooring-calculator': 60, 'fence-calculator': 60, 'drywall-calculator': 50,
+  'brick-calculator': 50, 'deck-calculator': 40, 'paver-calculator': 40, 'stair-calculator': 40,
+  // ── Cooking ──
+  'cooking-measurement-converter': 100, 'oven-temperature-converter': 90, 'baking-conversion-calculator': 80, 'recipe-scaling-calculator': 70,
+  'yeast-converter': 60, 'rice-water-ratio-calculator': 50, 'meat-roasting-time-calculator': 50,
+  // ── Images ──
+  'image-resizer': 100, 'image-compressor': 90, 'image-cropper': 80, 'image-to-png': 70,
+  'image-to-jpg': 60, 'image-to-webp': 50, 'color-contrast-checker': 50,
+  // ── Security ──
+  'password-strength-tester': 100, 'md5-hash-generator': 90, 'sha256-hash-generator': 80, 'uuid-generator': 70,
+  'crc32-checksum': 60, 'hmac-generator': 50, 'random-token-generator': 40,
+  // ── Text ──
+  'lorem-ipsum-generator': 100, 'text-diff-checker': 90, 'text-cleaner': 80, 'reading-time-calculator': 70,
+  'text-reverser': 60, 'syllable-counter': 50, 'palindrome-checker': 40,
+  // ── SEO ──
+  'keyword-density-checker': 100, 'seo-analyzer': 90, 'readability-checker': 80, 'keyword-cloud-generator': 70,
+  'meta-tag-analyzer': 60, 'url-cleaner': 60, 'keyword-extractor': 50,
+  // ── Converters ──
+  'csv-to-json': 100, 'url-encoder-decoder': 90, 'json-to-yaml': 80, 'morse-code-converter': 70,
+  'json-to-xml': 60, 'text-to-binary': 50, 'text-to-hex': 40, 'html-entity-converter': 40,
+  // ── Time & Date ──
+  'world-clock': 100, 'time-zone-converter': 90, 'countdown-timer': 80, 'stopwatch': 70,
+  'business-days-calculator': 60, 'week-number-calculator': 50, 'age-in-seconds': 40,
+  // ── Charts ──
+  'bar-chart-generator': 100, 'pie-chart-generator': 90, 'line-chart-generator': 80, 'donut-chart-generator': 70,
+  'histogram-generator': 60, 'gauge-chart': 50, 'percentage-bar-chart': 40,
+};
+
 // Helpers used by pages
 export const liveTools = tools.filter((t) => t.enabled && t.status === 'live');
 export const toolsByCategory = (catId) => tools.filter((t) => t.category === catId);
 export const getTool = (slug) => tools.find((t) => t.slug === slug);
+
+/** Return the top N tools in a category, sorted by search priority descending. */
+export const featuredTools = (catId, count = 4) =>
+  tools
+    .filter((t) => t.category === catId && t.enabled)
+    .sort((a, b) => (priorities[b.slug] || 0) - (priorities[a.slug] || 0))
+    .slice(0, count);
+
+/** Total enabled tools in a category (for "View all N" links). */
+export const totalInCategory = (catId) =>
+  tools.filter((t) => t.category === catId && t.enabled && t.status === 'live').length;
