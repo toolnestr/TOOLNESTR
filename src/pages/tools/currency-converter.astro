@@ -1,0 +1,461 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'Currency Converter';
+const description =
+  'Free real-time currency converter — convert between 30+ currencies with live exchange rates from the European Central Bank. No sign-up, instant results, works on all devices.';
+
+const CURRENCIES = [
+  { code: 'USD', name: 'US Dollar',          flag: '🇺🇸' },
+  { code: 'EUR', name: 'Euro',               flag: '🇪🇺' },
+  { code: 'GBP', name: 'British Pound',      flag: '🇬🇧' },
+  { code: 'JPY', name: 'Japanese Yen',       flag: '🇯🇵' },
+  { code: 'CAD', name: 'Canadian Dollar',    flag: '🇨🇦' },
+  { code: 'AUD', name: 'Australian Dollar',  flag: '🇦🇺' },
+  { code: 'CHF', name: 'Swiss Franc',        flag: '🇨🇭' },
+  { code: 'CNY', name: 'Chinese Yuan',       flag: '🇨🇳' },
+  { code: 'INR', name: 'Indian Rupee',       flag: '🇮🇳' },
+  { code: 'MXN', name: 'Mexican Peso',       flag: '🇲🇽' },
+  { code: 'BRL', name: 'Brazilian Real',     flag: '🇧🇷' },
+  { code: 'KRW', name: 'South Korean Won',   flag: '🇰🇷' },
+  { code: 'SGD', name: 'Singapore Dollar',   flag: '🇸🇬' },
+  { code: 'HKD', name: 'Hong Kong Dollar',   flag: '🇭🇰' },
+  { code: 'NOK', name: 'Norwegian Krone',    flag: '🇳🇴' },
+  { code: 'SEK', name: 'Swedish Krona',      flag: '🇸🇪' },
+  { code: 'DKK', name: 'Danish Krone',       flag: '🇩🇰' },
+  { code: 'NZD', name: 'New Zealand Dollar', flag: '🇳🇿' },
+  { code: 'ZAR', name: 'South African Rand', flag: '🇿🇦' },
+  { code: 'TRY', name: 'Turkish Lira',       flag: '🇹🇷' },
+  { code: 'PLN', name: 'Polish Zloty',       flag: '🇵🇱' },
+  { code: 'THB', name: 'Thai Baht',          flag: '🇹🇭' },
+  { code: 'MYR', name: 'Malaysian Ringgit',  flag: '🇲🇾' },
+  { code: 'IDR', name: 'Indonesian Rupiah',  flag: '🇮🇩' },
+  { code: 'PHP', name: 'Philippine Peso',    flag: '🇵🇭' },
+  { code: 'CZK', name: 'Czech Koruna',       flag: '🇨🇿' },
+  { code: 'HUF', name: 'Hungarian Forint',   flag: '🇭🇺' },
+  { code: 'ILS', name: 'Israeli Shekel',     flag: '🇮🇱' },
+  { code: 'RON', name: 'Romanian Leu',       flag: '🇷🇴' },
+  { code: 'BGN', name: 'Bulgarian Lev',      flag: '🇧🇬' },
+];
+
+const POPULAR = ['USD','EUR','GBP','JPY','CAD','AUD','CHF','CNY','INR','MXN','BRL','KRW','SGD','HKD','NOK','NZD'];
+
+const faqs = [
+  { q: 'Where do the exchange rates come from?', a: 'Rates are sourced from the Frankfurter API, which publishes official reference rates from the European Central Bank (ECB). The ECB updates rates every business day at approximately 16:00 CET. Rates are indicative reference rates and may differ slightly from rates offered by banks or brokers.' },
+  { q: 'How often are rates updated?', a: 'The ECB publishes new reference rates on every business day (Monday to Friday). Weekend rates are the same as the previous Friday. The converter fetches the latest available rate each time you load the page or change the base currency.' },
+  { q: 'Is this converter suitable for financial transactions?', a: 'This converter is for informational and educational purposes. The rates are reference rates from the ECB and do not include bank spreads, transaction fees, or commercial markups. For actual money transfers or trades, always check with your bank or broker for their live dealing rates.' },
+  { q: 'Which currencies are supported?', a: 'The converter supports 30 major world currencies including USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, INR, and more. Cryptocurrencies and exotic currencies are not included as they are not covered by ECB reference data.' },
+  { q: 'Can I convert between any two currencies?', a: 'Yes — select any base currency and any target currency. Under the hood, all conversions are triangulated through ECB reference rates. If you select a non-EUR base, the converter fetches the EUR-based cross rates and calculates the cross rate for you.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+const toolSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Currency Converter',
+  applicationCategory: 'FinanceApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript',
+  description: 'Free real-time currency converter with live ECB rates.',
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqSchema, toolSchema]}>
+  <style is:inline>
+    :root {
+      --primary: #6366f1; --success: #10b981;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --muted: #64748b; --border: #e2e8f0;
+    }
+    .dark body { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── Hero ── */
+    .cc-hero {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4c1d95 65%, #2e1065 100%);
+      position: relative; overflow: hidden; padding: 44px 20px 56px; text-align: center;
+    }
+    .cc-hero::before { content:''; position:absolute; top:-80px; right:-80px; width:320px; height:320px; background:radial-gradient(circle,rgba(167,139,250,.22) 0%,transparent 70%); pointer-events:none; }
+    .cc-hero::after  { content:''; position:absolute; bottom:-60px; left:-60px; width:240px; height:240px; background:radial-gradient(circle,rgba(99,102,241,.18) 0%,transparent 70%); pointer-events:none; }
+    .cc-badge {
+      display:inline-flex; align-items:center; gap:5px; margin-bottom:14px;
+      background:rgba(255,255,255,.12); backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.22); color:#e0e7ff;
+      font-size:.72rem; font-weight:700; letter-spacing:.08em;
+      padding:4px 14px; border-radius:20px; position:relative; z-index:1;
+    }
+    .cc-hero h1 { font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#fff; margin-bottom:8px; letter-spacing:-.02em; position:relative; z-index:1; }
+    .cc-hero p  { font-size:1rem; color:#c4b5fd; position:relative; z-index:1; }
+
+    /* ── Wrap ── */
+    .cc-wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 0; }
+
+    /* ── Main converter card ── */
+    .converter-card {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+      padding: 24px; margin-bottom: 20px;
+    }
+
+    /* amount row */
+    .amount-row { display: flex; align-items: stretch; gap: 0; margin-bottom: 16px; }
+    .amount-input {
+      flex: 1; padding: 14px 16px; font-size: 1.5rem; font-weight: 700;
+      border: 1.5px solid var(--border); border-right: none;
+      border-radius: 12px 0 0 12px; background: var(--bg); color: var(--text);
+      outline: none; min-width: 0;
+    }
+    .amount-input:focus { border-color: var(--primary); }
+    .base-select-wrap {
+      border: 1.5px solid var(--border); border-radius: 0 12px 12px 0;
+      background: var(--bg); display: flex; align-items: center; padding: 0 12px;
+      gap: 6px; cursor: pointer; min-width: 130px;
+    }
+    .base-flag { font-size: 1.3rem; }
+    .base-code { font-size: 1rem; font-weight: 700; }
+    .base-select-wrap select {
+      position: absolute; opacity: 0; inset: 0; cursor: pointer; width: 100%;
+    }
+    .base-select-wrap { position: relative; }
+
+    /* swap + result row */
+    .result-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .swap-btn {
+      width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; transition: all .2s; flex-shrink: 0;
+    }
+    .swap-btn:hover { border-color: var(--primary); color: var(--primary); transform: rotate(180deg); }
+    .to-select-wrap {
+      border: 1.5px solid var(--border); border-radius: 12px;
+      background: var(--bg); display: flex; align-items: center; padding: 10px 14px;
+      gap: 8px; cursor: pointer; position: relative;
+    }
+    .to-select-wrap select { position: absolute; opacity: 0; inset: 0; cursor: pointer; width: 100%; }
+    .to-flag { font-size: 1.2rem; }
+    .to-code { font-size: .9rem; font-weight: 700; }
+    .to-name { font-size: .78rem; color: var(--muted); }
+
+    /* result display */
+    .result-display {
+      flex: 1; min-width: 160px; background: linear-gradient(135deg, #eef2ff, #f5f3ff);
+      border: 1.5px solid #a5b4fc; border-radius: 14px; padding: 14px 18px;
+    }
+    .dark body .result-display { background: linear-gradient(135deg, #1e1b4b, #2d2060); border-color: #4f46e5; }
+    .rd-amount { font-size: 1.6rem; font-weight: 900; color: var(--primary); line-height: 1; word-break: break-all; }
+    .rd-code   { font-size: .8rem; color: var(--muted); margin-top: 3px; }
+    .rd-rate   { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+
+    /* loading */
+    .rd-loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Rate info strip ── */
+    .rate-strip {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      padding: 10px 16px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; font-size: .8rem; color: var(--muted); margin-bottom: 20px;
+    }
+    .rate-strip .rs-rate { font-weight: 600; color: var(--text); }
+
+    /* ── Popular grid ── */
+    .popular-title { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+    .popular-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 28px; }
+    @media(min-width: 480px) { .popular-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .pop-card {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 10px 12px; cursor: pointer; transition: all .15s;
+    }
+    .pop-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .pop-card .pc-flag { font-size: 1.2rem; }
+    .pop-card .pc-code { font-size: .78rem; font-weight: 700; color: var(--muted); margin-left: 4px; }
+    .pop-card .pc-val  { font-size: 1rem; font-weight: 800; color: var(--text); margin-top: 4px; word-break: break-all; }
+    .pop-card .pc-name { font-size: .68rem; color: var(--muted); margin-top: 1px; }
+
+    /* error */
+    .error-box { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 10px; padding: 12px 16px; font-size: .88rem; color: #991b1b; margin-bottom: 16px; display: none; }
+    .dark body .error-box { background: #450a0a; color: #fca5a5; border-color: #991b1b; }
+
+    /* ── FAQ ── */
+    .faq-section { max-width: 720px; margin: 8px auto 40px; padding: 0 16px; }
+    .faq-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
+    .faq-q { padding: 14px 16px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: .93rem; }
+    .faq-q:hover { color: var(--primary); }
+    .faq-a { padding: 0 16px 14px; font-size: .88rem; color: var(--muted); line-height: 1.65; display: none; }
+    .faq-item.open .faq-a { display: block; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: transform .2s; font-size: .75rem; color: var(--muted); }
+  </style>
+
+  <!-- Hero -->
+  <div class="cc-hero">
+    <div class="cc-badge">★ FLAGSHIP TOOL</div>
+    <h1>💱 Currency Converter</h1>
+    <p>Live exchange rates from the European Central Bank — 30+ currencies</p>
+  </div>
+
+  <div class="cc-wrap">
+
+    <!-- Error box -->
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Main card -->
+    <div class="converter-card">
+      <!-- Amount + base currency -->
+      <div class="amount-row">
+        <input type="number" class="amount-input" id="amountInput" value="1" min="0" step="any" />
+        <div class="base-select-wrap" id="baseWrap">
+          <span class="base-flag" id="baseFlag">🇺🇸</span>
+          <span class="base-code" id="baseCode">USD</span>
+          <select id="baseSelect" aria-label="Base currency">
+            {CURRENCIES.map(c => <option value={c.code} selected={c.code === 'USD'}>{c.flag} {c.code} – {c.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <!-- Swap + to currency + result -->
+      <div class="result-row">
+        <button class="swap-btn" id="swapBtn" title="Swap currencies">⇄</button>
+
+        <div class="to-select-wrap" id="toWrap">
+          <span class="to-flag" id="toFlag">🇪🇺</span>
+          <div>
+            <div class="to-code" id="toCode">EUR</div>
+            <div class="to-name" id="toName">Euro</div>
+          </div>
+          <select id="toSelect" aria-label="Target currency">
+            {CURRENCIES.map(c => <option value={c.code} selected={c.code === 'EUR'}>{c.flag} {c.code} – {c.name}</option>)}
+          </select>
+        </div>
+
+        <div class="result-display" id="resultDisplay">
+          <div class="rd-loading"><div class="spinner"></div> Loading rates…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rate info strip -->
+    <div class="rate-strip" id="rateStrip" style="display:none;">
+      <span>📅 <span id="rateDate">–</span></span>
+      <span class="rs-rate" id="rateText">–</span>
+      <span style="color:var(--muted)">Source: ECB via Frankfurter</span>
+    </div>
+
+    <!-- Popular rates grid -->
+    <div id="popularSection" style="display:none;">
+      <div class="popular-title" id="popularTitle">1 USD in other currencies</div>
+      <div class="popular-grid" id="popularGrid">
+        {POPULAR.map(code => {
+          const c = CURRENCIES.find(x => x.code === code);
+          return (
+            <div class="pop-card" data-code={code} onclick={`window.setTarget('${code}')`}>
+              <div><span class="pc-flag">{c?.flag}</span><span class="pc-code">{code}</span></div>
+              <div class="pc-val" id={`pop-${code}`}>–</div>
+              <div class="pc-name">{c?.name}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <h2 class="faq-title">Frequently Asked Questions</h2>
+    {faqs.map((f) => (
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          {f.q}<span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-a">{f.a}</div>
+      </div>
+    ))}
+  </section>
+
+  <script is:inline>
+  (function () {
+    const CURRENCIES = {
+      USD:{ name:'US Dollar',          flag:'🇺🇸' },
+      EUR:{ name:'Euro',               flag:'🇪🇺' },
+      GBP:{ name:'British Pound',      flag:'🇬🇧' },
+      JPY:{ name:'Japanese Yen',       flag:'🇯🇵' },
+      CAD:{ name:'Canadian Dollar',    flag:'🇨🇦' },
+      AUD:{ name:'Australian Dollar',  flag:'🇦🇺' },
+      CHF:{ name:'Swiss Franc',        flag:'🇨🇭' },
+      CNY:{ name:'Chinese Yuan',       flag:'🇨🇳' },
+      INR:{ name:'Indian Rupee',       flag:'🇮🇳' },
+      MXN:{ name:'Mexican Peso',       flag:'🇲🇽' },
+      BRL:{ name:'Brazilian Real',     flag:'🇧🇷' },
+      KRW:{ name:'South Korean Won',   flag:'🇰🇷' },
+      SGD:{ name:'Singapore Dollar',   flag:'🇸🇬' },
+      HKD:{ name:'Hong Kong Dollar',   flag:'🇭🇰' },
+      NOK:{ name:'Norwegian Krone',    flag:'🇳🇴' },
+      SEK:{ name:'Swedish Krona',      flag:'🇸🇪' },
+      DKK:{ name:'Danish Krone',       flag:'🇩🇰' },
+      NZD:{ name:'New Zealand Dollar', flag:'🇳🇿' },
+      ZAR:{ name:'South African Rand', flag:'🇿🇦' },
+      TRY:{ name:'Turkish Lira',       flag:'🇹🇷' },
+      PLN:{ name:'Polish Zloty',       flag:'🇵🇱' },
+      THB:{ name:'Thai Baht',          flag:'🇹🇭' },
+      MYR:{ name:'Malaysian Ringgit',  flag:'🇲🇾' },
+      IDR:{ name:'Indonesian Rupiah',  flag:'🇮🇩' },
+      PHP:{ name:'Philippine Peso',    flag:'🇵🇭' },
+      CZK:{ name:'Czech Koruna',       flag:'🇨🇿' },
+      HUF:{ name:'Hungarian Forint',   flag:'🇭🇺' },
+      ILS:{ name:'Israeli Shekel',     flag:'🇮🇱' },
+      RON:{ name:'Romanian Leu',       flag:'🇷🇴' },
+      BGN:{ name:'Bulgarian Lev',      flag:'🇧🇬' },
+    };
+    const POPULAR = ['USD','EUR','GBP','JPY','CAD','AUD','CHF','CNY','INR','MXN','BRL','KRW','SGD','HKD','NOK','NZD'];
+
+    let rates = {};   // rates relative to current base
+    let base  = 'USD';
+    let target = 'EUR';
+    let rateDate = '';
+    let debounceTimer = null;
+
+    const amountInput   = document.getElementById('amountInput');
+    const baseSelect    = document.getElementById('baseSelect');
+    const toSelect      = document.getElementById('toSelect');
+    const resultDisplay = document.getElementById('resultDisplay');
+    const rateStrip     = document.getElementById('rateStrip');
+    const rateText      = document.getElementById('rateText');
+    const rateDateEl    = document.getElementById('rateDate');
+    const popularGrid   = document.getElementById('popularGrid');
+    const popularSection= document.getElementById('popularSection');
+    const popularTitle  = document.getElementById('popularTitle');
+    const errorBox      = document.getElementById('errorBox');
+
+    function fmt(n, code) {
+      if (n === null || isNaN(n)) return '–';
+      const opts = { style: 'decimal', minimumFractionDigits: 2, maximumFractionDigits: ['JPY','KRW','IDR','HUF','CLP','VND'].includes(code) ? 0 : 4 };
+      try { return new Intl.NumberFormat('en-US', opts).format(n); } catch { return n.toFixed(2); }
+    }
+
+    function updateBaseUI() {
+      const c = CURRENCIES[base] || {};
+      document.getElementById('baseFlag').textContent = c.flag || '';
+      document.getElementById('baseCode').textContent = base;
+    }
+
+    function updateTargetUI() {
+      const c = CURRENCIES[target] || {};
+      document.getElementById('toFlag').textContent = c.flag || '';
+      document.getElementById('toCode').textContent = target;
+      document.getElementById('toName').textContent = c.name || '';
+    }
+
+    function convert() {
+      const amount = parseFloat(amountInput.value);
+      if (isNaN(amount) || Object.keys(rates).length === 0) return;
+
+      if (base === target) {
+        resultDisplay.innerHTML = `<div class="rd-amount">${fmt(amount, target)}</div><div class="rd-code">${target}</div><div class="rd-rate">1 ${base} = 1 ${target}</div>`;
+        return;
+      }
+
+      const rate   = rates[target];
+      if (!rate) { resultDisplay.innerHTML = '<div class="rd-loading">Rate not available</div>'; return; }
+      const result = amount * rate;
+
+      resultDisplay.innerHTML = `
+        <div class="rd-amount">${fmt(result, target)}</div>
+        <div class="rd-code">${target} — ${CURRENCIES[target]?.name || ''}</div>
+        <div class="rd-rate">1 ${base} = ${fmt(rate, target)} ${target}</div>
+      `;
+
+      rateText.textContent = `1 ${base} = ${fmt(rate, target)} ${target}  |  1 ${target} = ${fmt(1 / rate, base)} ${base}`;
+    }
+
+    function updatePopular() {
+      const amount = parseFloat(amountInput.value) || 1;
+      POPULAR.forEach(code => {
+        const el = document.getElementById('pop-' + code);
+        if (!el) return;
+        if (code === base) { el.textContent = fmt(amount, base); return; }
+        const r = rates[code];
+        el.textContent = r ? fmt(amount * r, code) : '–';
+      });
+      popularTitle.textContent = `${fmt(parseFloat(amountInput.value) || 1, base)} ${base} in other currencies`;
+      popularSection.style.display = '';
+    }
+
+    async function fetchRates(newBase) {
+      resultDisplay.innerHTML = '<div class="rd-loading"><div class="spinner"></div> Fetching rates…</div>';
+      errorBox.style.display = 'none';
+      try {
+        const res  = await fetch(`https://api.frankfurter.app/latest?from=${newBase}`);
+        if (!res.ok) throw new Error('Rate fetch failed (' + res.status + ')');
+        const data = await res.json();
+        rates    = data.rates || {};
+        // Add base → base = 1
+        rates[newBase] = 1;
+        rateDate = data.date || '';
+        rateDateEl.textContent = rateDate ? 'Rates as of ' + rateDate : '';
+        rateStrip.style.display = '';
+        base = newBase;
+        convert();
+        updatePopular();
+      } catch (e) {
+        errorBox.textContent = '⚠ Could not fetch exchange rates: ' + e.message + '. Please check your connection and try again.';
+        errorBox.style.display = '';
+        resultDisplay.innerHTML = '<div class="rd-loading">Rate unavailable</div>';
+      }
+    }
+
+    // ── Event handlers ──
+    baseSelect.addEventListener('change', () => {
+      base = baseSelect.value;
+      updateBaseUI();
+      fetchRates(base);
+    });
+
+    toSelect.addEventListener('change', () => {
+      target = toSelect.value;
+      updateTargetUI();
+      convert();
+    });
+
+    amountInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { convert(); updatePopular(); }, 120);
+    });
+
+    document.getElementById('swapBtn').addEventListener('click', () => {
+      const tmp = base;
+      base   = target;
+      target = tmp;
+      baseSelect.value = base;
+      toSelect.value   = target;
+      updateBaseUI();
+      updateTargetUI();
+      fetchRates(base);
+    });
+
+    // Clicking a popular card sets it as the target
+    window.setTarget = function(code) {
+      if (code === base) return;
+      target = code;
+      toSelect.value = target;
+      updateTargetUI();
+      convert();
+    };
+
+    // ── Init ──
+    updateBaseUI();
+    updateTargetUI();
+    fetchRates('USD');
+  })();
+  </script>
+</BaseLayout>
