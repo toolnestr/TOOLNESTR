@@ -262,7 +262,6 @@ export const tools = [
   { slug: 'tokens-to-words', title: 'Tokens to Words Calculator', short: 'Convert between AI tokens and English words instantly.', category: 'developers', emoji: '🔤', enabled: true, status: 'live' },
   { slug: 'token-counter', title: 'Prompt Token Counter', short: 'Paste any text to estimate its token, word and character count.', category: 'developers', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'context-window-checker', title: 'AI Context Window Checker', short: 'See if your prompt fits a model context window.', category: 'developers', emoji: '📐', enabled: true, status: 'live' },
-  { slug: 'reading-time-calculator', title: 'Reading Time Calculator', short: 'Estimate reading and speaking time for any text.', category: 'text', emoji: '⏱️', enabled: true, status: 'live' },
   { slug: 'aspect-ratio-calculator', title: 'Aspect Ratio Calculator', short: 'Resize width or height while maintaining the aspect ratio.', category: 'images', emoji: '📐', enabled: true, status: 'live' },
   { slug: 'invoice-late-fee-calculator', title: 'Invoice Late Fee Calculator', short: 'Work out the late fee and total due on an overdue invoice.', category: 'finance', emoji: '📄', enabled: true, status: 'live' },
   { slug: 'savings-goal-calculator', title: 'Savings Goal Calculator', short: 'How long to reach a savings goal — or how much to save monthly.', category: 'finance', emoji: '🎯', enabled: true, status: 'live' },
@@ -344,7 +343,6 @@ export const tools = [
   { slug: 'pig-latin-translator', title: 'Pig Latin Translator', short: 'Convert English text to Pig Latin with real-time translation.', category: 'text', emoji: '🐷', enabled: true, status: 'live' },
   // ── Part B: Time & Date ──
   { slug: 'countdown-to-event-widget-generator', title: 'Countdown Widget Generator', short: 'Generate an embeddable countdown timer widget for any future date.', category: 'time-date', emoji: '⏳', enabled: true, status: 'live' },
-  { slug: 'world-clock-comparator', title: 'World Clock Comparator', short: 'Compare current times across multiple cities worldwide side by side.', category: 'time-date', emoji: '🌐', enabled: true, status: 'live' },
   { slug: 'moon-phase-calculator', title: 'Moon Phase Calculator', short: 'Find the moon phase for any date — new, quarter, gibbous, full moon.', category: 'time-date', emoji: '🌙', enabled: true, status: 'live' },
   { slug: 'zodiac-sign-calculator', title: 'Zodiac Sign Calculator', short: 'Find your Western zodiac sign based on your birth date.', category: 'time-date', emoji: '♈', enabled: true, status: 'live' },
   // ── Part B: Miscellaneous ──
