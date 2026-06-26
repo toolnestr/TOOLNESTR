@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ToolCard from '../../components/ToolCard.astro';
-import { categories, toolsByCategory, liveTools, totalInCategory } from '../../data/tools.js';
+import { categories, toolsByCategory, totalInCategory } from '../../data/tools.js';
 import { site } from '../../data/site.js';
 
 export function getStaticPaths() {
@@ -16,19 +16,58 @@ import categoryContent from '../../category-content.js';
 
 const content = categoryContent[catId];
 const description = content?.metaDesc ?? `${category.name} tools on ${site.name} — free online calculators, converters and utilities for ${category.name.toLowerCase()}. Fast, private, no sign-up.`;
-const catLabel = `${category.emoji} ${category.name}`;
-const siteTitle = `${catLabel} Tools`;
 
-const itemListJsonLd = {
+const catLabel = `${category.emoji} ${category.name}`;
+// Emoji-free title for <title> tag — avoid double "Tools" for categories whose name already ends with it
+const siteTitle = /tools?$/i.test(category.name) ? category.name : `${category.name} Tools`;
+
+// Category FAQ items — generate rich People Also Ask snippets
+const catFaqs = [
+  {
+    q: `Are ${category.name} tools free to use?`,
+    a: `Yes. Every tool in the ${category.name} category on ${site.name} is completely free with no sign-up, no account and no usage limits.`,
+  },
+  {
+    q: `Do these ${category.name} tools work on mobile?`,
+    a: `Absolutely. All ${category.name} tools are mobile-first and work smoothly on phones, tablets and desktop browsers without any installation.`,
+  },
+  {
+    q: `Is my data private when I use these tools?`,
+    a: `Yes. All calculations and processing happen directly in your browser. Your data is never uploaded to any server or stored anywhere.`,
+  },
+];
+
+// Combined JSON-LD: ItemList (with descriptions) + BreadcrumbList + FAQPage
+const pageJsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'ItemList',
-  itemListElement: catTools.map((t, i) => ({
-    '@type': 'ListItem',
-    position: i + 1,
-    url: `${site.url}/tools/${t.slug}/`,
-    name: t.title,
-  })),
-  numberOfItems: catTools.length,
+  '@graph': [
+    {
+      '@type': 'ItemList',
+      numberOfItems: catTools.length,
+      itemListElement: catTools.map((t, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${site.url}/tools/${t.slug}/`,
+        name: t.title,
+        description: t.short,
+      })),
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${site.url}/` },
+        { '@type': 'ListItem', position: 2, name: `${category.name} Tools`, item: `${site.url}/tools/${catId}/` },
+      ],
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: catFaqs.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    },
+  ],
 };
 
 function splitIntoChunks(text, targetWords = 130) {
@@ -42,7 +81,6 @@ function splitIntoChunks(text, targetWords = 130) {
 
 const introChunks = content?.intro ? splitIntoChunks(content.intro) : [];
 const paraIcons = ['🎯', '⚡', '🛡️', '💡', '🔧', '🌟'];
-const totalTools = categories.reduce((sum, c) => sum + totalInCategory(c.id), 0);
 
 const features = [
   { icon: '💯', label: '100% Free', desc: 'No hidden fees or subscriptions — ever.' },
@@ -55,7 +93,7 @@ const features = [
 
 ---
 
-<BaseLayout title={siteTitle} description={description} jsonLd={itemListJsonLd}>
+<BaseLayout title={siteTitle} description={description} jsonLd={pageJsonLd}>
   <div class="mx-auto max-w-6xl px-4 py-10">
     <nav class="mb-4 text-sm text-slate-500" aria-label="Breadcrumb">
       <a href="/" class="hover:text-indigo-600">Home</a>
@@ -66,6 +104,9 @@ const features = [
     <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
       {catLabel} Tools
     </h1>
+    <p class="mt-2 text-slate-500 dark:text-slate-400">
+      {catTools.length} free {category.name.toLowerCase()} tools — no sign-up, runs in your browser
+    </p>
 
     <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {catTools.map((tool) => <ToolCard tool={tool} />)}
@@ -100,15 +141,15 @@ const features = [
 
   {content?.intro && (
     <section id="category-desc" class="mx-auto max-w-6xl px-4 py-12">
-      <!-- Stats -->
+      <!-- Dynamic stats: tool count for this category + site-wide categories -->
       <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-2">
         <div class="stat-card rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
-          <div class="stat-value text-2xl font-bold text-indigo-600 dark:text-indigo-400">19</div>
-          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Categories</div>
+          <div class="stat-value text-2xl font-bold text-indigo-600 dark:text-indigo-400">{catTools.length}</div>
+          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Tools in this category</div>
         </div>
         <div class="stat-card rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/60">
           <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">100%</div>
-          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Private & free</div>
+          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Private &amp; free</div>
         </div>
       </div>
 
@@ -135,8 +176,6 @@ const features = [
           </div>
         ))}
       </div>
-
-
     </section>
   )}
 
@@ -155,6 +194,19 @@ const features = [
       </div>
     </section>
   )}
+
+  <!-- FAQ section — drives "People Also Ask" rich results -->
+  <section class="mx-auto max-w-6xl px-4 pb-16">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 dark:border-slate-700 dark:bg-slate-800/60">
+      <h2 class="text-xl font-bold text-slate-900 dark:text-white">Frequently Asked Questions</h2>
+      <dl class="mt-5 divide-y divide-slate-100 dark:divide-slate-700">
+        {catFaqs.map((f) => (
+          <div class="py-4">
+            <dt class="font-semibold text-slate-900 dark:text-white">{f.q}</dt>
+            <dd class="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{f.a}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  </section>
 </BaseLayout>
-
-
