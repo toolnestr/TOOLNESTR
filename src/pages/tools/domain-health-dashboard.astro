@@ -1,0 +1,612 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'Domain Health Dashboard';
+const description =
+  'Free domain health checker — instantly audit DNS records, SPF & DMARC email security, SSL certificate grade, website availability, and blacklist status. Get an overall health score.';
+
+const faqs = [
+  { q: 'What does the Domain Health Dashboard check?', a: 'It runs 5 parallel checks: DNS records (A, MX, NS), email security records (SPF and DMARC), SSL/TLS certificate grade via Qualys SSL Labs, website availability (HTTP response), and IP blacklist status against Spamhaus, SpamCop and Barracuda BRBL.' },
+  { q: 'How is the health score calculated?', a: 'The score is a weighted sum out of 100: A record present (15 pts), MX record present (10 pts), NS records present (10 pts), SPF record found (15 pts), DMARC record found (15 pts), SSL grade A or B (20 pts; C=10 pts), website reachable (10 pts), not blacklisted (5 pts).' },
+  { q: 'Why is the SSL check slow sometimes?', a: 'SSL grade comes from the Qualys SSL Labs public API. If your domain has been scanned before, results are cached and appear instantly. For a first-time scan, SSL Labs needs 60–90 seconds to analyse your TLS configuration — in that case the dashboard shows "Scanning" and you can re-check after a minute.' },
+  { q: 'What is SPF and why does it matter?', a: 'SPF (Sender Policy Framework) is a DNS TXT record that lists the mail servers authorised to send email for your domain. Without SPF, spammers can easily forge your domain in the From address. Email providers use SPF to reject or mark unauthenticated email as spam.' },
+  { q: 'What is DMARC and why does it matter?', a: 'DMARC (Domain-based Message Authentication, Reporting & Conformance) builds on SPF and DKIM to tell receiving mail servers what to do when authentication fails — reject it, quarantine it, or allow it. It also provides aggregate reporting so you can see who is sending email using your domain.' },
+  { q: 'What does being on a blacklist mean?', a: 'IP blacklists (RBLs/DNSBLs) are maintained by spam-fighting organisations and list IPs associated with sending unsolicited email or malware. Being listed can cause your outgoing emails to be blocked or marked as spam by major providers. Listings can result from a compromised server, an infected device on your network, or past abuse.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+const toolSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Domain Health Dashboard',
+  applicationCategory: 'UtilityApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript',
+  description: 'Free domain health checker — DNS, SPF, DMARC, SSL, uptime and blacklist in one dashboard.',
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqSchema, toolSchema]}>
+  <style is:inline>
+    :root {
+      --primary: #6366f1; --success: #10b981; --warn: #f59e0b; --error: #ef4444; --info: #3b82f6;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --muted: #64748b; --border: #e2e8f0;
+    }
+    .dark body { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── Hero ── */
+    .dhd-hero {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4c1d95 65%, #2e1065 100%);
+      position: relative; overflow: hidden; padding: 44px 20px 56px; text-align: center;
+    }
+    .dhd-hero::before { content:''; position:absolute; top:-80px; right:-80px; width:320px; height:320px; background:radial-gradient(circle,rgba(167,139,250,.22) 0%,transparent 70%); pointer-events:none; }
+    .dhd-hero::after  { content:''; position:absolute; bottom:-60px; left:-60px; width:240px; height:240px; background:radial-gradient(circle,rgba(99,102,241,.18) 0%,transparent 70%); pointer-events:none; }
+    .dhd-badge {
+      display:inline-flex; align-items:center; gap:5px; margin-bottom:14px;
+      background:rgba(255,255,255,.12); backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.22); color:#e0e7ff;
+      font-size:.72rem; font-weight:700; letter-spacing:.08em;
+      padding:4px 14px; border-radius:20px; position:relative; z-index:1;
+    }
+    .dhd-hero h1 { font-size:clamp(1.6rem,4vw,2.4rem); font-weight:800; color:#fff; margin-bottom:8px; letter-spacing:-.02em; position:relative; z-index:1; }
+    .dhd-hero p  { font-size:1rem; color:#c4b5fd; margin-bottom:28px; position:relative; z-index:1; }
+
+    /* Search bar inside hero */
+    .dhd-search { display:flex; gap:8px; max-width:560px; margin:0 auto; position:relative; z-index:1; flex-direction:column; }
+    @media(min-width:500px) { .dhd-search { flex-direction:row; } }
+    .dhd-search input {
+      flex:1; padding:13px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.12); color:#fff; font-size:.95rem; outline:none;
+      backdrop-filter:blur(6px); width:100%;
+    }
+    .dhd-search input::placeholder { color:rgba(255,255,255,.5); }
+    .dhd-search input:focus { border-color:rgba(255,255,255,.5); background:rgba(255,255,255,.18); }
+    .dhd-search button {
+      padding:13px 24px; border-radius:10px; font-weight:700; font-size:.95rem; border:none;
+      cursor:pointer; background:#fff; color:#4f46e5; transition:opacity .2s; white-space:nowrap;
+    }
+    .dhd-search button:hover { opacity:.9; }
+    .dhd-search button:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* ── Wrap ── */
+    .dhd-wrap { max-width:880px; margin:0 auto; padding:28px 16px 0; }
+
+    /* ── Score overview ── */
+    .score-banner {
+      display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+      background:var(--card); border:1.5px solid var(--border); border-radius:18px;
+      padding:20px 24px; margin-bottom:20px;
+    }
+    .score-circle {
+      width:90px; height:90px; border-radius:50%; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; flex-shrink:0; font-weight:900;
+      border:4px solid var(--border); transition:border-color .3s;
+    }
+    .score-circle .sc-num  { font-size:1.8rem; line-height:1; }
+    .score-circle .sc-max  { font-size:.68rem; color:var(--muted); }
+    .score-info { flex:1; min-width:160px; }
+    .score-info .si-label  { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+    .score-info .si-rating { font-size:1.25rem; font-weight:800; margin-top:2px; }
+    .score-info .si-domain { font-size:.85rem; color:var(--muted); margin-top:4px; word-break:break-all; }
+    .score-bars { display:flex; flex-direction:column; gap:5px; flex:1; min-width:180px; }
+    .sbar { display:flex; align-items:center; gap:8px; font-size:.78rem; }
+    .sbar-label { width:90px; color:var(--muted); }
+    .sbar-track { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .sbar-fill  { height:100%; border-radius:3px; transition:width .5s; }
+
+    /* ── Check cards grid ── */
+    .checks-grid { display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:20px; }
+    @media(min-width:640px) { .checks-grid { grid-template-columns:1fr 1fr; } }
+
+    .check-card {
+      background:var(--card); border:1.5px solid var(--border); border-radius:16px; overflow:hidden;
+      transition:border-color .3s;
+    }
+    .check-card.ok   { border-color:#86efac; }
+    .check-card.warn { border-color:#fde68a; }
+    .check-card.fail { border-color:#fca5a5; }
+    .check-card.info { border-color:#93c5fd; }
+    .dark body .check-card.ok   { border-color:#166534; }
+    .dark body .check-card.warn { border-color:#92400e; }
+    .dark body .check-card.fail { border-color:#991b1b; }
+    .dark body .check-card.info { border-color:#1e40af; }
+
+    .card-head {
+      display:flex; align-items:center; gap:10px; padding:14px 16px;
+      border-bottom:1px solid var(--border);
+    }
+    .card-head .ch-icon { font-size:1.2rem; }
+    .card-head .ch-title { font-weight:700; font-size:.92rem; flex:1; }
+    .status-pill {
+      font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:20px;
+      background:var(--border); color:var(--muted); white-space:nowrap;
+    }
+    .status-pill.ok   { background:#dcfce7; color:#166534; }
+    .status-pill.warn { background:#fef3c7; color:#92400e; }
+    .status-pill.fail { background:#fee2e2; color:#991b1b; }
+    .status-pill.info { background:#dbeafe; color:#1e40af; }
+    .status-pill.scan { background:#ede9fe; color:#4c1d95; }
+    .dark body .status-pill.ok   { background:#14532d; color:#bbf7d0; }
+    .dark body .status-pill.warn { background:#451a03; color:#fde68a; }
+    .dark body .status-pill.fail { background:#450a0a; color:#fca5a5; }
+    .dark body .status-pill.info { background:#1e3a5f; color:#93c5fd; }
+    .dark body .status-pill.scan { background:#2e1065; color:#c4b5fd; }
+
+    .card-body { padding:12px 16px; }
+    .check-row { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+    .check-row:last-child { border-bottom:none; }
+    .cr-label { color:var(--muted); flex-shrink:0; }
+    .cr-val   { font-weight:600; text-align:right; word-break:break-all; }
+    .cr-val.ok   { color:var(--success); }
+    .cr-val.warn { color:var(--warn); }
+    .cr-val.fail { color:var(--error); }
+
+    /* loading skeleton */
+    .skel { height:14px; border-radius:4px; background:linear-gradient(90deg,var(--border) 25%,var(--bg) 50%,var(--border) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .skel-sm { width:60%; margin-bottom:8px; }
+    .skel-lg { width:90%; margin-bottom:8px; }
+
+    /* empty state */
+    .dhd-empty {
+      text-align:center; padding:48px 20px; color:var(--muted);
+    }
+    .dhd-empty .de-icon { font-size:3rem; margin-bottom:12px; }
+    .dhd-empty .de-text { font-size:1rem; }
+
+    /* ── FAQ ── */
+    .faq-section { max-width:880px; margin:28px auto 40px; padding:0 16px; }
+    .faq-title { font-size:1.2rem; font-weight:800; margin-bottom:16px; }
+    .faq-item { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:10px; }
+    .faq-q { padding:14px 16px; font-weight:600; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:.93rem; }
+    .faq-q:hover { color:var(--primary); }
+    .faq-a { padding:0 16px 14px; font-size:.88rem; color:var(--muted); line-height:1.65; display:none; }
+    .faq-item.open .faq-a { display:block; }
+    .faq-item.open .faq-arrow { transform:rotate(180deg); }
+    .faq-arrow { transition:transform .2s; font-size:.75rem; color:var(--muted); }
+  </style>
+
+  <!-- Hero -->
+  <div class="dhd-hero">
+    <div class="dhd-badge">★ FLAGSHIP TOOL</div>
+    <h1>🌐 Domain Health Dashboard</h1>
+    <p>DNS · SSL · Email Security · Availability · Blacklist — one dashboard</p>
+    <form class="dhd-search" id="searchForm" onsubmit="return false;">
+      <input type="text" id="domainInput" placeholder="example.com" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <button type="submit" id="checkBtn" onclick="window.runCheck()">Check Domain</button>
+    </form>
+  </div>
+
+  <div class="dhd-wrap">
+    <!-- Empty state -->
+    <div class="dhd-empty" id="emptyState">
+      <div class="de-icon">🔍</div>
+      <div class="de-text">Enter a domain above to run a full health audit</div>
+    </div>
+
+    <!-- Dashboard (hidden until check runs) -->
+    <div id="dashboard" style="display:none;">
+
+      <!-- Score banner -->
+      <div class="score-banner" id="scoreBanner">
+        <div class="score-circle" id="scoreCircle">
+          <div class="sc-num" id="scoreNum">–</div>
+          <div class="sc-max">/100</div>
+        </div>
+        <div class="score-info">
+          <div class="si-label">Health Score</div>
+          <div class="si-rating" id="scoreRating">Checking…</div>
+          <div class="si-domain" id="scoreDomain"></div>
+        </div>
+        <div class="score-bars">
+          <div class="sbar"><div class="sbar-label">DNS</div><div class="sbar-track"><div class="sbar-fill" id="barDns" style="width:0%;background:var(--success)"></div></div></div>
+          <div class="sbar"><div class="sbar-label">Email Sec</div><div class="sbar-track"><div class="sbar-fill" id="barEmail" style="width:0%;background:var(--warn)"></div></div></div>
+          <div class="sbar"><div class="sbar-label">SSL</div><div class="sbar-track"><div class="sbar-fill" id="barSsl" style="width:0%;background:var(--primary)"></div></div></div>
+          <div class="sbar"><div class="sbar-label">Availability</div><div class="sbar-track"><div class="sbar-fill" id="barUp" style="width:0%;background:var(--info)"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Check cards -->
+      <div class="checks-grid">
+
+        <!-- DNS -->
+        <div class="check-card" id="cardDns">
+          <div class="card-head">
+            <span class="ch-icon">📡</span>
+            <span class="ch-title">DNS Records</span>
+            <span class="status-pill" id="pillDns">Checking…</span>
+          </div>
+          <div class="card-body" id="bodyDns">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+            <div class="skel skel-sm"></div>
+          </div>
+        </div>
+
+        <!-- Email Security -->
+        <div class="check-card" id="cardEmail">
+          <div class="card-head">
+            <span class="ch-icon">📧</span>
+            <span class="ch-title">Email Security</span>
+            <span class="status-pill" id="pillEmail">Checking…</span>
+          </div>
+          <div class="card-body" id="bodyEmail">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+          </div>
+        </div>
+
+        <!-- SSL -->
+        <div class="check-card" id="cardSsl">
+          <div class="card-head">
+            <span class="ch-icon">🔒</span>
+            <span class="ch-title">SSL / TLS Certificate</span>
+            <span class="status-pill" id="pillSsl">Checking…</span>
+          </div>
+          <div class="card-body" id="bodySsl">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+            <div class="skel skel-sm"></div>
+          </div>
+        </div>
+
+        <!-- Availability -->
+        <div class="check-card" id="cardUp">
+          <div class="card-head">
+            <span class="ch-icon">⚡</span>
+            <span class="ch-title">Website Availability</span>
+            <span class="status-pill" id="pillUp">Checking…</span>
+          </div>
+          <div class="card-body" id="bodyUp">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+          </div>
+        </div>
+
+        <!-- Blacklist -->
+        <div class="check-card" id="cardBl">
+          <div class="card-head">
+            <span class="ch-icon">🛡️</span>
+            <span class="ch-title">Blacklist Status</span>
+            <span class="status-pill" id="pillBl">Checking…</span>
+          </div>
+          <div class="card-body" id="bodyBl">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+            <div class="skel skel-sm"></div>
+          </div>
+        </div>
+
+        <!-- NS Records -->
+        <div class="check-card" id="cardNs">
+          <div class="card-head">
+            <span class="ch-icon">🗺️</span>
+            <span class="ch-title">Name Servers</span>
+            <span class="status-pill" id="pillNs">Checking…</span>
+          </div>
+          <div class="card-body" id="bodyNs">
+            <div class="skel skel-sm"></div>
+            <div class="skel skel-lg"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <h2 class="faq-title">Frequently Asked Questions</h2>
+    {faqs.map((f) => (
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          {f.q}<span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-a">{f.a}</div>
+      </div>
+    ))}
+  </section>
+
+  <script is:inline>
+  (function () {
+    const API = 'https://toolnestr.toolnestr.workers.dev';
+
+    // ── Scoring ──
+    const scores = { dns: 0, email: 0, ssl: 0, up: 0, bl: 0 };
+    const maxScores = { dns: 35, email: 30, ssl: 20, up: 10, bl: 5 };
+
+    function totalScore() {
+      return Object.values(scores).reduce((a, b) => a + b, 0);
+    }
+
+    function scoreRating(s) {
+      if (s >= 90) return { label: '🟢 Excellent', color: '#10b981' };
+      if (s >= 75) return { label: '🟡 Good',      color: '#f59e0b' };
+      if (s >= 55) return { label: '🟠 Fair',       color: '#f97316' };
+      return                { label: '🔴 Poor',       color: '#ef4444' };
+    }
+
+    function updateScoreBanner() {
+      const total = totalScore();
+      const r = scoreRating(total);
+      document.getElementById('scoreNum').textContent    = total;
+      document.getElementById('scoreRating').textContent = r.label;
+      document.getElementById('scoreCircle').style.borderColor = r.color;
+
+      document.getElementById('barDns').style.width   = (scores.dns   / maxScores.dns   * 100) + '%';
+      document.getElementById('barEmail').style.width = (scores.email / maxScores.email * 100) + '%';
+      document.getElementById('barSsl').style.width   = (scores.ssl   / maxScores.ssl   * 100) + '%';
+      document.getElementById('barUp').style.width    = (scores.up    / maxScores.up    * 100) + '%';
+    }
+
+    // ── DOM helpers ──
+    function setPill(id, text, cls) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text; el.className = 'status-pill ' + (cls || '');
+    }
+    function setCard(id, cls) {
+      const el = document.getElementById(id);
+      if (el) el.className = 'check-card ' + (cls || '');
+    }
+    function setBody(id, html) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    }
+    function row(label, val, cls) {
+      return `<div class="check-row"><div class="cr-label">${label}</div><div class="cr-val ${cls||''}">${val}</div></div>`;
+    }
+
+    // ── Checks ──
+    async function checkDns(domain) {
+      try {
+        const [aRes, mxRes] = await Promise.all([
+          fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=A`).then(r => r.json()),
+          fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=MX`).then(r => r.json()),
+        ]);
+
+        const aRecords  = (aRes.Answer  || []).filter(r => r.type === 1);
+        const mxRecords = (mxRes.Answer || []).filter(r => r.type === 15);
+        const hasA  = aRecords.length  > 0;
+        const hasMx = mxRecords.length > 0;
+
+        scores.dns = (hasA ? 20 : 0) + (hasMx ? 15 : 0);
+        updateScoreBanner();
+
+        const aIp  = hasA  ? aRecords[0].data : null;
+        const mxHost = hasMx ? mxRecords[0].data.replace(/^\d+\s+/, '') : null;
+
+        const status = hasA && hasMx ? 'ok' : hasA ? 'warn' : 'fail';
+        setPill('pillDns', hasA && hasMx ? '✓ Healthy' : hasA ? '⚠ No MX' : '✗ No A record', status);
+        setCard('cardDns', status);
+        setBody('bodyDns',
+          row('A Record',  hasA  ? aIp             : 'Not found', hasA  ? 'ok' : 'fail') +
+          row('MX Record', hasMx ? mxHost           : 'Not found', hasMx ? 'ok' : 'warn') +
+          row('IP Address', aIp || '–', '')
+        );
+        return aIp; // return IP for blacklist check
+      } catch (e) {
+        setPill('pillDns', '✗ Error', 'fail');
+        setCard('cardDns', 'fail');
+        setBody('bodyDns', row('Error', e.message, 'fail'));
+        return null;
+      }
+    }
+
+    async function checkNs(domain) {
+      try {
+        const data = await fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=NS`).then(r => r.json());
+        const ns = (data.Answer || []).filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
+        const hasNs = ns.length > 0;
+
+        setPill('pillNs', hasNs ? `✓ ${ns.length} NS` : '✗ No NS', hasNs ? 'ok' : 'fail');
+        setCard('cardNs', hasNs ? 'ok' : 'fail');
+        setBody('bodyNs', hasNs
+          ? ns.slice(0, 4).map(n => row('Nameserver', n, 'ok')).join('')
+          : row('NS Records', 'None found', 'fail')
+        );
+      } catch (e) {
+        setPill('pillNs', '✗ Error', 'fail');
+        setBody('bodyNs', row('Error', e.message, 'fail'));
+      }
+    }
+
+    async function checkEmail(domain) {
+      try {
+        const [txtRes, dmarcRes] = await Promise.all([
+          fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=TXT`).then(r => r.json()),
+          fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent('_dmarc.' + domain)}&type=TXT`).then(r => r.json()),
+        ]);
+
+        const txts  = (txtRes.Answer  || []).map(r => r.data?.replace(/^"|"$/g, ''));
+        const dmTxts = (dmarcRes.Answer || []).map(r => r.data?.replace(/^"|"$/g, ''));
+
+        const spfRec   = txts.find(t => t?.startsWith('v=spf1'));
+        const dmarcRec = dmTxts.find(t => t?.startsWith('v=DMARC1'));
+
+        const hasSpf   = !!spfRec;
+        const hasDmarc = !!dmarcRec;
+
+        scores.email = (hasSpf ? 15 : 0) + (hasDmarc ? 15 : 0);
+        updateScoreBanner();
+
+        const status = hasSpf && hasDmarc ? 'ok' : hasSpf || hasDmarc ? 'warn' : 'fail';
+        setPill('pillEmail', hasSpf && hasDmarc ? '✓ Secure' : hasSpf ? '⚠ No DMARC' : hasDmarc ? '⚠ No SPF' : '✗ Not set', status);
+        setCard('cardEmail', status);
+
+        const spfShort = spfRec ? (spfRec.length > 50 ? spfRec.slice(0, 50) + '…' : spfRec) : 'Not found';
+        const dmPolicy = dmarcRec ? (dmarcRec.match(/p=(\w+)/)?.[1] || 'none') : null;
+        setBody('bodyEmail',
+          row('SPF',    hasSpf   ? '✓ Found'      : '✗ Missing', hasSpf   ? 'ok' : 'fail') +
+          row('SPF Record', spfShort, '') +
+          row('DMARC',  hasDmarc ? '✓ Found'      : '✗ Missing', hasDmarc ? 'ok' : 'fail') +
+          (dmPolicy ? row('DMARC Policy', dmPolicy, dmPolicy === 'reject' ? 'ok' : dmPolicy === 'quarantine' ? 'warn' : 'fail') : '')
+        );
+      } catch (e) {
+        setPill('pillEmail', '✗ Error', 'fail');
+        setBody('bodyEmail', row('Error', e.message, 'fail'));
+      }
+    }
+
+    async function checkSsl(domain) {
+      try {
+        const res  = await fetch(`${API}/api/ssl-check?domain=${encodeURIComponent(domain)}`);
+        const data = await res.json();
+
+        if (data.scanning || res.status === 202) {
+          scores.ssl = 0; updateScoreBanner();
+          setPill('pillSsl', '🔄 Scanning…', 'scan');
+          setCard('cardSsl', 'info');
+          setBody('bodySsl',
+            row('Status', 'SSL Labs scan in progress', 'warn') +
+            row('Action', 'Re-check in ~60 seconds', '') +
+            `<div style="margin-top:8px;font-size:.8rem;color:var(--muted)">First-time scans take 60–90s.</div>`
+          );
+          return;
+        }
+
+        const grade  = data.grade || 'Unknown';
+        const expiry = data.daysUntilExpiry ?? null;
+        const issuer = data.issuer ? data.issuer.replace(/^CN=/, '').split(',')[0] : 'Unknown';
+
+        const gradeOk = ['A', 'A+', 'A-', 'B'].includes(grade);
+        const gradeMid = ['C'].includes(grade);
+        scores.ssl = gradeOk ? 20 : gradeMid ? 10 : 0;
+        updateScoreBanner();
+
+        const expiryOk = expiry !== null && expiry > 30;
+        const status = gradeOk && expiryOk ? 'ok' : gradeOk ? 'warn' : 'fail';
+
+        setPill('pillSsl', gradeOk ? `✓ Grade ${grade}` : `✗ Grade ${grade}`, gradeOk ? 'ok' : 'fail');
+        setCard('cardSsl', status);
+        setBody('bodySsl',
+          row('SSL Grade', grade, gradeOk ? 'ok' : gradeMid ? 'warn' : 'fail') +
+          (expiry !== null ? row('Expires in', expiry + ' days', expiry > 30 ? 'ok' : expiry > 7 ? 'warn' : 'fail') : '') +
+          row('Issued by', issuer, '') +
+          (data.keyAlg ? row('Key', `${data.keyAlg} ${data.keySize}bit`, '') : '')
+        );
+      } catch (e) {
+        setPill('pillSsl', '✗ Error', 'fail');
+        setBody('bodySsl', row('Error', e.message, 'fail'));
+      }
+    }
+
+    async function checkUptime(domain) {
+      try {
+        const data = await fetch(`${API}/api/uptime-check?url=${encodeURIComponent('https://' + domain)}`).then(r => r.json());
+        const up   = data.up;
+        const ms   = data.ms;
+        const code = data.status;
+
+        scores.up = up ? 10 : 0;
+        updateScoreBanner();
+
+        const speed = ms < 500 ? 'ok' : ms < 1500 ? 'warn' : 'fail';
+        setPill('pillUp', up ? `✓ Online` : '✗ Offline', up ? 'ok' : 'fail');
+        setCard('cardUp', up ? 'ok' : 'fail');
+        setBody('bodyUp',
+          row('Status', up ? '✓ Online' : '✗ Offline / Unreachable', up ? 'ok' : 'fail') +
+          row('HTTP Code',  code ? String(code)    : 'N/A', '') +
+          row('Response',   ms   ? ms + ' ms'      : 'N/A', speed)
+        );
+      } catch (e) {
+        setPill('pillUp', '✗ Error', 'fail');
+        setBody('bodyUp', row('Error', e.message, 'fail'));
+      }
+    }
+
+    async function checkBlacklist(ip) {
+      if (!ip) {
+        setPill('pillBl', '⚠ No IP', 'warn');
+        setBody('bodyBl', row('Skipped', 'Could not resolve domain IP', 'warn'));
+        return;
+      }
+      try {
+        const data = await fetch(`${API}/api/blacklist-check?ip=${encodeURIComponent(ip)}`).then(r => r.json());
+        const listed = data.blacklisted;
+
+        scores.bl = listed ? 0 : 5;
+        updateScoreBanner();
+
+        const results = data.results || [];
+        setPill('pillBl', listed ? '✗ Blacklisted' : '✓ Clean', listed ? 'fail' : 'ok');
+        setCard('cardBl', listed ? 'fail' : 'ok');
+        setBody('bodyBl',
+          row('IP Checked', ip, '') +
+          results.map(r =>
+            row(r.name, r.listed ? '✗ Listed' : r.error ? '⚠ ' + r.error : '✓ Clean',
+                r.listed ? 'fail' : r.error ? 'warn' : 'ok')
+          ).join('')
+        );
+      } catch (e) {
+        setPill('pillBl', '✗ Error', 'fail');
+        setBody('bodyBl', row('Error', e.message, 'fail'));
+      }
+    }
+
+    // ── Main run ──
+    window.runCheck = async function () {
+      let raw = document.getElementById('domainInput').value.trim();
+      if (!raw) { document.getElementById('domainInput').focus(); return; }
+
+      // Strip protocol and path
+      raw = raw.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase();
+      document.getElementById('domainInput').value = raw;
+
+      // Reset scores
+      Object.keys(scores).forEach(k => scores[k] = 0);
+
+      // Show dashboard
+      document.getElementById('emptyState').style.display  = 'none';
+      document.getElementById('dashboard').style.display   = '';
+      document.getElementById('scoreDomain').textContent   = raw;
+      document.getElementById('scoreNum').textContent      = '…';
+      document.getElementById('scoreRating').textContent   = 'Checking…';
+      document.getElementById('checkBtn').disabled         = true;
+      document.getElementById('checkBtn').textContent      = 'Checking…';
+      updateScoreBanner();
+
+      // Reset all cards to loading state
+      ['Dns','Email','Ssl','Up','Bl','Ns'].forEach(id => {
+        setPill('pill' + id, 'Checking…');
+        setCard('card' + id, '');
+        setBody('body' + id, '<div class="skel skel-sm"></div><div class="skel skel-lg"></div><div class="skel skel-sm"></div>');
+      });
+
+      // Run checks — DNS first (need IP for blacklist)
+      const ip = await checkDns(raw);
+      await Promise.all([
+        checkNs(raw),
+        checkEmail(raw),
+        checkSsl(raw),
+        checkUptime(raw),
+        checkBlacklist(ip),
+      ]);
+
+      // Final score
+      const final = totalScore();
+      const r = scoreRating(final);
+      document.getElementById('scoreNum').textContent    = final;
+      document.getElementById('scoreRating').textContent = r.label;
+      document.getElementById('scoreCircle').style.borderColor = r.color;
+      document.getElementById('checkBtn').disabled  = false;
+      document.getElementById('checkBtn').textContent = 'Check Domain';
+    };
+
+    // Enter key in input
+    document.getElementById('domainInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') window.runCheck();
+    });
+  })();
+  </script>
+</BaseLayout>
