@@ -1,0 +1,507 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'CPS Test – Click Speed Test';
+const description =
+  'Free CPS test — measure your mouse clicking speed in clicks per second. Choose from 1s, 5s, 10s, 30s and 60s test modes. Track your personal best and see your skill rating.';
+
+const faqs = [
+  { q: 'What is a good CPS (clicks per second) score?', a: 'For casual users 4–7 CPS is average. Gamers typically hit 7–10 CPS. Competitive players often score 10–14 CPS. The world record is over 14 CPS sustained for 5 seconds, though short bursts can exceed 20 CPS using butterfly or jitter clicking techniques.' },
+  { q: 'What is jitter clicking?', a: 'Jitter clicking is a technique where you tense your arm and wrist muscles to create rapid involuntary vibrations, causing your finger to click very fast. It can achieve 12–16 CPS but may cause strain with prolonged use. Butterfly clicking (using two fingers alternately on one button) can exceed 20 CPS.' },
+  { q: 'Does mouse type affect CPS?', a: 'Yes. Gaming mice with hair-trigger switches register clicks faster than standard office mice. High-polling-rate mice (1000 Hz+) also capture clicks more accurately. A good technique matters more than hardware below 10 CPS.' },
+  { q: 'What test duration is best for competitive gaming?', a: 'The 5-second test is the most widely used benchmark for competitive gaming, as it balances burst speed with a small endurance element. 1s tests measure pure burst speed, while 10s or 30s tests reflect sustained clicking endurance.' },
+  { q: 'Does this test store my scores?', a: 'No data is sent to any server. Your scores are kept only in memory during your browser session. Nothing is uploaded, stored or shared.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+const toolSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'CPS Test – Click Speed Test',
+  applicationCategory: 'GameApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript',
+  description: 'Free CPS test — measure your mouse clicking speed in clicks per second.',
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqSchema, toolSchema]}>
+  <style is:inline>
+    :root {
+      --primary: #6366f1; --primary-dark: #4f46e5; --success: #10b981;
+      --warning: #f59e0b; --error: #ef4444;
+      --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --muted: #64748b; --border: #e2e8f0;
+    }
+    .dark-mode, .dark body { --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #334155; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── Flagship Hero ── */
+    .cps-hero {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4c1d95 65%, #2e1065 100%);
+      position: relative; overflow: hidden; padding: 44px 20px 56px; text-align: center;
+    }
+    .cps-hero::before {
+      content: ''; position: absolute; top: -80px; right: -80px; width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(167,139,250,0.22) 0%, transparent 70%); pointer-events: none;
+    }
+    .cps-hero::after {
+      content: ''; position: absolute; bottom: -60px; left: -60px; width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%); pointer-events: none;
+    }
+    .cps-badge {
+      display: inline-flex; align-items: center; gap: 5px; margin-bottom: 14px;
+      background: rgba(255,255,255,0.12); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.22); color: #e0e7ff;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+      padding: 4px 14px; border-radius: 20px; position: relative; z-index: 1;
+    }
+    .cps-hero h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; color: #fff;
+      margin-bottom: 8px; letter-spacing: -0.02em; position: relative; z-index: 1;
+    }
+    .cps-hero p { font-size: 1rem; color: #c4b5fd; position: relative; z-index: 1; }
+
+    /* ── Duration Tabs ── */
+    .cps-wrap { max-width: 680px; margin: 0 auto; padding: 28px 16px; }
+    .dur-tabs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+    .dur-tab {
+      padding: 7px 18px; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
+      border: 1.5px solid var(--border); background: var(--card); color: var(--muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .dur-tab:hover { border-color: var(--primary); color: var(--primary); }
+    .dur-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* ── Stats Row ── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-box {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 14px 10px; text-align: center;
+    }
+    .stat-val { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-lbl { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ── Click Area ── */
+    .click-area {
+      width: 100%; min-height: 200px; border-radius: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; cursor: pointer; transition: transform 0.08s, box-shadow 0.1s;
+      user-select: none; -webkit-user-select: none; position: relative; overflow: hidden;
+      border: 2.5px solid var(--border); background: var(--card);
+    }
+    .click-area.idle {
+      background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+      border-color: #a5b4fc;
+    }
+    .dark body .click-area.idle {
+      background: linear-gradient(135deg, #1e1b4b 0%, #2d2060 100%);
+      border-color: #4f46e5;
+    }
+    .click-area.countdown {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-color: #f59e0b;
+    }
+    .dark body .click-area.countdown { background: linear-gradient(135deg, #451a03 0%, #78350f 100%); }
+    .click-area.testing {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      border-color: #10b981;
+    }
+    .dark body .click-area.testing { background: linear-gradient(135deg, #022c22 0%, #064e3b 100%); }
+    .click-area.done {
+      background: linear-gradient(135deg, #eef2ff 0%, #ede9fe 100%);
+      border-color: var(--primary);
+    }
+    .dark body .click-area.done { background: linear-gradient(135deg, #1e1b4b 0%, #2e1065 100%); }
+    .click-area:active { transform: scale(0.98); }
+    .click-area .big-icon { font-size: 3rem; }
+    .click-area .ca-title { font-size: 1.2rem; font-weight: 700; color: var(--text); }
+    .click-area .ca-sub { font-size: 0.88rem; color: var(--muted); }
+    .click-area .countdown-num { font-size: 5rem; font-weight: 900; color: #f59e0b; line-height: 1; }
+    .click-area .go-text { font-size: 3rem; font-weight: 900; color: #10b981; }
+
+    /* ripple */
+    .ripple { position: absolute; border-radius: 50%; background: rgba(99,102,241,0.25); transform: scale(0); animation: ripple-anim 0.5s linear; pointer-events: none; }
+    @keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+
+    /* ── Progress Bar ── */
+    .progress-wrap { height: 6px; background: var(--border); border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.1s linear; width: 100%; }
+
+    /* ── Results Panel ── */
+    .results-panel {
+      background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+      border: 2px solid #a5b4fc; border-radius: 18px; padding: 24px; margin-top: 20px; display: none;
+    }
+    .dark body .results-panel { background: linear-gradient(135deg, #1e1b4b 0%, #2d2060 100%); border-color: #4f46e5; }
+    .results-panel.show { display: block; }
+    .rating-badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px;
+      background: var(--primary); color: #fff; border-radius: 30px;
+      font-size: 1.1rem; font-weight: 800; margin-bottom: 12px;
+    }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .result-item { background: var(--card); border-radius: 10px; padding: 12px; text-align: center; }
+    .result-item .rv { font-size: 1.6rem; font-weight: 800; color: var(--primary); }
+    .result-item .rl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── History ── */
+    .history-wrap { margin-top: 24px; }
+    .history-title { font-weight: 700; font-size: 0.9rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+    .history-item {
+      display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px; font-size: 0.88rem;
+    }
+    .history-item .hi-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .history-item .hi-cps { font-weight: 700; color: var(--primary); min-width: 60px; }
+    .history-item .hi-meta { color: var(--muted); }
+    .history-item.best { border-color: #f59e0b; }
+    .history-item.best .hi-rank { background: #f59e0b; }
+
+    /* ── Ratings Guide ── */
+    .ratings-guide { margin-top: 24px; }
+    .rg-title { font-weight: 700; font-size: 0.9rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .rg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+    .rg-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+    .rg-item .ri-emoji { font-size: 1.5rem; }
+    .rg-item .ri-name { font-weight: 700; font-size: 0.85rem; margin-top: 4px; color: var(--text); }
+    .rg-item .ri-range { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── FAQ ── */
+    .faq-section { max-width: 680px; margin: 0 auto 40px; padding: 0 16px; }
+    .faq-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; color: var(--text); }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+    .faq-q { padding: 14px 16px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.93rem; }
+    .faq-q:hover { color: var(--primary); }
+    .faq-a { padding: 0 16px 14px; font-size: 0.88rem; color: var(--muted); line-height: 1.65; display: none; }
+    .faq-item.open .faq-a { display: block; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-arrow { transition: transform 0.2s; font-size: 0.75rem; color: var(--muted); }
+
+    /* Reset btn */
+    .reset-btn {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 16px;
+      padding: 10px 24px; border-radius: 10px; background: var(--primary); color: #fff;
+      font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.2s;
+    }
+    .reset-btn:hover { opacity: 0.88; }
+  </style>
+
+  <!-- Hero -->
+  <div class="cps-hero">
+    <div class="cps-badge">★ FLAGSHIP TOOL</div>
+    <h1>🖱️ CPS Test</h1>
+    <p>Measure your clicking speed — clicks per second across 5 test durations</p>
+  </div>
+
+  <!-- Main -->
+  <div class="cps-wrap">
+
+    <!-- Duration Tabs -->
+    <div class="dur-tabs" id="durTabs">
+      <button class="dur-tab" data-dur="1">1s</button>
+      <button class="dur-tab active" data-dur="5">5s</button>
+      <button class="dur-tab" data-dur="10">10s</button>
+      <button class="dur-tab" data-dur="30">30s</button>
+      <button class="dur-tab" data-dur="60">60s</button>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" id="liveCps">0.00</div>
+        <div class="stat-lbl">CPS</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="liveClicks">0</div>
+        <div class="stat-lbl">Clicks</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="liveTimer">5.0</div>
+        <div class="stat-lbl">Seconds</div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Click Target -->
+    <div class="click-area idle" id="clickArea" tabindex="0" role="button" aria-label="Click to start CPS test">
+      <div class="big-icon">🖱️</div>
+      <div class="ca-title" id="caTitle">Click here to start</div>
+      <div class="ca-sub" id="caSub">Test duration: 5 seconds</div>
+    </div>
+
+    <!-- Results Panel -->
+    <div class="results-panel" id="resultsPanel">
+      <div style="text-align:center;">
+        <div class="rating-badge" id="ratingBadge">⚡ Average</div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="rv" id="resCps">–</div>
+          <div class="rl">CPS</div>
+        </div>
+        <div class="result-item">
+          <div class="rv" id="resClicks">–</div>
+          <div class="rl">Total Clicks</div>
+        </div>
+        <div class="result-item">
+          <div class="rv" id="resDur">–</div>
+          <div class="rl">Duration</div>
+        </div>
+        <div class="result-item">
+          <div class="rv" id="resBest">–</div>
+          <div class="rl">Personal Best</div>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <button class="reset-btn" id="resetBtn">↺ Try Again</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-wrap" id="historyWrap" style="display:none;">
+      <div class="history-title">Recent Scores</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- Ratings Guide -->
+    <div class="ratings-guide" style="margin-top:32px;">
+      <div class="rg-title">CPS Ratings</div>
+      <div class="rg-grid">
+        <div class="rg-item"><div class="ri-emoji">🐢</div><div class="ri-name">Turtle</div><div class="ri-range">0 – 3 CPS</div></div>
+        <div class="rg-item"><div class="ri-emoji">👤</div><div class="ri-name">Average</div><div class="ri-range">3 – 6 CPS</div></div>
+        <div class="rg-item"><div class="ri-emoji">⚡</div><div class="ri-name">Fast</div><div class="ri-range">6 – 9 CPS</div></div>
+        <div class="rg-item"><div class="ri-emoji">🏆</div><div class="ri-name">Pro</div><div class="ri-range">9 – 12 CPS</div></div>
+        <div class="rg-item"><div class="ri-emoji">🚀</div><div class="ri-name">Speedster</div><div class="ri-range">12 – 15 CPS</div></div>
+        <div class="rg-item"><div class="ri-emoji">🔥</div><div class="ri-name">Godlike</div><div class="ri-range">15+ CPS</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <section class="faq-section">
+    <h2 class="faq-title">Frequently Asked Questions</h2>
+    {faqs.map((f) => (
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          {f.q}
+          <span class="faq-arrow">▼</span>
+        </div>
+        <div class="faq-a">{f.a}</div>
+      </div>
+    ))}
+  </section>
+
+  <script is:inline>
+  (function () {
+    const RATINGS = [
+      { min: 0,  label: '🐢 Turtle',    color: '#94a3b8' },
+      { min: 3,  label: '👤 Average',   color: '#64748b' },
+      { min: 6,  label: '⚡ Fast',      color: '#10b981' },
+      { min: 9,  label: '🏆 Pro',       color: '#f59e0b' },
+      { min: 12, label: '🚀 Speedster', color: '#6366f1' },
+      { min: 15, label: '🔥 Godlike',   color: '#ef4444' },
+    ];
+
+    function getRating(cps) {
+      let r = RATINGS[0];
+      for (const rt of RATINGS) { if (cps >= rt.min) r = rt; }
+      return r;
+    }
+
+    let state = 'idle'; // idle | countdown | testing | done
+    let selectedDur = 5;
+    let clicks = 0;
+    let startTime = null;
+    let countdownVal = 3;
+    let timerId = null;
+    let elapsedMs = 0;
+    let history = [];
+    let personalBest = 0;
+
+    const area     = document.getElementById('clickArea');
+    const caTitle  = document.getElementById('caTitle');
+    const caSub    = document.getElementById('caSub');
+    const liveCps  = document.getElementById('liveCps');
+    const liveClicks = document.getElementById('liveClicks');
+    const liveTimer  = document.getElementById('liveTimer');
+    const progressBar = document.getElementById('progressBar');
+    const resultsPanel = document.getElementById('resultsPanel');
+    const ratingBadge  = document.getElementById('ratingBadge');
+    const resCps    = document.getElementById('resCps');
+    const resClicks = document.getElementById('resClicks');
+    const resDur    = document.getElementById('resDur');
+    const resBest   = document.getElementById('resBest');
+    const resetBtn  = document.getElementById('resetBtn');
+    const historyWrap = document.getElementById('historyWrap');
+    const historyList = document.getElementById('historyList');
+
+    // Duration tabs
+    document.getElementById('durTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.dur-tab');
+      if (!tab || state !== 'idle') return;
+      document.querySelectorAll('.dur-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      selectedDur = parseInt(tab.dataset.dur);
+      caSub.textContent = 'Test duration: ' + selectedDur + ' second' + (selectedDur > 1 ? 's' : '');
+      liveTimer.textContent = selectedDur.toFixed(1);
+      progressBar.style.width = '100%';
+    });
+
+    function addRipple(e) {
+      const rect = area.getBoundingClientRect();
+      const x = (e.clientX || e.touches?.[0]?.clientX || rect.left + rect.width / 2) - rect.left;
+      const y = (e.clientY || e.touches?.[0]?.clientY || rect.top + rect.height / 2) - rect.top;
+      const size = Math.max(rect.width, rect.height);
+      const ripple = document.createElement('span');
+      ripple.className = 'ripple';
+      ripple.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px`;
+      area.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 550);
+    }
+
+    function startCountdown() {
+      if (state !== 'idle') return;
+      state = 'countdown';
+      countdownVal = 3;
+      area.className = 'click-area countdown';
+      area.innerHTML = '<div class="countdown-num" id="cdNum">3</div>';
+      caSub.textContent = '';
+
+      timerId = setInterval(() => {
+        countdownVal--;
+        const cdNum = document.getElementById('cdNum');
+        if (countdownVal > 0) {
+          if (cdNum) cdNum.textContent = countdownVal;
+        } else {
+          clearInterval(timerId);
+          startTest();
+        }
+      }, 1000);
+    }
+
+    function startTest() {
+      state = 'testing';
+      clicks = 0;
+      startTime = performance.now();
+      area.className = 'click-area testing';
+      area.innerHTML = '<div class="big-icon">🖱️</div><div class="ca-title" id="caTitle">CLICK!</div><div class="ca-sub" id="caSub"></div>';
+      resultsPanel.classList.remove('show');
+      liveClicks.textContent = '0';
+      liveCps.textContent = '0.00';
+      progressBar.style.width = '100%';
+
+      const totalMs = selectedDur * 1000;
+      timerId = setInterval(() => {
+        elapsedMs = performance.now() - startTime;
+        const remaining = Math.max(0, totalMs - elapsedMs);
+        const elapsed = elapsedMs / 1000;
+        const cps = elapsed > 0 ? clicks / elapsed : 0;
+        liveTimer.textContent = (remaining / 1000).toFixed(1);
+        liveCps.textContent = cps.toFixed(2);
+        progressBar.style.width = ((remaining / totalMs) * 100) + '%';
+        if (remaining <= 0) {
+          clearInterval(timerId);
+          finishTest();
+        }
+      }, 50);
+    }
+
+    function finishTest() {
+      state = 'done';
+      const actualSecs = Math.min(elapsedMs, selectedDur * 1000) / 1000;
+      const cps = clicks / Math.max(actualSecs, 0.001);
+      const rating = getRating(cps);
+
+      if (cps > personalBest) personalBest = cps;
+
+      history.unshift({ cps, clicks, dur: selectedDur, ts: Date.now() });
+      if (history.length > 5) history.pop();
+
+      area.className = 'click-area done';
+      area.innerHTML = '<div class="big-icon">🏆</div><div class="ca-title">Done! See your result below.</div><div class="ca-sub">Click to try again</div>';
+
+      ratingBadge.textContent = rating.label;
+      ratingBadge.style.background = rating.color;
+      resCps.textContent = cps.toFixed(2);
+      resClicks.textContent = clicks;
+      resDur.textContent = selectedDur + 's';
+      resBest.textContent = personalBest.toFixed(2);
+      resultsPanel.classList.add('show');
+
+      liveTimer.textContent = '0.0';
+      liveCps.textContent = cps.toFixed(2);
+      progressBar.style.width = '0%';
+
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (!history.length) return;
+      historyWrap.style.display = 'block';
+      const bestCps = Math.max(...history.map(h => h.cps));
+      historyList.innerHTML = history.map((h, i) => `
+        <div class="history-item ${h.cps === bestCps ? 'best' : ''}">
+          <div class="hi-rank">${i + 1}</div>
+          <div class="hi-cps">${h.cps.toFixed(2)} CPS</div>
+          <div class="hi-meta">${h.clicks} clicks · ${h.dur}s ${h.cps === bestCps ? '⭐ Best' : ''}</div>
+        </div>
+      `).join('');
+    }
+
+    function reset() {
+      clearInterval(timerId);
+      state = 'idle';
+      clicks = 0;
+      elapsedMs = 0;
+      area.className = 'click-area idle';
+      area.innerHTML = '<div class="big-icon">🖱️</div><div class="ca-title" id="caTitle">Click here to start</div><div class="ca-sub" id="caSub">Test duration: ' + selectedDur + ' second' + (selectedDur > 1 ? 's' : '') + '</div>';
+      resultsPanel.classList.remove('show');
+      liveClicks.textContent = '0';
+      liveCps.textContent = '0.00';
+      liveTimer.textContent = selectedDur.toFixed(1);
+      progressBar.style.width = '100%';
+    }
+
+    // Click handlers
+    area.addEventListener('click', (e) => {
+      addRipple(e);
+      if (state === 'idle') { startCountdown(); return; }
+      if (state === 'done') { reset(); return; }
+      if (state === 'testing') { clicks++; liveClicks.textContent = clicks; }
+    });
+    area.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      addRipple(e);
+      if (state === 'idle') { startCountdown(); return; }
+      if (state === 'done') { reset(); return; }
+      if (state === 'testing') { clicks++; liveClicks.textContent = clicks; }
+    }, { passive: false });
+    // Keyboard space/enter support
+    area.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        area.click();
+      }
+    });
+
+    resetBtn.addEventListener('click', (e) => { e.stopPropagation(); reset(); });
+
+    // init
+    liveTimer.textContent = selectedDur.toFixed(1);
+  })();
+  </script>
+</BaseLayout>
