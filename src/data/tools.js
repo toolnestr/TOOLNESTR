@@ -463,6 +463,7 @@ export const tools = [
   { slug: 'dice-coin-flip-generator', title: 'Dice Roller & Coin Flip Generator', short: 'Roll dice or flip coins online.', category: 'everyday', emoji: '🎲', enabled: true, status: 'live' },
   { slug: 'cps-test', title: 'CPS Test (Click Speed Test)', short: 'Measure your clicking speed — clicks per second across 1s, 5s, 10s, 30s & 60s modes.', category: 'everyday', emoji: '🖱️', enabled: true, status: 'live', flagship: true },
   { slug: 'typing-speed-test', title: 'Typing Speed Test', short: 'Measure your WPM and accuracy in real time — 15s, 30s, 1 min and 2 min modes.', category: 'everyday', emoji: '⌨️', enabled: true, status: 'live', flagship: true },
+  { slug: 'browser-device-profile', title: 'Browser & Device Profile', short: 'See your browser, OS, screen, hardware, network and timezone — full device fingerprint.', category: 'everyday', emoji: '🖥️', enabled: true, status: 'live', flagship: true },
   { slug: 'keyboard-tester', title: 'Keyboard Tester', short: 'Test every key on your keyboard — detect stuck or broken keys in real time.', category: 'everyday', emoji: '⌨️', enabled: true, status: 'live', flagship: true },
   { slug: 'numerology-calculator', title: 'Numerology Calculator', short: 'Life Path and Destiny numbers.', category: 'creators', emoji: '🔮', enabled: true, status: 'live' },
   // ── Part 8: Automotive ──
