@@ -377,10 +377,19 @@ const toolSchema = {
       if (remaining <= 0) { clearInterval(timerInterval); finishTest(); }
     }
 
+    // Reveal text immediately on click without starting the timer yet
+    function revealText() {
+      if (state !== 'idle') return;
+      idleOverlay.style.display = 'none';
+      displayWrap.classList.add('active');
+      updateDisplay(); // show blinking cursor at position 0
+      hiddenInput.focus();
+    }
+
     function startTest() {
       state = 'testing';
       startTime = performance.now();
-      idleOverlay.style.display = 'none';
+      idleOverlay.style.display = 'none'; // idempotent — already hidden if revealText ran first
       displayWrap.classList.add('active');
       liveWpm.textContent = '0';
       liveAcc.textContent = '100%';
@@ -477,12 +486,15 @@ const toolSchema = {
       }
     });
 
-    // Focus input when clicking anywhere on display
-    displayWrap.addEventListener('click', () => {
-      hiddenInput.focus();
-      if (state === 'idle') { /* wait for actual typing */ }
+    // Click reveals text immediately; timer starts on first keystroke
+    idleOverlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      revealText();
     });
-    idleOverlay.addEventListener('click', () => { hiddenInput.focus(); });
+    displayWrap.addEventListener('click', () => {
+      if (state === 'idle') revealText();
+      else hiddenInput.focus();
+    });
 
     // Auto-focus on keypress anywhere on page
     document.addEventListener('keydown', (e) => {
