@@ -466,6 +466,7 @@ export const tools = [
   { slug: 'browser-device-profile', title: 'Browser & Device Profile', short: 'See your browser, OS, screen, hardware, network and timezone — full device fingerprint.', category: 'everyday', emoji: '🖥️', enabled: true, status: 'live', flagship: true },
   { slug: 'domain-health-dashboard', title: 'Domain Health Dashboard', short: 'Full domain audit — DNS, SPF, DMARC, SSL grade, uptime and blacklist in one dashboard.', category: 'networking', emoji: '🌐', enabled: true, status: 'live', flagship: true },
   { slug: 'currency-converter', title: 'Currency Converter', short: 'Live exchange rates for 30+ currencies from the European Central Bank — instant conversion.', category: 'finance', emoji: '💱', enabled: true, status: 'live', flagship: true },
+  { slug: 'invoice-generator', title: 'Invoice Generator', short: 'Create professional invoices instantly — add items, tax, logo and download as PDF. Free.', category: 'finance', emoji: '🧾', enabled: true, status: 'live', flagship: true },
   { slug: 'keyboard-tester', title: 'Keyboard Tester', short: 'Test every key on your keyboard — detect stuck or broken keys in real time.', category: 'everyday', emoji: '⌨️', enabled: true, status: 'live', flagship: true },
   { slug: 'numerology-calculator', title: 'Numerology Calculator', short: 'Life Path and Destiny numbers.', category: 'creators', emoji: '🔮', enabled: true, status: 'live' },
   // ── Part 8: Automotive ──
