@@ -179,8 +179,8 @@ const faqSchema = {
     .eq-new-tag { display: inline-block; font-size: 0.55rem; background: var(--eq-accent); color: white; border-radius: 3px; padding: 1px 4px; font-family: var(--eq-mono); vertical-align: middle; margin-left: 4px; font-weight: 700; letter-spacing: 0.05em; }
 
     /* ══ MAP ══ */
-    #eq-wrap .eq-map-wrap { flex: 1; position: relative; overflow: hidden; }
-    #eq-map { width: 100%; height: 100%; background: #0d1117; }
+    #eq-wrap .eq-map-wrap { flex: 1; position: relative; overflow: hidden; min-width: 0; }
+    #eq-map { position: absolute; inset: 0; background: #0d1117; }
 
     .eq-map-controls { position: absolute; top: 14px; right: 14px; z-index: 400; display: flex; flex-direction: column; gap: 6px; }
     .eq-map-btn { width: 38px; height: 38px; background: rgba(16,19,26,0.93); border: 1px solid var(--eq-border); border-radius: 9px; color: var(--eq-text); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; backdrop-filter: blur(8px); transition: background 0.2s, border-color 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
@@ -622,14 +622,18 @@ const faqSchema = {
       eqAllQuakes  = data.features.filter(f => f.properties.mag !== null);
       eqLastFetchTime = Date.now();
       document.getElementById('eqUpdatedText').textContent = 'Updated ' + eqTimeAgo(eqLastFetchTime);
-      eqUpdateStats(); eqRenderList(); eqRenderMarkers(); eqHideLoading();
     } catch(e) {
       const txt = eqLastFetchTime
         ? 'Updated ' + eqTimeAgo(eqLastFetchTime) + ' · retrying'
         : 'Retrying...';
       document.getElementById('eqUpdatedText').textContent = txt;
       setTimeout(eqFetchQuakes, 5000);
+      return;
     }
+    // Rendering is outside the fetch try/catch — a Leaflet error here
+    // won't be mistaken for a network failure and won't trigger retries.
+    eqHideLoading();
+    eqUpdateStats(); eqRenderList(); eqRenderMarkers();
   }
 
   function eqUpdateStats() {
@@ -804,6 +808,8 @@ const faqSchema = {
     const el = document.getElementById('eqLoadingOverlay');
     el.classList.add('hide');
     setTimeout(()=>el.remove(), 500);
+    // Recalculate map size now that the overlay is gone and the container is fully visible
+    setTimeout(()=>{ if(eqMap) eqMap.invalidateSize(); }, 100);
   }
 
   function eqSwitchTab(tab) {
@@ -813,7 +819,7 @@ const faqSchema = {
     document.getElementById('eqTabFilter').classList.toggle('active', tab==='filter');
     document.getElementById('eqMobileListPanel').classList.toggle('show', tab==='list');
     if(tab==='filter') eqOpenFilterDrawer();
-    if(tab==='map') eqCloseSheet();
+    if(tab==='map') { eqCloseSheet(); setTimeout(()=>{ if(eqMap) eqMap.invalidateSize(); }, 50); }
   }
 
   function eqOpenFilterDrawer() { document.getElementById('eqFilterDrawer').classList.add('show'); }
@@ -857,6 +863,11 @@ const faqSchema = {
   function eqInitApp() {
     eqMap = L.map('eq-map', { center: [20, 0], zoom: 2, minZoom: 1, maxZoom: 18, zoomControl: false, attributionControl: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(eqMap);
+
+    // Ensure Leaflet recalculates map dimensions whenever the container changes size
+    window.addEventListener('resize', () => { if(eqMap) eqMap.invalidateSize(); });
+    // Force correct sizing on first paint (container may not have final dimensions yet)
+    setTimeout(() => { if(eqMap) eqMap.invalidateSize(); }, 200);
 
     document.getElementById('eqTimeRange').addEventListener('change', eqRefreshData);
     document.getElementById('eqSortBy').addEventListener('change', eqRenderList);
