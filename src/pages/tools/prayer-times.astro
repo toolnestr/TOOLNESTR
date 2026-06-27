@@ -452,11 +452,13 @@ const faqSchema = {
     }, 1000);
   }
 
-  function ppCleanTime(t) { return t.replace(/\s*\(.*?\)/g, '').trim(); }
-  function ppTimeToMinutes(t) { const parts = ppCleanTime(t).split(':').map(Number); return parts[0]*60+parts[1]; }
+  function ppCleanTime(t) { return (t == null ? '' : String(t)).replace(/\s*\(.*?\)/g, '').trim(); }
+  function ppTimeToMinutes(t) { const parts = ppCleanTime(t).split(':').map(Number); return (parts[0]||0)*60+(parts[1]||0); }
   function ppFormatTime12(t) {
     const clean = ppCleanTime(t);
+    if (!clean || !clean.includes(':')) return '—';
     const [h, m] = clean.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '—';
     const ampm = h>=12?'PM':'AM';
     const h12 = h%12||12;
     return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
@@ -540,7 +542,11 @@ const faqSchema = {
     ppStoredTimings = data.timings;
     ppRenderPrayerCards(data.timings);
     ppRenderMonthly();
-    ppRenderQibla(ppUserLat, ppUserLng);
+    // Use geolocation coords if available, otherwise fall back to the
+    // coordinates the API resolved for the searched city so Qibla still works.
+    const qLat = ppUserLat ?? (data.meta ? parseFloat(data.meta.latitude) : null);
+    const qLng = ppUserLng ?? (data.meta ? parseFloat(data.meta.longitude) : null);
+    ppRenderQibla(qLat, qLng);
     ppStartCountdown(data.timings);
     ppHideLoader();
     document.getElementById('ppMainContent').classList.remove('pp-hidden');
