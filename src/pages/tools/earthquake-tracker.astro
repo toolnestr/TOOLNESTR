@@ -31,9 +31,15 @@ const faqSchema = {
     @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
+    /* On full-app tool pages the shared site header must NOT be sticky —
+       otherwise scrolling slides the tool's own header/stats underneath it
+       and they get visually "eaten". Make it static so the page scrolls
+       cleanly: [site header][tool][about][faq]. */
+    body:has(#eq-wrap) header.sticky { position: static !important; }
+
     /* ── EQ App container ── */
     #eq-wrap {
-      height: calc(100svh - 60px);
+      height: var(--eq-wrap-h, calc(100svh - 64px));
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -860,14 +866,23 @@ const faqSchema = {
   }
 
   // ══ INIT — load Leaflet dynamically then boot the app ══
+  // Size the tool to exactly fill the viewport below the (now non-sticky) site header.
+  function eqSizeWrap() {
+    const hdr = document.querySelector('header');
+    const h = hdr ? Math.round(hdr.getBoundingClientRect().height) : 64;
+    document.getElementById('eq-wrap').style.setProperty('--eq-wrap-h', `calc(100svh - ${h}px)`);
+    if (eqMap) eqMap.invalidateSize();
+  }
+
   function eqInitApp() {
     eqMap = L.map('eq-map', { center: [20, 0], zoom: 2, minZoom: 1, maxZoom: 18, zoomControl: false, attributionControl: false });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(eqMap);
 
-    // Ensure Leaflet recalculates map dimensions whenever the container changes size
-    window.addEventListener('resize', () => { if(eqMap) eqMap.invalidateSize(); });
-    // Force correct sizing on first paint (container may not have final dimensions yet)
-    setTimeout(() => { if(eqMap) eqMap.invalidateSize(); }, 200);
+    // Match tool height to the real header height, and keep map sized correctly on resize
+    eqSizeWrap();
+    window.addEventListener('resize', eqSizeWrap);
+    // Re-measure after fonts/layout settle (header height can shift slightly on first paint)
+    setTimeout(eqSizeWrap, 200);
 
     document.getElementById('eqTimeRange').addEventListener('change', eqRefreshData);
     document.getElementById('eqSortBy').addEventListener('change', eqRenderList);
