@@ -309,8 +309,8 @@ const faqSchema = {
     .eq-about-section { max-width: 860px; margin: 36px auto 0; padding: 0 16px; }
     .eq-about-card { background: white; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 28px; }
     .dark .eq-about-card { background: #1e293b; border-color: #334155; }
-    .eq-about-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
-    .dark .eq-about-card h2 { color: #f1f5f9; }
+    .eq-about-card h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
+    .dark .eq-about-card h1 { color: #f1f5f9; }
     .eq-about-card p { font-size: 0.92rem; line-height: 1.8; color: #64748b; margin-bottom: 14px; }
     .dark .eq-about-card p { color: #94a3b8; }
     .eq-about-card p:last-child { margin-bottom: 0; }
@@ -330,15 +330,6 @@ const faqSchema = {
     .eq-faq-item.open .eq-faq-arrow { transform: rotate(180deg); }
     .eq-faq-arrow { transition: transform 0.2s; font-size: 0.75rem; color: #64748b; }
   </style>
-
-  <!-- Hero -->
-  <div style="background:linear-gradient(135deg,#0f0a1a 0%,#0d1a0d 40%,#1a0d0d 100%);padding:40px 20px 48px;text-align:center;position:relative;overflow:hidden;">
-    <div style="position:absolute;top:-60px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(255,77,46,0.15) 0%,transparent 70%);pointer-events:none;"></div>
-    <div style="position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(34,197,94,0.1) 0%,transparent 70%);pointer-events:none;"></div>
-    <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fca5a5;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;padding:4px 14px;border-radius:20px;position:relative;z-index:1;">🌋 LIVE SEISMIC DATA · USGS</div>
-    <h1 style="font-size:clamp(1.7rem,4vw,2.6rem);font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:-0.02em;position:relative;z-index:1;">EarthPulse — Live Earthquake Tracker</h1>
-    <p style="font-size:1rem;color:#fca5a5;position:relative;z-index:1;max-width:560px;margin:0 auto;">Real-time global earthquake map powered by USGS. Filter, sort, and explore seismic events as they happen.</p>
-  </div>
 
   <!-- Tool -->
   <div id="eq-wrap">
@@ -551,7 +542,7 @@ const faqSchema = {
   <!-- About -->
   <section class="eq-about-section">
     <div class="eq-about-card">
-      <h2>About EarthPulse — Live Earthquake Tracker</h2>
+      <h1>About EarthPulse — Live Earthquake Tracker</h1>
       <p>EarthPulse is a real-time earthquake monitoring tool that pulls live seismic data directly from the United States Geological Survey (USGS) Earthquake Hazards Program. Every 60 seconds the tool fetches the latest earthquake feed and updates the interactive Leaflet map and sidebar list automatically, so you always see the most current global seismic activity without needing to refresh the page.</p>
       <p>The tracker covers all earthquakes worldwide — from barely perceptible micro-events to catastrophic major quakes. You can choose from four time windows (past hour, past 24 hours, past 7 days, or past 30 days) to explore recent history or focus on what is happening right now. The magnitude slider lets you cut through the noise of thousands of small events and focus only on the earthquakes that matter most to you.</p>
       <h3>Interactive map with magnitude scaling</h3>
@@ -583,6 +574,7 @@ const faqSchema = {
   let eqAllQuakes = [], eqMarkers = [], eqSelectedId = null, eqHeatMode = false;
   let eqCurrentTab = 'map';
   let eqMap = null;
+  let eqLastFetchTime = null;
 
   // ══ HELPERS ══
   const eqMagColor = m => m>=7?'#dc2626':m>=6?'#ef4444':m>=5?'#f97316':m>=2.5?'#f0b429':'#22c55e';
@@ -623,10 +615,14 @@ const faqSchema = {
       const res  = await fetch(urls[range]);
       const data = await res.json();
       eqAllQuakes  = data.features.filter(f => f.properties.mag !== null);
-      document.getElementById('eqUpdatedText').textContent = 'Updated ' + eqTimeAgo(Date.now());
+      eqLastFetchTime = Date.now();
+      document.getElementById('eqUpdatedText').textContent = 'Updated ' + eqTimeAgo(eqLastFetchTime);
       eqUpdateStats(); eqRenderList(); eqRenderMarkers(); eqHideLoading();
     } catch(e) {
-      document.getElementById('eqUpdatedText').textContent = 'Retrying...';
+      const txt = eqLastFetchTime
+        ? 'Updated ' + eqTimeAgo(eqLastFetchTime) + ' · retrying'
+        : 'Retrying...';
+      document.getElementById('eqUpdatedText').textContent = txt;
       setTimeout(eqFetchQuakes, 5000);
     }
   }
