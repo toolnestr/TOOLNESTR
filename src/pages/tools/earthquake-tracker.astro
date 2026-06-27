@@ -11,7 +11,7 @@ const faqs = [
   { q: 'What do the magnitude colours mean?', a: 'Green circles are minor events (below M 2.5), yellow are light (M 2.5–4.9), orange are moderate (M 5.0–5.9), red are strong (M 6.0–6.9), and dark red are major events (M 7.0+). Circle size also scales with magnitude.' },
   { q: 'Can I filter for just large earthquakes?', a: 'Yes — drag the Min Magnitude slider to any value between 0 and 8. The list, map markers, and statistics all update instantly to show only events at or above your chosen threshold.' },
   { q: 'What is heat mode?', a: 'Clicking the 🔥 button switches markers to a higher-opacity style that makes dense clusters of small earthquakes easier to spot, useful for visualising seismic zones at a glance.' },
-  { q: 'Can I look up a specific region?', a: 'Use the Search box to filter by location name — type a country, region, or city and the list updates in real time. On mobile, search is inside the Filters drawer.' },
+  { q: 'Can I look up a specific region?', a: 'Use the Search box to filter by location name — type a country, region, or city and the list updates in real time. On mobile, the search bar is at the top of the List panel.' },
 ];
 
 const faqSchema = {
@@ -260,6 +260,11 @@ const faqSchema = {
     .eq-mobile-list-panel.show { display: flex; }
     .eq-mlp-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--eq-surface2); border-bottom: 1px solid var(--eq-border); flex-shrink: 0; }
     .eq-mlp-back { width: 36px; height: 36px; border-radius: 9px; background: var(--eq-surface); border: 1px solid var(--eq-border); color: var(--eq-text); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; line-height: 1; }
+    .eq-mlp-search-wrap { padding: 10px 14px; border-bottom: 1px solid var(--eq-border); flex-shrink: 0; position: relative; }
+    .eq-mlp-search-wrap .eq-search-icon { position: absolute; left: 26px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; pointer-events: none; }
+    .eq-mlp-search { width: 100%; background: #161921; border: 1px solid #1e2230; color: #eceef4; border-radius: 9px; padding: 10px 12px 10px 34px; font-size: 0.88rem; font-family: var(--eq-font); }
+    .eq-mlp-search::placeholder { color: var(--eq-muted); }
+    .eq-mlp-search:focus { outline: none; border-color: var(--eq-accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
     .eq-mlp-title { font-size: 0.95rem; font-weight: 700; flex: 1; }
     .eq-mlp-count { font-size: 0.7rem; font-family: var(--eq-mono); color: var(--eq-muted); }
 
@@ -455,6 +460,10 @@ const faqSchema = {
           Refresh
         </button>
       </div>
+      <div class="eq-mlp-search-wrap">
+        <span class="eq-search-icon">🔍</span>
+        <input type="text" id="eqMListSearch" class="eq-mlp-search" placeholder="Search location…" autocomplete="off">
+      </div>
       <div class="eq-quake-list" id="eqMQuakeList"></div>
     </div>
 
@@ -486,11 +495,7 @@ const faqSchema = {
             <div class="eq-filter-label" style="display:flex;justify-content:space-between;color:#5a6278">Min Magnitude <span class="eq-mag-val" id="eqMMagVal">M 2.5+</span></div>
             <input type="range" id="eqMMinMag" min="0" max="8" step="0.5" value="2.5">
           </div>
-          <div class="eq-search-wrap">
-            <span class="eq-search-icon">🔍</span>
-            <input type="text" id="eqMSearchInput" placeholder="Search location..." style="background:#161921;border:1px solid #1e2230;color:#eceef4;">
-          </div>
-          <button class="eq-btn-primary" style="padding:13px;font-size:0.9rem;border-radius:10px" onclick="eqApplyFilters()">Apply Filters</button>
+          <button class="eq-btn-primary" style="padding:13px;font-size:0.9rem;border-radius:10px" onclick="eqApplyFilters()">Apply &amp; View Results</button>
         </div>
       </div>
     </div>
@@ -599,7 +604,7 @@ const faqSchema = {
       range:  isMobile ? document.getElementById('eqMTimeRange').value  : document.getElementById('eqTimeRange').value,
       sort:   isMobile ? document.getElementById('eqMSortBy').value     : document.getElementById('eqSortBy').value,
       minMag: isMobile ? parseFloat(document.getElementById('eqMMinMag').value) : parseFloat(document.getElementById('eqMinMag').value),
-      search: isMobile ? document.getElementById('eqMSearchInput').value.toLowerCase() : document.getElementById('eqSearchInput').value.toLowerCase(),
+      search: isMobile ? document.getElementById('eqMListSearch').value.toLowerCase() : document.getElementById('eqSearchInput').value.toLowerCase(),
     };
   }
 
@@ -820,14 +825,20 @@ const faqSchema = {
   }
 
   function eqApplyFilters() {
-    document.getElementById('eqTimeRange').value    = document.getElementById('eqMTimeRange').value;
-    document.getElementById('eqSortBy').value       = document.getElementById('eqMSortBy').value;
-    document.getElementById('eqMinMag').value       = document.getElementById('eqMMinMag').value;
-    document.getElementById('eqSearchInput').value  = document.getElementById('eqMSearchInput').value;
-    eqCloseFilterDrawer();
-    eqRefreshData();
-    const hasFilter = document.getElementById('eqMMinMag').value!=='2.5'||document.getElementById('eqMSearchInput').value!=='';
+    const prevRange = document.getElementById('eqTimeRange').value;
+    document.getElementById('eqTimeRange').value = document.getElementById('eqMTimeRange').value;
+    document.getElementById('eqSortBy').value    = document.getElementById('eqMSortBy').value;
+    document.getElementById('eqMinMag').value    = document.getElementById('eqMMinMag').value;
+    document.getElementById('eqMagVal').textContent = 'M ' + document.getElementById('eqMMinMag').value + '+';
+    const hasFilter = document.getElementById('eqMMinMag').value !== '2.5';
     document.getElementById('eqFilterBadge').classList.toggle('show', hasFilter);
+    eqCloseFilterDrawer();
+    if (document.getElementById('eqTimeRange').value !== prevRange) {
+      eqRefreshData();
+    } else {
+      eqRenderList(); eqRenderMarkers();
+    }
+    eqSwitchTab('list');
   }
 
   function eqRefreshData() {
@@ -850,6 +861,7 @@ const faqSchema = {
     document.getElementById('eqTimeRange').addEventListener('change', eqRefreshData);
     document.getElementById('eqSortBy').addEventListener('change', eqRenderList);
     document.getElementById('eqSearchInput').addEventListener('input', ()=>{ eqRenderList(); eqRenderMarkers(); });
+    document.getElementById('eqMListSearch').addEventListener('input', ()=>{ eqRenderList(); eqRenderMarkers(); });
     document.getElementById('eqMinMag').addEventListener('input', function(){
       document.getElementById('eqMagVal').textContent = 'M '+this.value+'+';
       document.getElementById('eqMMinMag').value = this.value;
