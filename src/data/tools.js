@@ -467,6 +467,8 @@ export const tools = [
   { slug: 'domain-health-dashboard', title: 'Domain Health Dashboard', short: 'Full domain audit — DNS, SPF, DMARC, SSL grade, uptime and blacklist in one dashboard.', category: 'networking', emoji: '🌐', enabled: true, status: 'live', flagship: true },
   { slug: 'currency-converter', title: 'Currency Converter', short: 'Live exchange rates for 30+ currencies from the European Central Bank — instant conversion.', category: 'finance', emoji: '💱', enabled: true, status: 'live', flagship: true },
   { slug: 'invoice-generator', title: 'Invoice Generator', short: 'Create professional invoices instantly — add items, tax, logo and download as PDF. Free.', category: 'finance', emoji: '🧾', enabled: true, status: 'live', flagship: true },
+  { slug: 'earthquake-tracker', title: 'Live Earthquake Tracker', short: 'Real-time global earthquake map powered by USGS — filter by magnitude, view depth and get alerts for major events.', category: 'everyday', emoji: '🌋', enabled: true, status: 'live', flagship: true },
+  { slug: 'prayer-times', title: 'Islamic Prayer Times', short: 'Accurate Fajr, Dhuhr, Asr, Maghrib & Isha times for any city worldwide — live countdown, Qibla compass and monthly timetable.', category: 'everyday', emoji: '🕌', enabled: true, status: 'live', flagship: true },
   { slug: 'keyboard-tester', title: 'Keyboard Tester', short: 'Test every key on your keyboard — detect stuck or broken keys in real time.', category: 'everyday', emoji: '⌨️', enabled: true, status: 'live', flagship: true },
   { slug: 'numerology-calculator', title: 'Numerology Calculator', short: 'Life Path and Destiny numbers.', category: 'creators', emoji: '🔮', enabled: true, status: 'live' },
   // ── Part 8: Automotive ──

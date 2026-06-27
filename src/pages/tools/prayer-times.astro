@@ -1,0 +1,679 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'Islamic Prayer Times — PrayerPulse';
+const description =
+  'Accurate Islamic prayer times (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha) for any city worldwide. Live countdown to next prayer, Qibla direction, monthly timetable, Hijri date and 13 calculation methods.';
+
+const faqs = [
+  { q: 'Which calculation methods are available?', a: 'PrayerPulse supports 13 major methods including Karachi (University of Islamic Sciences), ISNA (North America), Muslim World League, Umm Al-Qura (Makkah), Egyptian General Authority, Tehran, Gulf, Kuwait, Qatar, Singapore, France, Turkey and Russia. Select the method recommended by your regional religious authority for the most accurate times.' },
+  { q: 'How do I get prayer times for my city?', a: 'Type your city name and country in the search boxes and click "Get Prayer Times". Alternatively, click "Use My Location" to let your browser detect your GPS coordinates and fetch times automatically for your exact position.' },
+  { q: 'What is the Qibla direction?', a: 'The Qibla is the direction of the Kaaba in Makkah, which Muslims face during prayer. The compass shows the bearing in degrees from north. The calculation uses the great-circle bearing formula based on your location\'s latitude and longitude.' },
+  { q: 'Can I get notifications before prayer?', a: 'Yes — toggle the Notifications switch to enable browser alerts. You will receive a notification 5 minutes before each prayer and another one exactly at prayer time. You must grant notification permission when prompted by your browser.' },
+  { q: 'Is the Hijri date accurate?', a: 'The Hijri (Islamic) calendar date is provided by the Aladhan API, which calculates it astronomically. Note that some communities follow the moonsighting convention which may differ by one day from the calculated date.' },
+  { q: 'Does it work without internet?', a: 'No — prayer times are fetched from the Aladhan API in real time. You need an internet connection to load times. The live clock and countdown continue to work offline once times are loaded, but refreshing the page will require a connection.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={faqSchema}>
+
+  <style is:inline>
+    @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    /* ── Prayer App wrapper ── */
+    #pp-wrap {
+      background: #0a0f1a;
+      color: #e8eaf0;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+    #pp-wrap::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 55%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 25%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 35%, rgba(255,255,255,0.4) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #pp-wrap * { box-sizing: border-box; }
+
+    /* CSS vars */
+    #pp-wrap {
+      --pp-bg: #0a0f1a;
+      --pp-surface: #111827;
+      --pp-surface2: #1a2438;
+      --pp-border: #1e2d45;
+      --pp-gold: #c9963a;
+      --pp-gold-light: #e8b84b;
+      --pp-gold-dim: rgba(201,150,58,0.15);
+      --pp-teal: #1a6b5e;
+      --pp-teal-light: #22d3b8;
+      --pp-teal-dim: rgba(34,211,184,0.1);
+      --pp-text: #e8eaf0;
+      --pp-text-muted: #6b7a99;
+      --pp-text-dim: #3d4f6e;
+      --pp-fajr: #4a90a4;
+      --pp-sunrise: #e8864a;
+      --pp-dhuhr: #f0c040;
+      --pp-asr: #7bc67e;
+      --pp-maghrib: #e87a4a;
+      --pp-isha: #9b7fd4;
+    }
+
+    .pp-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 14px 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .pp-header { text-align: center; margin-bottom: 24px; }
+    .pp-moon-icon { font-size: 44px; display: block; margin-bottom: 6px; filter: drop-shadow(0 0 12px rgba(201,150,58,0.6)); animation: pp-moon-pulse 3s ease-in-out infinite; }
+    @keyframes pp-moon-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(201,150,58,0.6)); } 50% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(201,150,58,0.9)); } }
+    .pp-header h1 { font-family: 'Amiri', serif; font-size: clamp(1.8rem, 7vw, 2.8rem); color: var(--pp-gold-light); letter-spacing: 1px; line-height: 1; margin: 0; }
+    .pp-header .pp-arabic { font-family: 'Amiri', serif; font-size: clamp(1rem, 4vw, 1.4rem); color: var(--pp-text-muted); direction: rtl; margin-top: 4px; }
+    .pp-header .pp-tagline { font-size: clamp(0.65rem, 2.5vw, 0.85rem); color: var(--pp-text-muted); margin-top: 8px; letter-spacing: 2px; text-transform: uppercase; }
+    .pp-worldwide-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,211,184,0.08); border: 1px solid rgba(34,211,184,0.2); border-radius: 20px; padding: 4px 12px; font-size: 0.72rem; color: var(--pp-teal-light); margin-top: 10px; letter-spacing: 0.5px; }
+
+    /* Live clock */
+    .pp-live-clock { font-size: 0.85rem; color: var(--pp-text-muted); text-align: center; margin-bottom: 14px; font-variant-numeric: tabular-nums; }
+    .pp-live-clock span { color: var(--pp-gold); font-weight: 600; }
+
+    /* Hijri Bar */
+    .pp-hijri-bar { background: var(--pp-gold-dim); border: 1px solid rgba(201,150,58,0.3); border-radius: 10px; padding: 10px 16px; text-align: center; margin-bottom: 16px; }
+    .pp-hijri-date { font-family: 'Amiri', serif; font-size: clamp(0.95rem, 3.5vw, 1.1rem); color: var(--pp-gold-light); display: block; }
+    .pp-gregorian { font-size: 0.82rem; color: var(--pp-text-muted); margin-top: 2px; display: block; }
+
+    /* Search Box */
+    .pp-search-box { background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+    .pp-search-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .pp-search-fields input, .pp-search-fields select { width: 100%; background: var(--pp-surface2); border: 1px solid var(--pp-border); border-radius: 8px; padding: 12px 14px; color: var(--pp-text); font-family: 'Inter', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s; -webkit-appearance: none; appearance: none; }
+    .pp-search-fields input:focus, .pp-search-fields select:focus { border-color: var(--pp-gold); }
+    .pp-search-fields input::placeholder { color: var(--pp-text-muted); }
+    .pp-search-fields select option { background: var(--pp-surface2); color: var(--pp-text); }
+    .pp-select-wrap { position: relative; }
+    .pp-select-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--pp-gold); pointer-events: none; font-size: 1rem; }
+    .pp-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pp-btn { padding: 12px 10px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600; transition: all 0.2s; text-align: center; line-height: 1.3; }
+    .pp-btn-gold { background: linear-gradient(135deg, var(--pp-gold), var(--pp-gold-light)); color: #0a0f1a; }
+    .pp-btn-gold:active { opacity: 0.85; }
+    .pp-btn-teal { background: var(--pp-teal-dim); color: var(--pp-teal-light); border: 1px solid rgba(34,211,184,0.3); }
+    .pp-btn-teal:active { background: rgba(34,211,184,0.2); }
+    .pp-location-status { margin-top: 8px; font-size: 0.8rem; color: var(--pp-text-muted); text-align: center; min-height: 18px; }
+
+    /* Method info */
+    .pp-method-info { background: var(--pp-surface2); border: 1px solid var(--pp-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.78rem; color: var(--pp-text-muted); line-height: 1.6; }
+    .pp-method-info strong { color: var(--pp-text); }
+
+    /* Current Prayer Banner */
+    .pp-current-banner { background: linear-gradient(135deg, rgba(201,150,58,0.2), rgba(201,150,58,0.05)); border: 1px solid rgba(201,150,58,0.4); border-radius: 14px; padding: 18px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pp-current-label { font-size: 0.7rem; color: var(--pp-gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+    .pp-current-name { font-family: 'Amiri', serif; font-size: clamp(1.3rem, 5vw, 2rem); color: var(--pp-gold-light); line-height: 1; }
+    .pp-current-time-display { font-size: 0.95rem; color: var(--pp-text-muted); margin-top: 2px; }
+    .pp-countdown-box { text-align: right; flex-shrink: 0; }
+    .pp-countdown-label { font-size: 0.7rem; color: var(--pp-text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .pp-countdown-timer { font-size: clamp(1.3rem, 5vw, 2rem); font-weight: 700; color: var(--pp-teal-light); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+    .pp-next-prayer-name { font-size: 0.75rem; color: var(--pp-text-muted); margin-top: 2px; }
+
+    /* Notifications */
+    .pp-notif-section { background: var(--pp-teal-dim); border: 1px solid rgba(34,211,184,0.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pp-notif-text h4 { font-size: 0.9rem; color: var(--pp-teal-light); margin-bottom: 2px; }
+    .pp-notif-text p { font-size: 0.76rem; color: var(--pp-text-muted); }
+    .pp-toggle-switch { position: relative; width: 48px; height: 26px; flex-shrink: 0; }
+    .pp-toggle-switch input { display: none; }
+    .pp-toggle-slider { position: absolute; inset: 0; background: var(--pp-border); border-radius: 26px; cursor: pointer; transition: 0.3s; }
+    .pp-toggle-slider::before { content: ''; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .pp-toggle-switch input:checked + .pp-toggle-slider { background: var(--pp-teal); }
+    .pp-toggle-switch input:checked + .pp-toggle-slider::before { transform: translateX(22px); }
+
+    /* Section title */
+    .pp-section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 2px; color: var(--pp-text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    .pp-section-title::after { content: ''; flex: 1; height: 1px; background: var(--pp-border); }
+
+    /* Prayer Cards */
+    .pp-prayers-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
+    @media (min-width: 480px) { .pp-prayers-grid { grid-template-columns: 1fr 1fr; } }
+    @media (min-width: 700px) { .pp-prayers-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+    .pp-prayer-card { background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; transition: all 0.3s; position: relative; overflow: hidden; }
+    .pp-prayer-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+    .pp-prayer-card.pp-fajr::before { background: var(--pp-fajr); }
+    .pp-prayer-card.pp-sunrise::before { background: var(--pp-sunrise); }
+    .pp-prayer-card.pp-dhuhr::before { background: var(--pp-dhuhr); }
+    .pp-prayer-card.pp-asr::before { background: var(--pp-asr); }
+    .pp-prayer-card.pp-maghrib::before { background: var(--pp-maghrib); }
+    .pp-prayer-card.pp-isha::before { background: var(--pp-isha); }
+    .pp-prayer-card.pp-active { border-color: var(--pp-gold); background: linear-gradient(135deg, rgba(201,150,58,0.12), var(--pp-surface)); box-shadow: 0 0 18px rgba(201,150,58,0.15); }
+    .pp-prayer-card.pp-passed { opacity: 0.5; }
+    .pp-prayer-left { display: flex; align-items: center; gap: 12px; }
+    .pp-prayer-icon { font-size: 1.5rem; width: 36px; text-align: center; }
+    .pp-prayer-info .pp-prayer-name-en { font-weight: 600; font-size: 0.95rem; color: var(--pp-text); }
+    .pp-prayer-info .pp-prayer-name-ar { font-family: 'Amiri', serif; font-size: 0.85rem; color: var(--pp-text-muted); direction: rtl; }
+    .pp-prayer-right { text-align: right; }
+    .pp-prayer-time { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pp-text); }
+    .pp-prayer-card.pp-active .pp-prayer-time { color: var(--pp-gold-light); }
+    .pp-prayer-status { font-size: 0.68rem; padding: 2px 7px; border-radius: 20px; margin-top: 3px; display: inline-block; }
+    .pp-status-current { background: rgba(201,150,58,0.2); color: var(--pp-gold-light); }
+    .pp-status-next { background: rgba(34,211,184,0.15); color: var(--pp-teal-light); }
+    .pp-status-passed { background: rgba(107,122,153,0.15); color: var(--pp-text-muted); }
+
+    /* Qibla */
+    .pp-qibla-section { background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: 14px; padding: 20px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    .pp-compass-wrap { position: relative; width: 130px; height: 130px; flex-shrink: 0; }
+    .pp-compass-circle { width: 130px; height: 130px; border-radius: 50%; border: 2px solid var(--pp-border); background: radial-gradient(circle, var(--pp-surface2), var(--pp-bg)); position: relative; display: flex; align-items: center; justify-content: center; }
+    .pp-compass-n, .pp-compass-s, .pp-compass-e, .pp-compass-w { position: absolute; font-size: 0.68rem; color: var(--pp-text-muted); font-weight: 700; }
+    .pp-compass-n { top: 4px; left: 50%; transform: translateX(-50%); color: var(--pp-gold); }
+    .pp-compass-s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+    .pp-compass-e { right: 5px; top: 50%; transform: translateY(-50%); }
+    .pp-compass-w { left: 5px; top: 50%; transform: translateY(-50%); }
+    .pp-qibla-needle { position: absolute; width: 4px; height: 46px; left: 50%; top: 50%; transform-origin: bottom center; transform: translateX(-50%) translateY(-100%) rotate(0deg); transition: transform 1s ease; }
+    .pp-needle-top { width: 4px; height: 23px; background: linear-gradient(to bottom, var(--pp-gold-light), var(--pp-gold)); border-radius: 2px 2px 0 0; }
+    .pp-needle-bottom { width: 4px; height: 23px; background: var(--pp-text-dim); border-radius: 0 0 2px 2px; }
+    .pp-compass-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pp-gold); position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 2; }
+    .pp-qibla-info { flex: 1; min-width: 180px; }
+    .pp-qibla-info h3 { font-family: 'Amiri', serif; font-size: 1.3rem; color: var(--pp-gold-light); margin-bottom: 6px; }
+    .pp-qibla-info p { font-size: 0.82rem; color: var(--pp-text-muted); line-height: 1.6; margin: 0; }
+    .pp-qibla-degree { font-size: 1.8rem; font-weight: 700; color: var(--pp-teal-light); margin: 6px 0 4px; }
+
+    /* Monthly Table */
+    .pp-monthly-section { background: var(--pp-surface); border: 1px solid var(--pp-border); border-radius: 14px; overflow: hidden; margin-bottom: 20px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .pp-monthly-section table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.78rem; }
+    .pp-monthly-section th { background: var(--pp-surface2); padding: 10px 8px; text-align: center; color: var(--pp-gold); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--pp-border); white-space: nowrap; }
+    .pp-monthly-section td { padding: 7px 8px; text-align: center; color: var(--pp-text-muted); border-bottom: 1px solid rgba(30,45,69,0.5); white-space: nowrap; }
+    .pp-monthly-section tr:hover td { background: var(--pp-surface2); }
+    .pp-monthly-section tr.pp-today-row td { background: rgba(201,150,58,0.08); color: var(--pp-text); font-weight: 500; }
+    .pp-monthly-section tr.pp-today-row td:first-child { color: var(--pp-gold-light); font-weight: 700; }
+    .pp-scroll-hint { text-align: center; font-size: 0.72rem; color: var(--pp-text-dim); padding: 6px; background: var(--pp-surface2); }
+
+    /* Loader & Error */
+    .pp-loader { text-align: center; padding: 60px 20px; color: var(--pp-text-muted); }
+    .pp-loader-moon { font-size: 3rem; animation: pp-spin 2s linear infinite; display: block; margin-bottom: 16px; }
+    @keyframes pp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .pp-error-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 16px 20px; color: #fca5a5; text-align: center; font-size: 0.9rem; margin-top: 16px; }
+    .pp-hidden { display: none !important; }
+
+    /* ══ ABOUT / FAQ ══ */
+    .pp-about-section { max-width: 860px; margin: 36px auto 0; padding: 0 16px; }
+    .pp-about-card { background: white; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+    .dark .pp-about-card { background: #1e293b; border-color: #334155; }
+    .pp-about-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
+    .dark .pp-about-card h2 { color: #f1f5f9; }
+    .pp-about-card p { font-size: 0.92rem; line-height: 1.8; color: #64748b; margin-bottom: 14px; }
+    .dark .pp-about-card p { color: #94a3b8; }
+    .pp-about-card p:last-child { margin-bottom: 0; }
+    .pp-about-card h3 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 20px 0 8px; }
+    .dark .pp-about-card h3 { color: #f1f5f9; }
+    .pp-faq-section { max-width: 860px; margin: 28px auto 48px; padding: 0 16px; }
+    .pp-faq-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
+    .dark .pp-faq-title { color: #f1f5f9; }
+    .pp-faq-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; }
+    .dark .pp-faq-item { background: #1e293b; border-color: #334155; }
+    .pp-faq-q { padding: 14px 16px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.93rem; color: #1e293b; }
+    .dark .pp-faq-q { color: #f1f5f9; }
+    .pp-faq-q:hover { color: #6366f1; }
+    .pp-faq-a { padding: 0 16px 14px; font-size: 0.88rem; color: #64748b; line-height: 1.65; display: none; }
+    .dark .pp-faq-a { color: #94a3b8; }
+    .pp-faq-item.open .pp-faq-a { display: block; }
+    .pp-faq-item.open .pp-faq-arrow { transform: rotate(180deg); }
+    .pp-faq-arrow { transition: transform 0.2s; font-size: 0.75rem; color: #64748b; }
+  </style>
+
+  <!-- Hero -->
+  <div style="background:linear-gradient(135deg,#060a12 0%,#0a1520 50%,#0d0d1f 100%);padding:44px 20px 52px;text-align:center;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(201,150,58,0.15) 0%,transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;bottom:-60px;left:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(34,211,184,0.1) 0%,transparent 70%);pointer-events:none;"></div>
+    <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;background:rgba(201,150,58,0.12);border:1px solid rgba(201,150,58,0.3);color:#e8b84b;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;padding:4px 14px;border-radius:20px;position:relative;z-index:1;">🌙 WORLDWIDE PRAYER TIMES · 13 METHODS</div>
+    <h1 style="font-family:'Amiri',serif;font-size:clamp(1.8rem,4.5vw,3rem);font-weight:700;color:#e8b84b;margin-bottom:10px;letter-spacing:1px;position:relative;z-index:1;">PrayerPulse — Islamic Prayer Times</h1>
+    <p style="font-size:1rem;color:#6b7a99;position:relative;z-index:1;max-width:560px;margin:0 auto;">Accurate Fajr, Dhuhr, Asr, Maghrib and Isha times for any city worldwide. Live countdown, Qibla compass, Hijri date and monthly timetable.</p>
+  </div>
+
+  <!-- Tool -->
+  <div id="pp-wrap">
+    <div class="pp-container">
+
+      <!-- Header -->
+      <div class="pp-header">
+        <span class="pp-moon-icon">🌙</span>
+        <h1>PrayerPulse</h1>
+        <div class="pp-arabic">أوقات الصلاة</div>
+        <div class="pp-tagline">Accurate Islamic Prayer Times Worldwide</div>
+        <div style="text-align:center"><span class="pp-worldwide-badge">🌍 Works in Every Country Worldwide</span></div>
+      </div>
+
+      <!-- Live Clock -->
+      <div class="pp-live-clock">
+        <span id="ppLiveClock">--:--:--</span> &nbsp;|&nbsp; <span id="ppLiveDate">--</span>
+      </div>
+
+      <!-- Hijri Bar -->
+      <div class="pp-hijri-bar">
+        <span class="pp-hijri-date" id="ppHijriDate">Loading...</span>
+        <span class="pp-gregorian" id="ppGregDate">--</span>
+      </div>
+
+      <!-- Search -->
+      <div class="pp-search-box">
+        <div class="pp-search-fields">
+          <input type="text" id="ppCityInput" placeholder="🏙️ City (e.g. London, Dubai, Karachi)" value="Rawalpindi">
+          <input type="text" id="ppCountryInput" placeholder="🌍 Country (e.g. Pakistan, UK, USA)" value="Pakistan">
+          <div class="pp-select-wrap">
+            <select id="ppMethodSelect">
+              <option value="1">Karachi — Univ. of Islamic Sciences</option>
+              <option value="2">ISNA — North America</option>
+              <option value="3">Muslim World League (MWL)</option>
+              <option value="4">Umm Al-Qura, Makkah</option>
+              <option value="5">Egyptian General Authority</option>
+              <option value="7">Tehran — Inst. of Geophysics</option>
+              <option value="8">Gulf Region</option>
+              <option value="9">Kuwait</option>
+              <option value="10">Qatar</option>
+              <option value="11">Singapore — MUIS</option>
+              <option value="12">France — UOIF</option>
+              <option value="13">Turkey — Diyanet</option>
+              <option value="15">Russia — Spiritual Admin.</option>
+            </select>
+          </div>
+        </div>
+        <div class="pp-btn-row">
+          <button class="pp-btn pp-btn-gold" onclick="ppFetchPrayerTimes()">🔍 Get Prayer Times</button>
+          <button class="pp-btn pp-btn-teal" id="ppLocBtn" onclick="ppUseMyLocation()">📍 Use My Location</button>
+        </div>
+        <div class="pp-location-status" id="ppLocationStatus"></div>
+      </div>
+
+      <!-- Main Content -->
+      <div id="ppMainContent" class="pp-hidden">
+
+        <div class="pp-method-info" id="ppMethodInfo"></div>
+
+        <!-- Current Prayer Banner -->
+        <div class="pp-current-banner">
+          <div>
+            <div class="pp-current-label">🕌 Currently Active</div>
+            <div class="pp-current-name" id="ppCurrentPrayerName">—</div>
+            <div class="pp-current-time-display" id="ppCurrentPrayerTime"></div>
+          </div>
+          <div class="pp-countdown-box">
+            <div class="pp-countdown-label">Next In</div>
+            <div class="pp-countdown-timer" id="ppCountdownTimer">--:--:--</div>
+            <div class="pp-next-prayer-name" id="ppNextPrayerName"></div>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="pp-notif-section">
+          <div class="pp-notif-text">
+            <h4>🔔 Prayer Notifications</h4>
+            <p>Browser alert 5 min before each prayer</p>
+          </div>
+          <label class="pp-toggle-switch">
+            <input type="checkbox" id="ppNotifToggle" onchange="ppToggleNotifications()">
+            <span class="pp-toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Prayer Cards -->
+        <div class="pp-section-title">Today's Prayer Times</div>
+        <div class="pp-prayers-grid" id="ppPrayersGrid"></div>
+
+        <!-- Qibla -->
+        <div class="pp-section-title">Qibla Direction</div>
+        <div class="pp-qibla-section">
+          <div class="pp-compass-wrap">
+            <div class="pp-compass-circle">
+              <span class="pp-compass-n">N</span>
+              <span class="pp-compass-s">S</span>
+              <span class="pp-compass-e">E</span>
+              <span class="pp-compass-w">W</span>
+              <div class="pp-qibla-needle" id="ppQiblaNeedle">
+                <div class="pp-needle-top"></div>
+                <div class="pp-needle-bottom"></div>
+              </div>
+              <div class="pp-compass-dot"></div>
+            </div>
+          </div>
+          <div class="pp-qibla-info">
+            <h3>🕋 Qibla Direction</h3>
+            <div class="pp-qibla-degree" id="ppQiblaDegree">—°</div>
+            <p id="ppQiblaText">Search your city to see Qibla direction.</p>
+          </div>
+        </div>
+
+        <!-- Monthly -->
+        <div class="pp-section-title">Monthly Prayer Timetable</div>
+        <div class="pp-monthly-section">
+          <div class="pp-scroll-hint">← Scroll to see all times →</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th style="color:#4a90a4">Fajr</th>
+                <th style="color:#e8864a">Sunrise</th>
+                <th style="color:#f0c040">Dhuhr</th>
+                <th style="color:#7bc67e">Asr</th>
+                <th style="color:#e87a4a">Maghrib</th>
+                <th style="color:#9b7fd4">Isha</th>
+              </tr>
+            </thead>
+            <tbody id="ppMonthlyBody"></tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- Loader -->
+      <div id="ppLoader" class="pp-hidden pp-loader">
+        <span class="pp-loader-moon">🌙</span>
+        <p>Fetching prayer times...</p>
+      </div>
+
+      <!-- Error -->
+      <div id="ppErrorBox" class="pp-hidden pp-error-box"></div>
+
+    </div>
+  </div><!-- #pp-wrap -->
+
+  <!-- About -->
+  <section class="pp-about-section">
+    <div class="pp-about-card">
+      <h2>About PrayerPulse — Islamic Prayer Times</h2>
+      <p>PrayerPulse is a free, browser-based tool that provides accurate Islamic prayer times for any city or GPS location worldwide. It fetches data in real time from the Aladhan API, a widely trusted Islamic prayer calculation service used by millions of Muslims globally. Simply enter your city and country, choose your preferred calculation method, and the tool instantly displays today's Fajr, Sunrise, Dhuhr, Asr, Maghrib, and Isha times along with which prayer is currently active and how long until the next one.</p>
+      <p>The tool supports 13 different calculation methods used by Islamic authorities across the world, including Karachi (University of Islamic Sciences), ISNA for North America, Muslim World League, Umm Al-Qura for Saudi Arabia and the Gulf, Egyptian General Authority, Tehran for Iran, as well as regional methods for Kuwait, Qatar, Singapore, France, Turkey, and Russia. Using the method recommended by your local mosque or Islamic centre ensures the most accurate times for your community.</p>
+      <h3>Live countdown and current prayer</h3>
+      <p>The live countdown timer ticks down second by second to the next prayer time, making it easy to see exactly how much time you have left. The "Currently Active" banner shows which prayer period you are in right now. Prayer cards colour-code each prayer using distinct accent colours — blue for Fajr, orange for Sunrise and Maghrib, gold for Dhuhr, green for Asr, and purple for Isha — and clearly label each as active, next, or passed so you can see your day at a glance.</p>
+      <h3>Qibla compass</h3>
+      <p>Once prayer times are loaded, the Qibla section shows the direction of the Kaaba in Makkah in degrees from true north, calculated using the great-circle bearing formula based on your latitude and longitude. The animated compass needle rotates to point towards Makkah. This is a calculated bearing — for precise Qibla during prayer, consult a dedicated compass application with device orientation support.</p>
+      <h3>Monthly timetable</h3>
+      <p>The tool also generates a complete monthly prayer timetable for the current month, with today's row highlighted so you can quickly scan upcoming days. The table is horizontally scrollable on mobile for comfortable reading on small screens.</p>
+      <h3>Hijri date and browser notifications</h3>
+      <p>The Hijri (Islamic lunar calendar) date is displayed at the top alongside the Gregorian date, calculated from the Aladhan API. You can also enable browser notifications to receive an alert five minutes before each prayer and again at the prayer time — ideal for staying on schedule throughout your day without needing to keep the browser tab open.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="pp-faq-section">
+    <h2 class="pp-faq-title">Frequently Asked Questions</h2>
+    {faqs.map((f) => (
+      <div class="pp-faq-item">
+        <div class="pp-faq-q" onclick="this.parentElement.classList.toggle('open')">
+          {f.q}<span class="pp-faq-arrow">▼</span>
+        </div>
+        <div class="pp-faq-a">{f.a}</div>
+      </div>
+    ))}
+  </section>
+
+  <script is:inline>
+  let ppPrayerData = null;
+  let ppMonthlyData = null;
+  let ppCountdownInterval = null;
+  let ppUserLat = null;
+  let ppUserLng = null;
+  let ppNotificationsEnabled = false;
+  let ppStoredTimings = null;
+
+  const PP_PRAYER_META = {
+    Fajr:    { icon: '🌄', ar: 'الفجر',  cls: 'pp-fajr' },
+    Sunrise: { icon: '🌅', ar: 'الشروق', cls: 'pp-sunrise' },
+    Dhuhr:   { icon: '☀️',  ar: 'الظهر',  cls: 'pp-dhuhr' },
+    Asr:     { icon: '🌤️', ar: 'العصر',  cls: 'pp-asr' },
+    Maghrib: { icon: '🌇', ar: 'المغرب', cls: 'pp-maghrib' },
+    Isha:    { icon: '🌙', ar: 'العشاء', cls: 'pp-isha' },
+  };
+  const PP_PRAYER_ORDER = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'];
+
+  function ppStartClock() {
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('ppLiveClock').textContent = now.toLocaleTimeString('en-US', { hour12: true });
+      document.getElementById('ppLiveDate').textContent  = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }, 1000);
+  }
+
+  function ppCleanTime(t) { return t.replace(/\s*\(.*?\)/g, '').trim(); }
+  function ppTimeToMinutes(t) { const parts = ppCleanTime(t).split(':').map(Number); return parts[0]*60+parts[1]; }
+  function ppFormatTime12(t) {
+    const clean = ppCleanTime(t);
+    const [h, m] = clean.split(':').map(Number);
+    const ampm = h>=12?'PM':'AM';
+    const h12 = h%12||12;
+    return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+
+  function ppSetHijriDate(hijri, gregorian) {
+    const months = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Awwal','Jumada al-Thani','Rajab',"Sha'ban",'Ramadan','Shawwal','Dhu al-Qi\'dah','Dhu al-Hijjah'];
+    document.getElementById('ppHijriDate').textContent = `${hijri.day} ${months[parseInt(hijri.month.number)-1]} ${hijri.year} AH`;
+    document.getElementById('ppGregDate').textContent  = `${gregorian.day} ${gregorian.month.en} ${gregorian.year}`;
+  }
+
+  async function ppFetchPrayerTimes() {
+    const city    = document.getElementById('ppCityInput').value.trim() || 'Rawalpindi';
+    const country = document.getElementById('ppCountryInput').value.trim() || 'Pakistan';
+    const method  = document.getElementById('ppMethodSelect').value;
+    ppSetStatus(''); ppShowLoader();
+    try {
+      const today = new Date();
+      const month = today.getMonth()+1;
+      const year  = today.getFullYear();
+      const r1 = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`);
+      const d1 = await r1.json();
+      if(d1.code !== 200) throw new Error('City not found. Check spelling and try again.');
+      const r2 = await fetch(`https://api.aladhan.com/v1/calendarByCity/${year}/${month}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`);
+      const d2 = await r2.json();
+      ppUserLat = parseFloat(d1.data.meta.latitude);
+      ppUserLng = parseFloat(d1.data.meta.longitude);
+      ppMonthlyData = d2.data;
+      ppSetStatus(`📍 ${city}, ${country}`);
+      ppRenderAll(d1.data, method);
+    } catch(e) { ppShowError(e.message); }
+  }
+
+  async function ppFetchByCoords(lat, lng) {
+    const method = document.getElementById('ppMethodSelect').value;
+    ppShowLoader();
+    try {
+      const today = new Date();
+      const month = today.getMonth()+1;
+      const year  = today.getFullYear();
+      const r1 = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}`);
+      const d1 = await r1.json();
+      if(d1.code !== 200) throw new Error('Could not get prayer times for this location.');
+      const r2 = await fetch(`https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${lat}&longitude=${lng}&method=${method}`);
+      const d2 = await r2.json();
+      ppUserLat = lat; ppUserLng = lng;
+      ppMonthlyData = d2.data;
+      const metaCity = d1.data.meta.timezone || 'Your Location';
+      ppSetStatus(`📍 ${metaCity.replace('/', ', ')}`);
+      ppRenderAll(d1.data, method);
+    } catch(e) { ppShowError(e.message); }
+  }
+
+  function ppUseMyLocation() {
+    if(!navigator.geolocation) { ppShowError('Geolocation not supported by your browser.'); return; }
+    ppSetStatus('🔄 Getting your location...');
+    document.getElementById('ppLocBtn').textContent = '⏳ Getting...';
+    document.getElementById('ppLocBtn').disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        document.getElementById('ppLocBtn').textContent = '📍 Use My Location';
+        document.getElementById('ppLocBtn').disabled = false;
+        ppFetchByCoords(pos.coords.latitude, pos.coords.longitude);
+      },
+      err => {
+        document.getElementById('ppLocBtn').textContent = '📍 Use My Location';
+        document.getElementById('ppLocBtn').disabled = false;
+        let msg = 'Location access denied.';
+        if(err.code===1) msg = 'Location permission denied. Please allow location access.';
+        if(err.code===2) msg = 'Location unavailable. Try searching by city instead.';
+        if(err.code===3) msg = 'Location request timed out. Try searching by city instead.';
+        ppShowError(msg); ppSetStatus('');
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  }
+
+  function ppRenderAll(data, method) {
+    ppSetHijriDate(data.date.hijri, data.date.gregorian);
+    ppRenderMethodInfo(method, data.meta);
+    ppStoredTimings = data.timings;
+    ppRenderPrayerCards(data.timings);
+    ppRenderMonthly();
+    ppRenderQibla(ppUserLat, ppUserLng);
+    ppStartCountdown(data.timings);
+    ppHideLoader();
+    document.getElementById('ppMainContent').classList.remove('pp-hidden');
+    document.getElementById('ppErrorBox').classList.add('pp-hidden');
+  }
+
+  function ppRenderMethodInfo(method, meta) {
+    const sel = document.getElementById('ppMethodSelect');
+    const methodName = sel.options[sel.selectedIndex].text;
+    document.getElementById('ppMethodInfo').innerHTML =
+      `⚙️ <strong>Method:</strong> ${methodName} &nbsp;·&nbsp; <strong>Lat:</strong> ${parseFloat(meta.latitude).toFixed(3)}° &nbsp;·&nbsp; <strong>Lng:</strong> ${parseFloat(meta.longitude).toFixed(3)}°`;
+  }
+
+  function ppGetCurrentAndNext(timings) {
+    const now = new Date();
+    const currentMins = now.getHours()*60+now.getMinutes();
+    let current=null, next=null;
+    for(const name of PP_PRAYER_ORDER) { if(currentMins >= ppTimeToMinutes(timings[name])) current=name; }
+    for(const name of PP_PRAYER_ORDER) { if(currentMins < ppTimeToMinutes(timings[name])) { next=name; break; } }
+    if(!next) next = PP_PRAYER_ORDER[0];
+    return { current, next };
+  }
+
+  function ppRenderPrayerCards(timings) {
+    const { current, next } = ppGetCurrentAndNext(timings);
+    const now = new Date();
+    const currentMins = now.getHours()*60+now.getMinutes();
+    const grid = document.getElementById('ppPrayersGrid');
+    grid.innerHTML = '';
+    PP_PRAYER_ORDER.forEach(name => {
+      const meta = PP_PRAYER_META[name];
+      const mins = ppTimeToMinutes(timings[name]);
+      const isActive = name===current;
+      const isNext   = name===next;
+      const isPassed = mins<currentMins && !isActive;
+      let statusHTML = '';
+      if(isActive) statusHTML = `<span class="pp-prayer-status pp-status-current">● Active</span>`;
+      else if(isNext) statusHTML = `<span class="pp-prayer-status pp-status-next">↑ Next</span>`;
+      else if(isPassed) statusHTML = `<span class="pp-prayer-status pp-status-passed">✓ Passed</span>`;
+      grid.innerHTML += `
+        <div class="pp-prayer-card ${meta.cls} ${isActive?'pp-active':''} ${isPassed?'pp-passed':''}">
+          <div class="pp-prayer-left">
+            <div class="pp-prayer-icon">${meta.icon}</div>
+            <div class="pp-prayer-info">
+              <div class="pp-prayer-name-en">${name}</div>
+              <div class="pp-prayer-name-ar">${meta.ar}</div>
+            </div>
+          </div>
+          <div class="pp-prayer-right">
+            <div class="pp-prayer-time">${ppFormatTime12(timings[name])}</div>
+            ${statusHTML}
+          </div>
+        </div>`;
+    });
+    if(current) {
+      document.getElementById('ppCurrentPrayerName').textContent = `${PP_PRAYER_META[current].icon} ${current}`;
+      document.getElementById('ppCurrentPrayerTime').textContent = ppFormatTime12(timings[current]);
+    }
+    document.getElementById('ppNextPrayerName').textContent = next ? `Next: ${next} at ${ppFormatTime12(timings[next])}` : '';
+  }
+
+  function ppStartCountdown(timings) {
+    if(ppCountdownInterval) clearInterval(ppCountdownInterval);
+    ppCountdownInterval = setInterval(() => {
+      const now = new Date();
+      const currentMins = now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+      let nextName=null, nextMins=null;
+      for(const name of PP_PRAYER_ORDER) { const m=ppTimeToMinutes(timings[name]); if(m>currentMins){nextName=name;nextMins=m;break;} }
+      if(!nextName){ nextName='Fajr'; nextMins=ppTimeToMinutes(timings['Fajr'])+1440; }
+      const diffSecs = Math.max(0, Math.round((nextMins-currentMins)*60));
+      const h=Math.floor(diffSecs/3600), m=Math.floor((diffSecs%3600)/60), s=diffSecs%60;
+      document.getElementById('ppCountdownTimer').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      if(s===0&&m===0&&ppStoredTimings) ppRenderPrayerCards(ppStoredTimings);
+      if(ppNotificationsEnabled) {
+        const diffMin = nextMins-currentMins;
+        if(Math.abs(diffMin-5)<(1/60)) new Notification(`🕌 ${nextName} in 5 minutes`, {body:`Prayer at ${ppFormatTime12(timings[nextName])}`});
+        if(Math.abs(diffMin)<(1/60)) new Notification(`🕌 ${nextName} — Time to Pray!`, {body:`It is time for ${nextName}.`});
+      }
+    }, 1000);
+  }
+
+  function ppRenderMonthly() {
+    if(!ppMonthlyData) return;
+    const today = new Date().getDate();
+    const tbody = document.getElementById('ppMonthlyBody');
+    tbody.innerHTML = '';
+    ppMonthlyData.forEach(day => {
+      const t = day.timings;
+      const dateNum = parseInt(day.date.gregorian.day);
+      const isToday = dateNum===today;
+      tbody.innerHTML += `
+        <tr class="${isToday?'pp-today-row':''}">
+          <td>${isToday?'▶ ':''}${day.date.gregorian.day} ${day.date.gregorian.month.en.slice(0,3)}</td>
+          <td>${ppFormatTime12(t.Fajr)}</td>
+          <td>${ppFormatTime12(t.Sunrise)}</td>
+          <td>${ppFormatTime12(t.Dhuhr)}</td>
+          <td>${ppFormatTime12(t.Asr)}</td>
+          <td>${ppFormatTime12(t.Maghrib)}</td>
+          <td>${ppFormatTime12(t.Isha)}</td>
+        </tr>`;
+    });
+  }
+
+  function ppRenderQibla(lat, lng) {
+    if(!lat||!lng) return;
+    const kLat=21.4225, kLng=39.8262;
+    const dLng=(kLng-lng)*Math.PI/180;
+    const lat1=lat*Math.PI/180, lat2=kLat*Math.PI/180;
+    const y=Math.sin(dLng)*Math.cos(lat2);
+    const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+    let bearing=Math.atan2(y,x)*180/Math.PI;
+    bearing=(bearing+360)%360;
+    document.getElementById('ppQiblaDegree').textContent = `${bearing.toFixed(1)}°`;
+    document.getElementById('ppQiblaText').textContent   = `Face ${bearing.toFixed(0)}° from North to face the Holy Kaaba in Makkah.`;
+    document.getElementById('ppQiblaNeedle').style.transform = `translateX(-50%) translateY(-100%) rotate(${bearing}deg)`;
+  }
+
+  async function ppToggleNotifications() {
+    if(!('Notification' in window)) { alert('Notifications not supported in this browser.'); document.getElementById('ppNotifToggle').checked=false; return; }
+    if(document.getElementById('ppNotifToggle').checked) {
+      const perm = await Notification.requestPermission();
+      if(perm==='granted') { ppNotificationsEnabled=true; new Notification('🕌 PrayerPulse', {body:'Notifications ON — you will be alerted before each prayer.'}); }
+      else { ppNotificationsEnabled=false; document.getElementById('ppNotifToggle').checked=false; alert('Allow notifications in your browser settings to use this feature.'); }
+    } else { ppNotificationsEnabled=false; }
+  }
+
+  function ppSetStatus(msg) { document.getElementById('ppLocationStatus').textContent = msg; }
+  function ppShowLoader() { document.getElementById('ppLoader').classList.remove('pp-hidden'); document.getElementById('ppMainContent').classList.add('pp-hidden'); document.getElementById('ppErrorBox').classList.add('pp-hidden'); }
+  function ppHideLoader() { document.getElementById('ppLoader').classList.add('pp-hidden'); }
+  function ppShowError(msg) { document.getElementById('ppLoader').classList.add('pp-hidden'); document.getElementById('ppMainContent').classList.add('pp-hidden'); document.getElementById('ppErrorBox').classList.remove('pp-hidden'); document.getElementById('ppErrorBox').textContent='⚠️ '+msg; ppSetStatus(''); }
+
+  ppStartClock();
+  ppFetchPrayerTimes();
+  </script>
+
+</BaseLayout>

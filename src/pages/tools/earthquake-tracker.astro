@@ -1,0 +1,891 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'Live Earthquake Tracker — EarthPulse';
+const description =
+  'Real-time earthquake map and list powered by USGS data. Filter by magnitude and time range, view depth and felt reports, and get instant alerts for major events worldwide.';
+
+const faqs = [
+  { q: 'Where does the earthquake data come from?', a: 'All seismic data is fetched directly from the USGS Earthquake Hazards Program public API (earthquake.usgs.gov). The feed is updated every minute and covers events worldwide.' },
+  { q: 'How often does the tracker refresh?', a: 'The map and list auto-refresh every 60 seconds. You can also hit the Refresh button at any time to pull the latest data immediately.' },
+  { q: 'What do the magnitude colours mean?', a: 'Green circles are minor events (below M 2.5), yellow are light (M 2.5–4.9), orange are moderate (M 5.0–5.9), red are strong (M 6.0–6.9), and dark red are major events (M 7.0+). Circle size also scales with magnitude.' },
+  { q: 'Can I filter for just large earthquakes?', a: 'Yes — drag the Min Magnitude slider to any value between 0 and 8. The list, map markers, and statistics all update instantly to show only events at or above your chosen threshold.' },
+  { q: 'What is heat mode?', a: 'Clicking the 🔥 button switches markers to a higher-opacity style that makes dense clusters of small earthquakes easier to spot, useful for visualising seismic zones at a glance.' },
+  { q: 'Can I look up a specific region?', a: 'Use the Search box to filter by location name — type a country, region, or city and the list updates in real time. On mobile, search is inside the Filters drawer.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={faqSchema}>
+
+  <style is:inline>
+    @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+    /* ── EQ App container ── */
+    #eq-wrap {
+      height: calc(100svh - 60px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #080a0f;
+      color: #eceef4;
+      font-family: 'Space Grotesk', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* CSS vars scoped inside the wrapper */
+    #eq-wrap {
+      --eq-bg:      #080a0f;
+      --eq-surface: #10131a;
+      --eq-surface2:#161921;
+      --eq-border:  #1e2230;
+      --eq-text:    #eceef4;
+      --eq-muted:   #5a6278;
+      --eq-accent:  #ff4d2e;
+      --eq-accent2: #ff8c42;
+      --eq-green:   #22c55e;
+      --eq-yellow:  #f0b429;
+      --eq-orange:  #f97316;
+      --eq-red:     #ef4444;
+      --eq-crimson: #dc2626;
+      --eq-font:    'Space Grotesk', sans-serif;
+      --eq-mono:    'Space Mono', monospace;
+      --eq-radius:  12px;
+      --eq-header-h: 58px;
+      --eq-stats-h:  72px;
+    }
+
+    /* ══ LOADING ══ */
+    #eqLoadingOverlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #080a0f;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+      transition: opacity 0.4s ease;
+    }
+    #eqLoadingOverlay.hide { opacity: 0; pointer-events: none; }
+    .eq-loader-pulse { width: 64px; height: 64px; position: relative; }
+    .eq-loader-pulse::before, .eq-loader-pulse::after {
+      content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: var(--eq-accent); animation: eq-ripple 1.8s ease-out infinite;
+    }
+    .eq-loader-pulse::after { animation-delay: 0.9s; }
+    @keyframes eq-ripple { 0% { transform: scale(0.3); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
+    .eq-loader-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; z-index: 1; }
+    .eq-loading-text { font-family: var(--eq-mono); font-size: 0.78rem; color: var(--eq-muted); letter-spacing: 0.06em; animation: eq-fade 1.5s ease-in-out infinite alternate; }
+    @keyframes eq-fade { from { opacity: 0.4; } to { opacity: 1; } }
+
+    /* ══ INNER HEADER ══ */
+    #eq-wrap .eq-header {
+      height: var(--eq-header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      background: rgba(8,10,15,0.97);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--eq-border);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .eq-logo { display: flex; align-items: center; gap: 9px; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.03em; }
+    .eq-logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #ff4d2e, #ff8c42);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+      animation: eq-logo-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes eq-logo-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,77,46,0.4); } 50% { box-shadow: 0 0 0 10px rgba(255,77,46,0); } }
+    .eq-header-right { display: flex; align-items: center; gap: 10px; }
+    .eq-updated-text { font-size: 0.68rem; font-family: var(--eq-mono); color: var(--eq-muted); }
+    .eq-live-pill { display: flex; align-items: center; gap: 5px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35); border-radius: 20px; padding: 4px 10px; font-size: 0.68rem; font-family: var(--eq-mono); color: var(--eq-green); letter-spacing: 0.07em; font-weight: 700; }
+    .eq-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--eq-green); animation: eq-blink 1.1s ease-in-out infinite; }
+    @keyframes eq-blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+
+    /* ══ STATS BAR ══ */
+    #eq-wrap .eq-stats-bar {
+      height: var(--eq-stats-h); display: flex;
+      border-bottom: 1px solid var(--eq-border);
+      background: var(--eq-surface); flex-shrink: 0;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    #eq-wrap .eq-stats-bar::-webkit-scrollbar { display: none; }
+    .eq-stat-item { flex: 1; min-width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 12px; border-right: 1px solid var(--eq-border); position: relative; }
+    .eq-stat-item:last-child { border-right: none; }
+    .eq-stat-val { font-size: 1.5rem; font-weight: 700; font-family: var(--eq-mono); line-height: 1; }
+    .eq-stat-label { font-size: 0.58rem; color: var(--eq-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; text-align: center; line-height: 1.2; }
+    .eq-stat-item.new-event::after { content: ''; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--eq-accent); animation: eq-blink 0.8s infinite; }
+
+    /* ══ APP BODY ══ */
+    #eq-wrap .eq-app-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+    /* ══ SIDEBAR ══ */
+    #eq-wrap .eq-sidebar { width: 360px; min-width: 320px; display: flex; flex-direction: column; border-right: 1px solid var(--eq-border); background: var(--eq-surface); overflow: hidden; }
+    .eq-filters { padding: 12px 14px; border-bottom: 1px solid var(--eq-border); display: flex; flex-direction: column; gap: 10px; background: var(--eq-surface2); }
+    .eq-filter-row { display: flex; gap: 8px; }
+    .eq-filter-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .eq-filter-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--eq-muted); font-family: var(--eq-mono); display: flex; justify-content: space-between; align-items: center; }
+    .eq-mag-val { color: var(--eq-accent); font-weight: 700; }
+
+    #eq-wrap select {
+      width: 100%; background: var(--eq-surface); border: 1px solid var(--eq-border); color: var(--eq-text);
+      padding: 8px 10px; border-radius: 8px; font-family: var(--eq-font); font-size: 0.82rem;
+      cursor: pointer; outline: none; transition: border-color 0.2s; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235a6278' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+    }
+    #eq-wrap select:focus { border-color: var(--eq-accent); }
+    #eq-wrap input[type="range"] { width: 100%; accent-color: var(--eq-accent); height: 4px; cursor: pointer; }
+
+    .eq-search-wrap { position: relative; }
+    .eq-search-wrap input { width: 100%; background: var(--eq-surface); border: 1px solid var(--eq-border); color: var(--eq-text); padding: 8px 12px 8px 34px; border-radius: 8px; font-family: var(--eq-font); font-size: 0.82rem; outline: none; transition: border-color 0.2s; }
+    .eq-search-wrap input:focus { border-color: var(--eq-accent); }
+    .eq-search-wrap input::placeholder { color: var(--eq-muted); }
+    .eq-search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 14px; pointer-events: none; color: var(--eq-muted); }
+
+    .eq-list-header { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--eq-border); }
+    .eq-list-count { font-size: 0.72rem; font-family: var(--eq-mono); color: var(--eq-muted); }
+    .eq-refresh-btn { font-size: 0.72rem; font-family: var(--eq-mono); color: var(--eq-accent); background: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: background 0.2s; }
+    .eq-refresh-btn:hover { background: rgba(255,77,46,0.1); }
+    .eq-refresh-btn.spinning svg { animation: eq-spin 0.8s linear infinite; }
+    @keyframes eq-spin { to { transform: rotate(360deg); } }
+
+    .eq-quake-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--eq-border) transparent; }
+    .eq-quake-list::-webkit-scrollbar { width: 4px; }
+    .eq-quake-list::-webkit-scrollbar-track { background: transparent; }
+    .eq-quake-list::-webkit-scrollbar-thumb { background: var(--eq-border); border-radius: 4px; }
+
+    .eq-quake-item { display: grid; grid-template-columns: 50px 1fr auto; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--eq-border); cursor: pointer; transition: background 0.15s, border-left 0.15s; border-left: 3px solid transparent; }
+    .eq-quake-item:active { background: rgba(255,77,46,0.05); }
+    .eq-quake-item.active { background: rgba(255,77,46,0.07); border-left-color: var(--eq-accent); }
+    .eq-mag-badge { width: 46px; height: 46px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--eq-mono); font-weight: 700; line-height: 1; }
+    .eq-mag-badge .eq-mag-num { font-size: 0.95rem; }
+    .eq-mag-badge .eq-mag-m { font-size: 0.6rem; opacity: 0.7; }
+    .eq-quake-info { overflow: hidden; }
+    .eq-quake-place { font-size: 0.82rem; font-weight: 500; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .eq-quake-sub { display: flex; gap: 8px; margin-top: 3px; flex-wrap: wrap; }
+    .eq-quake-sub span { font-size: 0.65rem; color: var(--eq-muted); font-family: var(--eq-mono); }
+    .eq-quake-time { font-size: 0.65rem; font-family: var(--eq-mono); color: var(--eq-muted); white-space: nowrap; }
+    .eq-new-tag { display: inline-block; font-size: 0.55rem; background: var(--eq-accent); color: white; border-radius: 3px; padding: 1px 4px; font-family: var(--eq-mono); vertical-align: middle; margin-left: 4px; font-weight: 700; letter-spacing: 0.05em; }
+
+    /* ══ MAP ══ */
+    #eq-wrap .eq-map-wrap { flex: 1; position: relative; overflow: hidden; }
+    #eq-map { width: 100%; height: 100%; background: #0d1117; }
+
+    .eq-map-controls { position: absolute; top: 14px; right: 14px; z-index: 400; display: flex; flex-direction: column; gap: 6px; }
+    .eq-map-btn { width: 38px; height: 38px; background: rgba(16,19,26,0.93); border: 1px solid var(--eq-border); border-radius: 9px; color: var(--eq-text); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; backdrop-filter: blur(8px); transition: background 0.2s, border-color 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+    .eq-map-btn:hover { background: var(--eq-surface); }
+    .eq-map-btn.active { background: var(--eq-accent); border-color: var(--eq-accent); }
+
+    .eq-legend { position: absolute; bottom: 16px; left: 16px; z-index: 400; background: rgba(16,19,26,0.93); border: 1px solid var(--eq-border); border-radius: 10px; padding: 11px 13px; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .eq-legend-title { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--eq-muted); font-family: var(--eq-mono); margin-bottom: 7px; }
+    .eq-legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 0.7rem; font-family: var(--eq-mono); }
+    .eq-legend-row:last-child { margin-bottom: 0; }
+    .eq-ldot { border-radius: 50%; flex-shrink: 0; }
+
+    /* ══ DETAIL PANEL ══ */
+    .eq-detail-panel { position: absolute; bottom: 16px; right: 16px; z-index: 450; width: 290px; background: rgba(16,19,26,0.97); border: 1px solid var(--eq-border); border-radius: var(--eq-radius); padding: 16px; backdrop-filter: blur(14px); box-shadow: 0 20px 60px rgba(0,0,0,0.6); transform: translateY(20px); opacity: 0; pointer-events: none; transition: transform 0.3s ease, opacity 0.3s ease; }
+    .eq-detail-panel.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .eq-detail-close { position: absolute; top: 10px; right: 10px; background: var(--eq-surface2); border: 1px solid var(--eq-border); color: var(--eq-muted); cursor: pointer; width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: color 0.2s; }
+    .eq-detail-close:hover { color: var(--eq-text); }
+    .eq-detail-mag-row { display: flex; align-items: baseline; gap: 6px; }
+    .eq-detail-mag { font-size: 2.6rem; font-weight: 700; font-family: var(--eq-mono); line-height: 1; }
+    .eq-detail-type { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--eq-muted); font-family: var(--eq-mono); }
+    .eq-detail-place { font-size: 0.88rem; font-weight: 600; margin-top: 10px; line-height: 1.4; }
+    .eq-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .eq-detail-cell { background: var(--eq-surface2); border-radius: 8px; padding: 9px; border: 1px solid var(--eq-border); }
+    .eq-dc-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--eq-muted); font-family: var(--eq-mono); }
+    .eq-dc-val { font-size: 0.82rem; font-weight: 600; font-family: var(--eq-mono); margin-top: 3px; }
+    .eq-detail-actions { display: flex; gap: 7px; margin-top: 11px; }
+    .eq-btn-primary { flex: 1; padding: 9px; background: var(--eq-accent); color: white; border: none; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: var(--eq-font); transition: background 0.2s; }
+    .eq-btn-primary:hover { background: #e03d20; }
+    .eq-btn-secondary { padding: 9px 12px; background: var(--eq-surface2); border: 1px solid var(--eq-border); color: var(--eq-text); border-radius: 8px; font-size: 0.75rem; cursor: pointer; font-family: var(--eq-font); transition: background 0.2s; white-space: nowrap; }
+    .eq-btn-secondary:hover { background: var(--eq-border); }
+
+    /* ══ TOAST ══ */
+    .eq-toast-container { position: fixed; top: 72px; right: 14px; z-index: 9990; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: min(340px, calc(100vw - 28px)); }
+    .eq-toast { display: flex; align-items: center; gap: 10px; background: var(--eq-surface2); border: 1px solid var(--eq-border); border-left: 3px solid var(--eq-accent); border-radius: 10px; padding: 12px 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); pointer-events: auto; transform: translateX(110%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); cursor: pointer; user-select: none; position: relative; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+    .eq-toast.show { transform: translateX(0); }
+    .eq-toast-emoji { font-size: 22px; flex-shrink: 0; }
+    .eq-toast-body { flex: 1; min-width: 0; }
+    .eq-toast-title { font-size: 0.82rem; font-weight: 600; }
+    .eq-toast-sub { font-size: 0.7rem; color: var(--eq-muted); margin-top: 2px; font-family: var(--eq-mono); }
+    .eq-toast-x { background: none; border: none; color: var(--eq-muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+    .eq-toast-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--eq-accent); border-radius: 0 0 0 10px; animation: eq-progress-shrink linear forwards; }
+    @keyframes eq-progress-shrink { from { width: 100%; } to { width: 0%; } }
+
+    /* ══ MOBILE BOTTOM SHEET ══ */
+    .eq-sheet-backdrop { display: none; position: fixed; inset: 0; z-index: 800; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; }
+    .eq-sheet-backdrop.show { opacity: 1; }
+    .eq-bottom-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; background: var(--eq-surface); border-top: 1px solid var(--eq-border); border-radius: 20px 20px 0 0; padding: 0 0 32px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); max-height: 82vh; overflow-y: auto; touch-action: pan-y; }
+    .eq-bottom-sheet.show { transform: translateY(0); }
+    .eq-sheet-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 4px; flex-shrink: 0; }
+    .eq-sheet-handle-inline { width: 40px; height: 4px; background: var(--eq-border); border-radius: 2px; }
+    .eq-sheet-close-btn { background: var(--eq-surface2); border: 1px solid var(--eq-border); color: var(--eq-text); border-radius: 8px; padding: 7px 14px; font-size: 0.8rem; font-weight: 600; font-family: var(--eq-font); cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.2s; }
+    .eq-sheet-close-btn:hover { background: var(--eq-border); }
+    .eq-sheet-close-btn:active { background: var(--eq-accent); color: white; border-color: var(--eq-accent); }
+    .eq-sheet-inner { padding: 0 16px 16px; }
+    .eq-sheet-mag-row { display: flex; align-items: center; gap: 14px; padding: 14px 0 12px; border-bottom: 1px solid var(--eq-border); }
+    .eq-sheet-mag { font-size: 3.2rem; font-weight: 700; font-family: var(--eq-mono); line-height: 1; }
+    .eq-sheet-mag-info { display: flex; flex-direction: column; gap: 3px; }
+    .eq-sheet-type { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--eq-muted); font-family: var(--eq-mono); }
+    .eq-sheet-place { font-size: 1rem; font-weight: 600; line-height: 1.3; margin-top: 12px; }
+    .eq-sheet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0; }
+    .eq-sheet-cell { background: var(--eq-surface2); border-radius: 10px; padding: 12px; border: 1px solid var(--eq-border); }
+    .eq-sc-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--eq-muted); font-family: var(--eq-mono); }
+    .eq-sc-val { font-size: 1rem; font-weight: 700; font-family: var(--eq-mono); margin-top: 4px; }
+    .eq-sheet-actions { display: flex; gap: 10px; margin-top: 4px; }
+    .eq-sheet-actions .eq-btn-primary { padding: 13px; font-size: 0.88rem; border-radius: 10px; }
+    .eq-sheet-actions .eq-btn-secondary { padding: 13px 16px; font-size: 0.88rem; border-radius: 10px; }
+
+    /* ══ MOBILE TABS ══ */
+    .eq-mobile-tabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 600; background: rgba(16,19,26,0.97); border-top: 1px solid var(--eq-border); backdrop-filter: blur(16px); }
+    .eq-mobile-tab-bar { display: flex; }
+    .eq-tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 12px; gap: 3px; background: none; border: none; color: var(--eq-muted); cursor: pointer; font-size: 0.6rem; font-family: var(--eq-font); text-transform: uppercase; letter-spacing: 0.06em; transition: color 0.2s; }
+    .eq-tab-btn.active { color: var(--eq-accent); }
+    .eq-tab-icon { font-size: 20px; }
+
+    /* ══ MOBILE LIST PANEL ══ */
+    .eq-mobile-list-panel { display: none; position: fixed; inset: 0; z-index: 700; background: var(--eq-surface); flex-direction: column; padding-bottom: 62px; }
+    .eq-mobile-list-panel.show { display: flex; }
+    .eq-mlp-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--eq-surface2); border-bottom: 1px solid var(--eq-border); flex-shrink: 0; }
+    .eq-mlp-back { width: 36px; height: 36px; border-radius: 9px; background: var(--eq-surface); border: 1px solid var(--eq-border); color: var(--eq-text); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; line-height: 1; }
+    .eq-mlp-title { font-size: 0.95rem; font-weight: 700; flex: 1; }
+    .eq-mlp-count { font-size: 0.7rem; font-family: var(--eq-mono); color: var(--eq-muted); }
+
+    /* ══ MOBILE FILTER DRAWER ══ */
+    .eq-filter-drawer { display: none; position: fixed; inset: 0; z-index: 850; flex-direction: column; justify-content: flex-end; }
+    .eq-filter-drawer.show { display: flex; }
+    .eq-filter-drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+    .eq-filter-drawer-panel { position: relative; z-index: 1; background: var(--eq-surface); border-radius: 20px 20px 0 0; border-top: 1px solid var(--eq-border); padding: 0 16px 36px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); }
+    .eq-filter-drawer.show .eq-filter-drawer-panel { transform: translateY(0); }
+    .eq-drawer-handle { width: 40px; height: 4px; background: var(--eq-border); border-radius: 2px; margin: 12px auto 16px; }
+    .eq-drawer-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--eq-text); }
+    .eq-drawer-filters { display: flex; flex-direction: column; gap: 14px; }
+    .eq-drawer-filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .eq-filter-active-badge { display: none; position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; background: var(--eq-accent); border-radius: 50%; }
+    .eq-filter-active-badge.show { display: block; }
+
+    /* ══ EMPTY STATE ══ */
+    .eq-empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--eq-muted); padding: 40px; text-align: center; }
+    .eq-empty-icon { font-size: 40px; opacity: 0.4; }
+    .eq-empty-text { font-size: 0.85rem; }
+
+    /* ══ LEAFLET OVERRIDES ══ */
+    .leaflet-container { background: #0d1117 !important; }
+    .leaflet-tile { filter: brightness(0.55) saturate(0.35) hue-rotate(195deg); }
+    .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+    .leaflet-popup-content-wrapper { background: #161921 !important; border: 1px solid #1e2230 !important; border-radius: 10px !important; color: #eceef4 !important; box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important; font-family: 'Space Grotesk', sans-serif !important; font-size: 0.82rem !important; }
+    .leaflet-popup-tip { background: #161921 !important; }
+    .leaflet-popup-close-button { color: #5a6278 !important; font-size: 18px !important; }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width: 680px) {
+      #eq-wrap { --eq-stats-h: 64px; }
+      #eq-wrap .eq-sidebar { display: none; }
+      .eq-detail-panel { display: none !important; }
+      .eq-map-controls { top: 10px; right: 10px; }
+      .eq-map-btn { width: 34px; height: 34px; font-size: 15px; }
+      .eq-mobile-tabs { display: block; }
+      .eq-stat-val { font-size: 1.25rem; }
+      .eq-stat-label { font-size: 0.55rem; }
+      #eq-wrap .eq-app-body { padding-bottom: 62px; }
+    }
+    @media (min-width: 681px) {
+      .eq-sheet-backdrop, .eq-bottom-sheet, .eq-mobile-list-panel, .eq-mobile-tabs, .eq-filter-drawer { display: none !important; }
+    }
+
+    /* ══ ABOUT / FAQ ══ */
+    .eq-about-section { max-width: 860px; margin: 36px auto 0; padding: 0 16px; }
+    .eq-about-card { background: white; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+    .dark .eq-about-card { background: #1e293b; border-color: #334155; }
+    .eq-about-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
+    .dark .eq-about-card h2 { color: #f1f5f9; }
+    .eq-about-card p { font-size: 0.92rem; line-height: 1.8; color: #64748b; margin-bottom: 14px; }
+    .dark .eq-about-card p { color: #94a3b8; }
+    .eq-about-card p:last-child { margin-bottom: 0; }
+    .eq-about-card h3 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 20px 0 8px; }
+    .dark .eq-about-card h3 { color: #f1f5f9; }
+    .eq-faq-section { max-width: 860px; margin: 28px auto 48px; padding: 0 16px; }
+    .eq-faq-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; color: #1e293b; }
+    .dark .eq-faq-title { color: #f1f5f9; }
+    .eq-faq-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 10px; }
+    .dark .eq-faq-item { background: #1e293b; border-color: #334155; }
+    .eq-faq-q { padding: 14px 16px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.93rem; color: #1e293b; }
+    .dark .eq-faq-q { color: #f1f5f9; }
+    .eq-faq-q:hover { color: #6366f1; }
+    .eq-faq-a { padding: 0 16px 14px; font-size: 0.88rem; color: #64748b; line-height: 1.65; display: none; }
+    .dark .eq-faq-a { color: #94a3b8; }
+    .eq-faq-item.open .eq-faq-a { display: block; }
+    .eq-faq-item.open .eq-faq-arrow { transform: rotate(180deg); }
+    .eq-faq-arrow { transition: transform 0.2s; font-size: 0.75rem; color: #64748b; }
+  </style>
+
+  <!-- Hero -->
+  <div style="background:linear-gradient(135deg,#0f0a1a 0%,#0d1a0d 40%,#1a0d0d 100%);padding:40px 20px 48px;text-align:center;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-60px;right:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(255,77,46,0.15) 0%,transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(34,197,94,0.1) 0%,transparent 70%);pointer-events:none;"></div>
+    <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#fca5a5;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;padding:4px 14px;border-radius:20px;position:relative;z-index:1;">🌋 LIVE SEISMIC DATA · USGS</div>
+    <h1 style="font-size:clamp(1.7rem,4vw,2.6rem);font-weight:800;color:#fff;margin-bottom:10px;letter-spacing:-0.02em;position:relative;z-index:1;">EarthPulse — Live Earthquake Tracker</h1>
+    <p style="font-size:1rem;color:#fca5a5;position:relative;z-index:1;max-width:560px;margin:0 auto;">Real-time global earthquake map powered by USGS. Filter, sort, and explore seismic events as they happen.</p>
+  </div>
+
+  <!-- Tool -->
+  <div id="eq-wrap">
+
+    <!-- Loading -->
+    <div id="eqLoadingOverlay">
+      <div class="eq-loader-pulse"><div class="eq-loader-icon">🌋</div></div>
+      <div class="eq-loading-text">Connecting to seismic network...</div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="eq-toast-container" id="eqToastContainer"></div>
+
+    <!-- Inner header -->
+    <header class="eq-header">
+      <div class="eq-logo">
+        <div class="eq-logo-icon">🌋</div>
+        EarthPulse
+      </div>
+      <div class="eq-header-right">
+        <span class="eq-updated-text" id="eqUpdatedText">Fetching...</span>
+        <div class="eq-live-pill"><div class="eq-live-dot"></div>LIVE</div>
+      </div>
+    </header>
+
+    <!-- Stats bar -->
+    <div class="eq-stats-bar">
+      <div class="eq-stat-item"><div class="eq-stat-val" id="eqSTotal" style="color:#eceef4">—</div><div class="eq-stat-label">Events</div></div>
+      <div class="eq-stat-item"><div class="eq-stat-val" id="eqSStrong" style="color:#ef4444">—</div><div class="eq-stat-label">M5+ Strong</div></div>
+      <div class="eq-stat-item"><div class="eq-stat-val" id="eqSMajor" style="color:#dc2626">—</div><div class="eq-stat-label">M6+ Major</div></div>
+      <div class="eq-stat-item"><div class="eq-stat-val" id="eqSMax" style="color:#ff4d2e">—</div><div class="eq-stat-label">Largest</div></div>
+      <div class="eq-stat-item"><div class="eq-stat-val" id="eqSDepth" style="color:#ff8c42">—</div><div class="eq-stat-label">Avg Depth</div></div>
+    </div>
+
+    <!-- App body -->
+    <div class="eq-app-body">
+
+      <!-- Sidebar -->
+      <div class="eq-sidebar">
+        <div class="eq-filters">
+          <div class="eq-filter-row">
+            <div class="eq-filter-group">
+              <div class="eq-filter-label">Time Range</div>
+              <select id="eqTimeRange">
+                <option value="hour">Past Hour</option>
+                <option value="day" selected>Past 24 Hours</option>
+                <option value="week">Past 7 Days</option>
+                <option value="month">Past 30 Days</option>
+              </select>
+            </div>
+            <div class="eq-filter-group">
+              <div class="eq-filter-label">Sort By</div>
+              <select id="eqSortBy">
+                <option value="time">Most Recent</option>
+                <option value="magnitude">Strongest</option>
+                <option value="depth">Deepest</option>
+              </select>
+            </div>
+          </div>
+          <div class="eq-filter-group">
+            <div class="eq-filter-label">Min Magnitude <span class="eq-mag-val" id="eqMagVal">M 2.5+</span></div>
+            <input type="range" id="eqMinMag" min="0" max="8" step="0.5" value="2.5">
+          </div>
+          <div class="eq-search-wrap">
+            <span class="eq-search-icon">🔍</span>
+            <input type="text" id="eqSearchInput" placeholder="Search location...">
+          </div>
+        </div>
+        <div class="eq-list-header">
+          <span class="eq-list-count" id="eqListCount">Loading...</span>
+          <button class="eq-refresh-btn" id="eqRefreshBtn" onclick="eqRefreshData()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="eq-quake-list" id="eqQuakeList"></div>
+      </div>
+
+      <!-- Map -->
+      <div class="eq-map-wrap">
+        <div id="eq-map"></div>
+        <div class="eq-map-controls">
+          <button class="eq-map-btn" onclick="eqResetMapView()" title="Reset world view">🌍</button>
+          <button class="eq-map-btn" id="eqHeatBtn" onclick="eqToggleHeat()" title="Heat mode">🔥</button>
+          <button class="eq-map-btn" onclick="eqMap.zoomIn()">+</button>
+          <button class="eq-map-btn" onclick="eqMap.zoomOut()">−</button>
+        </div>
+        <div class="eq-legend">
+          <div class="eq-legend-title">Magnitude Scale</div>
+          <div class="eq-legend-row"><div class="eq-ldot" style="background:#22c55e;width:8px;height:8px"></div>&lt; 2.5 Minor</div>
+          <div class="eq-legend-row"><div class="eq-ldot" style="background:#f0b429;width:10px;height:10px"></div>2.5–4.9 Light</div>
+          <div class="eq-legend-row"><div class="eq-ldot" style="background:#f97316;width:13px;height:13px"></div>5.0–5.9 Moderate</div>
+          <div class="eq-legend-row"><div class="eq-ldot" style="background:#ef4444;width:16px;height:16px"></div>6.0–6.9 Strong</div>
+          <div class="eq-legend-row"><div class="eq-ldot" style="background:#dc2626;width:20px;height:20px"></div>7.0+ Major</div>
+        </div>
+        <div class="eq-detail-panel" id="eqDetailPanel">
+          <button class="eq-detail-close" onclick="eqCloseDetail()">✕</button>
+          <div class="eq-detail-mag-row"><div class="eq-detail-mag" id="eqDMag">—</div></div>
+          <div class="eq-detail-type" id="eqDType">EARTHQUAKE</div>
+          <div class="eq-detail-place" id="eqDPlace">—</div>
+          <div class="eq-detail-grid">
+            <div class="eq-detail-cell"><div class="eq-dc-label">Depth</div><div class="eq-dc-val" id="eqDDepth">—</div></div>
+            <div class="eq-detail-cell"><div class="eq-dc-label">Time UTC</div><div class="eq-dc-val" id="eqDTime">—</div></div>
+            <div class="eq-detail-cell"><div class="eq-dc-label">Coordinates</div><div class="eq-dc-val" id="eqDCoords">—</div></div>
+            <div class="eq-detail-cell"><div class="eq-dc-label">Felt Reports</div><div class="eq-dc-val" id="eqDFelt">—</div></div>
+          </div>
+          <div class="eq-detail-actions">
+            <button class="eq-btn-primary" id="eqDUsgs">USGS Report ↗</button>
+            <button class="eq-btn-secondary" id="eqDCenter">📍 Focus</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile: List Panel -->
+    <div class="eq-mobile-list-panel" id="eqMobileListPanel">
+      <div class="eq-mlp-header">
+        <button class="eq-mlp-back" onclick="eqSwitchTab('map')">&#8592;</button>
+        <div class="eq-mlp-title">Earthquakes</div>
+        <span class="eq-mlp-count" id="eqMListCount">Loading...</span>
+        <button class="eq-refresh-btn" onclick="eqRefreshData()" style="margin-left:4px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="eq-quake-list" id="eqMQuakeList"></div>
+    </div>
+
+    <!-- Mobile: Filter Drawer -->
+    <div class="eq-filter-drawer" id="eqFilterDrawer">
+      <div class="eq-filter-drawer-bg" onclick="eqCloseFilterDrawer()"></div>
+      <div class="eq-filter-drawer-panel">
+        <div class="eq-drawer-handle"></div>
+        <div class="eq-drawer-title">Filters</div>
+        <div class="eq-drawer-filters">
+          <div class="eq-drawer-filter-group">
+            <div class="eq-filter-label" style="color:#5a6278">Time Range</div>
+            <select id="eqMTimeRange">
+              <option value="hour">Past Hour</option>
+              <option value="day" selected>Past 24 Hours</option>
+              <option value="week">Past 7 Days</option>
+              <option value="month">Past 30 Days</option>
+            </select>
+          </div>
+          <div class="eq-drawer-filter-group">
+            <div class="eq-filter-label" style="color:#5a6278">Sort By</div>
+            <select id="eqMSortBy">
+              <option value="time">Most Recent</option>
+              <option value="magnitude">Strongest First</option>
+              <option value="depth">Deepest First</option>
+            </select>
+          </div>
+          <div class="eq-drawer-filter-group">
+            <div class="eq-filter-label" style="display:flex;justify-content:space-between;color:#5a6278">Min Magnitude <span class="eq-mag-val" id="eqMMagVal">M 2.5+</span></div>
+            <input type="range" id="eqMMinMag" min="0" max="8" step="0.5" value="2.5">
+          </div>
+          <div class="eq-search-wrap">
+            <span class="eq-search-icon">🔍</span>
+            <input type="text" id="eqMSearchInput" placeholder="Search location..." style="background:#161921;border:1px solid #1e2230;color:#eceef4;">
+          </div>
+          <button class="eq-btn-primary" style="padding:13px;font-size:0.9rem;border-radius:10px" onclick="eqApplyFilters()">Apply Filters</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile: Bottom Sheet -->
+    <div class="eq-sheet-backdrop" id="eqSheetBackdrop" onclick="eqCloseSheet()"></div>
+    <div class="eq-bottom-sheet" id="eqBottomSheet">
+      <div class="eq-sheet-top-bar">
+        <div class="eq-sheet-handle-inline"></div>
+        <button class="eq-sheet-close-btn" onclick="eqCloseSheet()">✕ Close</button>
+      </div>
+      <div class="eq-sheet-inner">
+        <div class="eq-sheet-mag-row">
+          <div class="eq-sheet-mag" id="eqSMagNum">—</div>
+          <div class="eq-sheet-mag-info">
+            <div class="eq-sheet-type" id="eqSType">EARTHQUAKE</div>
+            <div style="font-size:0.75rem;color:#5a6278;font-family:'Space Mono',monospace" id="eqSAgo">—</div>
+          </div>
+        </div>
+        <div class="eq-sheet-place" id="eqSPlace">—</div>
+        <div class="eq-sheet-grid">
+          <div class="eq-sheet-cell"><div class="eq-sc-label">Depth</div><div class="eq-sc-val" id="eqSDepthVal">—</div></div>
+          <div class="eq-sheet-cell"><div class="eq-sc-label">Time (UTC)</div><div class="eq-sc-val" id="eqSTime">—</div></div>
+          <div class="eq-sheet-cell"><div class="eq-sc-label">Latitude</div><div class="eq-sc-val" id="eqSLat">—</div></div>
+          <div class="eq-sheet-cell"><div class="eq-sc-label">Longitude</div><div class="eq-sc-val" id="eqSLng">—</div></div>
+        </div>
+        <div style="background:#161921;border:1px solid #1e2230;border-radius:10px;padding:11px;margin-bottom:14px">
+          <div class="eq-sc-label">Felt Reports</div>
+          <div class="eq-sc-val" id="eqSFeltVal">None reported</div>
+        </div>
+        <div class="eq-sheet-actions">
+          <button class="eq-btn-primary" id="eqSUsgs">View USGS Report ↗</button>
+          <button class="eq-btn-secondary" id="eqSCenter">📍</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile bottom tabs -->
+    <div class="eq-mobile-tabs">
+      <div class="eq-mobile-tab-bar">
+        <button class="eq-tab-btn active" id="eqTabMap" onclick="eqSwitchTab('map')"><span class="eq-tab-icon">🗺️</span>Map</button>
+        <button class="eq-tab-btn" id="eqTabList" onclick="eqSwitchTab('list')"><span class="eq-tab-icon">📋</span>List</button>
+        <button class="eq-tab-btn" id="eqTabFilter" onclick="eqSwitchTab('filter')" style="position:relative"><span class="eq-tab-icon">⚙️</span>Filters<span class="eq-filter-active-badge" id="eqFilterBadge"></span></button>
+      </div>
+    </div>
+
+  </div><!-- #eq-wrap -->
+
+  <!-- About -->
+  <section class="eq-about-section">
+    <div class="eq-about-card">
+      <h2>About EarthPulse — Live Earthquake Tracker</h2>
+      <p>EarthPulse is a real-time earthquake monitoring tool that pulls live seismic data directly from the United States Geological Survey (USGS) Earthquake Hazards Program. Every 60 seconds the tool fetches the latest earthquake feed and updates the interactive Leaflet map and sidebar list automatically, so you always see the most current global seismic activity without needing to refresh the page.</p>
+      <p>The tracker covers all earthquakes worldwide — from barely perceptible micro-events to catastrophic major quakes. You can choose from four time windows (past hour, past 24 hours, past 7 days, or past 30 days) to explore recent history or focus on what is happening right now. The magnitude slider lets you cut through the noise of thousands of small events and focus only on the earthquakes that matter most to you.</p>
+      <h3>Interactive map with magnitude scaling</h3>
+      <p>Each earthquake is plotted on the world map as a coloured circle whose size and colour reflect its magnitude. Minor events below M 2.5 appear as small green dots, while major events at M 7.0 and above are shown as large dark-red circles with an outer ring that highlights their severity. Clicking or tapping any circle opens a detail panel with the exact location, depth, UTC time, felt-reports count, and a direct link to the full USGS report.</p>
+      <h3>Heat mode</h3>
+      <p>Toggling heat mode (🔥 button) increases the fill opacity of all markers, turning the map into a density visualisation. This is useful for identifying seismically active zones such as the Pacific Ring of Fire, the Alpide Belt, and mid-ocean ridge systems at a glance.</p>
+      <h3>Mobile-friendly design</h3>
+      <p>On smaller screens the map takes centre stage with a swipeable bottom sheet for earthquake details, a full-screen list panel, and a filter drawer accessible from the bottom navigation tabs. The layout adapts fully so the tracker is as usable on a phone as on a wide desktop monitor.</p>
+      <h3>Data source and accuracy</h3>
+      <p>All data originates from the USGS public GeoJSON feeds which are authoritative, freely available, and updated continuously as seismographs around the world report new events. Magnitude and depth figures are preliminary for very recent events and may be revised as more seismograph readings are processed. Always refer to the linked USGS report for the final authoritative values.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="eq-faq-section">
+    <h2 class="eq-faq-title">Frequently Asked Questions</h2>
+    {faqs.map((f) => (
+      <div class="eq-faq-item">
+        <div class="eq-faq-q" onclick="this.parentElement.classList.toggle('open')">
+          {f.q}<span class="eq-faq-arrow">▼</span>
+        </div>
+        <div class="eq-faq-a">{f.a}</div>
+      </div>
+    ))}
+  </section>
+
+  <!-- Leaflet JS (must load before tool script) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script is:inline>
+  // ══ STATE ══
+  let eqAllQuakes = [], eqMarkers = [], eqSelectedId = null, eqHeatMode = false;
+  let eqCurrentTab = 'map';
+
+  // ══ MAP INIT ══
+  const eqMap = L.map('eq-map', { center: [20, 0], zoom: 2, minZoom: 1, maxZoom: 18, zoomControl: false, attributionControl: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(eqMap);
+
+  // ══ HELPERS ══
+  const eqMagColor = m => m>=7?'#dc2626':m>=6?'#ef4444':m>=5?'#f97316':m>=2.5?'#f0b429':'#22c55e';
+  const eqMagBg    = m => m>=7?'rgba(220,38,38,0.15)':m>=6?'rgba(239,68,68,0.15)':m>=5?'rgba(249,115,22,0.15)':m>=2.5?'rgba(240,180,41,0.15)':'rgba(34,197,94,0.15)';
+  const eqMagSize  = m => m>=7?22:m>=6?17:m>=5?13:m>=2.5?9:6;
+
+  function eqTimeAgo(ts) {
+    const s = (Date.now()-ts)/1000;
+    if(s<60) return `${Math.floor(s)}s ago`;
+    if(s<3600) return `${Math.floor(s/60)}m ago`;
+    if(s<86400) return `${Math.floor(s/3600)}h ago`;
+    return `${Math.floor(s/86400)}d ago`;
+  }
+  function eqFmtTime(ts) {
+    const d = new Date(ts);
+    return d.getUTCHours().toString().padStart(2,'0')+':'+d.getUTCMinutes().toString().padStart(2,'0')+' UTC';
+  }
+
+  function eqGetFilters() {
+    const isMobile = window.innerWidth <= 680;
+    return {
+      range:  isMobile ? document.getElementById('eqMTimeRange').value  : document.getElementById('eqTimeRange').value,
+      sort:   isMobile ? document.getElementById('eqMSortBy').value     : document.getElementById('eqSortBy').value,
+      minMag: isMobile ? parseFloat(document.getElementById('eqMMinMag').value) : parseFloat(document.getElementById('eqMinMag').value),
+      search: isMobile ? document.getElementById('eqMSearchInput').value.toLowerCase() : document.getElementById('eqSearchInput').value.toLowerCase(),
+    };
+  }
+
+  async function eqFetchQuakes() {
+    const { range } = eqGetFilters();
+    const urls = {
+      hour:  'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson',
+      day:   'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson',
+      week:  'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson',
+      month: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
+    };
+    try {
+      const res  = await fetch(urls[range]);
+      const data = await res.json();
+      eqAllQuakes  = data.features.filter(f => f.properties.mag !== null);
+      document.getElementById('eqUpdatedText').textContent = 'Updated ' + eqTimeAgo(Date.now());
+      eqUpdateStats(); eqRenderList(); eqRenderMarkers(); eqHideLoading();
+    } catch(e) {
+      document.getElementById('eqUpdatedText').textContent = 'Retrying...';
+      setTimeout(eqFetchQuakes, 5000);
+    }
+  }
+
+  function eqUpdateStats() {
+    const { minMag } = eqGetFilters();
+    const f = eqAllQuakes.filter(q => q.properties.mag >= minMag);
+    const maxM = f.length ? Math.max(...f.map(q=>q.properties.mag)) : 0;
+    const avgD = f.length ? Math.round(f.reduce((a,q)=>a+(q.geometry.coordinates[2]||0),0)/f.length) : 0;
+    document.getElementById('eqSTotal').textContent  = f.length.toLocaleString();
+    document.getElementById('eqSStrong').textContent = f.filter(q=>q.properties.mag>=5).length;
+    document.getElementById('eqSMajor').textContent  = f.filter(q=>q.properties.mag>=6).length;
+    document.getElementById('eqSMax').textContent    = maxM ? 'M'+maxM.toFixed(1) : '—';
+    document.getElementById('eqSDepth').textContent  = avgD+'km';
+  }
+
+  function eqRenderList() {
+    const { minMag, sort, search } = eqGetFilters();
+    let f = eqAllQuakes.filter(q => q.properties.mag >= minMag);
+    if (search) f = f.filter(q => (q.properties.place||'').toLowerCase().includes(search));
+    if (sort==='magnitude') f.sort((a,b)=>b.properties.mag-a.properties.mag);
+    else if (sort==='depth') f.sort((a,b)=>b.geometry.coordinates[2]-a.geometry.coordinates[2]);
+    else f.sort((a,b)=>b.properties.time-a.properties.time);
+
+    const count = `${f.length.toLocaleString()} earthquakes`;
+    document.getElementById('eqListCount').textContent  = count;
+    document.getElementById('eqMListCount').textContent = count;
+
+    const html = f.length === 0
+      ? `<div class="eq-empty-state"><div class="eq-empty-icon">🔍</div><div class="eq-empty-text">No earthquakes match your filters</div></div>`
+      : f.slice(0,200).map(q => {
+          const p   = q.properties;
+          const mag = (p.mag||0).toFixed(1);
+          const dep = q.geometry.coordinates[2]?.toFixed(0)||'?';
+          const ago = eqTimeAgo(p.time);
+          const col = eqMagColor(p.mag);
+          const bg  = eqMagBg(p.mag);
+          const isNew = (Date.now()-p.time)<300000;
+          return `<div class="eq-quake-item${eqSelectedId===q.id?' active':''}" data-id="${q.id}" onclick="eqSelectQuake('${q.id}')">
+            <div class="eq-mag-badge" style="background:${bg};color:${col}">
+              <span class="eq-mag-num">${mag}</span><span class="eq-mag-m">MAG</span>
+            </div>
+            <div class="eq-quake-info">
+              <div class="eq-quake-place">${p.place||'Unknown location'}${isNew?'<span class="eq-new-tag">NEW</span>':''}</div>
+              <div class="eq-quake-sub"><span>⬇ ${dep} km</span><span>${(p.type||'earthquake').toUpperCase()}</span></div>
+            </div>
+            <div class="eq-quake-time">${ago}</div>
+          </div>`;
+        }).join('');
+
+    document.getElementById('eqQuakeList').innerHTML  = html;
+    document.getElementById('eqMQuakeList').innerHTML = html;
+    eqUpdateStats();
+  }
+
+  function eqRenderMarkers() {
+    eqMarkers.forEach(m => eqMap.removeLayer(m));
+    eqMarkers = [];
+    const { minMag } = eqGetFilters();
+    eqAllQuakes.filter(q=>q.properties.mag>=minMag).forEach(q=>{
+      const [lng,lat] = q.geometry.coordinates;
+      const p = q.properties;
+      const col  = eqMagColor(p.mag);
+      const size = eqMagSize(p.mag);
+      const c = L.circleMarker([lat,lng],{ radius:size, fillColor:col, color:col, weight:1, opacity:0.85, fillOpacity: eqHeatMode?0.9:0.55 });
+      c.bindTooltip(`M${(p.mag||0).toFixed(1)} — ${p.place||'Unknown'}`,{direction:'top'});
+      c.on('click',()=>eqSelectQuake(q.id));
+      c.addTo(eqMap); eqMarkers.push(c);
+      if(p.mag>=6){
+        const ring = L.circleMarker([lat,lng],{ radius:size+8, fillColor:'transparent', color:col, weight:1.5, opacity:0.3, fillOpacity:0 });
+        ring.addTo(eqMap); eqMarkers.push(ring);
+      }
+    });
+  }
+
+  function eqSelectQuake(id) {
+    const q = eqAllQuakes.find(x=>x.id===id);
+    if(!q) return;
+    eqSelectedId = id;
+    document.querySelectorAll('.eq-quake-item').forEach(el=>el.classList.toggle('active', el.dataset.id===id));
+
+    const p   = q.properties;
+    const [lng,lat,depth] = q.geometry.coordinates;
+    const mag = (p.mag||0).toFixed(1);
+    const col = eqMagColor(p.mag);
+
+    document.getElementById('eqDMag').textContent    = 'M'+mag;
+    document.getElementById('eqDMag').style.color    = col;
+    document.getElementById('eqDType').textContent   = (p.type||'earthquake').toUpperCase();
+    document.getElementById('eqDPlace').textContent  = p.place||'Unknown location';
+    document.getElementById('eqDDepth').textContent  = depth?depth.toFixed(1)+' km':'—';
+    document.getElementById('eqDTime').textContent   = eqFmtTime(p.time);
+    document.getElementById('eqDCoords').textContent = `${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    document.getElementById('eqDFelt').textContent   = p.felt?p.felt.toLocaleString():'None';
+    document.getElementById('eqDUsgs').onclick = ()=>window.open(p.url,'_blank');
+    document.getElementById('eqDCenter').onclick= ()=>eqMap.setView([lat,lng],6);
+    document.getElementById('eqDetailPanel').classList.add('show');
+
+    document.getElementById('eqSMagNum').textContent  = 'M'+mag;
+    document.getElementById('eqSMagNum').style.color  = col;
+    document.getElementById('eqSType').textContent    = (p.type||'earthquake').toUpperCase();
+    document.getElementById('eqSAgo').textContent     = eqTimeAgo(p.time);
+    document.getElementById('eqSPlace').textContent   = p.place||'Unknown location';
+    document.getElementById('eqSDepthVal').textContent= depth?depth.toFixed(1)+' km':'—';
+    document.getElementById('eqSTime').textContent    = eqFmtTime(p.time);
+    document.getElementById('eqSLat').textContent     = lat.toFixed(4)+'°';
+    document.getElementById('eqSLng').textContent     = lng.toFixed(4)+'°';
+    document.getElementById('eqSFeltVal').textContent = p.felt?p.felt.toLocaleString()+' reports':'None reported';
+    document.getElementById('eqSUsgs').onclick  = ()=>window.open(p.url,'_blank');
+    document.getElementById('eqSCenter').onclick= ()=>{eqMap.setView([lat,lng],6);eqSwitchTab('map');};
+
+    if(window.innerWidth<=680){ eqOpenSheet(); if(eqCurrentTab==='list') eqSwitchTab('map'); }
+    eqMap.setView([lat,lng], Math.max(eqMap.getZoom(),4));
+
+    if(p.mag>=5.5){
+      const emoji = p.mag>=7?'🔴':p.mag>=6?'🟠':'🟡';
+      eqShowToast(emoji, `M${mag} — ${(p.place||'').split(', ').pop()}`, p.mag>=6?'Major earthquake detected':'Moderate earthquake detected', 5000);
+    }
+  }
+
+  function eqCloseDetail() {
+    document.getElementById('eqDetailPanel').classList.remove('show');
+    eqSelectedId = null;
+    document.querySelectorAll('.eq-quake-item').forEach(e=>e.classList.remove('active'));
+  }
+
+  function eqOpenSheet() {
+    document.getElementById('eqBottomSheet').classList.add('show');
+    document.getElementById('eqSheetBackdrop').style.display='block';
+    requestAnimationFrame(()=>document.getElementById('eqSheetBackdrop').classList.add('show'));
+  }
+  function eqCloseSheet() {
+    document.getElementById('eqBottomSheet').classList.remove('show');
+    const bd = document.getElementById('eqSheetBackdrop');
+    bd.classList.remove('show');
+    bd.style.display='none';
+    eqSelectedId = null;
+    document.querySelectorAll('.eq-quake-item').forEach(e=>e.classList.remove('active'));
+  }
+
+  let eqToastQueue = [];
+  function eqShowToast(icon, title, sub, duration=4500) {
+    document.querySelectorAll('.eq-toast').forEach(t => eqDismissToast(t.id));
+    const id = 'eqt_' + Date.now();
+    const el = document.createElement('div');
+    el.className = 'eq-toast'; el.id = id;
+    el.innerHTML = `<div class="eq-toast-emoji">${icon}</div><div class="eq-toast-body"><div class="eq-toast-title">${title}</div><div class="eq-toast-sub">${sub}</div></div><button class="eq-toast-x" id="eqtx_${id}">✕</button><div class="eq-toast-progress" style="animation-duration:${duration}ms"></div>`;
+    el.querySelector(`#eqtx_${id}`).addEventListener('click', e => { e.stopPropagation(); eqDismissToast(id); });
+    el.addEventListener('click', () => eqDismissToast(id));
+    let tx=0,swiping=false;
+    el.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;swiping=true;el.style.transition='none';},{passive:true});
+    el.addEventListener('touchmove',e=>{if(!swiping)return;const dx=e.touches[0].clientX-tx;if(dx>0)el.style.transform=`translateX(${dx}px)`;},{passive:true});
+    el.addEventListener('touchend',e=>{if(!swiping)return;swiping=false;const dx=e.changedTouches[0].clientX-tx;if(dx>60){eqDismissToast(id);}else{el.style.transition='';el.style.transform='';}},{passive:true});
+    document.getElementById('eqToastContainer').appendChild(el);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('show')));
+    el._timer = setTimeout(()=>eqDismissToast(id), duration);
+  }
+  function eqDismissToast(id) {
+    const el = document.getElementById(id);
+    if(!el||el._dismissing) return;
+    el._dismissing=true; clearTimeout(el._timer);
+    el.style.transition='transform 0.3s ease, opacity 0.3s ease';
+    el.style.transform='translateX(110%)'; el.style.opacity='0';
+    setTimeout(()=>el.remove(), 320);
+  }
+
+  function eqToggleHeat() {
+    eqHeatMode = !eqHeatMode;
+    document.getElementById('eqHeatBtn').classList.toggle('active', eqHeatMode);
+    eqMarkers.forEach(m=>{ if(m.options.radius) m.setStyle({fillOpacity:eqHeatMode?0.9:0.55}); });
+  }
+
+  function eqHideLoading() {
+    const el = document.getElementById('eqLoadingOverlay');
+    el.classList.add('hide');
+    setTimeout(()=>el.remove(), 500);
+  }
+
+  function eqSwitchTab(tab) {
+    eqCurrentTab = tab;
+    document.getElementById('eqTabMap').classList.toggle('active', tab==='map');
+    document.getElementById('eqTabList').classList.toggle('active', tab==='list');
+    document.getElementById('eqTabFilter').classList.toggle('active', tab==='filter');
+    document.getElementById('eqMobileListPanel').classList.toggle('show', tab==='list');
+    if(tab==='filter') eqOpenFilterDrawer();
+    if(tab==='map') eqCloseSheet();
+  }
+
+  function eqOpenFilterDrawer() { document.getElementById('eqFilterDrawer').classList.add('show'); }
+  function eqCloseFilterDrawer() {
+    document.getElementById('eqFilterDrawer').classList.remove('show');
+    document.getElementById('eqTabFilter').classList.remove('active');
+    document.getElementById('eqTabMap').classList.add('active');
+    eqCurrentTab = 'map';
+  }
+
+  function eqApplyFilters() {
+    document.getElementById('eqTimeRange').value    = document.getElementById('eqMTimeRange').value;
+    document.getElementById('eqSortBy').value       = document.getElementById('eqMSortBy').value;
+    document.getElementById('eqMinMag').value       = document.getElementById('eqMMinMag').value;
+    document.getElementById('eqSearchInput').value  = document.getElementById('eqMSearchInput').value;
+    eqCloseFilterDrawer();
+    eqRefreshData();
+    const hasFilter = document.getElementById('eqMMinMag').value!=='2.5'||document.getElementById('eqMSearchInput').value!=='';
+    document.getElementById('eqFilterBadge').classList.toggle('show', hasFilter);
+  }
+
+  function eqRefreshData() {
+    const btn = document.getElementById('eqRefreshBtn');
+    btn.classList.add('spinning');
+    eqAllQuakes = [];
+    eqRenderList(); eqRenderMarkers(); eqFetchQuakes();
+    setTimeout(()=>btn.classList.remove('spinning'), 1000);
+  }
+
+  function eqResetMapView() {
+    eqMap.fitBounds(L.latLngBounds(L.latLng(-85,-180), L.latLng(85,180)), {animate:true,duration:0.8,padding:[0,0]});
+  }
+
+  // Event listeners
+  document.getElementById('eqTimeRange').addEventListener('change', eqRefreshData);
+  document.getElementById('eqSortBy').addEventListener('change', eqRenderList);
+  document.getElementById('eqSearchInput').addEventListener('input', ()=>{ eqRenderList(); eqRenderMarkers(); });
+  document.getElementById('eqMinMag').addEventListener('input', function(){
+    document.getElementById('eqMagVal').textContent = 'M '+this.value+'+';
+    document.getElementById('eqMMinMag').value = this.value;
+    document.getElementById('eqMMagVal').textContent = 'M '+this.value+'+';
+    eqRenderList(); eqRenderMarkers();
+  });
+  document.getElementById('eqMMinMag').addEventListener('input', function(){
+    document.getElementById('eqMMagVal').textContent = 'M '+this.value+'+';
+  });
+
+  // Sheet swipe
+  (function(){
+    const sheet = document.getElementById('eqBottomSheet');
+    let startY=0,currentY=0,dragging=false;
+    sheet.addEventListener('touchstart',function(e){ if(e.target.closest('button')||e.target.closest('a')) return; startY=e.touches[0].clientY;currentY=0;dragging=true;sheet.style.transition='none'; },{passive:true});
+    sheet.addEventListener('touchmove',function(e){ if(!dragging) return; const dy=e.touches[0].clientY-startY; if(dy>0){currentY=dy;sheet.style.transform='translateY('+dy+'px)';} },{passive:true});
+    sheet.addEventListener('touchend',function(){ if(!dragging) return; dragging=false; sheet.style.transition=''; if(currentY>100){eqCloseSheet();}else{sheet.style.transform='';} },{passive:true});
+  })();
+
+  // Click outside toast
+  document.addEventListener('click', e => { if(!e.target.closest('.eq-toast')) document.querySelectorAll('.eq-toast').forEach(t=>eqDismissToast(t.id)); });
+  document.addEventListener('touchend', e => { if(!e.target.closest('.eq-toast')) document.querySelectorAll('.eq-toast').forEach(t=>eqDismissToast(t.id)); }, {passive:true});
+
+  setInterval(eqFetchQuakes, 60000);
+  eqFetchQuakes();
+
+  setTimeout(()=>{
+    const big = eqAllQuakes.find(q=>q.properties.mag>=6.5);
+    if(big) eqShowToast('🔴',`M${big.properties.mag.toFixed(1)} — ${big.properties.place}`,'Major earthquake recently detected', 6000);
+  }, 4000);
+  </script>
+
+</BaseLayout>
