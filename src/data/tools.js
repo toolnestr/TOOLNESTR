@@ -29,6 +29,7 @@ export const categories = [
   { id: 'converters', name: 'Converters', emoji: '🔄' },
   { id: 'time-date', name: 'Time & Date', emoji: '🕐' },
   { id: 'charts', name: 'Chart Generators', emoji: '📊' },
+  { id: 'islamic', name: 'Islamic Tools', emoji: '🕌' },
 ];
 
 export const tools = [
@@ -346,8 +347,8 @@ export const tools = [
   { slug: 'moon-phase-calculator', title: 'Moon Phase Calculator', short: 'Find the moon phase for any date — new, quarter, gibbous, full moon.', category: 'time-date', emoji: '🌙', enabled: true, status: 'live' },
   { slug: 'zodiac-sign-calculator', title: 'Zodiac Sign Calculator', short: 'Find your Western zodiac sign based on your birth date.', category: 'time-date', emoji: '♈', enabled: true, status: 'live' },
   // ── Part B: Miscellaneous ──
-  { slug: 'tip-pooling-calculator', title: 'Tip Pooling Calculator', short: 'Split tips fairly among staff by hours worked or contribution level.', category: 'tools', emoji: '💵', enabled: true, status: 'live' },
-  { slug: 'paint-coverage-calculator', title: 'Paint Coverage Calculator', short: 'Estimate how many gallons of paint you need for any room.', category: 'tools', emoji: '🎨', enabled: true, status: 'live' },
+  { slug: 'tip-pooling-calculator', title: 'Tip Pooling Calculator', short: 'Split tips fairly among staff by hours worked or contribution level.', category: 'finance', emoji: '💵', enabled: true, status: 'live' },
+  { slug: 'paint-coverage-calculator', title: 'Paint Coverage Calculator', short: 'Estimate how many gallons of paint you need for any room.', category: 'construction', emoji: '🎨', enabled: true, status: 'live' },
   // ── Part B: Security — remaining ──
   { slug: 'password-entropy-calculator', title: 'Password Entropy Calculator', short: 'Calculate password strength in bits of entropy and estimated crack time.', category: 'security', emoji: '🔐', enabled: true, status: 'live' },
   { slug: 'csr-decoder', title: 'CSR Decoder', short: 'Decode the contents of a Certificate Signing Request (PEM format).', category: 'security', emoji: '📜', enabled: true, status: 'live' },
@@ -487,6 +488,24 @@ export const tools = [
   { slug: 'food-thawing-time-calculator', title: 'Food Thawing Time Calculator', short: 'Safe thawing time from food weight.', category: 'cooking', emoji: '🧊', enabled: true, status: 'live' },
   { slug: 'meat-roasting-time-calculator', title: 'Meat Roasting Time Calculator', short: 'Roasting time from meat type and weight.', category: 'cooking', emoji: '🍖', enabled: true, status: 'live' },
   { slug: 'yeast-converter', title: 'Yeast Converter', short: 'Active dry to instant yeast conversion.', category: 'cooking', emoji: '🧫', enabled: true, status: 'live' },
+
+  // ── Islamic Tools 🕌 ──
+  { slug: 'zakat-calculator', title: 'Zakat Calculator', short: 'Calculate the 2.5% Zakat due on your savings, gold, silver and business assets.', category: 'islamic', emoji: '🕌', enabled: true, status: 'live' },
+  { slug: 'zakat-on-gold-calculator', title: 'Zakat on Gold Calculator', short: 'Work out the Zakat due on gold by weight, karat and price.', category: 'islamic', emoji: '🪙', enabled: true, status: 'live' },
+  { slug: 'zakat-on-silver-calculator', title: 'Zakat on Silver Calculator', short: 'Calculate the 2.5% Zakat due on silver by weight and price.', category: 'islamic', emoji: '🥈', enabled: true, status: 'live' },
+  { slug: 'nisab-calculator', title: 'Nisab Calculator', short: 'Find the gold and silver nisab thresholds for Zakat from current prices.', category: 'islamic', emoji: '⚖️', enabled: true, status: 'live' },
+  { slug: 'islamic-inheritance-calculator', title: 'Islamic Inheritance (Faraid) Calculator', short: 'Estimate each heir’s Qur’anic share of an estate under Islamic inheritance law.', category: 'islamic', emoji: '📜', enabled: true, status: 'live' },
+  { slug: 'hijri-to-gregorian-converter', title: 'Hijri to Gregorian Converter', short: 'Convert any Hijri (Islamic) date to the Gregorian calendar.', category: 'islamic', emoji: '📅', enabled: true, status: 'live' },
+  { slug: 'gregorian-to-hijri-converter', title: 'Gregorian to Hijri Converter', short: 'Convert any Gregorian date to the Hijri (Islamic) calendar.', category: 'islamic', emoji: '🗓️', enabled: true, status: 'live' },
+  { slug: 'hijri-date-today', title: 'Today’s Hijri Date', short: 'See today’s Hijri (Islamic) date, month name and year.', category: 'islamic', emoji: '🌙', enabled: true, status: 'live' },
+  { slug: 'age-in-hijri-calculator', title: 'Age in Hijri Years Calculator', short: 'Find your age in Hijri (lunar) years, months and days.', category: 'islamic', emoji: '🎂', enabled: true, status: 'live' },
+  { slug: 'ramadan-countdown', title: 'Ramadan Countdown', short: 'Live countdown to the first day of Ramadan.', category: 'islamic', emoji: '🌙', enabled: true, status: 'live' },
+  { slug: 'eid-countdown', title: 'Eid Countdown', short: 'Live countdown to Eid al-Fitr and Eid al-Adha.', category: 'islamic', emoji: '🎉', enabled: true, status: 'live' },
+  { slug: 'tasbih-counter', title: 'Digital Tasbih Counter', short: 'Count your dhikr with a digital tasbih that saves your progress.', category: 'islamic', emoji: '📿', enabled: true, status: 'live' },
+  { slug: 'qibla-direction-finder', title: 'Qibla Direction Finder', short: 'Find the Qibla direction to the Kaaba from your location.', category: 'islamic', emoji: '🧭', enabled: true, status: 'live' },
+  { slug: 'asma-ul-husna', title: '99 Names of Allah (Asma ul Husna)', short: 'Browse and search the 99 Names of Allah with meanings.', category: 'islamic', emoji: '🕋', enabled: true, status: 'live' },
+  { slug: 'sehri-iftar-calculator', title: 'Sehri & Iftar Time Calculator', short: 'Get today’s Suhoor (Sehri) and Iftar times for your city.', category: 'islamic', emoji: '🌅', enabled: true, status: 'live' },
+  { slug: 'khums-calculator', title: 'Khums Calculator', short: 'Calculate the 20% Khums due on your annual surplus.', category: 'islamic', emoji: '🪙', enabled: true, status: 'live' },
 ];
 
 // Search-priority ranking (higher = more Google search volume).
@@ -558,6 +577,9 @@ const priorities = {
   // ── Charts ──
   'bar-chart-generator': 100, 'pie-chart-generator': 90, 'line-chart-generator': 80, 'donut-chart-generator': 70,
   'histogram-generator': 60, 'gauge-chart': 50, 'percentage-bar-chart': 40,
+  // ── Islamic ──
+  'zakat-calculator': 100, 'qibla-direction-finder': 90, 'hijri-date-today': 80, 'ramadan-countdown': 70,
+  'asma-ul-husna': 60, 'tasbih-counter': 50, 'sehri-iftar-calculator': 50, 'islamic-inheritance-calculator': 40,
 };
 
 // Helpers used by pages
