@@ -14,6 +14,10 @@ const faqs = [
 
 <ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
   <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="mb-4 block"><span class="text-sm font-medium text-slate-700">Currency</span>
+      <select id="cur" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="USD">USD $ — US Dollar</option><option value="PKR">PKR ₨ — Pakistani Rupee</option><option value="INR">INR ₹ — Indian Rupee</option><option value="BDT">BDT ৳ — Bangladeshi Taka</option><option value="IDR">IDR Rp — Indonesian Rupiah</option><option value="MYR">MYR RM — Malaysian Ringgit</option><option value="SAR">SAR — Saudi Riyal</option><option value="AED">AED — UAE Dirham</option><option value="QAR">QAR — Qatari Riyal</option><option value="KWD">KWD — Kuwaiti Dinar</option><option value="EGP">EGP — Egyptian Pound</option><option value="TRY">TRY ₺ — Turkish Lira</option><option value="NGN">NGN ₦ — Nigerian Naira</option><option value="ZAR">ZAR — South African Rand</option><option value="MAD">MAD — Moroccan Dirham</option><option value="GBP">GBP £ — British Pound</option><option value="EUR">EUR € — Euro</option><option value="CAD">CAD $ — Canadian Dollar</option><option value="AUD">AUD $ — Australian Dollar</option>
+      </select></label>
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="block"><span class="text-sm font-medium text-slate-700">Cash in hand</span>
         <input id="cash" type="number" step="any" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
@@ -141,6 +145,10 @@ const faqs = [
     const el = (id) => document.getElementById(id);
     const ids = ['cash', 'bank', 'gold', 'silver', 'inventory', 'receivables', 'debts', 'price'];
     const num = (id) => { const v = parseFloat(el(id).value); return isFinite(v) ? v : 0; };
+    const REGION_CUR = { PK: 'PKR', IN: 'INR', BD: 'BDT', ID: 'IDR', MY: 'MYR', SA: 'SAR', AE: 'AED', QA: 'QAR', KW: 'KWD', EG: 'EGP', TR: 'TRY', NG: 'NGN', ZA: 'ZAR', MA: 'MAD', GB: 'GBP', US: 'USD', CA: 'CAD', AU: 'AUD', FR: 'EUR', DE: 'EUR', IT: 'EUR', ES: 'EUR' };
+    function defaultCurrency() { try { var s = localStorage.getItem('tn_currency'); if (s) return s; } catch (e) {} try { var p = (navigator.language || '').split('-')[1]; if (p && REGION_CUR[p.toUpperCase()]) return REGION_CUR[p.toUpperCase()]; } catch (e) {} return 'USD'; }
+    let CUR = defaultCurrency();
+    function fmtMoney(n) { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CUR, maximumFractionDigits: 2 }).format(n); } catch (e) { return n.toLocaleString(undefined, { maximumFractionDigits: 2 }); } }
 
     function update() {
       const assets = num('cash') + num('bank') + num('gold') + num('silver') + num('inventory') + num('receivables');
@@ -148,15 +156,14 @@ const faqs = [
       const grams = el('basis').value === 'gold' ? 87.48 : 612.36;
       const price = num('price');
       const nisab = grams * price;
-      const fmt = (n) => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
       if (assets <= 0 && num('debts') <= 0) { el('results').classList.add('hidden'); return; }
       const meets = price > 0 ? wealth >= nisab : wealth > 0;
       const due = meets ? wealth * 0.025 : 0;
 
-      el('r-wealth').textContent = fmt(wealth);
-      el('r-nisab').textContent = price > 0 ? fmt(nisab) : 'enter price';
-      el('r-due').textContent = fmt(due);
+      el('r-wealth').textContent = fmtMoney(wealth);
+      el('r-nisab').textContent = price > 0 ? fmtMoney(nisab) : 'enter price';
+      el('r-due').textContent = fmtMoney(due);
       el('r-status').textContent = price <= 0
         ? 'Enter a metal price to check the nisab'
         : (meets ? 'Your wealth meets the nisab' : 'Below nisab — no Zakat due this year');
@@ -166,5 +173,6 @@ const faqs = [
 
     ids.forEach((id) => el(id).addEventListener('input', update));
     el('basis').addEventListener('change', update);
+    (function () { const c = el('cur'); c.value = CUR; c.addEventListener('change', function () { CUR = c.value; try { localStorage.setItem('tn_currency', CUR); } catch (e) {} update(); }); })();
   </script>
 </ToolLayout>
