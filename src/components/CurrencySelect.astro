@@ -1,0 +1,71 @@
+---
+// Universal currency selector for all money tools.
+// - Auto-detects the visitor's currency from their IP (Cloudflare /cdn-cgi/trace → country → currency)
+// - Lists every currency the browser supports (Intl.supportedValuesOf), with a "Popular" group on top
+// - Remembers a manual choice across the whole site (localStorage 'tn_currency')
+// - Exposes window.tnFmtMoney(n) and fires a 'tn:currency' event so tools re-render on change
+---
+<label class="mb-4 block"><span class="text-sm font-medium text-slate-700">Currency</span>
+  <select id="cur" aria-label="Currency" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></select></label>
+<script is:inline>
+(function () {
+  if (window.__tnCurInit) return; window.__tnCurInit = true;
+  var sel = document.getElementById('cur');
+  if (!sel) return;
+
+  var POPULAR = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'BDT', 'IDR', 'MYR', 'SAR', 'AED', 'QAR', 'KWD', 'BHD', 'OMR', 'EGP', 'TRY', 'NGN', 'ZAR', 'CAD', 'AUD'];
+  var FALLBACK = POPULAR.concat(['JOD','LBP','IQD','IRR','SYP','YER','TND','DZD','MAD','LYD','SDG','SOS','KES','TZS','UGX','GHS','XOF','XAF','LKR','NPR','AFN','AZN','KZT','UZS','BND','MVR','MUR','JPY','CNY','HKD','SGD','THB','PHP','VND','KRW','CHF','SEK','NOK','DKK','PLN','CZK','HUF','RON','RUB','UAH','BRL','MXN','ARS','CLP','COP','NZD']);
+  var C2CUR = {
+    US:'USD',GB:'GBP',
+    AT:'EUR',BE:'EUR',CY:'EUR',EE:'EUR',FI:'EUR',FR:'EUR',DE:'EUR',GR:'EUR',IE:'EUR',IT:'EUR',LV:'EUR',LT:'EUR',LU:'EUR',MT:'EUR',NL:'EUR',PT:'EUR',SK:'EUR',SI:'EUR',ES:'EUR',HR:'EUR',
+    PK:'PKR',IN:'INR',BD:'BDT',LK:'LKR',NP:'NPR',BT:'BTN',
+    ID:'IDR',MY:'MYR',SG:'SGD',TH:'THB',PH:'PHP',VN:'VND',KR:'KRW',JP:'JPY',CN:'CNY',HK:'HKD',MO:'MOP',TW:'TWD',MM:'MMK',KH:'KHR',LA:'LAK',BN:'BND',MV:'MVR',MN:'MNT',
+    SA:'SAR',AE:'AED',QA:'QAR',KW:'KWD',BH:'BHD',OM:'OMR',JO:'JOD',LB:'LBP',IL:'ILS',IQ:'IQD',IR:'IRR',SY:'SYP',YE:'YER',TR:'TRY',
+    AZ:'AZN',KZ:'KZT',UZ:'UZS',TM:'TMT',KG:'KGS',TJ:'TJS',AF:'AFN',GE:'GEL',AM:'AMD',
+    EG:'EGP',MA:'MAD',DZ:'DZD',TN:'TND',LY:'LYD',SD:'SDG',SO:'SOS',
+    NG:'NGN',GH:'GHS',KE:'KES',TZ:'TZS',UG:'UGX',ET:'ETB',ZA:'ZAR',ZM:'ZMW',ZW:'ZWL',RW:'RWF',
+    SN:'XOF',CI:'XOF',ML:'XOF',BF:'XOF',NE:'XOF',BJ:'XOF',TG:'XOF',GW:'XOF',
+    CM:'XAF',GA:'XAF',CG:'XAF',TD:'XAF',CF:'XAF',GQ:'XAF',
+    AO:'AOA',MZ:'MZN',MG:'MGA',MU:'MUR',MW:'MWK',BW:'BWP',NA:'NAD',SZ:'SZL',LS:'LSL',SC:'SCR',GM:'GMD',SL:'SLL',LR:'LRD',MR:'MRU',DJ:'DJF',ER:'ERN',CV:'CVE',
+    CA:'CAD',AU:'AUD',NZ:'NZD',MX:'MXN',BR:'BRL',AR:'ARS',CL:'CLP',CO:'COP',PE:'PEN',UY:'UYU',PY:'PYG',BO:'BOB',VE:'VES',EC:'USD',
+    CR:'CRC',GT:'GTQ',HN:'HNL',NI:'NIO',PA:'PAB',DO:'DOP',JM:'JMD',TT:'TTD',CU:'CUP',BS:'BSD',BB:'BBD',BZ:'BZD',
+    RU:'RUB',UA:'UAH',BY:'BYN',PL:'PLN',CZ:'CZK',HU:'HUF',RO:'RON',BG:'BGN',RS:'RSD',BA:'BAM',MK:'MKD',AL:'ALL',MD:'MDL',IS:'ISK',NO:'NOK',SE:'SEK',DK:'DKK',CH:'CHF',LI:'CHF',
+    FJ:'FJD',PG:'PGK'
+  };
+
+  function stored() { try { return localStorage.getItem('tn_currency') || ''; } catch (e) { return ''; } }
+  function save(c) { try { localStorage.setItem('tn_currency', c); } catch (e) {} }
+  var CUR = stored() || 'USD';
+  window.tnCurrency = function () { return CUR; };
+  window.tnFmtMoney = function (n) {
+    try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: CUR, maximumFractionDigits: 2 }).format(n); }
+    catch (e) { return CUR + ' ' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+  };
+  function fire() { try { document.dispatchEvent(new CustomEvent('tn:currency', { detail: CUR })); } catch (e) {} }
+
+  var codes; try { codes = Intl.supportedValuesOf('currency'); } catch (e) {}
+  if (!codes || !codes.length) codes = FALLBACK.slice();
+  var dn; try { dn = new Intl.DisplayNames(undefined, { type: 'currency' }); } catch (e) {}
+  function label(code) { var nm; try { nm = dn ? dn.of(code) : ''; } catch (e) { nm = ''; } return nm && nm !== code ? code + ' — ' + nm : code; }
+  function addOpt(parent, code) { var o = document.createElement('option'); o.value = code; o.textContent = label(code); parent.appendChild(o); }
+
+  var gP = document.createElement('optgroup'); gP.label = 'Popular';
+  var seen = {};
+  POPULAR.forEach(function (c) { if (!seen[c]) { seen[c] = 1; addOpt(gP, c); } });
+  var gA = document.createElement('optgroup'); gA.label = 'All currencies';
+  codes.slice().sort().forEach(function (c) { addOpt(gA, c); });
+  sel.appendChild(gP); sel.appendChild(gA);
+  sel.value = CUR;
+
+  sel.addEventListener('change', function () { CUR = sel.value; save(CUR); fire(); });
+
+  if (!stored()) {
+    fetch('/cdn-cgi/trace').then(function (r) { return r.text(); }).then(function (t) {
+      var m = t.match(/loc=([A-Z]{2})/); var cc = m && C2CUR[m[1]];
+      if (cc) { CUR = cc; sel.value = cc; fire(); }
+    }).catch(function () {
+      try { var p = (navigator.language || '').split('-')[1]; var cc = p && C2CUR[p.toUpperCase()]; if (cc) { CUR = cc; sel.value = cc; fire(); } } catch (e) {}
+    });
+  }
+})();
+</script>
