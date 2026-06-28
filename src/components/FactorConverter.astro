@@ -1,0 +1,183 @@
+---
+// Reusable full page for single-direction unit converters (factor or temperature formula).
+// Renders the tool UI, a live reference table, an SVG scale, ~700 words of prose,
+// four auto-generated FAQs, and the reverse-converter link — all via ToolLayout.
+import ToolLayout from '../layouts/ToolLayout.astro';
+
+const {
+  title,                 // e.g. "Kg to Lbs"
+  emoji = '🔄',
+  fromUnit, toUnit,      // lowercase plural names: "kilograms", "pounds"
+  fromTitle, toTitle,    // singular Title case: "Kilogram", "Pound"
+  fromSym, toSym,        // symbols: "kg", "lb"
+  quantity,              // "weight", "length", "temperature", "volume", "speed", "pressure"
+  kind = 'factor',       // 'factor' | 'tempCF' | 'tempFC' | 'tempCK' | 'tempKC'
+  factor = 1,
+  precision = 4,
+  reverseSlug, reverseLabel,
+  hasReverse = true,     // false when the exact inverse page does not exist
+  related = [],
+  useCase,               // one unique sentence about real-world use
+} = Astro.props;
+
+const category = { id: 'converters', name: 'Converters', emoji: '🔄' };
+
+function convert(v) {
+  switch (kind) {
+    case 'tempCF': return v * 9 / 5 + 32;
+    case 'tempFC': return (v - 32) * 5 / 9;
+    case 'tempCK': return v + 273.15;
+    case 'tempKC': return v - 273.15;
+    default: return v * factor;
+  }
+}
+const round = (n) => {
+  const r = Math.round(n * 10000) / 10000;
+  return r.toLocaleString(undefined, { maximumFractionDigits: precision });
+};
+
+const tableInputs = kind === 'factor'
+  ? [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000]
+  : kind === 'tempFC' ? [-40, 0, 32, 50, 68, 98.6, 212]
+  : kind === 'tempKC' ? [0, 255.37, 273.15, 300, 310.15, 373.15]
+  : kind === 'tempCK' ? [-273.15, -40, 0, 25, 37, 100, 1000]
+  : [-40, -10, 0, 10, 20, 30, 37, 100];
+
+const oneVal = round(convert(1));
+const tenVal = round(convert(10));
+const formulaText = kind === 'tempCF' ? '°F = (°C × 9/5) + 32'
+  : kind === 'tempFC' ? '°C = (°F − 32) × 5/9'
+  : kind === 'tempCK' ? 'K = °C + 273.15'
+  : kind === 'tempKC' ? '°C = K − 273.15'
+  : `${toSym} = ${fromSym} × ${factor}`;
+
+const isTemp = kind !== 'factor';
+const description = `Convert ${fromUnit} to ${toUnit} (${fromSym} to ${toSym}) instantly with a free online converter, a conversion table and the exact ${isTemp ? 'formula' : 'factor'}.`;
+const intro = `Enter a value in ${fromUnit} to convert it to ${toUnit}${isTemp ? '' : ` — 1 ${fromSym} = ${oneVal} ${toSym}`}.`;
+
+const faqs = [
+  {
+    q: `How do I convert ${fromUnit} to ${toUnit}?`,
+    a: isTemp
+      ? `Use the formula ${formulaText}. Enter your ${quantity} above and the converter applies it instantly.`
+      : `Multiply the number of ${fromUnit} by ${factor}. For example, 10 ${fromSym} × ${factor} = ${tenVal} ${toSym}. The converter above does this automatically.`,
+  },
+  {
+    q: `How many ${toUnit} are in one ${fromUnit}?`,
+    a: isTemp
+      ? `Temperature scales do not have a single ratio because they use an offset. Use the formula ${formulaText} to convert any value exactly.`
+      : `There ${oneVal === '1' ? 'is' : 'are'} ${oneVal} ${toUnit} in one ${fromUnit}. Multiply by ${factor} for any amount.`,
+  },
+  {
+    q: `Is this ${title} converter accurate?`,
+    a: `Yes. It uses the exact ${isTemp ? 'conversion formula' : `conversion factor of ${factor}`}, so results are precise. Values shown in the table are rounded for readability.`,
+  },
+  {
+    q: `How do I convert ${toUnit} back to ${fromUnit}?`,
+    a: hasReverse
+      ? `Use our ${reverseLabel} for the reverse direction${isTemp ? '.' : `, or divide the ${toUnit} value by ${factor}.`}`
+      : `Divide the ${toUnit} value by ${factor} to get ${fromUnit} again.`,
+  },
+];
+---
+
+<ToolLayout title={`${title} Converter`} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block"><span class="text-sm font-medium text-slate-700">{fromTitle} ({fromSym})</span>
+      <input id="inp" type="number" step="any" placeholder="Enter a value" data-kind={kind} data-factor={factor}
+        class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    <div class="mt-4 rounded-xl bg-indigo-600 p-5 text-center text-white">
+      <div class="text-sm opacity-80">{toTitle} ({toSym})</div>
+      <div id="out" class="mt-1 text-3xl font-bold tabular-nums">—</div>
+    </div>
+    <div class="mt-3 text-center">
+      <a href={`/tools/${reverseSlug}`} class="text-sm font-medium text-indigo-600 hover:text-indigo-700">{hasReverse ? '↔ ' : 'Related: '}{reverseLabel}</a>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="150" viewBox="0 0 800 150" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="sc-title sc-desc">
+      <title id="sc-title">{title} scale</title>
+      <desc id="sc-desc">A scale comparing {fromUnit} with {toUnit} using the conversion {formulaText}.</desc>
+      <rect x="60" y="45" width="300" height="40" rx="6" fill="#eef2ff" stroke="#a5b4fc" /><text x="210" y="70" text-anchor="middle" font-size="15" fill="#3730a3" font-family="system-ui,sans-serif" font-weight="bold">{fromTitle} ({fromSym})</text>
+      <path d="M375 65 L425 65" stroke="#94a3b8" stroke-width="2" marker-end="url(#scar)" /><defs><marker id="scar" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" /></marker></defs>
+      <rect x="440" y="45" width="300" height="40" rx="6" fill="#f8fafc" stroke="#cbd5e1" /><text x="590" y="70" text-anchor="middle" font-size="15" fill="#1e293b" font-family="system-ui,sans-serif" font-weight="bold">{toTitle} ({toSym})</text>
+      <text x="400" y="120" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">{formulaText}</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">{title}: {formulaText}.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How to convert {fromUnit} to {toUnit}</h2>
+    <p class="mt-2 text-slate-600">
+      {isTemp
+        ? `Converting ${fromUnit} to ${toUnit} means moving between two ${quantity} scales using the formula ${formulaText}. Because temperature scales start from different zero points, the conversion involves both scaling and an offset rather than a single multiplier. Type any value above and the result updates instantly, entirely in your browser.`
+        : `Converting ${fromUnit} to ${toUnit} is a simple multiplication: take your ${quantity} in ${fromUnit} and multiply by the fixed conversion factor of ${factor} to get ${toUnit}. Because the factor never changes, the same calculation works for any value, from tiny amounts to very large ones. The converter above applies it the moment you type, with no rounding errors in the underlying maths.`}
+    </p>
+    <p class="mt-3 text-slate-600">{useCase} Knowing how to move between {fromUnit} and {toUnit} is useful whenever measurements are given in one system but you need them in the other — for shopping, travel, study, cooking, engineering or simply comparing figures from different countries.</p>
+    <p class="mt-3 text-slate-600">The reference table below lists common {fromUnit} values already converted to {toUnit}, so you can read off everyday amounts at a glance without typing. For the opposite direction, use the {reverseLabel}, which reverses the calculation exactly.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula and a worked example</h2>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+      <p class="font-semibold text-slate-900">Formula</p>
+      <p class="mt-1 font-mono text-slate-700">{formulaText}</p>
+    </div>
+    <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        {isTemp
+          ? `To convert 10 ${fromSym}: apply ${formulaText} to get ${tenVal} ${toSym}.`
+          : `To convert 10 ${fromUnit}: 10 × ${factor} = ${tenVal} ${toSym}. To convert 25 ${fromUnit}: 25 × ${factor} = ${round(convert(25))} ${toSym}.`}
+      </p>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">{title} conversion table</h2>
+    <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left text-slate-600"><tr><th class="px-4 py-2">{fromTitle} ({fromSym})</th><th class="px-4 py-2">{toTitle} ({toSym})</th></tr></thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          {tableInputs.map((v) => (
+            <tr><td class="px-4 py-2 font-medium tabular-nums">{v.toLocaleString()}</td><td class="px-4 py-2 tabular-nums">{round(convert(v))}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-3 text-sm text-slate-500">Values are rounded for display; the converter above keeps full precision.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related converters</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href={`/tools/${reverseSlug}`} class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{reverseLabel}</a>
+      {related.map((r) => (
+        <a href={`/tools/${r.slug}`} class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{r.label}</a>
+      ))}
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      const inp = document.getElementById('inp'), out = document.getElementById('out');
+      const kind = inp.dataset.kind, factor = parseFloat(inp.dataset.factor);
+      function conv(v) {
+        switch (kind) {
+          case 'tempCF': return v * 9 / 5 + 32;
+          case 'tempFC': return (v - 32) * 5 / 9;
+          case 'tempCK': return v + 273.15;
+          case 'tempKC': return v - 273.15;
+          default: return v * factor;
+        }
+      }
+      function update() {
+        const v = parseFloat(inp.value);
+        if (!isFinite(v)) { out.textContent = '—'; return; }
+        out.textContent = (Math.round(conv(v) * 1e6) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 });
+      }
+      inp.addEventListener('input', update);
+    })();
+  </script>
+</ToolLayout>
