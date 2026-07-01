@@ -194,7 +194,9 @@ const faqs = [
       for (let cidr = 0; cidr <= 32; cidr++) {
         const total = Math.pow(2, 32 - cidr);
         const usable = cidr >= 31 ? total : total - 2;
-        const mask = ~((1 << (32 - cidr)) - 1) >>> 0;
+        // /0 needs a guard: (1 << 32) wraps to 1 in JS, which would wrongly
+        // produce 255.255.255.255 instead of 0.0.0.0.
+        const mask = cidr === 0 ? 0 : (0xffffffff << (32 - cidr)) >>> 0;
         rows.push({ cidr, mask, total, usable });
       }
       return rows;
@@ -240,9 +242,9 @@ const faqs = [
       const blockSize = Math.pow(2, hostBits);
       const netOctet = (r.mask >>> 0) & 0xff;
       const netAddr = 'x.x.x.' + (0) + ' /' + cidr;
-      const bcastAddr = 'x.x.x.' + (blockSize - 1) + ' /' + cidr;
-      const firstUsable = 'x.x.x.1';
-      const lastUsable = 'x.x.x.' + (blockSize - 2);
+      const bcastAddr = cidr >= 31 ? 'N/A (no broadcast)' : 'x.x.x.' + (blockSize - 1) + ' /' + cidr;
+      const firstUsable = cidr === 32 ? 'x.x.x.0 (single host)' : (cidr === 31 ? 'x.x.x.0 (RFC 3021)' : 'x.x.x.1');
+      const lastUsable = cidr === 32 ? 'x.x.x.0 (single host)' : (cidr === 31 ? 'x.x.x.1 (RFC 3021)' : 'x.x.x.' + (blockSize - 2));
 
       detailTitle.textContent = 'Detailed breakdown for /' + cidr;
       detailBody.innerHTML =
