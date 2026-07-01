@@ -363,9 +363,7 @@ export const tools = [
   // ── Part B: Country Finance ──
   { slug: 'uk-take-home-pay-calculator', title: 'UK Take-Home Pay Calculator', short: 'Calculate UK net salary after income tax and National Insurance deductions.', category: 'finance', emoji: '🇬🇧', enabled: true, status: 'live' },
   { slug: 'pakistan-income-tax-calculator', title: 'Pakistan Income Tax Calculator', short: 'Calculate Pakistani income tax on salary using the latest tax slabs.', category: 'finance', emoji: '🇵🇰', enabled: true, status: 'live' },
-  { slug: 'canada-net-salary-calculator', title: 'Canada Net Salary Calculator', short: 'Calculate Canadian take-home pay after federal and provincial taxes.', category: 'finance', emoji: '🇨🇦', enabled: true, status: 'live' },
   { slug: 'australia-tax-calculator', title: 'Australia Tax Calculator', short: 'Calculate Australian PAYG tax and net income for any salary.', category: 'finance', emoji: '🇦🇺', enabled: true, status: 'live' },
-  { slug: 'netherlands-net-salary-calculator', title: 'Netherlands Net Salary Calculator', short: 'Calculate Dutch net income after income tax and social security.', category: 'finance', emoji: '🇳🇱', enabled: true, status: 'live' },
 
   // ── Part 7: Construction & Home Improvement ──
   { slug: 'square-footage-calculator', title: 'Square Footage Calculator', short: 'Area of a room or lot from length and width.', category: 'construction', emoji: '📐', enabled: true, status: 'live' },

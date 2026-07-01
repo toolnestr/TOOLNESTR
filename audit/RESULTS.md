@@ -107,13 +107,17 @@ overtaxing everyone (e.g. PKR 2M → 150,000 vs the correct 94,000). Added `pkIn
 middle slabs + split top into 8 bands). Year selector (defaults to current 2026-27) + disclaimer;
 breakdown table now generated from the selected year. Verified: 2025-26 2M→94,000; 2026-27 6M→1,104,000.
 
-**Pending (larger / higher-effort data projects):**
-- **canada** — federal (2025, current) + **13 provinces** each with own yearly brackets + CPP/EI/QPP.
-  Noticed federal=2025 but provincial=2024 (currency mismatch). Full multi-year × 13-province rebuild is
-  a large, error-prone job — recommend a dedicated pass with per-province official sources.
-- **netherlands** — box-1 rates + algemene heffingskorting + arbeidskorting phase-outs (complex formulas).
-- Rate-based tools (sales-tax, property-tax, vat-gst, freelancer) — math already correct; just add a
-  "rates vary by location/year; verify locally" disclaimer.
+**REMOVED (user decision):** Canada and Netherlands net-salary calculators were **deleted** rather than
+maintained — the per-province (13) and Dutch tax-credit data is too complex to keep accurate/verified.
+Removed the two page files + their `tools.js` entries + related-links on the AU/UK pages, and added
+`public/_redirects` (301 → /tools/finance/) so the previously-live URLs don't 404. Build 487 → 485 pages.
+
+**Still optional (rate-based, math already correct):** sales-tax, property-tax, vat-gst, freelancer —
+could add a "rates vary by location/year; verify locally" disclaimer, but no calculation issue.
+
+### Tax rollout summary
+Done with verified data + year selectors + dated disclaimers: **US, UK, Australia, Pakistan**.
+Real tax bugs fixed: UK Scottish bands, AU rates, PK stale slabs. Canada + Netherlands removed.
 
 ---
 
