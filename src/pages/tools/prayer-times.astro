@@ -497,6 +497,27 @@ const faqSchema = {
     document.getElementById('ppGregDate').textContent  = `${gregorian.day} ${gregorian.month.en} ${gregorian.year}`;
   }
 
+  // Aladhan's timingsByCity/calendarByCity endpoints currently echo back a fixed
+  // placeholder coordinate (~8.8888888, 7.7777777) in `meta.latitude/longitude`
+  // for every city — the prayer *times* they compute are correct (resolved
+  // server-side from the city/country/timezone), but that meta field is not, so
+  // it can't be trusted for Qibla direction. Geocode independently instead.
+  function ppIsBadGeocode(lat, lng) {
+    return Math.abs(lat - 8.8888888) < 0.01 && Math.abs(lng - 7.7777777) < 0.01;
+  }
+  async function ppGeocodeCity(city, country) {
+    try {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=10&language=en&format=json`);
+      const d = await r.json();
+      if(!d.results || !d.results.length) return null;
+      const cLower = country.toLowerCase();
+      const match = d.results.find(res => res.country && res.country.toLowerCase() === cLower)
+                 || d.results.find(res => res.country_code && cLower.startsWith(res.country_code.toLowerCase()))
+                 || d.results[0];
+      return { lat: match.latitude, lng: match.longitude };
+    } catch(_) { return null; }
+  }
+
   async function ppFetchPrayerTimes() {
     const city    = document.getElementById('ppCityInput').value.trim() || 'Rawalpindi';
     const country = document.getElementById('ppCountryInput').value.trim() || 'Pakistan';
@@ -511,8 +532,17 @@ const faqSchema = {
       if(d1.code !== 200) throw new Error('City not found. Check spelling and try again.');
       const r2 = await fetch(`https://api.aladhan.com/v1/calendarByCity/${year}/${month}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}`);
       const d2 = await r2.json();
-      ppUserLat = parseFloat(d1.data.meta.latitude);
-      ppUserLng = parseFloat(d1.data.meta.longitude);
+      const geo = await ppGeocodeCity(city, country);
+      if(geo) {
+        ppUserLat = geo.lat; ppUserLng = geo.lng;
+        d1.data.meta.latitude = geo.lat; d1.data.meta.longitude = geo.lng;
+      } else if(ppIsBadGeocode(parseFloat(d1.data.meta.latitude), parseFloat(d1.data.meta.longitude))) {
+        ppUserLat = null; ppUserLng = null;
+        d1.data.meta.latitude = null; d1.data.meta.longitude = null;
+      } else {
+        ppUserLat = parseFloat(d1.data.meta.latitude);
+        ppUserLng = parseFloat(d1.data.meta.longitude);
+      }
       ppTimezone = d1.data.meta.timezone || null;
       ppMonthlyData = d2.data;
       ppSetStatus(`📍 ${city}, ${country}`);
@@ -573,8 +603,8 @@ const faqSchema = {
     ppRenderMonthly();
     // Use geolocation coords if available, otherwise fall back to the
     // coordinates the API resolved for the searched city so Qibla still works.
-    const qLat = ppUserLat ?? (data.meta ? parseFloat(data.meta.latitude) : null);
-    const qLng = ppUserLng ?? (data.meta ? parseFloat(data.meta.longitude) : null);
+    const qLat = ppUserLat ?? (data.meta && data.meta.latitude != null ? parseFloat(data.meta.latitude) : null);
+    const qLng = ppUserLng ?? (data.meta && data.meta.longitude != null ? parseFloat(data.meta.longitude) : null);
     ppRenderQibla(qLat, qLng);
     ppStartCountdown(data.timings);
     ppHideLoader();
@@ -585,14 +615,19 @@ const faqSchema = {
   function ppRenderMethodInfo(method, meta) {
     const sel = document.getElementById('ppMethodSelect');
     const methodName = sel.options[sel.selectedIndex].text;
+    const latTxt = meta.latitude  != null ? `${parseFloat(meta.latitude).toFixed(3)}°`  : 'unavailable';
+    const lngTxt = meta.longitude != null ? `${parseFloat(meta.longitude).toFixed(3)}°` : 'unavailable';
     document.getElementById('ppMethodInfo').innerHTML =
-      `⚙️ <strong>Method:</strong> ${methodName} &nbsp;·&nbsp; <strong>Lat:</strong> ${parseFloat(meta.latitude).toFixed(3)}° &nbsp;·&nbsp; <strong>Lng:</strong> ${parseFloat(meta.longitude).toFixed(3)}°`;
+      `⚙️ <strong>Method:</strong> ${methodName} &nbsp;·&nbsp; <strong>Lat:</strong> ${latTxt} &nbsp;·&nbsp; <strong>Lng:</strong> ${lngTxt}`;
   }
 
   function ppGetCurrentAndNext(timings) {
     const currentMins = ppZonedMinutesNow(false);
     let current=null, next=null;
     for(const name of PP_PRAYER_ORDER) { if(currentMins >= ppTimeToMinutes(timings[name])) current=name; }
+    // Before today's Fajr, none of today's prayers have "passed" yet — yesterday's
+    // Isha is still the active one (it doesn't end until Fajr).
+    if(!current) current = PP_PRAYER_ORDER[PP_PRAYER_ORDER.length-1];
     for(const name of PP_PRAYER_ORDER) { if(currentMins < ppTimeToMinutes(timings[name])) { next=name; break; } }
     if(!next) next = PP_PRAYER_ORDER[0];
     return { current, next };
@@ -677,7 +712,11 @@ const faqSchema = {
   }
 
   function ppRenderQibla(lat, lng) {
-    if(!lat||!lng) return;
+    if(!lat||!lng) {
+      document.getElementById('ppQiblaDegree').textContent = '—°';
+      document.getElementById('ppQiblaText').textContent   = 'Could not determine coordinates for Qibla direction. Try "Use My Location" instead.';
+      return;
+    }
     const kLat=21.4225, kLng=39.8262;
     const dLng=(kLng-lng)*Math.PI/180;
     const lat1=lat*Math.PI/180, lat2=kLat*Math.PI/180;
