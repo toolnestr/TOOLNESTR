@@ -577,8 +577,17 @@ const toolSchema = {
         updateScoreBanner();
 
         const results = data.results || [];
-        setPill('pillBl', listed ? '✗ Blacklisted' : '✓ Clean', listed ? 'fail' : 'ok');
-        setCard('cardBl', listed ? 'fail' : 'ok');
+        // Distinguish "confirmed clean on all lists" from "some lists couldn't
+        // be checked" (e.g. Spamhaus rate-limits shared cloud egress IPs), so
+        // the summary pill doesn't overstate confidence.
+        const erroredCount = results.filter(r => r.error).length;
+        const cleanCount = results.filter(r => !r.listed && !r.error).length;
+        const pillText = listed
+          ? '✗ Blacklisted'
+          : (erroredCount > 0 ? `⚠ ${cleanCount}/${results.length} clean` : '✓ Clean');
+        const pillState = listed ? 'fail' : (erroredCount > 0 ? 'warn' : 'ok');
+        setPill('pillBl', pillText, pillState);
+        setCard('cardBl', pillState);
         setBody('bodyBl',
           row('IP Checked', ip, '') +
           results.map(r =>
