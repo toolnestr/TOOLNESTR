@@ -208,15 +208,20 @@ const faqs = [
         if (mr <= 0) {
           months = Math.ceil(needed / monthly);
         } else {
-          // Iteratively find months needed
-          let guess = Math.ceil(needed / (monthly || 1));
-          let maxIter = 1200;
-          while (maxIter-- > 0) {
-            const fv = current * Math.pow(1 + mr, guess) + (mr > 0 ? monthly * ((Math.pow(1 + mr, guess) - 1) / mr) : monthly * guess);
-            if (fv >= goal) break;
-            guess++;
-          }
-          months = Math.max(1, guess);
+          // Closed-form solve for n in:
+          //   goal = current*(1+mr)^n + monthly*((1+mr)^n - 1)/mr
+          // The old code guessed n from the NO-INTEREST estimate (needed /
+          // monthly) and only ever counted upward from there -- but interest
+          // means the true answer is usually SMALLER than that estimate, so
+          // it could never search downward and consistently overestimated
+          // (by 25%+ in some cases), especially at higher rates/longer terms.
+          const num = goal + monthly / mr;
+          const den = current + monthly / mr;
+          const n = Math.log(num / den) / Math.log(1 + mr);
+          // Tiny epsilon absorbs floating-point log/exp round-trip noise
+          // (n can land at e.g. 36.0006 instead of exactly 36), which would
+          // otherwise get ceil'd up an extra whole month.
+          months = Math.max(1, Math.ceil(n - 0.001));
         }
 
         const years = Math.floor(months / 12);

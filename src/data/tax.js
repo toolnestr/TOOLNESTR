@@ -67,6 +67,10 @@ export const ukIncomeTax = {
       ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
       rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
       scotland: { bands: [16537, 29526, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+      // Cross-referenced from secondary payroll sources (Moorepay, uktax.tools)
+      // -- verify against gov.uk/repaying-your-student-loan before relying on
+      // this for a real repayment decision.
+      studentLoan: { plan1: 26900, plan2: 29385, plan4: 33795, rate: 0.09 },
     },
     '2025/26': {
       verified: '2026-07-01',
@@ -75,6 +79,7 @@ export const ukIncomeTax = {
       ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
       rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
       scotland: { bands: [15397, 27491, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+      studentLoan: { plan1: 26065, plan2: 28470, plan4: 32745, rate: 0.09 },
     },
     '2024/25': {
       verified: '2026-07-01',
@@ -83,6 +88,7 @@ export const ukIncomeTax = {
       ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
       rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
       scotland: { bands: [14876, 26561, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+      studentLoan: { plan1: 24990, plan2: 27295, plan4: 31395, rate: 0.09 },
     },
   },
 };
