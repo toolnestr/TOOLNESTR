@@ -1,11 +1,17 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
+import { usFederalTax, taxYearsToJson } from '../../data/tax.js';
+
+// Available tax years, newest first. The newest is the default selection.
+const taxYears = Object.keys(usFederalTax.years).map(Number).sort((a, b) => b - a);
+const latestYear = taxYears[0];
+const taxDataJson = taxYearsToJson(usFederalTax);
 
 const title = 'US Income Tax Calculator (Federal)';
 const description =
   'Free US federal income tax calculator. Estimate your income tax based on filing status and taxable income using current tax brackets.';
 const intro =
-  'Enter your filing status and taxable income to estimate your federal income tax, effective tax rate, and marginal tax bracket.';
+  'Choose your tax year and filing status, then enter your taxable income to estimate your federal income tax, effective tax rate, and marginal tax bracket.';
 const category = { id: 'finance', name: 'Finance' };
 const faqs = [
   { q: 'How do US federal income tax brackets work?', a: 'The US uses a progressive tax system with marginal brackets. Income is taxed in layers — the first portion is taxed at the lowest rate, and only income above each threshold is taxed at the next higher rate. Your marginal rate is the highest bracket your income reaches.' },
@@ -23,18 +29,27 @@ const faqs = [
 
 <ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
   <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tax year</span>
+        <select id="year" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          {taxYears.map((y) => <option value={y} selected={y === latestYear}>{y}</option>)}
+        </select></label>
       <label class="block"><span class="text-sm font-medium text-slate-700">Filing status</span>
         <select id="status" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"><option value="single">Single</option><option value="married">Married Filing Jointly</option><option value="hoh">Head of Household</option></select></label>
       <label class="block"><span class="text-sm font-medium text-slate-700">Taxable income ($)</span>
         <input id="income" type="number" step="any" placeholder="75000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
     </div>
+    <p id="sd-note" class="mt-3 text-sm text-slate-500"></p>
+
+    <!-- Versioned bracket data (one entry per tax year). Infinity is serialized as null. -->
+    <script type="application/json" id="tax-data" set:html={taxDataJson}></script>
     <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
       <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Estimated tax</div><div id="r-tax" class="mt-1 text-2xl font-bold">—</div></div>
       <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Effective tax rate</div><div id="r-effective" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
       <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Marginal bracket</div><div id="r-marginal" class="mt-1 text-2xl font-bold text-emerald-600">—</div></div>
     </div>
     <p id="err" class="mt-3 text-center text-sm text-red-600"></p>
+    <p id="tax-source" class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"></p>
   </div>
 
   <section class="mt-10">
@@ -196,21 +211,33 @@ const faqs = [
   <script is:inline>
     const el = (id) => document.getElementById(id);
     const fmt = (n) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const brackets = {
-      single: [[0.10, 11925], [0.12, 48475], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]],
-      married: [[0.10, 23850], [0.12, 96950], [0.22, 206700], [0.24, 394600], [0.32, 501050], [0.35, 751600], [0.37, Infinity]],
-      hoh: [[0.10, 17000], [0.12, 64850], [0.22, 103350], [0.24, 197300], [0.32, 250525], [0.35, 626350], [0.37, Infinity]]
-    };
+    const money = (n) => '$' + Number(n).toLocaleString();
+    // Load the versioned bracket data embedded in the page. null limit = Infinity (no upper bound).
+    const TAX = JSON.parse(el('tax-data').textContent);
+    const statusLabel = { single: 'single filers', married: 'married filing jointly', hoh: 'heads of household' };
+
     function update() {
+      const year = el('year').value;
       const status = el('status').value;
       const income = parseFloat(el('income').value);
+      const yearData = TAX[year];
+
+      // Show the standard deduction for the selected year + source line.
+      const sd = yearData.standardDeduction[status];
+      el('sd-note').textContent =
+        'Enter TAXABLE income (after deductions). The ' + year + ' standard deduction for ' +
+        statusLabel[status] + ' is ' + money(sd) + '.';
+      el('tax-source').textContent =
+        'Brackets for the ' + year + ' US federal tax year (IRS), verified ' + yearData.verified +
+        '. Estimate only — not tax advice. Verify with the IRS or a tax professional.';
+
       el('err').textContent = '';
       if (isNaN(income) || income < 0) { ['r-tax', 'r-effective', 'r-marginal'].forEach((id) => (el(id).textContent = '—')); return; }
-      const bs = brackets[status];
-      let tax = 0;
-      let prev = 0;
-      let marginal = 0;
-      for (const [rate, limit] of bs) {
+
+      const bs = yearData.brackets[status];
+      let tax = 0, prev = 0, marginal = 0;
+      for (const [rate, rawLimit] of bs) {
+        const limit = rawLimit === null ? Infinity : rawLimit;
         const incInBracket = Math.max(0, Math.min(income, limit) - prev);
         tax += incInBracket * rate;
         if (income > prev) marginal = rate * 100;
@@ -221,6 +248,7 @@ const faqs = [
       el('r-effective').textContent = income > 0 ? (tax / income * 100).toFixed(2) + '%' : '0%';
       el('r-marginal').textContent = marginal.toFixed(0) + '%';
     }
-    ['status', 'income'].forEach((id) => el(id).addEventListener('input', update));
+    ['year', 'status', 'income'].forEach((id) => el(id).addEventListener('input', update));
+    update();
   </script>
 </ToolLayout>

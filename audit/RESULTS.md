@@ -78,7 +78,18 @@ dependency). Instead:
    verified <date>. Estimate only — not tax advice." (Finance category already auto-shows a
    general 'not financial/tax advice' disclaimer via ToolLayout; add the year/source line.)
 Sources to cite: IRS (US), HMRC (UK), CRA (Canada), ATO (Australia), Belastingdienst (NL), FBR (Pakistan).
-Status: TODO — implement after audit phases, or on request.
+Status: **IN PROGRESS** — US reference implementation DONE (see below); other countries pending.
+
+**Done (US federal):** `src/data/tax.js` holds versioned brackets for 2024, 2025, 2026 (verified vs
+IRS / Tax Foundation, each with sourceUrl + verified date). `income-tax-calculator-us.astro` now has a
+**tax-year selector** (defaults to newest), shows the year's **standard deduction** helper note, and a
+**dated source disclaimer** ("Brackets for the 20XX US federal tax year (IRS), verified 2026-07-01.
+Estimate only — not tax advice."). Verified: 2026 single $75k→$11,212; 2025→$11,414; 2024→$11,553;
+2025 married $200k→$33,828; top bracket (null→Infinity) OK.
+
+**Pending (roll out same pattern):** uk-take-home-pay (fix Scottish bands + add years), canada,
+australia, netherlands, pakistan, freelancer, sales-tax, property-tax, vat-gst. Each needs official
+per-year brackets added to `src/data/tax.js` and the selector/disclaimer wired in.
 
 ---
 
