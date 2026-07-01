@@ -136,6 +136,31 @@ to real output.
 
 ---
 
+### Everyday follow-up — prayer-times (2 new bugs found during re-verification pass, commits `44c6eba`, `30fd923`)
+Found while re-verifying the Everyday category's earlier fixes were still holding live (they were —
+these are new, distinct bugs, not regressions):
+1. **Active prayer went blank every night between midnight and Fajr**, everywhere. `ppGetCurrentAndNext()`
+   only checked whether today's prayers had already passed; before Fajr none had, so `current` stayed
+   `null` even though yesterday's Isha was still actually active. Fixed: falls back to the last prayer
+   in the order (Isha) when none of today's have passed yet. Verified live at 00:30 Asia/Karachi → shows
+   "Isha 9:05 PM" active, next "Fajr at 3:19 AM".
+2. **Qibla direction wrong for every city-search lookup** (only "Use My Location" was ever correct).
+   Root cause: Aladhan's `timingsByCity`/`calendarByCity` endpoints currently echo a broken placeholder
+   coordinate (`~8.8888888, 7.7777777`) in `meta.latitude/longitude` **regardless of the city
+   requested** — confirmed via direct API calls for 6 different cities, all returned the identical
+   placeholder. The prayer *times* are still computed correctly server-side (verified distinct correct
+   timezones/times per city), only the echoed geocode is broken. Our Qibla bearing blindly trusted that
+   field. Fixed by geocoding the city independently via Open-Meteo's free geocoding API
+   (`geocoding-api.open-meteo.com`, no key required) and falling back to an honest "unavailable" state
+   (not a fabricated wrong bearing) if geocoding fails. **Also required a `public/_headers` CSP
+   `connect-src` allowlist update** for the new domain — first deploy silently failed in production
+   (worked fine in local `astro preview` since that doesn't enforce the `_headers` file) until this was
+   caught by testing the live site with Playwright, not just localhost. Verified live: Rawalpindi city
+   search now shows Qibla 256.0° (previously 64.2°, derived from the bogus placeholder location),
+   matching the geolocation-based value for the same real coordinates.
+**Lesson for future sessions:** always do the final browser verification pass against the deployed
+production URL, not just `astro preview` locally — CSP and other header-dependent behavior can differ.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
