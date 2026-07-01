@@ -408,8 +408,8 @@ const toolSchema = {
           fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=MX`).then(r => r.json()),
         ]);
 
-        const aRecords  = (aRes.Answer  || []).filter(r => r.type === 1);
-        const mxRecords = (mxRes.Answer || []).filter(r => r.type === 15);
+        const aRecords  = (aRes.answers  || []).filter(r => r.type === 1);
+        const mxRecords = (mxRes.answers || []).filter(r => r.type === 15);
         const hasA  = aRecords.length  > 0;
         const hasMx = mxRecords.length > 0;
 
@@ -439,7 +439,7 @@ const toolSchema = {
     async function checkNs(domain) {
       try {
         const data = await fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent(domain)}&type=NS`).then(r => r.json());
-        const ns = (data.Answer || []).filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
+        const ns = (data.answers || []).filter(r => r.type === 2).map(r => r.data.replace(/\.$/, ''));
         const hasNs = ns.length > 0;
 
         setPill('pillNs', hasNs ? `✓ ${ns.length} NS` : '✗ No NS', hasNs ? 'ok' : 'fail');
@@ -461,8 +461,8 @@ const toolSchema = {
           fetch(`${API}/api/dns-lookup?domain=${encodeURIComponent('_dmarc.' + domain)}&type=TXT`).then(r => r.json()),
         ]);
 
-        const txts  = (txtRes.Answer  || []).map(r => r.data?.replace(/^"|"$/g, ''));
-        const dmTxts = (dmarcRes.Answer || []).map(r => r.data?.replace(/^"|"$/g, ''));
+        const txts  = (txtRes.answers  || []).map(r => r.data?.replace(/^"|"$/g, ''));
+        const dmTxts = (dmarcRes.answers || []).map(r => r.data?.replace(/^"|"$/g, ''));
 
         const spfRec   = txts.find(t => t?.startsWith('v=spf1'));
         const dmarcRec = dmTxts.find(t => t?.startsWith('v=DMARC1'));
@@ -491,7 +491,8 @@ const toolSchema = {
       }
     }
 
-    async function checkSsl(domain) {
+    async function checkSsl(domain, attempt) {
+      attempt = attempt || 0;
       try {
         const res  = await fetch(`${API}/api/ssl-check?domain=${encodeURIComponent(domain)}`);
         const data = await res.json();
@@ -500,11 +501,15 @@ const toolSchema = {
           scores.ssl = 0; updateScoreBanner();
           setPill('pillSsl', '🔄 Scanning…', 'scan');
           setCard('cardSsl', 'info');
+          // First-time SSL Labs scans take 60–90s. Auto-retry instead of making
+          // the user manually re-run (up to ~5 minutes), then give up gracefully.
+          const keepTrying = attempt < 7;
           setBody('bodySsl',
             row('Status', 'SSL Labs scan in progress', 'warn') +
-            row('Action', 'Re-check in ~60 seconds', '') +
+            row('Action', keepTrying ? 'Re-checking automatically…' : 'Taking longer than usual — re-run the check', '') +
             `<div style="margin-top:8px;font-size:.8rem;color:var(--muted)">First-time scans take 60–90s.</div>`
           );
+          if (keepTrying) setTimeout(() => checkSsl(domain, attempt + 1), 45000);
           return;
         }
 

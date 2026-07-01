@@ -220,7 +220,18 @@ algorithm), Zeller's congruence (day-of-week), day-of-year, age-in-seconds, zodi
 **Phase 10 verdict:** the audit's most important phase — **2 fundamental, trivially-verifiable crypto
 tools (MD5, HMAC-MD5) were completely wrong**. Both now match official test vectors. High credibility impact.
 
-## Phase 11 — Networking (35 tools) — ✅ audited — **0 client-side bugs**
+## Phase 11 — Networking (35 tools) — ✅ audited — client math clean; **2 API-integration bugs later found & FIXED**
+
+**Post-deploy live testing (domain-health-dashboard) found:**
+1. **WRONG → FIXED:** dashboard read DNS results from `res.Answer` (Google-DoH shape) but the worker
+   returns `res.answers` (lowercase). So EVERY DNS card (A/MX/NS/SPF/DMARC) showed "Not found" even for
+   a healthy domain — health score stuck at 10/100. Fixed all 5 reads to `.answers`. (Dedicated
+   spf-checker / dmarc-checker already used `.answers` correctly — bug was isolated to the dashboard.)
+2. **UX → FIXED:** SSL card said "re-check in ~60s" but never auto-re-checked, so first-time SSL Labs
+   scans (60–90s) left it stuck on "Scanning…" forever. Added auto-retry (every 45s, up to ~5 min).
+Real finding for the site owner: **toolnestr.com has no DMARC record** (genuine — worth adding).
+
+## Phase 11 (original) — Networking client-side — **0 bugs**
 Client-side bit math correct: **cidr-calculator / subnet-calculator** (unsigned `>>>0`, `prefix===0`
 guard avoids the `<<32` UB bug, correct network/broadcast/mask), ip-binary-hex, bandwidth (1000-based
 bits/bytes with /8), mtu (−2 overhead). API tools (dns/whois/asn/blacklist/headers/ssl/ping/port/
