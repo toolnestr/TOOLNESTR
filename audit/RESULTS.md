@@ -87,9 +87,15 @@ IRS / Tax Foundation, each with sourceUrl + verified date). `income-tax-calculat
 Estimate only — not tax advice."). Verified: 2026 single $75k→$11,212; 2025→$11,414; 2024→$11,553;
 2025 married $200k→$33,828; top bracket (null→Infinity) OK.
 
-**Pending (roll out same pattern):** uk-take-home-pay (fix Scottish bands + add years), canada,
-australia, netherlands, pakistan, freelancer, sales-tax, property-tax, vat-gst. Each needs official
-per-year brackets added to `src/data/tax.js` and the selector/disclaimer wired in.
+**Done (UK):** `ukIncomeTax` added to `src/data/tax.js` for 2024/25, 2025/26, 2026/27 — verified vs
+gov.scot / HMRC. **Fixed the flagged Scottish-bands bug**: was 5 bands with top 47% and stale
+thresholds; now correct 6 bands (starter 19 / basic 20 / intermediate 21 / higher 42 / **advanced 45**
+/ top **48**) with per-year thresholds. rUK bands frozen (20/40/45 at £50,270/£125,140), NI 8%/2%,
+PA £12,570 with >£100k taper. `uk-take-home-pay-calculator` now has a **year selector** + dated source
+disclaimer. Verified: 2025/26 England £50k→net £39,520; Scotland £50k→net £37,992; £150k taper→tax £51,189.
+
+**Pending (roll out same pattern):** canada, australia, netherlands, pakistan, freelancer, sales-tax,
+property-tax, vat-gst. Each needs official per-year brackets added to `src/data/tax.js` + selector/disclaimer.
 
 ---
 

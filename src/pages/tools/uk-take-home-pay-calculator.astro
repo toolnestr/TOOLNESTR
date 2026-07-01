@@ -1,5 +1,12 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
+import { ukIncomeTax, taxYearsToJson } from '../../data/tax.js';
+
+// Available tax years, newest first (keys like "2026/27").
+const taxYears = Object.keys(ukIncomeTax.years).sort().reverse();
+const latestYear = taxYears[0];
+const taxDataJson = taxYearsToJson(ukIncomeTax);
+
 const title = 'UK Take-Home Pay Calculator';
 const description = 'Calculate UK net salary after income tax and National Insurance deductions using the latest rates.';
 const intro = 'Calculate UK net salary after income tax and National Insurance deductions.';
@@ -7,7 +14,7 @@ const category = { id: 'finance', name: 'Finance Tools' };
 const faqs = [
   { q: 'What are the 2025/26 UK tax rates?', a: 'Personal allowance £12,570 (0%), basic rate 20% (£12,571-£50,270), higher rate 40% (£50,271-£125,140), additional rate 45% (above £125,140).' },
   { q: 'How is National Insurance calculated?', a: 'Employees pay 8% on earnings between £12,570 and £50,270, and 2% on earnings above £50,270.' },
-  { q: 'What about Scotland?', a: 'Scottish taxpayers have different income tax bands: starter 19%, basic 20%, intermediate 21%, higher 42%, and top 47%.' },
+  { q: 'What about Scotland?', a: 'Scottish taxpayers have six income tax bands: starter 19%, basic 20%, intermediate 21%, higher 42%, advanced 45%, and top 48%. Tick the Scotland option to use these bands.' },
   { q: 'How does a pension affect my take-home pay?', a: 'Pension contributions come out of your gross pay before tax, reducing your taxable income.' },
 ];
 ---
@@ -15,6 +22,14 @@ const faqs = [
 <ToolLayout {title} {description} {intro} {category} {faqs}>
   <div class="mx-auto max-w-3xl">
     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="mb-4">
+        <label for="year" class="block text-sm font-medium text-slate-700">Tax year</label>
+        <select id="year" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          {taxYears.map((y) => <option value={y} selected={y === latestYear}>{y}</option>)}
+        </select>
+      </div>
+      <!-- Versioned bracket data (one entry per tax year). Infinity serialized as null. -->
+      <script type="application/json" id="tax-data" set:html={taxDataJson}></script>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <label for="salary" class="block text-sm font-medium text-slate-700">Annual Salary (£)</label>
@@ -81,8 +96,10 @@ const faqs = [
     var pensionInput = document.getElementById('pension');
     var scotlandCheck = document.getElementById('scotland');
     var studentLoan = document.getElementById('student-loan');
+    var yearSelect = document.getElementById('year');
     var calcBtn = document.getElementById('calc-btn');
     var results = document.getElementById('results');
+    var TAX = JSON.parse(document.getElementById('tax-data').textContent);
 
     function fmt(v) { return '\u00A3' + Math.round(v).toLocaleString('en-GB'); }
 
@@ -95,44 +112,33 @@ const faqs = [
       var pensionAmount = gross * pensionPct / 100;
       var taxable = Math.max(0, gross - pensionAmount);
 
-      var personalAllowance = 12570;
+      var yd = TAX[yearSelect.value];
+
+      var personalAllowance = yd.personalAllowance;
       if (taxable > 100000) personalAllowance = Math.max(0, personalAllowance - Math.floor((taxable - 100000) / 2));
 
-      var tax = 0;
-      if (isScotland) {
-        if (taxable > personalAllowance) {
-          var bands = [ /* starter */ 14585, /* basic */ 25681, /* intermediate */ 43662, /* higher */ 75000, /* top */ Infinity ];
-          var rates = [0.19, 0.20, 0.21, 0.42, 0.47];
-          var prev = personalAllowance;
-          for (var i = 0; i < bands.length; i++) {
-            if (taxable > prev) {
-              var chunk = Math.min(taxable, bands[i]) - prev;
-              if (chunk > 0) tax += chunk * rates[i];
-              prev = bands[i];
-            }
-          }
-        }
-      } else {
-        if (taxable > personalAllowance) {
-          var tiers = [Math.min(taxable, 50270), Math.min(taxable, 125140), taxable];
-          var rates2 = [0.20, 0.40, 0.45];
-          var prev2 = personalAllowance;
-          for (var j = 0; j < tiers.length; j++) {
-            if (taxable > prev2) {
-              var chunk2 = Math.min(taxable, tiers[j]) - prev2;
-              if (chunk2 > 0) tax += chunk2 * rates2[j];
-              prev2 = tiers[j];
-            }
+      // Progressive income tax using the selected year's bands (Scotland or rest of UK).
+      var region = isScotland ? yd.scotland : yd.rUK;
+      var tax = 0, prev = personalAllowance;
+      if (taxable > personalAllowance) {
+        for (var i = 0; i < region.bands.length; i++) {
+          var cap = region.bands[i] === null ? Infinity : region.bands[i];
+          if (taxable > prev) {
+            var chunk = Math.min(taxable, cap) - prev;
+            if (chunk > 0) tax += chunk * region.rates[i];
+            prev = cap;
           }
         }
       }
 
+      // National Insurance (employee Class 1) for the selected year.
+      var niCfg = yd.ni;
       var ni = 0;
-      if (taxable > 12570) {
-        var lower = Math.min(taxable, 50270);
-        var middle = lower - 12570;
-        if (middle > 0) ni += middle * 0.08;
-        if (taxable > 50270) ni += (taxable - 50270) * 0.02;
+      if (taxable > niCfg.primaryThreshold) {
+        var upper = Math.min(taxable, niCfg.upperEarningsLimit);
+        var mid = upper - niCfg.primaryThreshold;
+        if (mid > 0) ni += mid * niCfg.mainRate;
+        if (taxable > niCfg.upperEarningsLimit) ni += (taxable - niCfg.upperEarningsLimit) * niCfg.upperRate;
       }
 
       var sl = 0;
@@ -156,9 +162,17 @@ const faqs = [
 
       if (sl > 0) document.getElementById('breakdown').innerHTML += '<br />Student loan repayment: ' + fmt(Math.round(sl));
 
+      var regionName = isScotland ? 'Scotland' : 'England, Wales & N. Ireland';
+      document.getElementById('breakdown').innerHTML +=
+        '<br /><span class="mt-2 block text-xs text-slate-400">' + regionName + ' rates for the ' + yearSelect.value +
+        ' UK tax year (HMRC / Scottish Government), verified ' + yd.verified +
+        '. Estimate only — not tax advice.</span>';
+
       results.classList.remove('hidden');
     }
 
     calcBtn.addEventListener('click', calculate);
+    // Re-calculate when the year changes if results are already showing.
+    yearSelect.addEventListener('change', function () { if (!results.classList.contains('hidden')) calculate(); });
   });
 </script>

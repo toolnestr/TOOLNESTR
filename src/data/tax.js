@@ -53,6 +53,40 @@ export const usFederalTax = {
   },
 };
 
+export const ukIncomeTax = {
+  country: 'United Kingdom',
+  authority: 'HMRC / Scottish Government',
+  // Bands are cumulative upper limits of TAXABLE income (the loop starts at the
+  // personal allowance). Top band uses Infinity. rUK = England, Wales & N. Ireland.
+  // Personal allowance tapers by £1 per £2 of income over £100,000 (handled in tool).
+  years: {
+    '2026/27': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.gov.scot/publications/scottish-income-tax-rates-and-bands/pages/2026-to-2027/',
+      personalAllowance: 12570,
+      ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
+      rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
+      scotland: { bands: [16537, 29526, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+    },
+    '2025/26': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.gov.scot/publications/scottish-income-tax-rates-and-bands/pages/proposed-rates-and-bands-2025-to-2026/',
+      personalAllowance: 12570,
+      ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
+      rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
+      scotland: { bands: [15397, 27491, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+    },
+    '2024/25': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.gov.scot/publications/scottish-income-tax-rates-and-bands/pages/rates-and-bands-2024-to-2025/',
+      personalAllowance: 12570,
+      ni: { primaryThreshold: 12570, upperEarningsLimit: 50270, mainRate: 0.08, upperRate: 0.02 },
+      rUK: { bands: [50270, 125140, Infinity], rates: [0.20, 0.40, 0.45] },
+      scotland: { bands: [14876, 26561, 43662, 75000, 125140, Infinity], rates: [0.19, 0.20, 0.21, 0.42, 0.45, 0.48] },
+    },
+  },
+};
+
 // Serialize a year map to JSON for embedding in an inline <script>.
 // JSON can't represent Infinity, so the top bracket's limit becomes null;
 // the client treats null as "no upper limit".
