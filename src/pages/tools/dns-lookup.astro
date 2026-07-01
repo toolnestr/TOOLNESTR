@@ -205,6 +205,12 @@ const faqs = [
       return d.innerHTML;
     };
 
+    const DNS_TYPE_NAMES = { 1: 'A', 2: 'NS', 5: 'CNAME', 6: 'SOA', 15: 'MX', 16: 'TXT', 28: 'AAAA' };
+    const typeName = (rec) => {
+      const t = rec.type != null ? rec.type : rec.Type;
+      return DNS_TYPE_NAMES[t] || t || '';
+    };
+
     async function lookup() {
       const dom = domain.value.trim();
       if (!dom) { errEl.textContent = 'Please enter a domain name.'; errEl.classList.remove('hidden'); return; }
@@ -217,11 +223,12 @@ const faqs = [
         if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
         const d = await r.json();
         if (d.error) throw new Error(d.error);
-        if (!d.records || d.records.length === 0) throw new Error('No records found for ' + dom + ' (type ' + type.value + ').');
-        body.innerHTML = d.records.map((rec) =>
+        const records = d.answers || d.records || [];
+        if (records.length === 0) throw new Error('No records found for ' + dom + ' (type ' + type.value + ').');
+        body.innerHTML = records.map((rec) =>
           '<tr class="text-slate-700">' +
             '<td class="py-2 pr-3">' + esc(rec.TTL || rec.ttl || '') + '</td>' +
-            '<td class="py-2 pr-3 font-mono">' + esc(rec.type || rec.Type || '') + '</td>' +
+            '<td class="py-2 pr-3 font-mono">' + esc(typeName(rec)) + '</td>' +
             '<td class="py-2 font-mono text-xs break-all">' + esc(rec.data || rec.Data || rec.value || rec.Value || '') + '</td>' +
           '</tr>'
         ).join('');
