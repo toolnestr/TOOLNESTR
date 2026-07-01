@@ -495,6 +495,7 @@ async function handleAsnLookup(request, url) {
       ip: request.headers.get('CF-Connecting-IP') || '',
       asn: cf.asn || 0,
       org: cf.asOrganization || '',
+      country: cf.country || '',
       isSelf: true,
     });
   }
@@ -505,6 +506,7 @@ async function handleAsnLookup(request, url) {
     ip: result.ip || targetIp,
     asn: result.asn || 0,
     org: result.org || '',
+    country: result.country || '',
     isSelf: false,
   });
 }

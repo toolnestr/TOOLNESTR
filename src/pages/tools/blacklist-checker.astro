@@ -187,13 +187,17 @@ const faqs = [
         if (!r.ok) throw new Error('Server returned ' + r.status + ': ' + r.statusText);
         const d = await r.json();
         if (d.error) throw new Error(d.error);
-        body.innerHTML = Object.entries(blacklists).map(([label, key]) => {
-          const res = d[key] || d.results?.[key] || {};
-          const listed = res.listed || res.Listed || res.blacklisted || res.is_listed;
-          const code = res.code || res.Code || res.return_code || res.ReturnCode || res.returnCode || '';
-          const isListed = listed === true || listed === 'true' || listed === 'yes' || (typeof listed === 'string' && listed.toLowerCase() === 'true');
-          const statusClass = isListed ? 'text-red-700 bg-red-50 border-red-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200';
-          const statusText = isListed ? 'Listed' : 'Clean';
+        const resultsByName = {};
+        (d.results || []).forEach(function (r) { resultsByName[r.name] = r; });
+        body.innerHTML = Object.keys(blacklists).map((label) => {
+          const res = resultsByName[label] || {};
+          const isListed = res.listed === true;
+          const isUnknown = !!res.error;
+          const statusClass = isUnknown
+            ? 'text-amber-700 bg-amber-50 border-amber-200'
+            : (isListed ? 'text-red-700 bg-red-50 border-red-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200');
+          const statusText = isUnknown ? 'Unknown' : (isListed ? 'Listed' : 'Clean');
+          const code = res.returnCode || res.error || '';
           return '<tr class="text-slate-700">' +
             '<td class="py-2 pr-3 font-medium">' + esc(label) + '</td>' +
             '<td class="py-2 pr-3"><span class="inline-block rounded px-2 py-0.5 text-xs font-semibold border ' + statusClass + '">' + statusText + '</span></td>' +
