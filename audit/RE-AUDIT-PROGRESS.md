@@ -90,6 +90,29 @@ that number forever, never updating for subsequent invalid inputs. polynomial-ca
 own title/description/FAQ promised "add, subtract, multiply polynomials" but only evaluation was
 implemented — built the missing feature, verified against the page's own worked examples.
 
+### Engineering & Science (44 tools) — commit `PENDING`
+7 bugs, all fixed and verified live in a real Chromium browser (Playwright). resistor-color-code-
+calculator: 6-band reverse mode's TCR swatch color and "TCR: X ppm/K" text came from two
+independent `Math.random()` calls, so they could mismatch — now drawn once and reused.
+wire-gauge-calculator: voltage-drop/power-loss calc was missing the round-trip ×2 factor its
+sibling voltage-drop-calculator correctly applies, understating real-world drop/loss by exactly
+2x — field also relabeled "One-way length (m)" for clarity. capacitor-code-calculator:
+encodeValue()'s sub-10pF EIA-198 branches were dead code (unreachable `exp === -1/-2` checks) and
+lacked zero-padding, so e.g. 4.7pF encoded to a malformed 2-character code that failed to
+round-trip — rewrote the sub-10pF branch and added `padStart(2,'0')`. frequency-converter: ITU
+band table had a gap (300–1000 Hz fell through to "Beyond SHF" instead of ULF) and a wrong VLF
+lower bound — added the missing ULF band (300–3000 Hz), corrected VLF to 3000–30000, and
+relabeled 30–300 Hz from "VF" to the correct "SLF". conduit-fill-calculator: the entire THHN
+wireAreas table was wrong per NEC Chapter 9 Table 5 (inflated 19–65% across gauges) — replaced
+with correct values. smd-resistor-code-calculator: 3-digit leading-R notation (e.g. "R47")
+divided by 1000 instead of 100 (10x too small); EIA-96 mode was missing the `X`/`S`/`H` letter
+codes and had `R` wrong (0.1 instead of the correct 0.01) — both fixed. atomic-mass-calculator:
+crashed with a TypeError on any formula with parentheses/brackets (e.g. `Mg(OH)2`, `Ca3(PO4)2`,
+hydrates like `CuSO4·5H2O`) due to an array/object type-confusion bug in the token-based parser —
+replaced with a recursive-descent parser, verified against `H2O, Mg(OH)2, Ca3(PO4)2, Al2(SO4)3,
+CuSO4.5H2O, C6H12O6, NaCl, Fe2(SO4)3, (NH4)2SO4`. All other 37 tools in this category checked
+against authoritative references and confirmed correct — no bugs.
+
 ### Everyday (27 tools) — commit `1dccaab`
 5 bugs, two severe. **prayer-times**: the "currently active" prayer and the live countdown
 compared the browser's own local clock against the searched city's local prayer times with
@@ -118,28 +141,42 @@ to real output.
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
 until they get the same treatment**:
 
-- [ ] **Engineering & Science** (44 tools) — NEXT UP when resuming. Session paused before any
-      tool in this category was read/tested (only the slug list was pulled via
-      `awk "/category: 'engineering'/{print}" src/data/tools.js` in `src/data/tools.js`).
-      The 44 slugs: ohms-law-calculator, resistor-color-code, voltage-drop-calculator,
-      power-calculator, led-resistor-calculator, wire-gauge-calculator,
-      voltage-divider-calculator, three-phase-power-calculator, kva-to-kw-calculator,
-      transformer-calculator, battery-runtime-calculator, capacitor-code-calculator,
-      lc-resonant-frequency-calculator, rc-time-constant-calculator,
-      star-delta-conversion-calculator, pcb-trace-width-calculator, frequency-converter,
-      conduit-fill-calculator, smd-resistor-code-calculator, motor-hp-kw-converter,
-      lumens-to-lux-calculator, btu-to-tons-calculator, awg-to-mm-calculator,
-      capacitor-charge-time-calculator, resistor-color-code-calculator (note: there appear to
-      be two resistor-color-code slugs — `resistor-color-code` and
-      `resistor-color-code-calculator` — check if these are duplicates/aliases or genuinely
-      different tools), power-factor-calculator, solar-panel-output-calculator,
-      density-calculator, force-calculator, work-calculator, kinetic-energy-calculator,
-      potential-energy-calculator, momentum-calculator, wavelength-frequency-calculator,
-      half-life-calculator, atomic-mass-calculator, molarity-calculator,
-      ideal-gas-law-calculator, gas-laws-calculator, gravitational-force-calculator,
-      projectile-motion-calculator, free-fall-calculator, ph-calculator, dilution-calculator.
-      (That's 43 listed above — re-run the awk command to confirm the exact count/list is
-      still 44 and unchanged before starting, in case tools.js has been edited since.)
+## Environment notes for THIS machine (new PC — different from the PDC/Windows one above)
+
+This session ran on a **fresh WSL2/Ubuntu Linux environment** (a different machine than the
+Windows/PowerShell/OneDrive one the notes above describe — none of that machine-specific stuff
+applies here). Set up from scratch this session:
+
+- **No sudo** (no passwordless sudo, and no TTY for password prompts) — could not `apt install`
+  anything. Installed both Node.js and GitHub CLI as portable no-sudo binaries instead:
+  - Node: downloaded official `node-v22.23.1-linux-x64.tar.xz` from nodejs.org, extracted to
+    `~/.local/node`, added `~/.local/node/bin` to `PATH` via `~/.bashrc`.
+  - `gh` CLI: downloaded release tarball from GitHub releases, binary placed at `~/.local/bin/gh`.
+  - Both already on `PATH` (`~/.local/bin` and `~/.local/node/bin`), confirmed working.
+- **gh auth**: logged in as `toolnestr` (matches the repo's GitHub account). `gh auth status`
+  confirms scopes `gist, read:org, repo, workflow`.
+- **wrangler auth**: also fresh on this machine (the old "already logged in via OAuth" note does
+  NOT carry over between machines). Ran `npx wrangler login` — OAuth flow works fine here (prints
+  the auth URL, browser completes it, localhost callback works through WSL2's port forwarding).
+  Confirmed via `npx wrangler whoami` → logged in as `toolnestr@gmail.com`, account ID
+  `9f4f4523ee138a462092708c7e4d7a54`. **Re-verify with `npx wrangler whoami` before deploying** —
+  don't assume it's still valid in a new session/machine.
+- **Repo location**: cloned fresh to `~/TOOLNESTR` (i.e. `/home/toolnestr/TOOLNESTR`) via
+  `git clone https://github.com/toolnestr/TOOLNESTR.git` — NOT the `/mnt/c/Users/ADNAN/Desktop/
+  TOOLNESTR-main` folder, which is just an unzipped copy with no `.git`/`node_modules` (leave that
+  one alone; it's unrelated to this work).
+- **npm install**: done, works fine once Node is on PATH.
+- **Playwright**: `npm install --no-save playwright` completed, but `npx playwright install
+  chromium` (the actual browser binary download) was **not completed** — the step was declined
+  mid-session. Browser-based verification for this category has **not** happened yet; re-run
+  `npx playwright install chromium` (or ask the user first, since it was explicitly skipped once)
+  before doing the Playwright-driven verification step. There is no real Chrome install to target
+  via `channel: 'chrome'` on this Linux box (unlike the old Windows machine) — use Playwright's
+  bundled Chromium instead.
+- **Bash tool cwd**: does NOT reliably persist between calls in this environment either (same
+  gotcha as the original Windows notes, different cause) — always `cd` and set `PATH` in the same
+  invocation as whatever command follows it.
+
 - [ ] **Construction + Automotive + Cooking** (56 tools)
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
@@ -150,10 +187,25 @@ until they get the same treatment**:
 
 ## How to resume
 
-Tell Claude: *"continue the tool audit, category-wise, starting with Engineering & Science"* (or whichever
-category). Point it at this file (`audit/RE-AUDIT-PROGRESS.md`) for full context — it explains
-the method, deployment steps, and exactly what's done vs pending. Update this file's category
-list as each one completes, same format as above (tools count, commit hash, bug list).
+**Immediate next step:** Engineering & Science is done (see commit above). Pick the next category
+from the "NOT YET re-audited" list — **Construction + Automotive + Cooking (56 tools)** is next in
+line. Tell Claude: *"continue the tool audit, category-wise, starting with Construction +
+Automotive + Cooking"* (or whichever category). Point it at this file
+(`audit/RE-AUDIT-PROGRESS.md`) for full context — it explains the method, deployment steps, and
+exactly what's done vs pending. Update this file's category list as each one completes, same
+format as above (tools count, commit hash, bug list).
+
+**Playwright on a no-sudo Linux box — libnspr4.so missing:** `npx playwright install chromium`
+downloads the browser binary fine, but the bundled `chromium_headless_shell` fails to launch with
+`error while loading shared libraries: libnspr4.so: cannot open shared object file`, and there's
+no sudo to `apt install`/`playwright install-deps`. Fix without root: `apt-get download` (not
+`install` — this doesn't need root) the missing `.deb`s — `libnspr4 libnss3 libatk1.0-0t64
+libatk-bridge2.0-0t64 libcups2t64 libxkbcommon0 libatspi2.0-0t64 libxcomposite1 libxdamage1
+libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64` — then `dpkg-deb -x <file>
+extracted/` each one (extraction doesn't need root either) into a scratch dir, and set
+`LD_LIBRARY_PATH=<scratch>/extracted/usr/lib/x86_64-linux-gnu` before launching Playwright/node.
+Confirmed working this session. Worth doing once and keeping the extracted libs around for the
+rest of the audit rather than re-downloading every session.
 
 There's also `audit/NETWORKING-BROWSER-VERIFICATION.md` — a manual click-through checklist for
 all 35 networking tools with exact test inputs/expected outputs, if you want to spot-check the
