@@ -80,10 +80,10 @@ const faqs = [
       <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
         <div><span class="font-medium text-slate-700">Exact age:</span> <span class="text-slate-600">36 years, 3 months, 10 days</span></div>
         <div><span class="font-medium text-slate-700">Total months:</span> <span class="text-slate-600">435</span></div>
-        <div><span class="font-medium text-slate-700">Total weeks:</span> <span class="text-slate-600">~1,892</span></div>
-        <div><span class="font-medium text-slate-700">Total days:</span> <span class="text-slate-600">13,247</span></div>
-        <div><span class="font-medium text-slate-700">Total hours:</span> <span class="text-slate-600">317,928</span></div>
-        <div><span class="font-medium text-slate-700">Next birthday:</span> <span class="text-slate-600">264 days (15 Mar 2027)</span></div>
+        <div><span class="font-medium text-slate-700">Total weeks:</span> <span class="text-slate-600">~1,893</span></div>
+        <div><span class="font-medium text-slate-700">Total days:</span> <span class="text-slate-600">13,251</span></div>
+        <div><span class="font-medium text-slate-700">Total hours:</span> <span class="text-slate-600">318,024</span></div>
+        <div><span class="font-medium text-slate-700">Next birthday:</span> <span class="text-slate-600">263 days (15 Mar 2027)</span></div>
       </div>
     </div>
   </section>
@@ -256,17 +256,42 @@ const faqs = [
     const hint = document.getElementById('hint');
     const el = (id) => document.getElementById(id);
 
-    asof.value = new Date().toISOString().slice(0, 10);
+    function todayLocalISO() {
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+    asof.value = todayLocalISO();
 
+    // `from`/`to` are parsed from "YYYY-MM-DD" strings, which the Date constructor
+    // treats as UTC midnight. Reading them back with local getters (getMonth/getDate)
+    // shifts the calendar day by one for any timezone behind UTC, so all arithmetic
+    // here uses the UTC getters/constructor to stay consistent with how they were parsed.
     function diffYMD(from, to) {
-      let y = to.getFullYear() - from.getFullYear();
-      let m = to.getMonth() - from.getMonth();
-      let d = to.getDate() - from.getDate();
-      if (d < 0) {
-        m--;
-        d += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+      // Advance `from` by whole years+months (clamping to the target month's real
+      // length, e.g. Jan 31 + 1 month -> Feb 28) and take the remaining days from
+      // that anchor date. A naive single-borrow subtraction goes negative whenever
+      // `from`'s day-of-month doesn't exist a month later (e.g. 31 Jan -> 1 Mar).
+      function addYM(date, years, months) {
+        let year = date.getUTCFullYear() + years;
+        let month = date.getUTCMonth() + months;
+        year += Math.floor(month / 12);
+        month = ((month % 12) + 12) % 12;
+        const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const day = Math.min(date.getUTCDate(), daysInMonth);
+        return new Date(Date.UTC(year, month, day));
       }
+      let y = to.getUTCFullYear() - from.getUTCFullYear();
+      let m = to.getUTCMonth() - from.getUTCMonth();
       if (m < 0) { y--; m += 12; }
+      let anchor = addYM(from, y, m);
+      if (anchor > to) {
+        m--;
+        if (m < 0) { y--; m += 12; }
+        anchor = addYM(from, y, m);
+      }
+      const d = Math.round((to - anchor) / 86400000);
       return { y, m, d };
     }
 
@@ -291,8 +316,8 @@ const faqs = [
       el('t-days').textContent = totalDays.toLocaleString();
       el('t-hours').textContent = (totalDays * 24).toLocaleString();
 
-      let next = new Date(to.getFullYear(), from.getMonth(), from.getDate());
-      if (next < to) next = new Date(to.getFullYear() + 1, from.getMonth(), from.getDate());
+      let next = new Date(Date.UTC(to.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+      if (next < to) next = new Date(Date.UTC(to.getUTCFullYear() + 1, from.getUTCMonth(), from.getUTCDate()));
       const daysToBday = Math.ceil((next - to) / 86400000);
       el('next-bday').textContent =
         daysToBday === 0 ? '🎉 It\'s your birthday today!' : `🎂 Next birthday in ${daysToBday} day${daysToBday === 1 ? '' : 's'}.`;

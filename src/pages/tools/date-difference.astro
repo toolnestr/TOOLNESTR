@@ -225,14 +225,42 @@ const faqs = [
     const hint = document.getElementById('hint');
     const el = (id) => document.getElementById(id);
 
-    end.value = new Date().toISOString().slice(0, 10);
+    function todayLocalISO() {
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${d.getFullYear()}-${mm}-${dd}`;
+    }
+    end.value = todayLocalISO();
 
+    // `from`/`to` are parsed from "YYYY-MM-DD" strings, which the Date constructor
+    // treats as UTC midnight. Reading them back with local getters (getMonth/getDate)
+    // shifts the calendar day by one for any timezone behind UTC, so all arithmetic
+    // here uses the UTC getters/constructor to stay consistent with how they were parsed.
     function diffYMD(from, to) {
-      let y = to.getFullYear() - from.getFullYear();
-      let m = to.getMonth() - from.getMonth();
-      let d = to.getDate() - from.getDate();
-      if (d < 0) { m--; d += new Date(to.getFullYear(), to.getMonth(), 0).getDate(); }
+      // Advance `from` by whole years+months (clamping to the target month's real
+      // length, e.g. Jan 31 + 1 month -> Feb 28) and take the remaining days from
+      // that anchor date. A naive single-borrow subtraction goes negative whenever
+      // `from`'s day-of-month doesn't exist a month later (e.g. 31 Jan -> 1 Mar).
+      function addYM(date, years, months) {
+        let year = date.getUTCFullYear() + years;
+        let month = date.getUTCMonth() + months;
+        year += Math.floor(month / 12);
+        month = ((month % 12) + 12) % 12;
+        const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+        const day = Math.min(date.getUTCDate(), daysInMonth);
+        return new Date(Date.UTC(year, month, day));
+      }
+      let y = to.getUTCFullYear() - from.getUTCFullYear();
+      let m = to.getUTCMonth() - from.getUTCMonth();
       if (m < 0) { y--; m += 12; }
+      let anchor = addYM(from, y, m);
+      if (anchor > to) {
+        m--;
+        if (m < 0) { y--; m += 12; }
+        anchor = addYM(from, y, m);
+      }
+      const d = Math.round((to - anchor) / 86400000);
       return { y, m, d };
     }
 

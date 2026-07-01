@@ -433,6 +433,7 @@ const faqSchema = {
   let ppUserLng = null;
   let ppNotificationsEnabled = false;
   let ppStoredTimings = null;
+  let ppTimezone = null;
 
   const PP_PRAYER_META = {
     Fajr:    { icon: '🌄', ar: 'الفجر',  cls: 'pp-fajr' },
@@ -464,6 +465,32 @@ const faqSchema = {
     return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
   }
 
+  // Prayer timings come back as "HH:mm" in the *searched city's* local time, which is
+  // usually not the visitor's own timezone. Comparing them against the browser's local
+  // clock (as opposed to the current wall-clock time in that city) would make the
+  // "currently active" prayer and countdown wrong for anyone checking a city outside
+  // their own timezone — so all "now" reads go through the city's IANA timezone here.
+  function ppZonedParts() {
+    const now = new Date();
+    if (!ppTimezone) {
+      return { hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds(), day: now.getDate() };
+    }
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: ppTimezone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit',
+      }).formatToParts(now);
+      const get = (t) => parseInt(parts.find((p) => p.type === t).value, 10) || 0;
+      return { hour: get('hour') % 24, minute: get('minute'), second: get('second'), day: get('day') };
+    } catch (e) {
+      return { hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds(), day: now.getDate() };
+    }
+  }
+  function ppZonedMinutesNow(withSeconds) {
+    const p = ppZonedParts();
+    return withSeconds ? p.hour * 60 + p.minute + p.second / 60 : p.hour * 60 + p.minute;
+  }
+  function ppZonedDateNow() { return ppZonedParts().day; }
+
   function ppSetHijriDate(hijri, gregorian) {
     const months = ['Muharram','Safar','Rabi al-Awwal','Rabi al-Thani','Jumada al-Awwal','Jumada al-Thani','Rajab',"Sha'ban",'Ramadan','Shawwal','Dhu al-Qi\'dah','Dhu al-Hijjah'];
     document.getElementById('ppHijriDate').textContent = `${hijri.day} ${months[parseInt(hijri.month.number)-1]} ${hijri.year} AH`;
@@ -486,6 +513,7 @@ const faqSchema = {
       const d2 = await r2.json();
       ppUserLat = parseFloat(d1.data.meta.latitude);
       ppUserLng = parseFloat(d1.data.meta.longitude);
+      ppTimezone = d1.data.meta.timezone || null;
       ppMonthlyData = d2.data;
       ppSetStatus(`📍 ${city}, ${country}`);
       ppRenderAll(d1.data, method);
@@ -505,6 +533,7 @@ const faqSchema = {
       const r2 = await fetch(`https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${lat}&longitude=${lng}&method=${method}`);
       const d2 = await r2.json();
       ppUserLat = lat; ppUserLng = lng;
+      ppTimezone = d1.data.meta.timezone || null;
       ppMonthlyData = d2.data;
       const metaCity = d1.data.meta.timezone || 'Your Location';
       ppSetStatus(`📍 ${metaCity.replace('/', ', ')}`);
@@ -561,8 +590,7 @@ const faqSchema = {
   }
 
   function ppGetCurrentAndNext(timings) {
-    const now = new Date();
-    const currentMins = now.getHours()*60+now.getMinutes();
+    const currentMins = ppZonedMinutesNow(false);
     let current=null, next=null;
     for(const name of PP_PRAYER_ORDER) { if(currentMins >= ppTimeToMinutes(timings[name])) current=name; }
     for(const name of PP_PRAYER_ORDER) { if(currentMins < ppTimeToMinutes(timings[name])) { next=name; break; } }
@@ -572,8 +600,7 @@ const faqSchema = {
 
   function ppRenderPrayerCards(timings) {
     const { current, next } = ppGetCurrentAndNext(timings);
-    const now = new Date();
-    const currentMins = now.getHours()*60+now.getMinutes();
+    const currentMins = ppZonedMinutesNow(false);
     const grid = document.getElementById('ppPrayersGrid');
     grid.innerHTML = '';
     PP_PRAYER_ORDER.forEach(name => {
@@ -611,8 +638,7 @@ const faqSchema = {
   function ppStartCountdown(timings) {
     if(ppCountdownInterval) clearInterval(ppCountdownInterval);
     ppCountdownInterval = setInterval(() => {
-      const now = new Date();
-      const currentMins = now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+      const currentMins = ppZonedMinutesNow(true);
       let nextName=null, nextMins=null;
       for(const name of PP_PRAYER_ORDER) { const m=ppTimeToMinutes(timings[name]); if(m>currentMins){nextName=name;nextMins=m;break;} }
       if(!nextName){ nextName='Fajr'; nextMins=ppTimeToMinutes(timings['Fajr'])+1440; }
@@ -630,7 +656,7 @@ const faqSchema = {
 
   function ppRenderMonthly() {
     if(!ppMonthlyData) return;
-    const today = new Date().getDate();
+    const today = ppZonedDateNow();
     const tbody = document.getElementById('ppMonthlyBody');
     tbody.innerHTML = '';
     ppMonthlyData.forEach(day => {
