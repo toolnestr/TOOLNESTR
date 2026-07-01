@@ -101,8 +101,19 @@ old thresholds. Added `auIncomeTax` (4 years, verified vs ATO) + year selector +
 the $1-per-boundary gap by moving to the cumulative-limit loop. Verified: 2024-25 $90k→$17,788;
 $200k→$56,138 (both match ATO).
 
-**Pending (roll out same pattern):** canada (federal + provincial complexity), netherlands (box-1 +
-tax credits), pakistan (salaried slabs), freelancer, sales-tax, property-tax, vat-gst.
+**Done (Pakistan) — stale slabs FIXED:** the tool used **2024-25** slabs (5/15/25/30/35) on a 2026 site,
+overtaxing everyone (e.g. PKR 2M → 150,000 vs the correct 94,000). Added `pkIncomeTax` verified vs FBR:
+2024-25, 2025-26 (June-2025 budget cut lower slabs to 1/11/23), and 2026-27 (June-2026 budget cut four
+middle slabs + split top into 8 bands). Year selector (defaults to current 2026-27) + disclaimer;
+breakdown table now generated from the selected year. Verified: 2025-26 2M→94,000; 2026-27 6M→1,104,000.
+
+**Pending (larger / higher-effort data projects):**
+- **canada** — federal (2025, current) + **13 provinces** each with own yearly brackets + CPP/EI/QPP.
+  Noticed federal=2025 but provincial=2024 (currency mismatch). Full multi-year × 13-province rebuild is
+  a large, error-prone job — recommend a dedicated pass with per-province official sources.
+- **netherlands** — box-1 rates + algemene heffingskorting + arbeidskorting phase-outs (complex formulas).
+- Rate-based tools (sales-tax, property-tax, vat-gst, freelancer) — math already correct; just add a
+  "rates vary by location/year; verify locally" disclaimer.
 
 ---
 

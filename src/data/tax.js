@@ -122,6 +122,31 @@ export const auIncomeTax = {
   },
 };
 
+export const pkIncomeTax = {
+  country: 'Pakistan',
+  authority: 'FBR',
+  // Salaried-person slabs. [marginalRate, upperLimit of annual taxable income].
+  // Verified vs FBR Finance Acts. The June-2025 budget cut the lower slabs; the
+  // June-2026 budget cut four middle slabs and split the top into more bands.
+  years: {
+    '2026-27': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.fbr.gov.pk/',
+      brackets: [[0, 600000], [0.01, 1200000], [0.11, 2200000], [0.20, 3200000], [0.25, 4100000], [0.29, 5600000], [0.32, 7000000], [0.35, Infinity]],
+    },
+    '2025-26': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.fbr.gov.pk/',
+      brackets: [[0, 600000], [0.01, 1200000], [0.11, 2200000], [0.23, 3200000], [0.30, 4100000], [0.35, Infinity]],
+    },
+    '2024-25': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.fbr.gov.pk/',
+      brackets: [[0, 600000], [0.05, 1200000], [0.15, 2200000], [0.25, 3200000], [0.30, 4100000], [0.35, Infinity]],
+    },
+  },
+};
+
 // Serialize a year map to JSON for embedding in an inline <script>.
 // JSON can't represent Infinity, so the top bracket's limit becomes null;
 // the client treats null as "no upper limit".
