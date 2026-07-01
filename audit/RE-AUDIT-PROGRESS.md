@@ -23,6 +23,24 @@ environment) → commit → push → deploy → verify live on production.
   rather than trusting wrangler's "0 files uploaded" message, which can be misleadingly reassuring
   when content-hash dedup kicks in — it doesn't mean the deploy failed, but always spot-check.
 
+**Environment gotchas discovered this session (worth knowing up front):**
+- The Bash/PowerShell tool's working directory **resets to the `payroll` project root after every
+  single call** in this environment — it does NOT persist between calls despite what the tool
+  description says. Every command must `cd "/c/Users/PDC/OneDrive/Desktop/Tool Nestr" && ...`
+  (or `Set-Location` in PowerShell) in the *same* invocation as whatever it's chained to. Don't
+  waste time re-discovering this.
+- No Playwright install existed in this environment. `npx playwright --version` works (downloads
+  a throwaway copy), but driving a real page needs the actual module: run
+  `npm install --no-save playwright` inside the Tool Nestr project (safe — `node_modules` is
+  gitignored, `--no-save` keeps `package.json`/lockfile untouched), then in a Node script:
+  `require('C:/Users/PDC/OneDrive/Desktop/Tool Nestr/node_modules/playwright')` and
+  `chromium.launch({ channel: 'chrome', headless: true })` to drive the real installed Chrome
+  (found at `C:\Program Files\Google\Chrome\Application\chrome.exe`). For timezone-sensitive
+  bugs, `browser.newContext({ timezoneId: 'America/Los_Angeles' })` is essential — several real
+  bugs (see Everyday below) only reproduce in specific timezones, not the sandbox's default one.
+  For local (pre-deploy) verification, run `npx astro preview --port 4321` in the background
+  after `npm run build` and point Playwright at `http://localhost:4321/tools/<slug>/`.
+
 ---
 
 ## Categories DONE (real bugs found, fixed, verified live, committed & pushed)
@@ -100,7 +118,28 @@ to real output.
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
 until they get the same treatment**:
 
-- [ ] **Engineering & Science** (44 tools) — NEXT UP when resuming
+- [ ] **Engineering & Science** (44 tools) — NEXT UP when resuming. Session paused before any
+      tool in this category was read/tested (only the slug list was pulled via
+      `awk "/category: 'engineering'/{print}" src/data/tools.js` in `src/data/tools.js`).
+      The 44 slugs: ohms-law-calculator, resistor-color-code, voltage-drop-calculator,
+      power-calculator, led-resistor-calculator, wire-gauge-calculator,
+      voltage-divider-calculator, three-phase-power-calculator, kva-to-kw-calculator,
+      transformer-calculator, battery-runtime-calculator, capacitor-code-calculator,
+      lc-resonant-frequency-calculator, rc-time-constant-calculator,
+      star-delta-conversion-calculator, pcb-trace-width-calculator, frequency-converter,
+      conduit-fill-calculator, smd-resistor-code-calculator, motor-hp-kw-converter,
+      lumens-to-lux-calculator, btu-to-tons-calculator, awg-to-mm-calculator,
+      capacitor-charge-time-calculator, resistor-color-code-calculator (note: there appear to
+      be two resistor-color-code slugs — `resistor-color-code` and
+      `resistor-color-code-calculator` — check if these are duplicates/aliases or genuinely
+      different tools), power-factor-calculator, solar-panel-output-calculator,
+      density-calculator, force-calculator, work-calculator, kinetic-energy-calculator,
+      potential-energy-calculator, momentum-calculator, wavelength-frequency-calculator,
+      half-life-calculator, atomic-mass-calculator, molarity-calculator,
+      ideal-gas-law-calculator, gas-laws-calculator, gravitational-force-calculator,
+      projectile-motion-calculator, free-fall-calculator, ph-calculator, dilution-calculator.
+      (That's 43 listed above — re-run the awk command to confirm the exact count/list is
+      still 44 and unchanged before starting, in case tools.js has been edited since.)
 - [ ] **Construction + Automotive + Cooking** (56 tools)
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
