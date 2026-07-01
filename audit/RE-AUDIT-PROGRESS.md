@@ -72,6 +72,27 @@ that number forever, never updating for subsequent invalid inputs. polynomial-ca
 own title/description/FAQ promised "add, subtract, multiply polynomials" but only evaluation was
 implemented — built the missing feature, verified against the page's own worked examples.
 
+### Everyday (27 tools) — commit `1dccaab`
+5 bugs, two severe. **prayer-times**: the "currently active" prayer and the live countdown
+compared the browser's own local clock against the searched city's local prayer times with
+no timezone conversion at all — checking prayer times for any city other than your own
+timezone (the tool's entire "worldwide" value proposition) showed a completely wrong current
+prayer. Verified live: browser in America/Los_Angeles checking the default city (Rawalpindi,
+UTC+5, ~12h apart) correctly now shows Asr active with a 2h countdown to Maghrib, matching
+Rawalpindi's real local time — the old code would've compared against LA's clock instead.
+**age-calculator + date-difference**: date-only strings parse as UTC midnight but the day-math
+read them back with local getters, shifting the calendar day by one for any timezone behind
+UTC near month/year boundaries; the default "today" field used `toISOString()` (UTC) instead
+of local date, showing tomorrow's date for a large part of each day across the whole Western
+hemisphere. Fixed by using UTC getters/constructor consistently. Also replaced the single-borrow
+day-subtraction with a proper calendar-anchor algorithm — the old one produced impossible
+negative day counts (e.g. "26 years, 1 months, -2 days") whenever the start day-of-month didn't
+exist a month later (31 Jan → 1 Mar). word-counter: sentence counter silently dropped a
+trailing sentence lacking terminal punctuation instead of counting it, contradicting the tool's
+own documented behavior. Several worked-example numbers in page copy (word-counter,
+age-calculator, german-grade-calculator) didn't match what the tools actually compute — corrected
+to real output.
+
 ---
 
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
@@ -79,8 +100,7 @@ implemented — built the missing feature, verified against the page's own worke
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
 until they get the same treatment**:
 
-- [ ] **Everyday** (27 tools) — NEXT UP when resuming
-- [ ] **Engineering & Science** (44 tools)
+- [ ] **Engineering & Science** (44 tools) — NEXT UP when resuming
 - [ ] **Construction + Automotive + Cooking** (56 tools)
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
@@ -91,7 +111,7 @@ until they get the same treatment**:
 
 ## How to resume
 
-Tell Claude: *"continue the tool audit, category-wise, starting with Everyday"* (or whichever
+Tell Claude: *"continue the tool audit, category-wise, starting with Engineering & Science"* (or whichever
 category). Point it at this file (`audit/RE-AUDIT-PROGRESS.md`) for full context — it explains
 the method, deployment steps, and exactly what's done vs pending. Update this file's category
 list as each one completes, same format as above (tools count, commit hash, bug list).
