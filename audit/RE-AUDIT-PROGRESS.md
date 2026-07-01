@@ -169,6 +169,16 @@ manual lat/lng or GPS directly (no city-name geocoding dependency at all). Kept 
 Open-Meteo geocoding on prayer-times only for the "Lat/Lng" method-info display line. Verified live:
 button correctly links to and lands on the Qibla Direction Finder tool.
 
+**Follow-up 2 (user decision, commit `bb7e9ad`):** on the Qibla Direction Finder tool itself, the user
+reported the "Use my location" and "Enable live compass" buttons gave inconsistent/confusing results
+depending on which was clicked, and wanted it to just work by default with no buttons. Removed both:
+now auto-requests geolocation and computes the bearing on page load (falls back to manual lat/lng entry
+on denial), then auto-attaches the device-orientation listener so the live compass turns on immediately
+with no click — except iOS 13+ Safari, which only grants motion-sensor permission inside a user-gesture
+handler (an OS-level restriction, not something that can be bypassed); a small "tap to enable" prompt
+appears only in that case. Verified live: no buttons present, bearing auto-computes correctly (256.0°
+for Rawalpindi coords), compass auto-enables ("Live compass on") with zero clicks.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
