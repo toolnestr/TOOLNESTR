@@ -179,6 +179,12 @@ handler (an OS-level restriction, not something that can be bypassed); a small "
 appears only in that case. Verified live: no buttons present, bearing auto-computes correctly (256.0°
 for Rawalpindi coords), compass auto-enables ("Live compass on") with zero clicks.
 
+**Follow-up 3 (user decision, commit `ae8e8a3`):** removed the standard Islamic-category disclaimer
+from qibla-direction-finder specifically (a deterministic great-circle bearing calc), without touching
+it on the other 15 Islamic tools where it's more clearly warranted (Zakat, inheritance, prayer times,
+etc.). Added a `hideDisclaimer` prop on `ToolLayout` for this kind of per-tool override. Verified live:
+disclaimer gone on qibla-direction-finder, still present on zakat-calculator.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
