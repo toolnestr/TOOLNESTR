@@ -247,24 +247,31 @@ const faqs = [
         for (i = 0; i < 64; i += 4) blk[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) + (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24);
         return blk;
       }
-      function hex(i) { var h = (i & 0xFFFFFFFF).toString(16); return '00000000'.substring(h.length) + h; }
+      function hex(i) { var s = '', c = '0123456789abcdef'; for (var j = 0; j < 4; j++) s += c[(i >> (j * 8 + 4)) & 0x0F] + c[(i >> (j * 8)) & 0x0F]; return s; }
       function add32(a, b) { return (a + b) & 0xFFFFFFFF; }
-      return function(s) {
+      function rawFromState(hash) {
+        var out = '';
+        for (var n = 0; n < 4; n++) { var w = hash[n]; out += String.fromCharCode(w & 0xFF, (w >>> 8) & 0xFF, (w >>> 16) & 0xFF, (w >>> 24) & 0xFF); }
+        return out;
+      }
+      var api = function(s) {
         var hash = md51(s);
         return hex(hash[0]) + hex(hash[1]) + hex(hash[2]) + hex(hash[3]);
       };
+      api.raw = function(s) { return rawFromState(md51(s)); };
+      return api;
     })();
 
     function hmacMD5(key, msg) {
       var blockSize = 64;
-      if (key.length > blockSize) key = MD5(key);
+      if (key.length > blockSize) key = MD5.raw(key);
       while (key.length < blockSize) key += String.fromCharCode(0);
       var ipad = '', opad = '';
       for (var i = 0; i < blockSize; i++) {
         ipad += String.fromCharCode(key.charCodeAt(i) ^ 0x36);
         opad += String.fromCharCode(key.charCodeAt(i) ^ 0x5C);
       }
-      return MD5(opad + MD5(ipad + msg));
+      return MD5(opad + MD5.raw(ipad + msg));
     }
 
     var el = function(id) { return document.getElementById(id); };
