@@ -241,6 +241,10 @@ for (const [ch, ent] of Object.entries(entityMap)) {
     for (const [ch, ent] of Object.entries(encodeMap)) {
       decodeMap[ent] = ch;
     }
+    const decodePattern = new RegExp(
+      Object.keys(decodeMap).map((e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+      'g'
+    );
 
     function show(msg, ok) {
       status.textContent = msg;
@@ -274,17 +278,17 @@ for (const [ch, ent] of Object.entries(entityMap)) {
     $('decode-btn').addEventListener('click', () => {
       const val = input.value;
       if (!val) { show('Nothing to decode', false); return; }
-      let result = val;
+      // Single pass over the ORIGINAL string: decoding &amp; one entity at a
+      // time and re-scanning the mutated result (the old approach) would
+      // decode "&amp;lt;" -> "&lt;" -> "<", silently over-decoding any text
+      // that was itself double-escaped.
       const decoded = [];
-      for (const [ent, ch] of Object.entries(decodeMap)) {
-        const re = new RegExp(ent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        if (re.test(result)) {
-          decoded.push({ entity: ent, char: ch });
-          result = result.replace(re, ch);
-        }
-      }
+      const result = val.replace(decodePattern, (match) => {
+        decoded.push({ entity: match, char: decodeMap[match] });
+        return decodeMap[match];
+      });
       output.value = result;
-      show('Decoded ✓ — ' + decoded.length + ' entity types replaced', true);
+      show('Decoded ✓ — ' + decoded.length + ' entity replacement(s)', true);
       if (decoded.length) {
         analysis.classList.remove('hidden');
         analysis.innerHTML = '<strong>Decoded entities:</strong> ' + decoded.map(d => '<code class="rounded bg-slate-100 px-1">' + d.entity + ' → ' + d.char + '</code>').join(' ');

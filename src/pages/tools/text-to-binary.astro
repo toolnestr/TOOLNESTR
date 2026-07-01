@@ -9,10 +9,10 @@ const intro =
   'Type or paste text to see its binary representation, or paste binary to decode back to text.';
 const category = { id: 'converters', name: 'Converters' };
 const faqs = [
-  { q: 'How does text-to-binary conversion work?', a: 'Each character is converted to its Unicode code point (charCode), then that number is expressed in base-2 (binary) padded to 8 bits. For example, "A" (65) becomes 01000001.' },
-  { q: 'How do I convert binary back to text?', a: 'Paste binary digits separated by spaces (e.g. 01000001 01000010) and toggle to Binary→Text. Each 8-bit group is parsed back to its character.' },
-  { q: 'What is 8-bit binary?', a: '8-bit binary means each character is represented by 8 binary digits (bits). This covers ASCII values 0–255, which includes all standard English letters, digits, and symbols.' },
-  { q: 'Can it handle emojis and Unicode?', a: 'Yes. Unicode characters are converted using their full code point. Emojis like 😀 (U+1F600) produce a longer binary sequence representing their actual code point.' },
+  { q: 'How does text-to-binary conversion work?', a: 'The text is encoded as UTF-8 bytes, then each byte is expressed in base-2 (binary) padded to 8 bits. For example, "A" (byte value 65) becomes 01000001.' },
+  { q: 'How do I convert binary back to text?', a: 'Paste binary digits separated by spaces (e.g. 01000001 01000010) and toggle to Binary→Text. Each 8-bit group is parsed as one UTF-8 byte and decoded back to text.' },
+  { q: 'What is 8-bit binary?', a: '8-bit binary means each byte is represented by 8 binary digits (bits), with values from 0–255. Standard ASCII characters (English letters, digits, symbols) are always a single byte.' },
+  { q: 'Can it handle emojis and Unicode?', a: 'Yes. Text is encoded as UTF-8, the standard used across the web, so any Unicode character — including emoji like 😀 — is correctly represented as multiple bytes and round-trips back to the exact original character.' },
   { q: 'What is the difference between ASCII and Unicode?', a: 'ASCII uses 7 or 8 bits for 128–256 characters. Unicode supports over 143,000 characters including emojis and scripts from every language.' },
   { q: 'Is my data private?', a: 'Yes. Everything is processed in your browser — no data is uploaded to any server.' },
   { q: 'Why does my binary string have varying lengths?', a: 'Standard 8-bit binary always produces 8 digits per character. Unicode characters above U+00FF may produce longer sequences when using their full code point representation.' },
@@ -239,23 +239,24 @@ const faqs = [
 
       try {
         if (direction === 'text-to-binary') {
-          const result = [];
-          for (const ch of text) {
-            const code = ch.charCodeAt(0);
-            result.push(code.toString(2).padStart(8, '0'));
-          }
+          // charCodeAt(0) only reads one UTF-16 code unit -- it silently
+          // dropped the low surrogate for emoji/astral characters (producing
+          // an unreconstructable binary) and gave non-standard output for any
+          // character above U+00FF. Encode as real UTF-8 bytes instead so
+          // every group is a genuine 8-bit byte and round-trips correctly.
+          const bytes = new TextEncoder().encode(text);
+          const result = Array.from(bytes, (b) => b.toString(2).padStart(8, '0'));
           output.value = result.join(' ');
           stats.textContent = text.length + ' chars, ' + result.length + ' bytes';
           show('Converted to binary', true);
         } else {
           const parts = text.split(/\s+/).filter(Boolean);
-          let result = '';
+          const bytes = [];
           for (const p of parts) {
-            if (!/^[01]+$/.test(p)) throw new Error('Invalid binary: "' + p + '" — only 0 and 1 allowed');
-            const code = parseInt(p, 2);
-            if (code > 0x10FFFF) throw new Error('Value out of Unicode range: ' + p);
-            result += String.fromCodePoint(code);
+            if (!/^[01]{1,8}$/.test(p)) throw new Error('Invalid binary: "' + p + '" — only groups of 8 bits (0/1) allowed');
+            bytes.push(parseInt(p, 2));
           }
+          const result = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
           output.value = result;
           stats.textContent = parts.length + ' bytes, ' + result.length + ' chars';
           show('Converted to text', true);

@@ -49,11 +49,11 @@ const faqs = [
     </label>
     <div class="mt-6 grid gap-3 sm:grid-cols-2">
       <div class="rounded-xl bg-slate-50 p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total inches</div>
+        <div id="total-label" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total inches</div>
         <div id="r-total-in" class="mt-1 text-2xl font-bold text-slate-800">—</div>
       </div>
       <div class="rounded-xl bg-indigo-50 p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Feet &amp; Inches</div>
+        <div id="ftin-label" class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Feet &amp; Inches</div>
         <div id="r-ftin" class="mt-1 text-2xl font-bold text-indigo-700">—</div>
       </div>
     </div>
@@ -209,18 +209,29 @@ const faqs = [
       const op = document.getElementById('op').value;
       const a = ft1 * 12 + in1;
       const b = ft2 * 12 + in2;
-      let r;
-      if (op === 'add') r = a + b;
-      else if (op === 'sub') r = a - b;
-      else r = a * b;
-      document.getElementById('r-total-in').textContent = fmt(r) + ' in';
-      if (r < 0) {
-        document.getElementById('r-ftin').textContent = '-' + fmt(Math.abs(r));
-      } else {
-        const ft = Math.floor(r / 12);
-        const rem = r % 12;
-        document.getElementById('r-ftin').textContent = ft + ' ft ' + fmt(rem) + ' in';
+      const totalLabel = document.getElementById('total-label');
+      const ftinLabel = document.getElementById('ftin-label');
+
+      if (op === 'mul') {
+        // Multiplying two lengths yields an AREA, not another length --
+        // showing it decomposed as "X ft Y in" was dimensionally wrong.
+        const sqIn = a * b;
+        const sqFt = sqIn / 144;
+        totalLabel.textContent = 'Total area (in²)';
+        document.getElementById('r-total-in').textContent = fmt(sqIn) + ' in²';
+        ftinLabel.textContent = 'Area (ft²)';
+        document.getElementById('r-ftin').textContent = fmt(sqFt) + ' ft²';
+        return;
       }
+
+      totalLabel.textContent = 'Total inches';
+      ftinLabel.textContent = 'Feet & Inches';
+      const r = op === 'add' ? a + b : a - b;
+      document.getElementById('r-total-in').textContent = fmt(r) + ' in';
+      const sign = r < 0 ? '-' : '';
+      const ft = Math.floor(Math.abs(r) / 12);
+      const rem = Math.abs(r) % 12;
+      document.getElementById('r-ftin').textContent = sign + ft + ' ft ' + fmt(rem) + ' in';
     }
     ['ft1','in1','ft2','in2','op'].forEach(id => document.getElementById(id).addEventListener('input', update));
     document.getElementById('op').addEventListener('change', update);

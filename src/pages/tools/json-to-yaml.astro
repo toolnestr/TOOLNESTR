@@ -237,7 +237,12 @@ const faqs = [
         return keys.map((key, i) => {
           const val = obj[key];
           const prefix = i === 0 && indent === 0 ? '' : pad;
-          if (typeof val === 'object' && val !== null && !(typeof val === 'string')) {
+          // Empty arrays/objects must stay inline ("key: []") -- putting them
+          // on their own indented line produced invalid YAML that then
+          // decoded back to null instead of [] / {}.
+          const isEmptyContainer = (Array.isArray(val) && val.length === 0) ||
+            (typeof val === 'object' && val !== null && !Array.isArray(val) && Object.keys(val).length === 0);
+          if (typeof val === 'object' && val !== null && !isEmptyContainer) {
             const child = jsonToYaml(val, indent + 1);
             return prefix + key + ':\n' + child;
           }
@@ -249,101 +254,111 @@ const faqs = [
 
     function yamlToJson(text) {
       const lines = text.split('\n');
-      const result = parseYaml(lines, 0).value;
-      return result;
+      return parseYamlBlock(lines, 0).value;
     }
 
-    function parseYaml(lines, start) {
+    // Decides whether the next non-blank block is a list ("- ...") or a
+    // mapping ("key: ...") and dispatches accordingly. The previous single
+    // parseYaml() function only ever assumed "mapping", so any nested list
+    // of objects (e.g. Kubernetes containers:, Docker services:) was parsed
+    // as a mapping with a bogus "- key" key, silently destroying the data.
+    function parseYamlBlock(lines, start) {
+      let i = start;
+      while (i < lines.length && (lines[i].trim() === '' || lines[i].trim().startsWith('#'))) i++;
+      if (i >= lines.length) return { value: null, nextIndex: i };
+      const indent = lines[i].search(/\S/);
+      const trimmed = lines[i].trim();
+      const isList = trimmed.startsWith('- ') || trimmed === '-';
+      return isList ? parseYamlList(lines, i, indent) : parseYamlMap(lines, i, indent);
+    }
+
+    function parseYamlMap(lines, start, indent) {
       const result = {};
       let i = start;
-      let indent = null;
-      const keys = [];
-
       while (i < lines.length) {
         const line = lines[i];
         const trimmed = line.trim();
         if (trimmed === '' || trimmed.startsWith('#')) { i++; continue; }
-
         const leading = line.search(/\S/);
-        if (indent === null) indent = leading;
-
-        if (leading < indent) break;
-        if (leading > indent) {
-          const child = parseYaml(lines, i);
-          const key = keys[keys.length - 1];
-          result[key] = child.value;
-          i = child.nextIndex;
-          continue;
-        }
+        if (leading !== indent) break;
 
         const colonIdx = trimmed.indexOf(':');
         if (colonIdx === -1) { i++; continue; }
-
         const key = trimmed.slice(0, colonIdx).trim();
-        let val = trimmed.slice(colonIdx + 1).trim();
-        keys.push(key);
+        const val = trimmed.slice(colonIdx + 1).trim();
 
         if (val === '') {
           const nextLine = lines[i + 1];
-          if (nextLine !== undefined && nextLine.trim() !== '' && nextLine.search(/\S/) > leading) {
-            const child = parseYaml(lines, i + 1);
+          const hasNested = nextLine !== undefined && nextLine.trim() !== '' && !nextLine.trim().startsWith('#') && nextLine.search(/\S/) > leading;
+          if (hasNested) {
+            const child = parseYamlBlock(lines, i + 1);
             result[key] = child.value;
             i = child.nextIndex;
-            continue;
+          } else {
+            result[key] = null;
+            i++;
           }
-          result[key] = null;
         } else {
           result[key] = parseYamlValue(val);
+          i++;
         }
-        i++;
       }
-
-      if (Object.keys(result).length === 0 && lines[start] && lines[start].trim().startsWith('- ')) {
-        return { value: parseYamlArray(lines, start), nextIndex: i };
-      }
-
       return { value: result, nextIndex: i };
     }
 
-    function parseYamlArray(lines, start) {
+    function parseYamlList(lines, start, indent) {
       const arr = [];
       let i = start;
-      const indent = lines[start].search(/\S/);
-
       while (i < lines.length) {
         const line = lines[i];
         const trimmed = line.trim();
         if (trimmed === '' || trimmed.startsWith('#')) { i++; continue; }
         const leading = line.search(/\S/);
-        if (leading < indent) break;
-        if (leading > indent) { i++; continue; }
+        if (leading !== indent) break;
+        if (!trimmed.startsWith('-')) break;
 
-        if (trimmed.startsWith('- ')) {
-          const val = trimmed.slice(2).trim();
-          if (val === '') {
-            const nextLine = lines[i + 1];
-            if (nextLine !== undefined && nextLine.search(/\S/) > leading + 2) {
-              const child = parseYaml(lines, i + 1);
-              arr.push(child.value);
-              i = child.nextIndex;
-              continue;
-            }
-            arr.push(null);
+        const rest = trimmed.slice(1).trim();
+        if (rest === '') {
+          const nextLine = lines[i + 1];
+          const hasNested = nextLine !== undefined && nextLine.trim() !== '' && nextLine.search(/\S/) > leading;
+          if (hasNested) {
+            const child = parseYamlBlock(lines, i + 1);
+            arr.push(child.value);
+            i = child.nextIndex;
           } else {
-            arr.push(parseYamlValue(val));
+            arr.push(null);
+            i++;
           }
-        } else if (trimmed.startsWith('-')) {
-          arr.push(null);
+          continue;
         }
+
+        const colonIdx = rest.indexOf(':');
+        const looksLikeMapping = colonIdx !== -1 && !/^['"]/.test(rest);
+        if (looksLikeMapping) {
+          // "- key: value" -- the rest of this line is the first key of a
+          // mapping list item; further keys are indented to align under it
+          // (this serializer emits sibling keys at indent+2 relative to the
+          // dash). Build a tiny synthetic block so parseYamlMap can read
+          // ahead into the following lines normally.
+          const itemIndent = leading + 2;
+          const syntheticLines = [' '.repeat(itemIndent) + rest].concat(lines.slice(i + 1));
+          const child = parseYamlMap(syntheticLines, 0, itemIndent);
+          arr.push(child.value);
+          i = i + child.nextIndex;
+          continue;
+        }
+        arr.push(parseYamlValue(rest));
         i++;
       }
-      return arr;
+      return { value: arr, nextIndex: i };
     }
 
     function parseYamlValue(val) {
       if (val === 'null' || val === '~') return null;
       if (val === 'true' || val === 'on' || val === 'yes') return true;
       if (val === 'false' || val === 'off' || val === 'no') return false;
+      if (val === '[]') return [];
+      if (val === '{}') return {};
       const num = Number(val);
       if (!isNaN(num) && val !== '') return num;
       if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) return val.slice(1, -1);

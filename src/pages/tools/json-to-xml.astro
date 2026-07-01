@@ -262,7 +262,14 @@ const faqs = [
       const doc = parser.parseFromString(text, 'text/xml');
       const parseErrors = doc.querySelector('parsererror');
       if (parseErrors) throw new Error('Invalid XML: ' + parseErrors.textContent);
-      return xmlNodeToJson(doc.documentElement);
+      const root = doc.documentElement;
+      // A top-level JSON array is wrapped as <root><item>..</item>...</root>
+      // (see buildXmlDocument) since XML can't have multiple root elements --
+      // unwrap that convention back to a bare array here.
+      const elemChildren = Array.from(root.childNodes).filter((n) => n.nodeType === 1);
+      const isArrayWrapper = elemChildren.length > 0 && elemChildren.every((c) => c.nodeName === 'item') && !(root.attributes && root.attributes.length);
+      if (isArrayWrapper) return elemChildren.map((c) => xmlNodeToJson(c));
+      return xmlNodeToJson(root);
     }
 
     function xmlNodeToJson(node) {
@@ -318,7 +325,13 @@ const faqs = [
       try {
         if (direction === 'json-to-xml') {
           const data = JSON.parse(text);
-          output.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + jsonToXml(data);
+          // A bare top-level array can't be valid XML as repeated sibling
+          // elements (XML requires exactly one root) -- wrap it so the
+          // output actually parses, and xml-to-json can reverse it.
+          const xmlBody = Array.isArray(data)
+            ? '<root>\n' + data.map((item) => jsonToXml(item, 'item')).join('\n') + '\n</root>'
+            : jsonToXml(data);
+          output.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
           show('Converted to XML', true);
         } else {
           const data = xmlToJson(text);
