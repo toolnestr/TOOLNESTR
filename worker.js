@@ -65,6 +65,18 @@ function reverseIp(ip) {
   return expanded.replace(/:/g, '').split('').reverse().join('.') + '.ip6.arpa';
 }
 
+// DoH resolvers wrap each TXT character-string in double quotes; a multi-string
+// TXT record comes back as "part1" "part2" and must be concatenated with no
+// separator. Non-TXT records (IPs, hostnames) never start with a quote, so the
+// guard makes this a safe no-op for them.
+function unquoteTxt(s) {
+  if (typeof s !== 'string') return s;
+  if (s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+    return s.slice(1, -1).replace(/" "/g, '');
+  }
+  return s;
+}
+
 export default {
   async fetch(request) {
     if (request.method === 'OPTIONS') {
@@ -286,10 +298,10 @@ async function handleDnsLookup(url) {
     domain: domain,
     type: type,
     answers: (data.Answer || []).map(function (a) {
-      return { name: a.name, type: a.type, ttl: a.TTL, data: a.data };
+      return { name: a.name, type: a.type, ttl: a.TTL, data: unquoteTxt(a.data) };
     }),
     authority: (data.Authority || []).map(function (a) {
-      return { name: a.name, type: a.type, ttl: a.TTL, data: a.data };
+      return { name: a.name, type: a.type, ttl: a.TTL, data: unquoteTxt(a.data) };
     }),
     status: data.Status || 0,
     rd: data.RD || false,
@@ -324,9 +336,9 @@ async function handleDnsPropagation(url) {
     domain: domain,
     type: type,
     results: {
-      cloudflare: (cf.Answer || []).map(function (a) { return a.data; }),
-      google: (google.Answer || []).map(function (a) { return a.data; }),
-      adguard: (adguard.Answer || []).map(function (a) { return a.data; }),
+      cloudflare: (cf.Answer || []).map(function (a) { return unquoteTxt(a.data); }),
+      google: (google.Answer || []).map(function (a) { return unquoteTxt(a.data); }),
+      adguard: (adguard.Answer || []).map(function (a) { return unquoteTxt(a.data); }),
     },
     resolved: {
       cloudflare: !cf.error && cf.Status === 0,
@@ -425,19 +437,28 @@ async function handleWhois(url) {
   }
   if (!data) return jsonResponse({ error: 'Not found in any RDAP registry' }, 404);
   const events = data.events || [];
+  const entities = (data.entities || []).map(function (e) {
+    const vcardProps = (e.vcardArray && e.vcardArray[1]) || [];
+    const fnProp = vcardProps.find(function (p) { return p[0] === 'fn'; });
+    return {
+      handle: e.handle || '',
+      role: (e.roles || []).join(', '),
+      name: (fnProp && fnProp[3]) || '',
+    };
+  });
+  // Flat convenience fields derived from the entities array so the frontend
+  // doesn't have to dig through RDAP's nested role structure.
+  const byRole = function (role) {
+    const hit = entities.find(function (e) { return e.role.indexOf(role) !== -1; });
+    return (hit && hit.name) || '';
+  };
   return jsonResponse({
     query: query,
     handle: data.handle || '',
     name: data.name || data.ldhName || '',
-    entities: (data.entities || []).map(function (e) {
-      const vcardProps = (e.vcardArray && e.vcardArray[1]) || [];
-      const fnProp = vcardProps.find(function (p) { return p[0] === 'fn'; });
-      return {
-        handle: e.handle || '',
-        role: (e.roles || []).join(', '),
-        name: (fnProp && fnProp[3]) || '',
-      };
-    }),
+    registrar: byRole('registrar'),
+    registrant: byRole('registrant'),
+    entities: entities,
     nameservers: (data.nameservers || []).map(function (n) { return n.ldhName || n.name; }),
     events: events.map(function (e) { return { action: e.eventAction, date: e.eventDate }; }),
     creationDate: (events.filter(function (e) { return e.eventAction === 'registration'; })[0] || {}).eventDate || '',
