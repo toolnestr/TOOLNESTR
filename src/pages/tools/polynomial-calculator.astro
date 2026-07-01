@@ -17,22 +17,37 @@ const faqs = [
 <ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
   <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
     <div class="mb-4 flex flex-wrap gap-3">
+      <div class="w-full sm:w-44">
+        <label class="block text-sm font-medium text-slate-700" for="poly-op">Operation</label>
+        <select id="poly-op"
+          class="mt-1 block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="evaluate">Evaluate</option>
+          <option value="add">Add (A + B)</option>
+          <option value="subtract">Subtract (A - B)</option>
+          <option value="multiply">Multiply (A × B)</option>
+        </select>
+      </div>
       <div class="flex-1 min-w-[160px]">
-        <label class="block text-sm font-medium text-slate-700" for="poly-input">Coefficients (highest degree first)</label>
+        <label class="block text-sm font-medium text-slate-700" for="poly-input">Polynomial A (highest degree first)</label>
         <input id="poly-input" type="text" value="3, 2, -5" placeholder="e.g. 3, 2, -5"
           class="mt-1 block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
       </div>
-      <div class="w-28">
+      <div id="poly-b-wrap" class="hidden flex-1 min-w-[160px]">
+        <label class="block text-sm font-medium text-slate-700" for="poly-input-b">Polynomial B (highest degree first)</label>
+        <input id="poly-input-b" type="text" value="1, -4, 3" placeholder="e.g. 1, -4, 3"
+          class="mt-1 block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+      <div id="poly-x-wrap" class="w-28">
         <label class="block text-sm font-medium text-slate-700" for="poly-x">x =</label>
         <input id="poly-x" type="number" step="any" value="2" placeholder="2"
           class="mt-1 block w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
       </div>
     </div>
     <div id="poly-result-display" class="rounded-xl bg-indigo-600 p-5 text-center text-white">
-      <span class="text-sm opacity-90">P(x) =</span>
+      <span id="poly-result-label" class="text-sm opacity-90">P(x) =</span>
       <span id="poly-expression" class="ml-2 text-xl font-bold">3x² + 2x - 5</span>
     </div>
-    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+    <div id="poly-eval-row" class="mt-3 grid gap-3 sm:grid-cols-2">
       <div id="poly-eval-result" class="rounded-xl bg-slate-50 p-4 text-center">
         <span class="text-sm text-slate-500">P(2) =</span>
         <span id="poly-eval-val" class="ml-2 text-lg font-bold text-emerald-700">11</span>
@@ -191,9 +206,15 @@ const faqs = [
   </section>
 
   <script is:inline>
+    const polyOp = document.getElementById('poly-op');
     const polyInput = document.getElementById('poly-input');
+    const polyInputB = document.getElementById('poly-input-b');
+    const polyBWrap = document.getElementById('poly-b-wrap');
+    const polyXWrap = document.getElementById('poly-x-wrap');
     const polyX = document.getElementById('poly-x');
+    const polyResultLabel = document.getElementById('poly-result-label');
     const polyExpression = document.getElementById('poly-expression');
+    const polyEvalRow = document.getElementById('poly-eval-row');
     const polyEvalVal = document.getElementById('poly-eval-val');
     const polyDegreeVal = document.getElementById('poly-degree-val');
     const polyLeadingVal = document.getElementById('poly-leading-val');
@@ -217,11 +238,80 @@ const faqs = [
       return terms.join(' ') || '0';
     }
 
-    function calculate() {
-      const raw = polyInput.value.trim();
-      const xVal = parseFloat(polyX.value);
+    function parseCoeffs(raw) {
+      const coeffs = raw.trim().split(',').map(s => parseFloat(s.trim()));
+      if (!raw.trim() || coeffs.some(isNaN) || coeffs.length === 0) return null;
+      return coeffs;
+    }
 
-      if (!raw || isNaN(xVal)) {
+    function trimLeadingZeros(coeffs) {
+      const c = [...coeffs];
+      while (c.length > 1 && c[0] === 0) c.shift();
+      return c;
+    }
+
+    // Coefficient arrays are stored highest-degree-first for display, but
+    // combining/multiplying is far simpler indexed by ascending power
+    // (index i = coefficient of x^i), so convert, operate, then convert back.
+    const toAscending = (coeffsDesc) => [...coeffsDesc].reverse();
+    const toDescending = (coeffsAsc) => [...coeffsAsc].reverse();
+
+    function addPoly(aDesc, bDesc) {
+      const a = toAscending(aDesc), b = toAscending(bDesc);
+      const len = Math.max(a.length, b.length);
+      const r = [];
+      for (let i = 0; i < len; i++) r.push((a[i] || 0) + (b[i] || 0));
+      return toDescending(r);
+    }
+    function subPoly(aDesc, bDesc) {
+      const a = toAscending(aDesc), b = toAscending(bDesc);
+      const len = Math.max(a.length, b.length);
+      const r = [];
+      for (let i = 0; i < len; i++) r.push((a[i] || 0) - (b[i] || 0));
+      return toDescending(r);
+    }
+    function mulPoly(aDesc, bDesc) {
+      const a = toAscending(aDesc), b = toAscending(bDesc);
+      const r = new Array(a.length + b.length - 1).fill(0);
+      for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) r[i + j] += a[i] * b[j];
+      return toDescending(r);
+    }
+
+    function evaluate(coeffs, xVal) {
+      const degree = coeffs.length - 1;
+      let result = 0;
+      const steps = [];
+      for (let i = 0; i < coeffs.length; i++) {
+        const exp = degree - i;
+        const term = coeffs[i] * Math.pow(xVal, exp);
+        result += term;
+        steps.push({ coeff: coeffs[i], exp, term });
+      }
+      return { result, steps };
+    }
+
+    function updateModeVisibility() {
+      const op = polyOp.value;
+      const needsB = op !== 'evaluate';
+      polyBWrap.classList.toggle('hidden', !needsB);
+      polyXWrap.classList.toggle('hidden', needsB);
+      document.getElementById('poly-input').previousElementSibling.textContent =
+        needsB ? 'Polynomial A (highest degree first)' : 'Coefficients (highest degree first)';
+    }
+
+    function showInvalid() {
+      polyExpression.textContent = 'Invalid';
+      polyEvalVal.textContent = '—';
+      polyDegreeVal.textContent = '—';
+      polyLeadingVal.textContent = '—';
+      polySteps.classList.add('hidden');
+    }
+
+    function calculate() {
+      const op = polyOp.value;
+      const coeffsA = parseCoeffs(polyInput.value);
+
+      if (!coeffsA) {
         polyExpression.textContent = '—';
         polyEvalVal.textContent = '—';
         polyDegreeVal.textContent = '—';
@@ -230,60 +320,111 @@ const faqs = [
         return;
       }
 
-      const coeffs = raw.split(',').map(s => parseFloat(s.trim()));
-      if (coeffs.some(isNaN) || coeffs.length === 0) {
-        polyExpression.textContent = 'Invalid';
-        polyEvalVal.textContent = '—';
-        polyDegreeVal.textContent = '—';
-        polyLeadingVal.textContent = '—';
-        polySteps.classList.add('hidden');
+      const effA = trimLeadingZeros(coeffsA);
+
+      if (op === 'evaluate') {
+        const xVal = parseFloat(polyX.value);
+        if (isNaN(xVal)) {
+          polyEvalVal.textContent = '—';
+          polySteps.classList.add('hidden');
+          return;
+        }
+        polyEvalRow.classList.remove('hidden');
+        polyResultLabel.textContent = 'P(x) =';
+        polyExpression.innerHTML = formatPoly(effA);
+        const degree = effA.length - 1;
+        polyDegreeVal.textContent = degree;
+        polyLeadingVal.textContent = effA[0];
+
+        const { result, steps } = evaluate(effA, xVal);
+        polyEvalVal.textContent = result.toLocaleString(undefined, { maximumFractionDigits: 6 });
+
+        let stepsHtml = '<p class="font-semibold text-indigo-700">Evaluation steps:</p>';
+        stepsHtml += `<p>P(${xVal.toLocaleString()}) = `;
+        const substeps = steps.map(s => {
+          if (s.exp === 0) return `${s.coeff}`;
+          if (s.exp === 1) return `${s.coeff}(${xVal.toLocaleString()})`;
+          return `${s.coeff}(${xVal.toLocaleString()}<sup>${s.exp}</sup>)`;
+        });
+        stepsHtml += substeps.join(' + ').replace(/\+ -/g, '- ');
+        stepsHtml += '</p>';
+        const evalSteps = steps.map(s => {
+          if (s.exp === 0) return `${s.coeff}`;
+          const pow = Math.pow(xVal, s.exp);
+          return `${s.coeff} × ${pow.toLocaleString(undefined, { maximumFractionDigits: 4 })} = ${s.term.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+        });
+        stepsHtml += '<p class="mt-1">' + evalSteps.join('<br>') + '</p>';
+        stepsHtml += `<p class="mt-1 font-semibold text-emerald-700">P(${xVal.toLocaleString()}) = ${result.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>`;
+        polySteps.innerHTML = stepsHtml;
+        polySteps.classList.remove('hidden');
         return;
       }
 
-      const effectiveCoeffs = [...coeffs];
-      while (effectiveCoeffs.length > 1 && effectiveCoeffs[0] === 0) effectiveCoeffs.shift();
+      // Add / Subtract / Multiply -- two-polynomial operations.
+      const coeffsB = parseCoeffs(polyInputB.value);
+      if (!coeffsB) { showInvalid(); return; }
+      const effB = trimLeadingZeros(coeffsB);
 
-      polyExpression.innerHTML = formatPoly(effectiveCoeffs);
+      polyEvalRow.classList.add('hidden');
 
-      const degree = effectiveCoeffs.length - 1;
+      let combined, opSymbol, verb;
+      if (op === 'add') { combined = addPoly(effA, effB); opSymbol = '+'; verb = 'Adding'; }
+      else if (op === 'subtract') { combined = subPoly(effA, effB); opSymbol = '-'; verb = 'Subtracting'; }
+      else { combined = mulPoly(effA, effB); opSymbol = '×'; verb = 'Multiplying'; }
+      combined = trimLeadingZeros(combined);
+
+      polyResultLabel.textContent = 'Result =';
+      polyExpression.innerHTML = formatPoly(combined);
+      const degree = combined.length - 1;
       polyDegreeVal.textContent = degree;
-      polyLeadingVal.textContent = effectiveCoeffs[0];
+      polyLeadingVal.textContent = combined[0];
+      polyEvalRow.classList.remove('hidden');
+      document.getElementById('poly-eval-result').classList.add('hidden');
 
-      let result = 0;
-      const steps = [];
-      for (let i = 0; i < effectiveCoeffs.length; i++) {
-        const exp = degree - i;
-        const term = effectiveCoeffs[i] * Math.pow(xVal, exp);
-        result += term;
-        steps.push({ coeff: effectiveCoeffs[i], exp, term });
+      const aStr = formatPoly(effA), bStr = formatPoly(effB);
+      let stepsHtml = `<p class="font-semibold text-indigo-700">${verb} polynomials:</p>`;
+      stepsHtml += `<p>(${aStr}) ${opSymbol} (${bStr})</p>`;
+
+      if (op === 'add' || op === 'subtract') {
+        const aAsc = toAscending(effA), bAsc = toAscending(effB);
+        const len = Math.max(aAsc.length, bAsc.length);
+        const lines = [];
+        for (let i = len - 1; i >= 0; i--) {
+          const av = aAsc[i] || 0, bv = bAsc[i] || 0;
+          const cv = op === 'add' ? av + bv : av - bv;
+          const label = i === 0 ? 'constant' : i === 1 ? 'x' : `x<sup>${i}</sup>`;
+          lines.push(`${label} term: ${av} ${op === 'add' ? '+' : '-'} ${bv} = ${cv}`);
+        }
+        stepsHtml += '<p class="mt-1">Combine like terms (matching powers of x):</p>';
+        stepsHtml += '<p>' + lines.join('<br>') + '</p>';
+      } else {
+        const aAsc = toAscending(effA), bAsc = toAscending(effB);
+        const products = [];
+        for (let i = 0; i < aAsc.length; i++) {
+          for (let j = 0; j < bAsc.length; j++) {
+            if (aAsc[i] === 0 || bAsc[j] === 0) continue;
+            const termA = i === 0 ? `${aAsc[i]}` : `${aAsc[i]}x${i > 1 ? '<sup>' + i + '</sup>' : ''}`;
+            const termB = j === 0 ? `${bAsc[j]}` : `${bAsc[j]}x${j > 1 ? '<sup>' + j + '</sup>' : ''}`;
+            const prodCoeff = aAsc[i] * bAsc[j];
+            const prodExp = i + j;
+            const prodTerm = prodExp === 0 ? `${prodCoeff}` : `${prodCoeff}x${prodExp > 1 ? '<sup>' + prodExp + '</sup>' : ''}`;
+            products.push(`${termA} × ${termB} = ${prodTerm}`);
+          }
+        }
+        stepsHtml += '<p class="mt-1">Distribute each term of A across each term of B:</p>';
+        stepsHtml += '<p>' + products.join('<br>') + '</p>';
       }
-
-      polyEvalVal.textContent = result.toLocaleString(undefined, { maximumFractionDigits: 6 });
-
-      let stepsHtml = '<p class="font-semibold text-indigo-700">Evaluation steps:</p>';
-      stepsHtml += `<p>P(${xVal.toLocaleString()}) = `;
-      const substeps = steps.map(s => {
-        if (s.exp === 0) return `${s.coeff}`;
-        if (s.exp === 1) return `${s.coeff}(${xVal.toLocaleString()})`;
-        return `${s.coeff}(${xVal.toLocaleString()}<sup>${s.exp}</sup>)`;
-      });
-      stepsHtml += substeps.join(' + ').replace(/\+ -/g, '- ');
-      stepsHtml += '</p>';
-
-      const evalSteps = steps.map(s => {
-        if (s.exp === 0) return `${s.coeff}`;
-        const pow = Math.pow(xVal, s.exp);
-        return `${s.coeff} × ${pow.toLocaleString(undefined, { maximumFractionDigits: 4 })} = ${s.term.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
-      });
-      stepsHtml += '<p class="mt-1">' + evalSteps.join('<br>') + '</p>';
-      stepsHtml += `<p class="mt-1 font-semibold text-emerald-700">P(${xVal.toLocaleString()}) = ${result.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>`;
+      stepsHtml += `<p class="mt-1 font-semibold text-emerald-700">Result: ${formatPoly(combined)}</p>`;
 
       polySteps.innerHTML = stepsHtml;
       polySteps.classList.remove('hidden');
     }
 
+    polyOp.addEventListener('change', () => { updateModeVisibility(); calculate(); });
     polyInput.addEventListener('input', calculate);
+    polyInputB.addEventListener('input', calculate);
     polyX.addEventListener('input', calculate);
+    updateModeVisibility();
     calculate();
   </script>
 </ToolLayout>
