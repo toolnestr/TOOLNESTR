@@ -90,7 +90,7 @@ that number forever, never updating for subsequent invalid inputs. polynomial-ca
 own title/description/FAQ promised "add, subtract, multiply polynomials" but only evaluation was
 implemented — built the missing feature, verified against the page's own worked examples.
 
-### Engineering & Science (44 tools) — commit `PENDING`
+### Engineering & Science (44 tools) — commit `ea53842`
 7 bugs, all fixed and verified live in a real Chromium browser (Playwright). resistor-color-code-
 calculator: 6-band reverse mode's TCR swatch color and "TCR: X ppm/K" text came from two
 independent `Math.random()` calls, so they could mismatch — now drawn once and reused.
