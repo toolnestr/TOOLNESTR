@@ -161,6 +161,14 @@ these are new, distinct bugs, not regressions):
 **Lesson for future sessions:** always do the final browser verification pass against the deployed
 production URL, not just `astro preview` locally — CSP and other header-dependent behavior can differ.
 
+**Follow-up (user decision, commit `fe5fe15`):** the static Qibla compass on prayer-times was still
+considered unsatisfactory by the site owner (not a live/rotating compass, and dependent on Aladhan's
+city geocoding). Removed the whole widget from prayer-times and replaced it with a card linking to
+`/tools/qibla-direction-finder/`, which already has a proper live device-orientation compass and takes
+manual lat/lng or GPS directly (no city-name geocoding dependency at all). Kept the independent
+Open-Meteo geocoding on prayer-times only for the "Lat/Lng" method-info display line. Verified live:
+button correctly links to and lands on the Qibla Direction Finder tool.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
