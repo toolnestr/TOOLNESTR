@@ -87,6 +87,41 @@ export const ukIncomeTax = {
   },
 };
 
+export const auIncomeTax = {
+  country: 'Australia',
+  authority: 'ATO',
+  // Resident rates. [rate, upperLimit of taxable income]; first band is the
+  // tax-free threshold (rate 0). Medicare levy is a separate 2% (tool checkbox).
+  // Verified vs ATO. 2024-25 introduced the Stage-3 cuts (16%/30%); the 16% rate
+  // drops to 15% from 1 July 2026 (2026-27).
+  years: {
+    '2026-27': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents',
+      medicareLevy: 0.02,
+      brackets: [[0, 18200], [0.15, 45000], [0.30, 135000], [0.37, 190000], [0.45, Infinity]],
+    },
+    '2025-26': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents',
+      medicareLevy: 0.02,
+      brackets: [[0, 18200], [0.16, 45000], [0.30, 135000], [0.37, 190000], [0.45, Infinity]],
+    },
+    '2024-25': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents',
+      medicareLevy: 0.02,
+      brackets: [[0, 18200], [0.16, 45000], [0.30, 135000], [0.37, 190000], [0.45, Infinity]],
+    },
+    '2023-24': {
+      verified: '2026-07-01',
+      sourceUrl: 'https://www.ato.gov.au/tax-rates-and-codes/tax-rates-australian-residents',
+      medicareLevy: 0.02,
+      brackets: [[0, 18200], [0.19, 45000], [0.325, 120000], [0.37, 180000], [0.45, Infinity]],
+    },
+  },
+};
+
 // Serialize a year map to JSON for embedding in an inline <script>.
 // JSON can't represent Infinity, so the top bracket's limit becomes null;
 // the client treats null as "no upper limit".

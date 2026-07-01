@@ -94,8 +94,15 @@ thresholds; now correct 6 bands (starter 19 / basic 20 / intermediate 21 / highe
 PA £12,570 with >£100k taper. `uk-take-home-pay-calculator` now has a **year selector** + dated source
 disclaimer. Verified: 2025/26 England £50k→net £39,520; Scotland £50k→net £37,992; £150k taper→tax £51,189.
 
-**Pending (roll out same pattern):** canada, australia, netherlands, pakistan, freelancer, sales-tax,
-property-tax, vat-gst. Each needs official per-year brackets added to `src/data/tax.js` + selector/disclaimer.
+**Done (Australia) — REAL BUG FIXED:** the AU calculator had the new 2024-25 Stage-3 *thresholds*
+($135k/$190k) but the OLD *rates* (19%/32.5%) — overtaxing e.g. a $90k earner by ~$1,929. Now correct
+ATO rates: 2024-25 & 2025-26 = 16%/30%, 2026-27 = 15%/30% (legislated cut), 2023-24 = 19%/32.5% at
+old thresholds. Added `auIncomeTax` (4 years, verified vs ATO) + year selector + disclaimer. Also fixed
+the $1-per-boundary gap by moving to the cumulative-limit loop. Verified: 2024-25 $90k→$17,788;
+$200k→$56,138 (both match ATO).
+
+**Pending (roll out same pattern):** canada (federal + provincial complexity), netherlands (box-1 +
+tax credits), pakistan (salaried slabs), freelancer, sales-tax, property-tax, vat-gst.
 
 ---
 

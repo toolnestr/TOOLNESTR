@@ -1,5 +1,11 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
+import { auIncomeTax, taxYearsToJson } from '../../data/tax.js';
+
+const taxYears = Object.keys(auIncomeTax.years).sort().reverse();
+const latestYear = taxYears[0];
+const taxDataJson = taxYearsToJson(auIncomeTax);
+
 const title = 'Australia Tax Calculator';
 const description = 'Calculate Australian PAYG tax and net income for any salary, including Medicare Levy.';
 const intro = 'Calculate Australian PAYG tax and net income for any salary.';
@@ -15,6 +21,14 @@ const faqs = [
 <ToolLayout {title} {description} {intro} {category} {faqs}>
   <div class="mx-auto max-w-3xl">
     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="mb-4">
+        <label for="year" class="block text-sm font-medium text-slate-700">Tax year</label>
+        <select id="year" class="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          {taxYears.map((y) => <option value={y} selected={y === latestYear}>{y}</option>)}
+        </select>
+      </div>
+      <!-- Versioned bracket data (one entry per tax year). Infinity serialized as null. -->
+      <script type="application/json" id="tax-data" set:html={taxDataJson}></script>
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
           <label for="salary" class="block text-sm font-medium text-slate-700">Annual Salary (AUD)</label>
@@ -66,33 +80,32 @@ const faqs = [
   document.addEventListener('DOMContentLoaded', function() {
     var salaryInput = document.getElementById('salary');
     var medicareCheck = document.getElementById('medicare');
+    var yearSelect = document.getElementById('year');
     var calcBtn = document.getElementById('calc-btn');
     var results = document.getElementById('results');
+    var TAX = JSON.parse(document.getElementById('tax-data').textContent);
 
     function fmt(v) { return '$' + Math.round(v).toLocaleString('en-AU'); }
 
     function calculate() {
       var gross = parseFloat(salaryInput.value) || 0;
       var includeMedicare = medicareCheck.checked;
+      var yd = TAX[yearSelect.value];
 
-      var tax = 0;
-      var tiers = [
-        { min: 0, max: 18200, rate: 0 },
-        { min: 18201, max: 45000, rate: 0.19 },
-        { min: 45001, max: 135000, rate: 0.325 },
-        { min: 135001, max: 190000, rate: 0.37 },
-        { min: 190001, max: Infinity, rate: 0.45 }
-      ];
-
-      for (var i = 0; i < tiers.length; i++) {
-        var t = tiers[i];
-        if (gross > t.min) {
-          var chunk = Math.min(gross, t.max) - t.min;
-          if (chunk > 0) tax += chunk * t.rate;
+      // Progressive tax using the selected year's brackets. prev starts at 0;
+      // the first band (rate 0) is the tax-free threshold.
+      var tax = 0, prev = 0;
+      for (var i = 0; i < yd.brackets.length; i++) {
+        var rate = yd.brackets[i][0];
+        var cap = yd.brackets[i][1] === null ? Infinity : yd.brackets[i][1];
+        if (gross > prev) {
+          var chunk = Math.min(gross, cap) - prev;
+          if (chunk > 0) tax += chunk * rate;
+          prev = cap;
         }
       }
 
-      var medicare = includeMedicare ? gross * 0.02 : 0;
+      var medicare = includeMedicare ? gross * yd.medicareLevy : 0;
       var net = gross - tax - medicare;
 
       document.getElementById('gross-val').textContent = fmt(gross);
@@ -103,13 +116,15 @@ const faqs = [
       var monthly = net / 12;
       var fortnightly = net / 26;
       var weekly = net / 52;
-      var effectiveRate = ((tax + medicare) / gross * 100).toFixed(1);
+      var effectiveRate = gross > 0 ? ((tax + medicare) / gross * 100).toFixed(1) : '0.0';
 
-      document.getElementById('breakdown').innerHTML = 'Monthly: ' + fmt(monthly) + ' | Fortnightly: ' + fmt(fortnightly) + ' | Weekly: ' + fmt(weekly) + '<br />Effective tax rate: ' + effectiveRate + '%';
+      document.getElementById('breakdown').innerHTML = 'Monthly: ' + fmt(monthly) + ' | Fortnightly: ' + fmt(fortnightly) + ' | Weekly: ' + fmt(weekly) + '<br />Effective tax rate: ' + effectiveRate + '%' +
+        '<br /><span class="mt-2 block text-xs text-slate-400">ATO resident rates for the ' + yearSelect.value + ' tax year, verified ' + yd.verified + '. Estimate only — not tax advice.</span>';
 
       results.classList.remove('hidden');
     }
 
     calcBtn.addEventListener('click', calculate);
+    yearSelect.addEventListener('change', function () { if (!results.classList.contains('hidden')) calculate(); });
   });
 </script>
