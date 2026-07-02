@@ -3,7 +3,22 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-02 (Batch-1 + Batch-2 + Batch-3 all complete — 50/50 tools built, 25 Physics + 25 Chemistry)
+**Last updated:** 2026-07-02 (Batch-1 + Batch-2 + Batch-3 all complete — 55/55 tools built, 28 Physics + 27 Chemistry)
+
+## Batch-3 extension — 5 more tools, 10→15 (2026-07-02, commit `cb59c25`)
+
+Extended Batch-3 from 10 to 15 tools per user request, via 5 more parallel agents: Physics — Electric
+Power (kWh/cost companion to the existing power-calculator.astro), Snell's Law, Weight on Other
+Planets. Chemistry — Charles's Law (standalone deep-dive companion to gas-laws-calculator.astro,
+same pattern as Boyle's Law), Calorimetry.
+
+Post-build audit (code-only): 0 duplicate slugs across 512 tools, 0 new emoji collisions. Validated
+every inline `<script>`'s syntax via `new Function()`. Independently re-derived every formula: Snell's
+law θ2≈22.08° (air→water at 30°) and critical angle≈41.81° (glass→air), all 10 planetary weight
+values for a 70kg mass (Mercury 259.0N through Pluto 43.4N), Charles's law V2=2.41L and V2=3.91L
+(both requiring careful °C→K conversion), calorimetry q_water=2719.6J / q_reaction=−2719.6J /
+ΔH=−54,392 J/mol (sign convention correctly implemented), electric power costs ($0.056 and $0.06).
+All matched.
 
 ## Batch-3 — 10 more tools complete (2026-07-02, commit `99cfb3c`)
 
