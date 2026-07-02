@@ -2,190 +2,742 @@
 import ToolLayout from '../../layouts/ToolLayout.astro';
 
 const title = 'Projectile Motion Calculator';
-const description = 'Free online projectile motion calculator. Calculate range, maximum height, and time of flight from launch speed and angle with air resistance neglected.';
-const intro = 'Enter launch speed, angle, and initial height to calculate the range, maximum height, and time of flight.';
+const description = 'Free projectile motion calculator with a live 3D trajectory simulator and charts. Find range, max height, time of flight and impact speed from launch speed and angle.';
+const intro = 'Enter a launch speed, angle and height — then watch the trajectory fly in 3D and update live as you change the numbers. Full worked examples, charts and a physics explainer are below.';
 const category = { id: 'engineering', name: 'Engineering & Science' };
 const faqs = [
-  { q: 'What is projectile motion?', a: 'Projectile motion describes the trajectory of an object launched into the air, subject only to gravity (neglecting air resistance). The path is a parabola, with horizontal motion at constant speed and vertical motion with constant acceleration g.' },
-  { q: 'What is the optimum angle for maximum range?', a: 'On level ground with no air resistance, 45° gives the maximum range. This is because 45° splits the initial velocity equally between horizontal and vertical components.' },
-  { q: 'How do I calculate maximum height?', a: 'Maximum height is reached when vertical velocity becomes zero. The formula is h = (v₀² × sin²θ) / (2g), where v₀ is initial speed, θ is the launch angle, and g is gravity.' },
-  { q: 'Why does the horizontal component stay constant?', a: 'In the absence of air resistance, there is no horizontal force acting on the projectile (gravity acts vertically). Newton\'s first law says horizontal velocity remains constant throughout the flight.' },
-  { q: 'How do I calculate range on uneven ground?', a: 'If the landing point is at a different height than the launch point, use the time of flight from the vertical displacement equation and multiply by the horizontal velocity component.' },
+  { q: 'What is projectile motion?', a: 'Projectile motion describes the trajectory of an object launched into the air, subject only to gravity (neglecting air resistance). The path is a parabola: horizontal motion at constant speed, vertical motion with constant downward acceleration g.' },
+  { q: 'What is the optimum angle for maximum range?', a: 'On level ground with no air resistance, 45° gives the maximum range, because 45° splits the launch velocity equally between horizontal and vertical components. If you launch from a height, the best angle drops below 45°.' },
+  { q: 'How do I calculate maximum height?', a: 'Maximum height is reached when the vertical velocity becomes zero. The formula is H = h₀ + (v₀·sinθ)² / (2g), where v₀ is launch speed, θ is the launch angle, h₀ is the starting height and g is gravity.' },
+  { q: 'Why does the horizontal velocity stay constant?', a: 'With air resistance neglected, no horizontal force acts on the projectile (gravity acts vertically). Newton\'s first law then says the horizontal velocity component stays constant for the whole flight.' },
+  { q: 'Do heavier objects fall faster in these calculations?', a: 'No. In a vacuum, mass cancels out of the equations of motion, so a cannonball and a marble launched identically follow the exact same path. Mass only matters once air resistance is included, which this calculator ignores.' },
+  { q: 'How do I calculate range on uneven ground?', a: 'When the landing point sits at a different height than the launch point, solve the vertical equation h₀ + v₀·sinθ·t − ½gt² = 0 for the time of flight t, then multiply t by the horizontal velocity component to get the range. This calculator does exactly that when you set an initial height.' },
 ];
 ---
 
 <ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
-  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-    <p class="mb-4 text-sm text-slate-500">Enter launch parameters to calculate projectile motion</p>
-    <div class="grid gap-4 sm:grid-cols-4">
-      <label class="block"><span class="text-sm font-medium text-slate-700">Launch speed (v₀)</span>
-        <input id="speed" type="number" step="any" placeholder="m/s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
-      <label class="block"><span class="text-sm font-medium text-slate-700">Angle (θ)</span>
-        <input id="angle" type="number" step="any" placeholder="degrees" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
-      <label class="block"><span class="text-sm font-medium text-slate-700">Initial height</span>
-        <input id="height" type="number" step="any" placeholder="m" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
-      <label class="block"><span class="text-sm font-medium text-slate-700">Gravity (g)</span>
-        <input id="grav" type="number" step="any" placeholder="9.81" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+  <!-- HowTo structured data (SoftwareApplication + FAQPage are already emitted by ToolLayout) -->
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to use the Projectile Motion Calculator',
+    description: 'Calculate the range, maximum height, time of flight and impact speed of a projectile from its launch speed, angle and height.',
+    step: [
+      { '@type': 'HowToStep', name: 'Enter the launch speed', text: 'Type or drag the launch speed v₀ (how fast the object leaves the launch point).' },
+      { '@type': 'HowToStep', name: 'Enter the launch angle', text: 'Set the angle θ above the horizontal, between 0° and 90°.' },
+      { '@type': 'HowToStep', name: 'Enter the initial height', text: 'Optionally add a starting height h₀ if the projectile is launched from above the ground.' },
+      { '@type': 'HowToStep', name: 'Read the results', text: 'The range, maximum height, time of flight and impact speed update instantly, and the 3D trajectory and charts redraw to match.' },
+    ],
+  })} />
+
+  <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+    <span class="h-2 w-2 rounded-full bg-blue-500"></span> Physics
+  </span>
+
+  <!-- Print-friendly worked examples (spec Section 10): hide interactive widgets when printing -->
+  <style is:global>
+    @media print {
+      .no-print { display: none !important; }
+      a[href]::after { content: none !important; }
+      section { break-inside: avoid; }
+    }
+  </style>
+
+  <!-- ============ CALCULATOR ============ -->
+  <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-slate-500">Adjust the launch parameters — everything updates live.</p>
+      <div class="flex items-center gap-2">
+        <div class="inline-flex overflow-hidden rounded-lg border border-slate-300 text-xs font-semibold">
+          <button id="u-metric" type="button" class="bg-indigo-600 px-3 py-1.5 text-white">Metric</button>
+          <button id="u-imperial" type="button" class="bg-white px-3 py-1.5 text-slate-600">Imperial</button>
+        </div>
+        <button id="btn-reset" type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Reset example</button>
+      </div>
     </div>
-    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
-      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Range</div><div id="r-range" class="mt-1 text-2xl font-bold">—</div></div>
-      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Max height</div><div id="r-hmax" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
-      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Time of flight</div><div id="r-time" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
-      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Impact speed</div><div id="r-imp" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+
+    <div class="grid gap-5 sm:grid-cols-2">
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Launch speed (v₀) <span id="out-speed" class="font-mono text-indigo-600">20 <span class="u-vel">m/s</span></span></span>
+        <input id="speed" type="range" min="1" max="100" step="0.5" value="20" class="mt-2 w-full accent-indigo-600" />
+        <input id="speed-n" type="number" step="any" value="20" class="mt-2 w-full rounded-xl border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Angle (θ) <span id="out-angle" class="font-mono text-indigo-600">45°</span></span>
+        <input id="angle" type="range" min="0" max="90" step="1" value="45" class="mt-2 w-full accent-indigo-600" />
+        <input id="angle-n" type="number" step="any" value="45" class="mt-2 w-full rounded-xl border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Initial height (h₀) <span id="out-height" class="font-mono text-indigo-600">0 <span class="u-len">m</span></span></span>
+        <input id="height" type="range" min="0" max="50" step="0.5" value="0" class="mt-2 w-full accent-indigo-600" />
+        <input id="height-n" type="number" step="any" value="0" class="mt-2 w-full rounded-xl border border-slate-300 p-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Gravity (g) <span id="out-grav" class="font-mono text-indigo-600">9.81 <span class="u-acc">m/s²</span></span></span>
+        <input id="grav" type="range" min="0.5" max="40" step="0.01" value="9.81" class="mt-2 w-full accent-indigo-600" />
+        <div class="mt-2 flex gap-1.5 text-xs">
+          <button type="button" class="planet rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50" data-g="9.81">Earth</button>
+          <button type="button" class="planet rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50" data-g="1.62">Moon</button>
+          <button type="button" class="planet rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50" data-g="3.71">Mars</button>
+          <button type="button" class="planet rounded-md border border-slate-300 px-2 py-1 hover:bg-slate-50" data-g="24.79">Jupiter</button>
+        </div>
+      </label>
     </div>
-    <p id="proj-err" class="mt-3 text-center text-sm text-red-600"></p>
+
+    <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Range</div><div id="r-range" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Max height</div><div id="r-hmax" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Time of flight</div><div id="r-time" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Impact speed</div><div id="r-imp" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="proj-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="proj-title proj-desc">
-      <title id="proj-title">Parabolic projectile arc with labelled parameters</title>
-      <desc id="proj-desc">A parabolic trajectory showing launch angle θ, initial velocity v₀, maximum height H, range R, and landing point</desc>
-      <g transform="translate(40,10)">
-        <path d="M 60 240 Q 180 20 400 120 Q 620 220 700 240" stroke="#6366f1" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <line x1="60" y1="240" x2="700" y2="240" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 3"/>
-        <circle cx="60" cy="240" r="6" fill="#6366f1"/>
-        <circle cx="700" cy="240" r="6" fill="#6366f1"/>
-        <line x1="60" y1="240" x2="180" y2="20" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-        <polygon points="180,20 168,35 178,40" fill="#ef4444"/>
-        <text x="130" y="115" fill="#ef4444" font-size="16" font-weight="bold">v₀</text>
-        <path d="M 80 230 Q 100 205 120 210" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4 2"/>
-        <text x="105" y="200" fill="#f59e0b" font-size="14" font-weight="bold">θ</text>
-        <line x1="300" y1="240" x2="300" y2="100" stroke="#10b981" stroke-width="2" stroke-dasharray="6 3"/>
-        <polygon points="300,100 295,110 305,110" fill="#10b981"/>
-        <text x="280" y="175" fill="#10b981" font-size="14" font-weight="bold">H</text>
-        <text x="260" y="195" fill="#64748b" font-size="11">Max height</text>
-        <line x1="60" y1="250" x2="700" y2="250" stroke="#a855f7" stroke-width="2.5"/>
-        <polygon points="700,250 690,245 690,255" fill="#a855f7"/>
-        <text x="380" y="270" text-anchor="middle" fill="#a855f7" font-size="14" font-weight="bold">R (Range)</text>
-      </g>
-    </svg>
-    <figcaption class="mt-2 text-center text-xs text-slate-400">Parabolic trajectory showing initial velocity v₀ at angle θ, maximum height H, and horizontal range R.</figcaption>
-  </figure>
+  <!-- ============ INTERACTIVE 3D TRAJECTORY ============ -->
+  <section class="mt-8 no-print">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D trajectory</h2>
+      <button id="btn-launch" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">▶ Launch</button>
+    </div>
+    <p class="mt-1 text-sm text-slate-500">Drag to orbit (works with touch too). The arc redraws as you change the inputs above.</p>
+    <div id="scene3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+    <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+  </section>
 
-  <section class="mt-10">
+  <!-- ============ LIVE CHARTS ============ -->
+  <section class="mt-10 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Motion graphs</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Height vs time</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-height"></canvas></div>
+      </figure>
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Velocity components vs time</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-vel"></canvas></div>
+      </figure>
+      <figure class="sm:col-span-2">
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Range vs launch angle (at your current speed) — peaks at 45°</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-range"></canvas></div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="mt-12">
     <h2 class="text-xl font-bold text-slate-900">How projectile motion is calculated</h2>
-    <p class="mt-2 text-slate-600">Projectile motion is analysed by splitting the initial velocity into horizontal and vertical components: <span class="font-mono">v₀x = v₀ × cos(θ)</span> and <span class="font-mono">v₀y = v₀ × sin(θ)</span>. Horizontally, velocity is constant because no horizontal force acts. Vertically, gravity accelerates the projectile downward at g = 9.81 m/s². The range R = v₀x × t, where t is the total time of flight. The maximum height H = v₀y² / (2g) occurs when vertical velocity reaches zero at the apex of the parabola.</p>
-    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
-      <h3 class="font-semibold text-slate-900">Worked example</h3>
-      <p class="mt-1 text-sm text-slate-600">A ball is kicked at 20 m/s at 30° above horizontal from ground level. What are the range and maximum height?</p>
+    <p class="mt-2 text-slate-600"><strong>The core idea in one line:</strong> a projectile is two independent motions happening at once — constant-speed motion sideways and constant-acceleration motion up and down — and you solve each separately, then combine them.</p>
+    <p class="mt-3 text-slate-600">Everything starts by splitting the launch velocity into two components using the launch angle:</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="font-mono text-sm text-slate-800">v₀ₓ = v₀ · cos(θ)</p>
+        <p class="mt-1 text-sm text-slate-600">The <strong>horizontal</strong> velocity. It never changes during the flight, because nothing pushes the projectile sideways.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="font-mono text-sm text-slate-800">v₀ᵧ = v₀ · sin(θ)</p>
+        <p class="mt-1 text-sm text-slate-600">The <strong>vertical</strong> velocity. Gravity steadily reduces it, stops it at the top, then speeds it up on the way down.</p>
+      </div>
+    </div>
+    <p class="mt-4 text-slate-600">From there, each result is one formula. Every variable is defined right after it, so nothing is a mystery symbol:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li><span class="font-mono text-slate-800">t = (v₀ᵧ + √(v₀ᵧ² + 2·g·h₀)) / g</span> — the <strong>time of flight</strong>. Here <span class="font-mono">g</span> is gravity (9.81 m/s² on Earth) and <span class="font-mono">h₀</span> is the launch height. With h₀ = 0 this simplifies to t = 2·v₀ᵧ / g.</li>
+      <li><span class="font-mono text-slate-800">R = v₀ₓ · t</span> — the <strong>range</strong>, or horizontal distance covered. Because horizontal speed is constant, range is just speed × time.</li>
+      <li><span class="font-mono text-slate-800">H = h₀ + v₀ᵧ² / (2·g)</span> — the <strong>maximum height</strong>, reached at the apex where the vertical velocity is momentarily zero.</li>
+      <li><span class="font-mono text-slate-800">vᵢ = √(v₀ₓ² + (v₀ᵧ − g·t)²)</span> — the <strong>impact speed</strong>, combining the unchanged horizontal component with the (now downward) vertical component at landing.</li>
+    </ul>
+
+    <div class="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+      <h3 class="font-semibold text-slate-900">The complete equation set</h3>
+      <p class="mt-1 text-sm text-slate-600">All of the above come from the standard kinematic equations, applied separately to each axis. This is the full model the calculator runs:</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-sky-600">Horizontal (constant velocity)</p>
+          <ul class="mt-1 space-y-1 font-mono text-sm text-slate-700">
+            <li>x(t) = v₀·cosθ · t</li>
+            <li>vₓ(t) = v₀·cosθ &nbsp;(constant)</li>
+            <li>aₓ = 0</li>
+          </ul>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Vertical (constant acceleration −g)</p>
+          <ul class="mt-1 space-y-1 font-mono text-sm text-slate-700">
+            <li>y(t) = h₀ + v₀·sinθ · t − ½g·t²</li>
+            <li>vᵧ(t) = v₀·sinθ − g·t</li>
+            <li>aᵧ = −g</li>
+          </ul>
+        </div>
+      </div>
+      <hr class="my-4 border-slate-200" />
+      <p class="text-sm text-slate-600"><strong>Deriving the level-ground range formula:</strong> on flat ground (h₀ = 0) the time of flight is t = 2·v₀·sinθ / g. Substituting into R = v₀·cosθ · t and using the identity 2·sinθ·cosθ = sin(2θ) gives the compact result</p>
+      <p class="mt-2 rounded-lg bg-slate-50 p-3 text-center font-mono text-sm text-slate-800">R = v₀²·sin(2θ) / g</p>
+      <p class="mt-2 text-sm text-slate-600">Because sin(2θ) is largest when 2θ = 90°, the range is maximised at <strong>θ = 45°</strong> — and since sin(2θ) = sin(180° − 2θ), any two angles that add up to 90° (like 30° and 60°) produce the <em>same</em> range. That is the mathematical reason behind the pattern you see in the table below.</p>
+    </div>
+
+    <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 1 — level ground</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> a ball is kicked at v₀ = 20 m/s, at θ = 30° above horizontal, from ground level (h₀ = 0), on Earth (g = 9.81 m/s²).</p>
       <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
-        <div><span class="font-medium text-slate-700">v₀x:</span> <span class="text-slate-600">20 × cos(30°) = 17.32 m/s</span></div>
-        <div><span class="font-medium text-slate-700">v₀y:</span> <span class="text-slate-600">20 × sin(30°) = 10.0 m/s</span></div>
-        <div><span class="font-medium text-slate-700">Time of flight:</span> <span class="text-slate-600">t = 2 × 10 / 9.81 = 2.04 s</span></div>
-        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">R = 17.32 × 2.04 = 35.3 m</span></div>
-        <div><span class="font-medium text-slate-700">Max height:</span> <span class="text-slate-600">H = 10² / (2 × 9.81) = 5.10 m</span></div>
+        <div><span class="font-medium text-slate-700">v₀ₓ:</span> <span class="text-slate-600">20 · cos(30°) = 17.32 m/s</span></div>
+        <div><span class="font-medium text-slate-700">v₀ᵧ:</span> <span class="text-slate-600">20 · sin(30°) = 10.00 m/s</span></div>
+        <div><span class="font-medium text-slate-700">Time of flight:</span> <span class="text-slate-600">t = 2 · 10 / 9.81 = 2.04 s</span></div>
+        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">R = 17.32 · 2.04 = 35.31 m</span></div>
+        <div><span class="font-medium text-slate-700">Max height:</span> <span class="text-slate-600">H = 10² / (2 · 9.81) = 5.10 m</span></div>
+        <div><span class="font-medium text-slate-700">Impact speed:</span> <span class="text-slate-600">20.00 m/s (equals launch speed on level ground)</span></div>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 2 — launched from a height (the edge case)</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> the same 20 m/s at 30°, but now thrown from a 15 m cliff (h₀ = 15 m). This breaks the up–down symmetry, so the simple t = 2v₀ᵧ/g shortcut no longer works.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">v₀ₓ, v₀ᵧ:</span> <span class="text-slate-600">17.32 m/s, 10.00 m/s (unchanged)</span></div>
+        <div><span class="font-medium text-slate-700">Discriminant:</span> <span class="text-slate-600">10² + 2·9.81·15 = 394.3</span></div>
+        <div><span class="font-medium text-slate-700">Time of flight:</span> <span class="text-slate-600">t = (10 + √394.3)/9.81 = 3.04 s</span></div>
+        <div><span class="font-medium text-slate-700">Range:</span> <span class="text-slate-600">R = 17.32 · 3.04 ≈ 52.72 m</span></div>
+        <div><span class="font-medium text-slate-700">Max height:</span> <span class="text-slate-600">H = 15 + 5.10 = 20.10 m above the ground</span></div>
+        <div><span class="font-medium text-slate-700">Impact speed:</span> <span class="text-slate-600">vᵢ = √(v₀² + 2gh₀) = √694.3 = 26.35 m/s (faster — it fell an extra 15 m)</span></div>
+      </div>
+      <p class="mt-2 text-xs text-slate-500">Set the initial-height slider to 15 m above to reproduce these numbers in the calculator.</p>
+    </div>
+  </section>
+
+  <!-- ============ STANDALONE 3D DIAGRAMS ============ -->
+  <section class="mt-12 no-print">
+    <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <div>
+        <div id="diag-vectors" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">1. Velocity splits into two components</h3>
+        <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-red-500">red</span> launch arrow is really the <span class="font-semibold text-sky-500">blue horizontal</span> and <span class="font-semibold text-emerald-500">green vertical</span> arrows added together. Gravity only touches the green one — which is why the sideways speed never changes.</p>
+      </div>
+      <div>
+        <div id="diag-family" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">2. Complementary angles share a range</h3>
+        <p class="mt-1 text-sm text-slate-600">Five launches at the same speed. The <span class="font-semibold text-indigo-600">45° arc</span> reaches farthest, and pairs that add to 90° (like 30° &amp; 60°) land in exactly the same spot — one arc just flies higher and slower.</p>
       </div>
     </div>
   </section>
 
-  <section class="mt-10 grid gap-4 sm:grid-cols-2">
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x26BD;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Sports Coach</h3>
-      <p class="mt-1 text-sm text-slate-600">Optimise launch angles for basketball shots, football kicks, and javelin throws. Use the calculator to find the ideal angle for maximum distance or precise targeting.</p>
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Angle vs range vs height (v₀ = 20 m/s, level ground)</h2>
+    <p class="mt-1 text-sm text-slate-600">Notice how range peaks at 45° while maximum height keeps climbing all the way to 90° — they are not the same thing.</p>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full table-fixed text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Angle</th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Range<span class="block text-[10px] font-normal text-slate-400">m</span></th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Max&nbsp;height<span class="block text-[10px] font-normal text-slate-400">m</span></th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Time<span class="block text-[10px] font-normal text-slate-400">s</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700 tabular-nums">
+          <tr><td class="px-2 py-2.5 sm:px-3">15°</td><td class="px-2 py-2.5 sm:px-3">20.39</td><td class="px-2 py-2.5 sm:px-3">1.37</td><td class="px-2 py-2.5 sm:px-3">1.06</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">30°</td><td class="px-2 py-2.5 sm:px-3">35.31</td><td class="px-2 py-2.5 sm:px-3">5.10</td><td class="px-2 py-2.5 sm:px-3">2.04</td></tr>
+          <tr class="bg-indigo-50 font-semibold text-indigo-700"><td class="px-2 py-2.5 sm:px-3">45°&nbsp;★</td><td class="px-2 py-2.5 sm:px-3">40.77</td><td class="px-2 py-2.5 sm:px-3">10.19</td><td class="px-2 py-2.5 sm:px-3">2.88</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">60°</td><td class="px-2 py-2.5 sm:px-3">35.31</td><td class="px-2 py-2.5 sm:px-3">15.29</td><td class="px-2 py-2.5 sm:px-3">3.53</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">75°</td><td class="px-2 py-2.5 sm:px-3">20.39</td><td class="px-2 py-2.5 sm:px-3">19.02</td><td class="px-2 py-2.5 sm:px-3">3.94</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">90°</td><td class="px-2 py-2.5 sm:px-3">0.00</td><td class="px-2 py-2.5 sm:px-3">20.39</td><td class="px-2 py-2.5 sm:px-3">4.08</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F942;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Ballistics Specialist</h3>
-      <p class="mt-1 text-sm text-slate-600">Calculate bullet trajectories for different rifle calibres and shooting angles. Understand how bullet drop affects aiming at different distances and how the sight-in range works.</p>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F680;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Rocket Hobbyist</h3>
-      <p class="mt-1 text-sm text-slate-600">Design model rocket launches by calculating apogee (max height) and landing distance. Ensure the rocket lands in a safe area by choosing the right launch angle and motor power.</p>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F393;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Physics Student</h3>
-      <p class="mt-1 text-sm text-slate-600">Verify calculations for projectile motion homework. Explore how changing the angle and speed affects the trajectory shape, range, and maximum height.</p>
+    <p class="mt-2 text-xs text-slate-400">★ 45° gives the maximum range on level ground. 15° &amp; 75° share the same range (complementary angles); so do 30° &amp; 60°. At 90° the range is zero — the projectile goes straight up and comes straight back down.</p>
+  </section>
+
+  <!-- ============ REAL-WORLD CONTEXT ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Where projectile motion actually shows up</h2>
+    <p class="mt-2 text-slate-600">This is one of the most widely applied ideas in all of physics, precisely because "an object moving under gravity" describes so much of the world. Three examples where the maths on this page is doing real work:</p>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">⚽ Sport and coaching</h3>
+        <p class="mt-1 text-sm text-slate-600">A long-range football clearance, a basketball free throw and a javelin throw are all projectile problems. Coaches and biomechanics analysts use exactly these equations to find the release angle that maximises distance or clears a defender. The famous "45° for maximum range" only holds when the launch and landing heights match — which is why a shot-putter, releasing from about 2 m up, is actually best served by an angle a little under 42°.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🚀 Rocketry and aerospace</h3>
+        <p class="mt-1 text-sm text-slate-600">Model-rocket hobbyists estimate apogee (peak height) and landing distance to keep launches inside a safe field, and the same decomposition into vertical and horizontal motion is the starting point for real launch-trajectory analysis before drag, thrust and a rotating Earth are layered on top.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🎮 Game design and engineering</h3>
+        <p class="mt-1 text-sm text-slate-600">Every game that arcs a grenade, an arrow or an angry bird across the screen is running a projectile-motion solver behind the scenes. Civil and firefighting engineers use the same range formula to work out how far a water jet or fountain will reach at a given nozzle angle and pressure.</p>
+      </div>
     </div>
   </section>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">How to use the projectile motion calculator</h2>
+  <!-- ============ MISCONCEPTIONS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Heavier objects fall faster, so they don't go as far."</p>
+        <p class="mt-1 text-sm text-slate-600">In these equations mass cancels out completely — a bowling ball and a tennis ball launched identically follow the exact same arc. Mass only changes the picture once air resistance enters, which this calculator deliberately ignores. Galileo's leaning-tower demonstration was making precisely this point.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"The projectile speeds up horizontally as it falls."</p>
+        <p class="mt-1 text-sm text-slate-600">Only the vertical speed changes. The horizontal component is constant from launch to landing — the object covers equal horizontal distances in equal time intervals the whole way. What increases is the total speed, because the growing downward component adds to the steady sideways one.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"45° is always the best angle for distance."</p>
+        <p class="mt-1 text-sm text-slate-600">Only on level ground with no air resistance. Launch from a height and the optimum angle drops below 45°; add air resistance and it drops further still. That is why real long-drive golf shots and shot-puts are launched noticeably below 45°.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"At the very top of the arc, the object stops."</p>
+        <p class="mt-1 text-sm text-slate-600">Only the <em>vertical</em> velocity is zero at the apex. The object is still moving horizontally at full speed — which is exactly why the top of a trajectory is a smooth curve, not a sharp point where everything pauses.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ASSUMPTIONS & LIMITATIONS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Assumptions — and where this model breaks down</h2>
+    <p class="mt-2 text-slate-600">This calculator uses the <strong>ideal (drag-free) projectile model</strong>, the same one taught in introductory physics. It is exact in a vacuum and an excellent approximation for dense, slow, compact objects over short distances — but it is a model, and it is honest to know its limits:</p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Air resistance is ignored</h3>
+        <p class="mt-1 text-sm text-slate-600">Real drag grows with the square of speed and can cut the range of a fast, light object (a ping-pong ball, a golf ball) by anywhere from 10% to over 50%. The heavier and slower the object, the closer reality gets to these numbers.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">No spin / Magnus effect</h3>
+        <p class="mt-1 text-sm text-slate-600">A spinning ball curves because of the Magnus force (think of a football "banana" kick or a curveball). This model assumes no spin, so the path stays in a single vertical plane.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">Gravity is constant and uniform</h3>
+        <p class="mt-1 text-sm text-slate-600">g is treated as a fixed value for the whole flight. That is fine near the surface, but not for very high or very long-range trajectories where g changes with altitude and the Earth curves away beneath the object.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold text-slate-900">No Coriolis or wind</h3>
+        <p class="mt-1 text-sm text-slate-600">Earth's rotation (the Coriolis effect) and wind both nudge real long-range projectiles — which is why artillery and ballistics use far more complex models. For classroom-scale problems their effect is negligible.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FORMULA SOURCES & CREDIBILITY (spec Sections 9 & 10) ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Formula sources &amp; further reading</h2>
+    <p class="mt-2 text-slate-600">The equations used here are the standard projectile-motion kinematics found in every introductory physics curriculum. They are traceable to these widely used references:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li>• <strong>OpenStax, <em>University Physics Volume 1</em></strong> — §4.3 "Projectile Motion" (free, peer-reviewed). <a href="https://openstax.org/books/university-physics-volume-1/pages/4-3-projectile-motion" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a></li>
+      <li>• <strong>Halliday, Resnick &amp; Walker, <em>Fundamentals of Physics</em></strong> (11th ed.) — Chapter 4, Motion in Two and Three Dimensions.</li>
+      <li>• <strong>Serway &amp; Jewett, <em>Physics for Scientists and Engineers</em></strong> — Chapter 4, Motion in Two Dimensions.</li>
+      <li>• <strong>Young &amp; Freedman, <em>University Physics</em></strong> — Chapter 3, Motion in Two or Three Dimensions.</li>
+    </ul>
+    <p class="mt-3 text-xs text-slate-400">Standard value of gravitational acceleration used: g = 9.80665 m/s² (rounded to 9.81), per the CGPM standard-gravity definition. Results are rounded to two decimal places.</p>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
     <div class="mt-4 grid gap-4 sm:grid-cols-3">
       <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Enter launch parameters</h3>
-        <p class="mt-1 text-sm text-slate-600">Type the initial speed (m/s), launch angle (degrees), initial height (m), and gravity. The default gravity is Earth's 9.81 m/s².</p>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the launch</h3>
+        <p class="mt-1 text-sm text-slate-600">Drag the speed, angle and height sliders, or type exact values. Switch between metric and imperial with the toggle.</p>
       </div>
       <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Instant results</h3>
-        <p class="mt-1 text-sm text-slate-600">Range, maximum height, time of flight, and impact speed are all calculated simultaneously. The primary result box highlights the range.</p>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the results</h3>
+        <p class="mt-1 text-sm text-slate-600">Range, max height, time of flight and impact speed update instantly, and the 3D arc and charts redraw to match.</p>
       </div>
       <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
         <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Try different planets</h3>
-        <p class="mt-1 text-sm text-slate-600">Change gravity to 1.62 (Moon) or 3.71 (Mars) to see how projectile range changes on other worlds. A golf ball on the Moon travels about six times farther.</p>
+        <h3 class="mt-3 font-semibold text-slate-900">Explore other worlds</h3>
+        <p class="mt-1 text-sm text-slate-600">Tap Moon, Mars or Jupiter to change gravity and watch how far the same launch would travel elsewhere.</p>
       </div>
     </div>
   </section>
 
-  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
-    <h2 class="text-xl font-bold text-slate-900">Tips for projectile motion calculations</h2>
-    <div class="mt-4 space-y-5">
-      <div>
-        <h3 class="font-semibold text-slate-900">Air resistance is neglected</h3>
-        <p class="mt-1 text-sm text-slate-600">This calculator assumes no air resistance. In reality, air drag reduces range by 10-50% depending on the object's shape and speed. The effect is more significant for light, fast projectiles like ping-pong balls.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-slate-900">45° gives maximum range on flat ground</h3>
-        <p class="mt-1 text-sm text-slate-600">For level ground with no air resistance, 45° is optimal. On uneven ground (launching from a hill), the optimal angle is less than 45° when landing lower and more than 45° when landing higher.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-slate-900">Symmetry of the trajectory</h3>
-        <p class="mt-1 text-sm text-slate-900">For level-ground launches, the trajectory is symmetric. The time up equals the time down, and the impact speed equals the launch speed. Adding initial height breaks this symmetry.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="mt-10">
+  <!-- ============ RELATED TOOLS ============ -->
+  <section class="mt-12">
     <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
     <div class="mt-4 grid gap-3 sm:grid-cols-3">
       <a href="/tools/free-fall-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x2B07;&#xFE0F;</span>
+        <span class="text-lg">⬇️</span>
         <h3 class="mt-1 text-sm font-semibold text-slate-900">Free Fall Calculator</h3>
         <p class="mt-0.5 text-xs text-slate-500">Time and velocity under gravity.</p>
       </a>
       <a href="/tools/kinetic-energy-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x26A1;</span>
+        <span class="text-lg">⚡</span>
         <h3 class="mt-1 text-sm font-semibold text-slate-900">Kinetic Energy Calculator</h3>
         <p class="mt-0.5 text-xs text-slate-500">KE = ½mv² — solve for any variable.</p>
       </a>
       <a href="/tools/force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x1F4A5;</span>
+        <span class="text-lg">💥</span>
         <h3 class="mt-1 text-sm font-semibold text-slate-900">Force Calculator</h3>
         <p class="mt-0.5 text-xs text-slate-500">F = ma — solve for any variable.</p>
       </a>
     </div>
   </section>
 
+  <!-- Libraries: Three.js (3D) + Chart.js (graphs), per project spec Section 4 -->
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
   <script is:inline>
+  (function () {
+    'use strict';
     const el = (id) => document.getElementById(id);
-    const fmt = (v) => parseFloat(v.toPrecision(6)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-    function update() {
-      const v0 = parseFloat(el('speed').value);
-      const a = parseFloat(el('angle').value);
-      const h0 = parseFloat(el('height').value) || 0;
-      const g = parseFloat(el('grav').value) || 9.81;
-      el('proj-err').textContent = '';
-      if (isNaN(v0) || isNaN(a)) { ['r-range', 'r-hmax', 'r-time', 'r-imp'].forEach(id => el(id).textContent = '—'); return; }
-      if (v0 <= 0 || g <= 0) { el('proj-err').textContent = 'Speed and gravity must be positive.'; return; }
-      const rad = a * Math.PI / 180;
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ---- unit system ----
+    const FT = 3.28084;
+    let imperial = false;
+    const units = () => imperial
+      ? { vel: 'ft/s', len: 'ft', acc: 'ft/s²', g: 32.174 }
+      : { vel: 'm/s', len: 'm', acc: 'm/s²', g: 9.81 };
+
+    // ---- number formatting (spec Section 16) ----
+    function fmt(v) {
+      if (!isFinite(v)) return '—';
+      if (Math.abs(v) < 1e-9) v = 0;            // kill -0.00 / tiny artefacts
+      return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ---- read inputs, keeping slider + number box in sync ----
+    function readVal(sliderId, numId) {
+      const s = el(sliderId), n = el(numId);
+      let v = parseFloat(n.value);
+      if (isNaN(v)) v = parseFloat(s.value);
+      return v;
+    }
+
+    // ---- pure physics (units-agnostic; g just has to match) ----
+    function solve(v0, angDeg, h0, g) {
+      const rad = angDeg * Math.PI / 180;
       const vx = v0 * Math.cos(rad);
       const vy = v0 * Math.sin(rad);
-      const discriminant = vy * vy + 2 * g * h0;
-      if (discriminant < 0) { el('proj-err').textContent = 'Initial height too low for this angle/speed.'; return; }
-      const tFlight = (vy + Math.sqrt(discriminant)) / g;
-      const range = vx * tFlight;
-      const hMax = h0 > 0 ? h0 + vy * vy / (2 * g) : vy * vy / (2 * g);
-      const vImpact = Math.sqrt(vx * vx + (vy - g * tFlight) ** 2);
-      el('r-range').textContent = fmt(range) + ' m';
-      el('r-hmax').textContent = fmt(hMax) + ' m';
-      el('r-time').textContent = fmt(tFlight) + ' s';
-      el('r-imp').textContent = fmt(vImpact) + ' m/s';
+      const disc = vy * vy + 2 * g * h0;
+      if (v0 <= 0 || g <= 0) return { err: 'Speed and gravity must be greater than zero.' };
+      if (disc < 0) return { err: "That combination isn't physically possible — try a smaller drop." };
+      const t = (vy + Math.sqrt(disc)) / g;
+      const range = vx * t;
+      const hMax = h0 + (vy > 0 ? vy * vy / (2 * g) : 0);
+      const vImp = Math.sqrt(vx * vx + Math.pow(vy - g * t, 2));
+      return { vx, vy, t, range, hMax, vImp };
     }
-    ['speed', 'angle', 'height', 'grav'].forEach(id => el(id).addEventListener('input', update));
+
+    // ================= CALCULATOR (works with zero dependencies) =================
+    let last = null;
+    const charts = {};
+    let scene3d = null, diagV = null, diagF = null;
+
+    function updateAll() {
+      const u = units();
+      const v0 = readVal('speed', 'speed-n');
+      const ang = Math.min(90, Math.max(0, readVal('angle', 'angle-n')));
+      const h0 = Math.max(0, readVal('height', 'height-n'));
+      const g = readVal('grav', 'grav');
+
+      // live value labels
+      el('out-speed').innerHTML = fmt(v0) + ' <span class="u-vel">' + u.vel + '</span>';
+      el('out-angle').textContent = fmt(ang) + '°';
+      el('out-height').innerHTML = fmt(h0) + ' <span class="u-len">' + u.len + '</span>';
+      el('out-grav').innerHTML = fmt(g) + ' <span class="u-acc">' + u.acc + '</span>';
+
+      const r = solve(v0, ang, h0, g);
+      const errEl = el('proj-err');
+      if (r.err) {
+        errEl.textContent = r.err;
+        ['r-range', 'r-hmax', 'r-time', 'r-imp'].forEach((id) => (el(id).textContent = '—'));
+        return;
+      }
+      errEl.textContent = '';
+      el('r-range').textContent = fmt(r.range) + ' ' + u.len;
+      el('r-hmax').textContent = fmt(r.hMax) + ' ' + u.len;
+      el('r-time').textContent = fmt(r.t) + ' s';
+      el('r-imp').textContent = fmt(r.vImp) + ' ' + u.vel;
+      last = { v0, ang, h0, g, r };
+
+      try { if (charts.ready) updateCharts(); } catch (e) { /* charts optional */ }
+      try { if (scene3d) scene3d.setTrajectory(); } catch (e) { /* 3d optional */ }
+      syncUrl();
+    }
+
+    function syncUrl() {
+      if (!last) return;
+      const p = new URLSearchParams({ v: last.v0, a: last.ang, h: last.h0, g: last.g, u: imperial ? 'i' : 'm' });
+      history.replaceState(null, '', '?' + p.toString());
+    }
+
+    // slider <-> number sync
+    [['speed', 'speed-n'], ['angle', 'angle-n'], ['height', 'height-n']].forEach(([s, n]) => {
+      el(s).addEventListener('input', () => { el(n).value = el(s).value; updateAll(); });
+      el(n).addEventListener('input', () => { el(s).value = el(n).value; updateAll(); });
+    });
+    el('grav').addEventListener('input', updateAll);
+    document.querySelectorAll('.planet').forEach((b) => b.addEventListener('click', () => {
+      el('grav').value = b.getAttribute('data-g'); updateAll();
+    }));
+
+    // unit toggle (converts the values so the physics stays sensible)
+    function setUnits(toImperial) {
+      if (toImperial === imperial) return;
+      const factor = toImperial ? FT : 1 / FT;
+      ['speed', 'height'].forEach((base) => {
+        const s = el(base), n = el(base + '-n');
+        const nv = (parseFloat(n.value) || 0) * factor;
+        n.value = Math.round(nv * 100) / 100; s.value = n.value;
+      });
+      imperial = toImperial;
+      el('grav').value = units().g;
+      // restyle toggle
+      el('u-metric').className = 'px-3 py-1.5 ' + (imperial ? 'bg-white text-slate-600' : 'bg-indigo-600 text-white');
+      el('u-imperial').className = 'px-3 py-1.5 ' + (imperial ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600');
+      document.querySelectorAll('.u-vel').forEach((x) => (x.textContent = units().vel));
+      document.querySelectorAll('.u-len').forEach((x) => (x.textContent = units().len));
+      document.querySelectorAll('.u-acc').forEach((x) => (x.textContent = units().acc));
+      updateAll();
+    }
+    el('u-metric').addEventListener('click', () => setUnits(false));
+    el('u-imperial').addEventListener('click', () => setUnits(true));
+
+    function resetExample() {
+      imperial = false;
+      el('u-metric').className = 'bg-indigo-600 px-3 py-1.5 text-white';
+      el('u-imperial').className = 'bg-white px-3 py-1.5 text-slate-600';
+      el('speed').value = el('speed-n').value = 20;
+      el('angle').value = el('angle-n').value = 45;
+      el('height').value = el('height-n').value = 0;
+      el('grav').value = 9.81;
+      document.querySelectorAll('.u-vel').forEach((x) => (x.textContent = 'm/s'));
+      document.querySelectorAll('.u-len').forEach((x) => (x.textContent = 'm'));
+      document.querySelectorAll('.u-acc').forEach((x) => (x.textContent = 'm/s²'));
+      updateAll();
+    }
+    el('btn-reset').addEventListener('click', resetExample);
+
+    // restore from URL if present
+    (function restore() {
+      const p = new URLSearchParams(location.search);
+      if (!p.has('v')) return;
+      if (p.get('u') === 'i') { imperial = true; el('u-metric').className = 'bg-white px-3 py-1.5 text-slate-600'; el('u-imperial').className = 'bg-indigo-600 px-3 py-1.5 text-white'; document.querySelectorAll('.u-vel').forEach((x) => (x.textContent = 'ft/s')); document.querySelectorAll('.u-len').forEach((x) => (x.textContent = 'ft')); document.querySelectorAll('.u-acc').forEach((x) => (x.textContent = 'ft/s²')); }
+      const set = (base, key) => { if (p.has(key)) { el(base).value = el(base + '-n').value = p.get(key); } };
+      set('speed', 'v'); set('angle', 'a'); set('height', 'h');
+      if (p.has('g')) el('grav').value = p.get('g');
+    })();
+
+    // ================= CHARTS (Chart.js) =================
+    function trajSamples(v0, ang, h0, g, n) {
+      const rad = ang * Math.PI / 180, vx = v0 * Math.cos(rad), vy = v0 * Math.sin(rad);
+      const disc = vy * vy + 2 * g * h0; if (disc < 0) return null;
+      const tF = (vy + Math.sqrt(disc)) / g;
+      const T = [], Y = [], VX = [], VY = [], X = [];
+      for (let i = 0; i <= n; i++) {
+        const t = tF * i / n;
+        T.push(+(t).toFixed(2));
+        Y.push(+(h0 + vy * t - 0.5 * g * t * t).toFixed(3));
+        X.push(+(vx * t).toFixed(3));
+        VX.push(+vx.toFixed(3));
+        VY.push(+(vy - g * t).toFixed(3));
+      }
+      return { T, Y, VX, VY, X, tF };
+    }
+
+    function initCharts() {
+      if (!window.Chart) return;
+      Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+      Chart.defaults.color = '#64748b';
+      const baseOpts = { responsive: true, maintainAspectRatio: false, animation: false };
+
+      charts.height = new Chart(el('chart-height'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Height (vs time)', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, baseOpts, { scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: 'Height' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+
+      charts.vel = new Chart(el('chart-vel'), {
+        type: 'line',
+        data: { labels: [], datasets: [
+          { label: 'Horizontal vₓ', data: [], borderColor: '#0ea5e9', pointRadius: 0, tension: 0 },
+          { label: 'Vertical vᵧ', data: [], borderColor: '#10b981', pointRadius: 0, tension: 0 },
+        ] },
+        options: Object.assign({}, baseOpts, { scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: 'Velocity' } } }, plugins: { legend: { position: 'bottom' } } }),
+      });
+
+      charts.range = new Chart(el('chart-range'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'Range vs angle', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, baseOpts, { scales: { x: { title: { display: true, text: 'Launch angle (°)' } }, y: { title: { display: true, text: 'Range' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+
+      charts.ready = true;
+      updateCharts();
+    }
+
+    function updateCharts() {
+      if (!charts.ready || !last) return;
+      const { v0, ang, h0, g } = last;
+      const s = trajSamples(v0, ang, h0, g, 40);
+      if (s) {
+        charts.height.data.labels = s.T; charts.height.data.datasets[0].data = s.Y; charts.height.update();
+        charts.vel.data.labels = s.T; charts.vel.data.datasets[0].data = s.VX; charts.vel.data.datasets[1].data = s.VY; charts.vel.update();
+      }
+      // Range vs angle (conceptual — uses current speed & height, sweeps the angle)
+      const L = [], D = [];
+      for (let a = 0; a <= 90; a += 3) {
+        const rr = solve(v0, a, h0, g);
+        L.push(a); D.push(rr.err ? 0 : +rr.range.toFixed(2));
+      }
+      charts.range.data.labels = L; charts.range.data.datasets[0].data = D; charts.range.update();
+    }
+
+    // ================= THREE.js SCENES =================
+    function makeScene(container, camRadius, target) {
+      const w = container.clientWidth, h = container.clientHeight || 240;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(w, h);
+      container.appendChild(renderer.domElement);
+      renderer.domElement.style.touchAction = 'none';   // spec Section 5, bug 4
+      scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+      const dir = new THREE.DirectionalLight(0xffffff, 0.55); dir.position.set(6, 12, 8); scene.add(dir);
+
+      let azim = 0.9, pol = 1.15, radius = camRadius;
+      const tgt = target || new THREE.Vector3(0, 0, 0);
+      function place() {
+        camera.position.set(
+          tgt.x + radius * Math.sin(pol) * Math.sin(azim),
+          tgt.y + radius * Math.cos(pol),
+          tgt.z + radius * Math.sin(pol) * Math.cos(azim)
+        );
+        camera.lookAt(tgt);
+      }
+      place();
+
+      // manual orbit — mouse + touch (spec Section 5, bug 4)
+      let dragging = false, px = 0, py = 0;
+      function down(x, y) { dragging = true; px = x; py = y; }
+      function move(x, y) {
+        if (!dragging) return;
+        azim -= (x - px) * 0.008; pol += (y - py) * 0.008;
+        pol = Math.max(0.25, Math.min(Math.PI / 2 + 0.15, pol));
+        px = x; py = y; place();
+      }
+      function up() { dragging = false; }
+      const cvs = renderer.domElement;
+      cvs.addEventListener('mousedown', (e) => down(e.clientX, e.clientY));
+      window.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
+      window.addEventListener('mouseup', up);
+      cvs.addEventListener('touchstart', (e) => { const t = e.touches[0]; down(t.clientX, t.clientY); }, { passive: true });
+      cvs.addEventListener('touchmove', (e) => { const t = e.touches[0]; move(t.clientX, t.clientY); }, { passive: true });
+      cvs.addEventListener('touchend', up);
+
+      function resize() {
+        const w2 = container.clientWidth, h2 = container.clientHeight || 240;
+        camera.aspect = w2 / h2; camera.updateProjectionMatrix(); renderer.setSize(w2, h2);
+      }
+      return { scene, camera, renderer, resize, place, setTarget: (v) => { tgt.copy(v); place(); }, spin: (d) => { if (!dragging) { azim += d; place(); } }, isDragging: () => dragging, THREE };
+    }
+
+    // ---- Scene 1: interactive live trajectory ----
+    function initScene3d() {
+      const c = el('scene3d'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 14, new THREE.Vector3(4, 2, 0));
+      const grid = new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0); grid.position.set(6, 0, 0); s.scene.add(grid);
+      const arcMat = new THREE.LineBasicMaterial({ color: 0x6366f1 });
+      let arcLine = null, scale = 1, pts = [];
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.28, 24, 24), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      s.scene.add(ball);
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 24), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+      s.scene.add(pad);
+
+      function setTrajectory() {
+        if (!last || last.r.err) return;
+        const { v0, ang, h0, g } = last;
+        const smp = trajSamples(v0, ang, h0, g, 60); if (!smp) return;
+        const maxDim = Math.max(smp.tF > 0 ? Math.max.apply(null, smp.X) : 1, Math.max.apply(null, smp.Y), 1);
+        scale = 12 / maxDim;
+        pts = smp.X.map((x, i) => new THREE.Vector3(x * scale, Math.max(0, smp.Y[i]) * scale, 0));
+        if (arcLine) { s.scene.remove(arcLine); arcLine.geometry.dispose(); }
+        arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), arcMat); s.scene.add(arcLine);
+        pad.position.set(pts[0].x, (h0 * scale) / 2, 0); pad.scale.y = Math.max(0.5, h0 * scale / 0.15);
+        if (!animating) ball.position.copy(pts[0]);
+        const mid = pts[Math.floor(pts.length / 2)];
+        s.setTarget(new THREE.Vector3(mid.x, mid.y * 0.6, 0));
+      }
+
+      let animating = false, animI = 0;
+      function launch() { if (pts.length) { animating = true; animI = 0; } }
+      el('btn-launch').addEventListener('click', launch);
+
+      function frame() {
+        requestAnimationFrame(frame);
+        if (!reduceMotion) s.spin(0.0016);
+        if (animating && pts.length) {
+          animI += Math.max(1, Math.round(pts.length / 90));
+          if (animI >= pts.length) { animI = pts.length - 1; animating = false; }
+          ball.position.copy(pts[animI]);
+        }
+        s.renderer.render(s.scene, s.camera);
+      }
+      frame();
+      scene3d = { setTrajectory, resize: s.resize };
+      setTrajectory();
+      if (!reduceMotion) setTimeout(launch, 400);
+    }
+
+    // ---- Scene 2: velocity vector decomposition (auto-rotating) ----
+    function arrow(THREE, from, to, color) {
+      const dir = new THREE.Vector3().subVectors(to, from);
+      const len = dir.length();
+      const a = new THREE.ArrowHelper(dir.clone().normalize(), from, len, color, Math.min(0.6, len * 0.25), Math.min(0.35, len * 0.16));
+      return a;
+    }
+    function initDiagVectors() {
+      const c = el('diag-vectors'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 9, new THREE.Vector3(2, 1.4, 0));
+      const g = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); g.position.set(2, 0, 0); s.scene.add(g);
+      const O = new THREE.Vector3(0, 0, 0);
+      const tip = new THREE.Vector3(4, 3, 0);
+      s.scene.add(arrow(THREE, O, tip, 0xef4444));                              // resultant v0
+      s.scene.add(arrow(THREE, O, new THREE.Vector3(4, 0, 0), 0x0ea5e9));        // horizontal
+      s.scene.add(arrow(THREE, new THREE.Vector3(4, 0, 0), tip, 0x10b981));      // vertical
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.004); s.renderer.render(s.scene, s.camera); }
+      frame();
+      diagV = { resize: s.resize };
+    }
+
+    // ---- Scene 3: family of trajectories (auto-rotating) ----
+    function initDiagFamily() {
+      const c = el('diag-family'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 15, new THREE.Vector3(5, 2, 0));
+      const grid = new THREE.GridHelper(22, 22, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 0); s.scene.add(grid);
+      const v0 = 12, g = 9.81, angles = [15, 30, 45, 60, 75];
+      angles.forEach((a) => {
+        const smp = trajSamples(v0, a, 0, g, 40);
+        const scale = 10 / Math.max(Math.max.apply(null, smp.X), Math.max.apply(null, smp.Y));
+        const pts = smp.X.map((x, i) => new THREE.Vector3(x * scale, Math.max(0, smp.Y[i]) * scale, 0));
+        const col = a === 45 ? 0x4f46e5 : 0x94a3b8;
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: a !== 45, opacity: a === 45 ? 1 : 0.7 }));
+        s.scene.add(line);
+      });
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+      frame();
+      diagF = { resize: s.resize };
+    }
+
+    // ================= BOOT (defensive: each widget isolated, spec Section 5) =================
+    function boot() {
+      try { updateAll(); } catch (e) { console.error('[projectile] calculator init failed', e); }
+      try { initCharts(); } catch (e) { console.error('[projectile] charts init failed', e); }
+      if (window.THREE) {
+        try { initScene3d(); } catch (e) { console.error('[projectile] 3D scene failed', e); el('scene3d-fallback').classList.remove('hidden'); }
+        try { initDiagVectors(); } catch (e) { console.error('[projectile] vector diagram failed', e); }
+        try { initDiagFamily(); } catch (e) { console.error('[projectile] family diagram failed', e); }
+      } else {
+        el('scene3d-fallback').classList.remove('hidden');
+      }
+      updateAll();
+
+      function onResize() { [scene3d, diagV, diagF].forEach((x) => { try { x && x.resize(); } catch (e) {} }); }
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', () => setTimeout(onResize, 300));  // spec Section 5 checklist
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
   </script>
 </ToolLayout>
