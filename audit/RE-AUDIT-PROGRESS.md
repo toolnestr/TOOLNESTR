@@ -275,8 +275,18 @@ applies here). Set up from scratch this session:
       already; rest of the 40 unverified. NOTE: `uuid-generator` (security) + `htaccess-redirect-generator`,
       `markdown-to-html` (developers) load-breakage already fixed 2026-07-02 (see esm.sh/status section);
       their compute logic still needs the full audit.
-- [ ] **Images + Text + Creators** (~37 tools) — old audit explicitly did only a "light
-      review" here, lowest confidence of all.
+- [ ] **Text** (~15 tools) — old audit explicitly did only a "light review" here.
+- [x] **Creators (12)** — DONE 2026-07-02. Clean. numerology reduce() correctly preserves master
+      numbers 11/22/33 w/ correct Pythagorean chart (verified live: 2000-01-01 → life path 4). Text/
+      color generators all produce output (fancy-text 45 styled glyphs, color-palette 26 hex, gradient
+      44 hex + gradient CSS, random-color, hashtag, text-repeater, love-calculator). emoji-picker/
+      social-media-cheat-sheet/youtube-thumbnail/favicon are utilities. No bugs.
+- [x] **Image (13)** — DONE 2026-07-02. Clean. The 3 computational ones verified live: color-contrast
+      uses exact WCAG formula (0.04045 / 12.92 / ^2.4 / 0.2126,0.7152,0.0722 / (L+0.05) ratio) →
+      black/white = 21:1 ✓; ppi = √(w²+h²)/diag → 1920×1080@24" = 92 ✓; aspect-ratio's 4 solve-branches
+      all correct → 1920×1080 = 16:9 ✓. Caveat: the 10 canvas file-tools (resize/compress/crop/
+      convert×5/rotate/flip) are load-scan-clean + code-sound but NOT exercised with real uploaded
+      images (needs sample files). No bugs found.
 - [x] **Charts (11)** — DONE 2026-07-02. Clean. The 4 computational ones verified: box-plot uses R-7
       linear-interpolation quantiles + Tukey 1.5×IQR fences (verified live: 1..9 → median 5, Q1 3,
       Q3 7); gauge maps value→angle over a 270° arc; percentage-bar value/total×100; histogram binning
