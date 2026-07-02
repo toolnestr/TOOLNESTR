@@ -1,5 +1,25 @@
 # Tool Re-Audit Progress (Session Continuity Log)
 
+## STATUS SUMMARY (updated 2026-07-02)
+**15 of 20 categories audited (~374 of 460 live tools, ~81%). All fixes deployed live + pushed.**
+
+- **Audited & clean/fixed:** Networking, Converters, Engineering, Finance, Health, Automotive,
+  Everyday, Math, Construction, Cooking, SEO, PDF, Charts, Creators, Image.
+- **Still to audit (5 categories, ~86 tools):** Developers (25), Islamic (16), Security (15),
+  Text (15), Time & Date (15). All 5 are confirmed free of load-breakage (sitewide load-scan);
+  what remains is their compute-logic verification. Security is highest-value (real crypto; old
+  audit already fixed 2 hash bugs there).
+- **Bugs fixed this pass (all live + pushed):** matrix-calculator (dead on load), roofing (2×),
+  ev-co2 (1000× trees), insulation + stair (crashes), currency-converter (dead FX host → CORS),
+  square-footage + perimeter + pool-volume (hidden inputs / no result on typing), + 9 tools broken
+  on load by the esm.sh CSP block, + uuid/htaccess (window.status collision), reading-time (scope),
+  pdf-to-text (bare import). ~23 tools fixed total.
+- **Nothing pending deploy** — production is in sync with the latest committed code; the SEO/PDF/
+  Charts/Creators/Image audits found no new code bugs (docs-only commits).
+- **Audit tooling** (in `audit/sanity-sweep/`): `sweep.cjs` (crash+correctness sweep, honors
+  `BASE_URL`), `verify-loadstate.cjs` (parallel sitewide load-breakage scan), `verify-charts.cjs`,
+  `sweep-checks.json` (regression golden vectors).
+
 **Why this file exists:** the original `docs/10-tool-correctness-audit.md` / `audit/RESULTS.md`
 claimed most categories were "0 bugs" — but that audit never actually ran the tools (no live
 testing, no browser verification). When we finally tested Networking for real, we found 15 bugs
