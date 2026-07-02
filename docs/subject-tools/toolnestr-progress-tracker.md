@@ -3,7 +3,7 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-02 (Batch-1 completed — 20/20 tools built)
+**Last updated:** 2026-07-02 (Batch-1 + Batch-2 both complete — 40/40 tools built, 20+20, balanced 10 Physics + 10 Chemistry each)
 
 > **⚠️ IMPORTANT REALITY RECONCILIATION (2026-07-02):** The spec was written against a *chat prototype* and assumes standalone single-file HTML tools with a dark navy theme + Three.js/Chart.js. The actual project is the **Astro site in this repo** (`micro-tools`, ~400 existing `.astro` tool pages using a shared `ToolLayout` + Tailwind **light** theme). Production decisions below override the spec wherever they conflict. Read the "Reconciliation Decisions" section before building anything.
 
@@ -165,11 +165,27 @@ force (car cornering Fc=9600N), terminal velocity (v_t≈53.48 m/s skydiver), es
 (Earth≈11.19 km/s, Moon≈2.375 km/s — both match canonical reference values), pOH (pOH=3.00 from
 [OH⁻]=1e-3, pOH=4.5 from pH=9.5), and theoretical yield (thermite 10g Al→20.7g Fe). All matched.
 
-**Batch-1 + Batch-2 combined: 32 flagship tools (16 Physics + 16 Chemistry) on the shared template.**
-Not yet pushed — awaiting user go-ahead. Remaining un-built from spec §8's Physics/Chemistry lists:
-Physics 17-50 (Kinetic/Potential Energy already exist as basic engineering pages, Work/Power/
-electricity/waves/thermo/fluids/optics/gravity sections), Chemistry 17-50 (Buffer, Ka/Kb, Titration,
-Keq, gas laws beyond ideal, atomic/periodic, thermochemistry, electrochemistry, kinetics/nuclear).
+**Batch-2 completed to full parity with Batch-1 (2026-07-02, commits `580e42c`, `9eb1f9d`, `9513a11`).**
+Finished the last 7 tools of Batch-2 in three follow-up rounds after the initial 12: Mechanical
+Efficiency (solo build), Work-Energy Theorem + Henderson-Hasselbalch (2 parallel agents, committed as
+WIP mid-session for cross-machine continuation), then Pressure, Buoyancy (Archimedes), Titration,
+Equilibrium Constant (Keq), Neutralization Reaction (5 parallel agents, final round).
+
+Post-build audit for the final round (code-only, no live browser per user instruction): confirmed 0
+duplicate slugs across 497 tools and 0 new emoji collisions (physics/chemistry both landed at exactly
+20 tools each, only the pre-existing momentum/projectile 🎯 dup remains from before this project).
+Validated every inline `<script>`'s JS syntax via `new Function()`. Independently re-derived every
+core formula outside the agents' own reports — buoyancy (ice submerged fraction 91.7%, matches the
+canonical iceberg figure), pressure (scuba diver at 10m seawater ≈100.6 kPa gauge / ≈201.9 kPa
+absolute), titration (0.0896 M and 0.120 M diprotic), equilibrium constant (Kc=2.963 for
+N₂+3H₂⇌2NH₃), neutralization (0.0025 mol excess H⁺). All matched.
+
+**Batch-1 + Batch-2 combined: 40 flagship tools (20 Physics + 20 Chemistry) on the shared template —
+Batch-2 now matches Batch-1's size exactly, as requested.** Not yet pushed — awaiting user go-ahead.
+Remaining un-built from spec §8's Physics/Chemistry lists: Physics 23-50 (electricity/magnetism,
+waves/sound, thermodynamics beyond specific-heat basics, fluids beyond pressure/buoyancy, optics,
+gravity/astrophysics beyond escape velocity), Chemistry 19/23-50 (Ka/Kb standalone, Reaction Quotient,
+remaining gas laws, atomic/periodic section, thermochemistry, electrochemistry, kinetics/nuclear).
 Next: Batch-3, or pivot to Biology's first tools per the open cadence question below.
 
 ## How to resume this project in a new session
