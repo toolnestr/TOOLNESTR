@@ -1,0 +1,312 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Calorimetry Calculator';
+const description = 'Calorimetry calculator with a live 3D calorimeter cup and charts. Solve q_water = mcΔT, find q_reaction = −q_water, and the molar heat of reaction, with worked examples.';
+const intro = 'Find the heat released or absorbed by a reaction from a calorimeter’s temperature rise, and convert it into a molar heat of reaction. A live 3D cup and charts show how mass and ΔT drive q.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is calorimetry?', a: 'Calorimetry is the experimental technique of measuring the heat released or absorbed by a chemical reaction or physical process by tracking the temperature change it causes in a surrounding, known mass of water (or solution). The water’s temperature change is a stand-in for the energy the reaction transferred.' },
+  { q: 'Why does the sign flip between q_water and q_reaction?', a: 'They describe opposite sides of the same energy transfer. If the reaction is exothermic, it releases energy that the water absorbs, so q_water is positive (the water heats up) while q_reaction is negative (the reacting system loses energy). By conservation of energy, q_reaction = −q_water — always equal in size, opposite in sign.' },
+  { q: 'What assumptions does simple calorimetry make?', a: 'Two big idealizations: (1) no heat escapes to the surroundings outside the calorimeter — all heat released or absorbed by the reaction stays within the water being measured, and (2) the calorimeter itself (the cup, thermometer, stirrer) has negligible heat capacity, so it doesn’t absorb any measurable heat of its own. Real "coffee cup" calorimeters approximate this reasonably well; more precise work corrects for a calorimeter constant.' },
+  { q: 'How do you find the heat of reaction per mole?', a: 'Divide q_reaction by the number of moles of the limiting reactant that produced it: ΔH_rxn = q_reaction / moles. This gives an energy-per-mole figure (J/mol or kJ/mol) that can be compared across experiments regardless of how much reactant was actually used.' },
+  { q: 'Can I use this for a reaction that absorbs heat (endothermic)?', a: 'Yes. An endothermic reaction pulls heat from the water, so the water cools and ΔT is negative, making q_water negative and q_reaction = −q_water positive — meaning the reacting system gained energy. Just enter the (negative) ΔT you measured.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Calorimetry Calculator',
+  description: 'Calculate heat released or absorbed by a reaction from a calorimeter’s water temperature change, and optionally the molar heat of reaction.',
+  steps: [
+    { name: 'Enter the water data', text: 'Type the mass of water in the calorimeter and its temperature change (ΔT), in °C.' },
+    { name: 'Optional: add moles of reactant', text: 'If you know the moles of limiting reactant used, add it to get ΔH_rxn per mole.' },
+    { name: 'Read the results', text: 'q_water, q_reaction, and (if given) the molar heat of reaction solve instantly, and the 3D cup updates.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'q<sub>water</sub> = m × c × ΔT', note: 'heat absorbed/released by the water, c = 4.184 J/(g·°C)' },
+  { expr: 'q<sub>reaction</sub> = −q<sub>water</sub>', note: 'conservation of energy — opposite sign to the water' },
+  { expr: 'ΔH<sub>rxn</sub> = q<sub>reaction</sub> / mol', note: 'molar heat of reaction, if moles of reactant are known' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — heat released by a reaction', tone: 'slate',
+    given: '100.0 g of water in a calorimeter rises from 22.0°C to 28.5°C after a reaction runs to completion inside it. Specific heat of water c = 4.184 J/(g·°C). Find the heat released by the reaction.',
+    rows: [
+      { label: 'Temperature change:', value: 'ΔT = 28.5 − 22.0 = 6.5°C' },
+      { label: 'Heat absorbed by water:', value: 'q_water = m × c × ΔT = 100.0 × 4.184 × 6.5 = 2719.6 J' },
+      { label: 'Heat of reaction:', value: 'q_reaction = −q_water = −2719.6 J ≈ −2.72 kJ', full: true },
+    ],
+    note: 'The negative sign means the reaction released 2719.6 J (it is exothermic) — that energy is exactly what raised the water’s temperature.',
+  },
+  {
+    title: 'Worked example 2 — molar heat of reaction', tone: 'amber',
+    given: 'Using the same experiment (q_reaction = −2719.6 J), suppose 0.0500 mol of the limiting reactant was used. Find the molar heat of reaction.',
+    rows: [
+      { label: 'Formula:', value: 'ΔH_rxn = q_reaction / moles' },
+      { label: 'Molar heat of reaction:', value: 'ΔH_rxn = −2719.6 ÷ 0.0500 = −54,392 J/mol ≈ −54.4 kJ/mol', full: true },
+    ],
+    note: 'A negative ΔH_rxn confirms an exothermic reaction — roughly 54.4 kJ of energy is released per mole of that reactant consumed.',
+  },
+];
+
+const comparison = {
+  heading: 'Specific heat values relevant to calorimetry',
+  note: 'Simple calorimetry assumes the water’s specific heat represents the whole system — the table below shows how close (or far) that assumption is.',
+  headers: [{ label: 'Material' }, { label: 'c — J/(g·°C)' }, { label: 'Notes' }],
+  rows: [
+    ['Water (pure)', '4.184', 'the standard reference value used in calculations'],
+    ['Typical dilute aqueous solution', '≈ 4.18', 'close to pure water — a common simplifying assumption'],
+    ['Glass calorimeter cup', '≈ 0.84', 'usually neglected in simple calorimetry — a source of error'],
+  ],
+  highlightIndex: 0,
+  footnote: 'Values are standard reference specific heat capacities, rounded to 3 significant figures. The calorimeter cup’s own heat capacity is typically ignored in an introductory "coffee cup" setup.',
+};
+
+const realWorld = [
+  { emoji: '🍩', title: 'Food caloric content', body: 'Bomb calorimetry burns a food sample completely inside a sealed, water-jacketed vessel and measures the water’s temperature rise to determine the food’s energy content — the basis of the Calorie counts on nutrition labels.' },
+  { emoji: '⚗️', title: 'Heats of neutralization &amp; dissolution', body: 'Mixing an acid and base, or dissolving a salt, in a coffee-cup calorimeter reveals whether the process is exothermic or endothermic and lets chemists measure ΔH per mole for standard reference tables.' },
+  { emoji: '🏭', title: 'Industrial process heat measurement', body: 'Chemical manufacturers use calorimetry to characterize how much heat a reaction generates at scale, which is essential for reactor cooling design and preventing runaway exothermic reactions.' },
+  { emoji: '💊', title: 'Pharmaceutical thermal stability', body: 'Differential scanning calorimetry measures the heat flow into or out of a drug sample as it’s heated, revealing melting points, decomposition, and stability data used in formulation and storage guidelines.' },
+];
+
+const misconceptions = [
+  { claim: '"The calorimeter itself never affects the measurement."', truth: 'It does, in principle. Real calorimeters (the cup, thermometer, stirrer) have some heat capacity and absorb a small amount of the reaction’s heat themselves. Simple Q = mcΔT calorimetry assumes this is negligible, which introduces a small systematic error — more precise work corrects for it with a measured "calorimeter constant."' },
+  { claim: '"An exothermic reaction has a positive q_reaction."', truth: 'The opposite. By the standard sign convention, an exothermic reaction has a NEGATIVE q_reaction — the reacting system loses energy — even though the surrounding water heats up and has a positive q_water. Mixing these up is the most common calorimetry sign error.' },
+  { claim: '"Calorimetry gives an exact, error-free ΔH."', truth: 'It gives a good estimate, not an exact value. Heat loss to the surroundings, the calorimeter’s own heat capacity, and imperfect mixing all introduce small errors, which is why calorimetry values are typically reported alongside an experimental uncertainty.' },
+  { claim: '"You always need moles to use this calculator."', truth: 'No — moles are optional. q_water and q_reaction only require the mass of water and ΔT. Moles of reactant are only needed for the extra step of converting to a molar heat of reaction (ΔH_rxn).' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 5, Thermochemistry, calorimetry section (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/5-2-calorimetry" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 5, Thermochemistry.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — calorimetry and heats of reaction.' },
+];
+const sourcesNote = 'q_water = m × c × ΔT with c = 4.184 J/(g·°C); q_reaction = −q_water by conservation of energy. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter mass &amp; ΔT', body: 'Type the mass of water (g) and its temperature change (°C) — c is preset to 4.184 J/(g·°C) but editable.' },
+  { title: 'Add moles (optional)', body: 'Enter moles of limiting reactant to also get the molar heat of reaction.' },
+  { title: 'Watch the cup', body: 'Use the sliders to see the water color shift from blue to red as ΔT and q_reaction change.' },
+];
+
+const related = [
+  { href: '/tools/enthalpy-calculator', emoji: '🌋', title: 'Enthalpy Calculator', desc: 'ΔH_rxn from formation enthalpies.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+  { href: '/tools/heat-transfer-calculator', emoji: '🌡️', title: 'Heat Transfer Calculator', desc: 'Q = mcΔT — the general physics form.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="a calorimeter measures a reaction's heat indirectly — by how much it changes the temperature of a known mass of water around it, then flips the sign to get the reaction's own energy change."
+  howIntro="The water absorbs whatever heat the reaction releases (or supplies whatever heat the reaction absorbs), so q_reaction is always equal in size but opposite in sign to q_water. Divide q_reaction by the moles of limiting reactant used and you get ΔH_rxn — a molar heat of reaction that can be compared across different experiment sizes."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where calorimetry actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass of water (m)</span>
+        <input id="m" type="number" step="any" placeholder="g" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Specific heat of water (c)</span>
+        <input id="c" type="number" step="any" value="4.184" placeholder="J/(g·°C)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Temperature change (ΔT)</span>
+        <input id="dT" type="number" step="any" placeholder="°C" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Moles of reactant <span class="text-slate-400">(optional — for ΔH per mole)</span></span>
+        <input id="mol" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">q_water</div><div id="r-qw" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">q_reaction</div><div id="r-qr" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">ΔH_rxn (per mole)</div><div id="r-dh" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="cal-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D calorimeter cup + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D calorimeter cup</h2>
+      <p class="mt-1 text-sm text-slate-500">Set the mass of water and ΔT; the water color shifts from blue (cool) to red (hot) as the reaction's heat is absorbed. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass of water <span id="out-bm" class="font-mono text-green-600">100.0 g</span></span>
+          <input id="b-m" type="range" min="10" max="500" step="5" value="100" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">ΔT <span id="out-bdt" class="font-mono text-green-600">6.5°C</span></span>
+          <input id="b-dt" type="range" min="-30" max="30" step="0.5" value="6.5" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Heat of reaction q_reaction = <span id="out-bq" class="font-mono font-bold">—</span></div>
+      <div id="cup3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="cup3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Calorimetry graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">q_reaction vs ΔT (fixed water mass) — a straight line</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-qdt"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">q_reaction vs mass of water (fixed ΔT) — a straight line</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-qm"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function update() {
+        el('cal-err').textContent = '';
+        ['r-qw', 'r-qr', 'r-dh'].forEach((id) => (el(id).textContent = '—'));
+        const m = parseFloat(el('m').value);
+        const c = parseFloat(el('c').value);
+        const dT = parseFloat(el('dT').value);
+        const mol = parseFloat(el('mol').value);
+        if (isNaN(c) || c <= 0) { el('cal-err').textContent = 'Specific heat must be a positive number.'; return; }
+        if (isNaN(m) || isNaN(dT)) return;
+        if (m < 0) { el('cal-err').textContent = 'Mass of water cannot be negative.'; return; }
+        const qw = m * c * dT;
+        const qr = -qw;
+        el('r-qw').textContent = fmt(qw) + ' J';
+        el('r-qr').textContent = fmt(qr) + ' J';
+        if (!isNaN(mol) && mol !== 0) {
+          el('r-dh').textContent = fmt(qr / mol) + ' J/mol';
+        } else if (!isNaN(mol) && mol === 0) {
+          el('cal-err').textContent = 'Moles of reactant cannot be zero.';
+        }
+      }
+      ['m', 'c', 'dT', 'mol'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let cup = null;
+      function bState() {
+        const m = parseFloat(el('b-m').value);
+        const dT = parseFloat(el('b-dt').value);
+        const c = 4.184;
+        return { m, dT, c, q: -(m * c * dT) };
+      }
+      function tempColor(dT) {
+        const t = Math.max(0, Math.min(1, (dT + 30) / 60));
+        const cold = { r: 0x38, g: 0xbd, b: 0xf8 };
+        const hot = { r: 0xef, g: 0x44, b: 0x44 };
+        const r = Math.round(cold.r + (hot.r - cold.r) * t);
+        const g = Math.round(cold.g + (hot.g - cold.g) * t);
+        const b = Math.round(cold.b + (hot.b - cold.b) * t);
+        return (r << 16) | (g << 8) | b;
+      }
+      function onB() {
+        const s = bState();
+        el('out-bm').textContent = s.m.toFixed(1) + ' g';
+        el('out-bdt').textContent = s.dT.toFixed(1) + '°C';
+        el('out-bq').textContent = fmt(s.q) + ' J';
+        try { if (cup) cup.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-m').addEventListener('input', onB);
+      el('b-dt').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.qdt = new Chart(el('chart-qdt'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'q_reaction', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'ΔT (°C)' } }, y: { title: { display: true, text: 'q_reaction (J)' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.qm = new Chart(el('chart-qm'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'q_reaction', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Mass of water (g)' } }, y: { title: { display: true, text: 'q_reaction (J)' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        const L1 = [], D1 = [];
+        for (let dt = -30; dt <= 30.001; dt += 3) { L1.push(dt.toFixed(0)); D1.push(+(-(s.m * s.c * dt)).toFixed(2)); }
+        charts.qdt.data.labels = L1; charts.qdt.data.datasets[0].data = D1; charts.qdt.update();
+        const L2 = [], D2 = [];
+        for (let mm = 10; mm <= 500.001; mm += 25) { L2.push(mm.toFixed(0)); D2.push(+(-(mm * s.c * s.dT)).toFixed(2)); }
+        charts.qm.data.labels = L2; charts.qm.data.datasets[0].data = D2; charts.qm.update();
+      }
+
+      // ---- interactive calorimeter cup ----
+      function cupShell(THREE) {
+        const g = new THREE.Group();
+        const cupMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.3, roughness: 0.2, side: THREE.DoubleSide });
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.0, 5, 40, 1, true), cupMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.0, 40), cupMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        // lid
+        const lidMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 });
+        const lid = new THREE.Mesh(new THREE.CylinderGeometry(2.32, 2.32, 0.15, 40), lidMat); lid.position.y = 2.55; g.add(lid);
+        // thermometer stem
+        const thermMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.4, 16), thermMat);
+        stem.position.set(0.6, 1.2, 0);
+        g.add(stem);
+        return { group: g, stem };
+      }
+      function initCup() {
+        const c = el('cup3d'); if (!c) throw new Error('no cup');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const shell = cupShell(THREE);
+        s.scene.add(shell.group);
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, roughness: 0.3 });
+        let liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 1.9, 3.6, 40), liquidMat);
+        liquid.position.y = -0.6;
+        s.scene.add(liquid);
+        // thermometer bulb (small sphere at bottom of stem, dips into liquid)
+        const bulbMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), bulbMat);
+        bulb.position.set(0.6, -0.4, 0);
+        s.scene.add(bulb);
+        function update(state) {
+          const frac = Math.max(0.15, Math.min(1, state.m / 500));
+          const hLiq = frac * 4.4;
+          liquid.scale.y = hLiq / 3.6;
+          liquid.position.y = -2.4 + (hLiq / 2);
+          const col = tempColor(state.dT);
+          liquidMat.color.setHex(col);
+          bulbMat.color.setHex(col);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        cup = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[calorimetry] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[calorimetry] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[calorimetry] charts failed', e); }
+        if (window.THREE) {
+          try { initCup(); } catch (e) { console.error('[calorimetry] cup failed', e); el('cup3d-fallback').classList.remove('hidden'); }
+        } else { el('cup3d-fallback').classList.remove('hidden'); }
+        mountResize([cup]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
