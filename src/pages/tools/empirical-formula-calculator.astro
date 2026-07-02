@@ -1,0 +1,371 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Empirical Formula Calculator';
+const description = 'Free empirical formula calculator with a live 3D atom cluster and charts. Enter mass percentages for 2-4 elements to find the simplest whole-number formula.';
+const intro = 'Enter each element\'s mass percent (2 to 4 elements) to find the empirical formula — the simplest whole-number ratio of atoms — with a live 3D atom cluster and charts.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is an empirical formula?', a: 'The empirical formula shows the simplest whole-number ratio of atoms of each element in a compound. It may or may not match the actual molecular formula — glucose\'s molecular formula is C₆H₁₂O₆, but its empirical formula is CH₂O.' },
+  { q: 'How is the empirical formula calculated from mass percent?', a: 'Assume a 100 g sample, so each mass percent becomes grams directly. Divide each element\'s grams by its atomic mass to get moles, divide every mole value by the smallest one to get a ratio, then round (or scale by a small whole number) to reach whole-number subscripts.' },
+  { q: 'What if the mole ratios aren\'t close to whole numbers?', a: 'Multiply every ratio by the smallest integer that brings them all within about 0.1 of a whole number — usually 2, 3, or 4. For example, ratios of 1, 1.5, 1 become 2, 3, 2 after multiplying by 2.' },
+  { q: 'Do the mass percentages have to add up to exactly 100%?', a: 'This calculator normalizes automatically — if your percentages sum to less than 100% (say, because a trace element was omitted) or slightly over due to rounding, it scales them proportionally before computing moles, so the ratio between elements is unaffected either way.' },
+  { q: 'Why is empirical formula different from molecular formula?', a: 'The empirical formula is the reduced ratio; the molecular formula is the true count of atoms per molecule, which is always a whole-number multiple of the empirical formula. Finding the multiplier requires an independent measurement of molar mass — mass percent alone cannot distinguish CH₂O from C₆H₁₂O₆.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Empirical Formula Calculator',
+  description: 'Find the empirical formula of a compound from the mass percentage of each element.',
+  steps: [
+    { name: 'Enter elements and mass %', text: 'Type each element\'s symbol and its mass percent, for 2 to 4 elements.' },
+    { name: 'Compute', text: 'The tool converts to moles, divides by the smallest, and scales to whole numbers.' },
+    { name: 'Read the formula', text: 'The empirical formula appears, e.g. CH₂O, with the full mole-ratio breakdown.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'mol<sub>i</sub> = mass %<sub>i</sub> / A<sub>i</sub>', note: 'assuming a 100 g sample, mass % = grams' },
+  { expr: 'ratio<sub>i</sub> = mol<sub>i</sub> / mol<sub>min</sub>', note: 'divide every mole value by the smallest' },
+  { expr: 'subscript<sub>i</sub> = round(ratio<sub>i</sub> × k)', note: 'k = small integer (1, 2, 3…) to reach whole numbers' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — the classic CH₂O compound', tone: 'slate',
+    given: 'A compound is 40.0% C, 6.7% H and 53.3% O by mass. Find the empirical formula.',
+    rows: [
+      { label: 'Moles (per 100 g):', value: 'C: 40.0 / 12.011 = 3.331; H: 6.7 / 1.008 = 6.647; O: 53.3 / 16.00 = 3.331' },
+      { label: 'Divide by smallest (3.331):', value: 'C: 1.000; H: 1.996 ≈ 2; O: 1.000' },
+      { label: 'Empirical formula:', value: '<strong>CH₂O</strong>', full: true },
+    ],
+    note: 'This is the same ratio as glucose (C₆H₁₂O₆) and formaldehyde (CH₂O) — mass percent alone can\'t tell them apart.',
+  },
+  {
+    title: 'Worked example 2 — an iron oxide', tone: 'amber',
+    given: 'An iron oxide is 69.94% Fe and 30.06% O by mass. Find the empirical formula.',
+    rows: [
+      { label: 'Moles (per 100 g):', value: 'Fe: 69.94 / 55.845 = 1.2525; O: 30.06 / 16.00 = 1.8788' },
+      { label: 'Divide by smallest (1.2525):', value: 'Fe: 1.000; O: 1.500' },
+      { label: 'Scale by 2 (to clear the .5):', value: 'Fe: 2.000; O: 3.000' },
+      { label: 'Empirical formula:', value: '<strong>Fe₂O₃</strong>', full: true },
+    ],
+    note: 'A ratio ending near .5, .33 or .25 signals you need to multiply by 2, 3 or 4 respectively before rounding.',
+  },
+];
+
+const comparison = {
+  heading: 'Empirical formula vs molecular formula',
+  note: 'The molecular formula is always a whole-number multiple of the empirical formula.',
+  headers: [{ label: 'Compound' }, { label: 'Empirical formula' }, { label: 'Molecular formula' }],
+  rows: [
+    ['Formaldehyde', 'CH₂O', 'CH₂O (×1)'],
+    ['Acetic acid', 'CH₂O', 'C₂H₄O₂ (×2)'],
+    ['Glucose', 'CH₂O', 'C₆H₁₂O₆ (×6)'],
+    ['Benzene', 'CH', 'C₆H₆ (×6)'],
+    ['Hydrogen peroxide', 'HO', 'H₂O₂ (×2)'],
+  ],
+  highlightIndex: 2,
+  footnote: 'Mass percent composition fixes the empirical formula only — an independent molar mass measurement is needed to find the multiplier.',
+};
+
+const realWorld = [
+  { emoji: '🧫', title: 'Combustion analysis', body: 'Burning an unknown organic sample and measuring the CO₂ and H₂O produced gives the mass percent of C and H directly — the empirical formula is the first step toward identifying an unknown compound.' },
+  { emoji: '🔬', title: 'Materials & mineral analysis', body: 'X-ray fluorescence and other elemental analysis techniques report composition by mass percent; empirical formula calculations convert that into the simplest atomic ratio for a mineral or alloy.' },
+  { emoji: '🏭', title: 'Quality control', body: 'Manufacturers verify that a batch of a compound matches its expected elemental composition — a mass-percent-derived empirical formula that doesn\'t match the target formula flags contamination or an incomplete reaction.' },
+];
+
+const misconceptions = [
+  { claim: '"Empirical formula and molecular formula are always the same."', truth: 'Only when the multiplier is 1. Glucose (C₆H₁₂O₆) and formaldehyde (CH₂O) share the exact same empirical formula, CH₂O, but very different molecular formulas — mass percent alone never distinguishes them.' },
+  { claim: '"Mass percent and mole percent are the same thing."', truth: 'They are not, because atoms of different elements have different masses. A compound that is 40% C by mass is not 40% C by moles — carbon\'s heavier atomic mass means fewer moles per gram than a lighter element like hydrogen.' },
+  { claim: '"Any non-whole-number ratio means you made an arithmetic error."', truth: 'Ratios like 1.5, 1.33, or 1.25 are often correct and simply need scaling by 2, 3, or 4 respectively — rounding 1.5 straight to 2 would give the wrong formula.' },
+  { claim: '"You need the actual mass in grams, not just percentages, to find the empirical formula."', truth: 'Percentages are enough. Assuming a 100 g sample turns each mass percent directly into grams, and the mole ratio is unaffected by the total sample size — only relative amounts matter.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 3.2, Determining Empirical and Molecular Formulas (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/3-2-determining-empirical-and-molecular-formulas" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3, Stoichiometry: Calculations with Chemical Formulas and Equations.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 3, section on empirical and molecular formulas.' },
+  { html: '<strong>IUPAC, <em>Standard Atomic Weights</em></strong> — the atomic mass values used for mole conversions. <a href="https://iupac.org/what-we-do/periodic-table-of-elements/" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">iupac.org</a>' },
+];
+const sourcesNote = 'Mass percentages are normalized to sum to 100% before conversion to moles. Ratios within 0.1 of a whole number are rounded directly; otherwise the tool scales by 2, 3, or 4 to reach whole numbers. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Add each element', body: 'Enter the element symbol (case-sensitive, e.g. "Co" vs "CO") and its mass percent, for 2 to 4 elements.' },
+  { title: 'Compute', body: 'The calculator converts to moles, finds the smallest, and scales the ratio to whole numbers automatically.' },
+  { title: 'Check the breakdown', body: 'See moles, mole ratio, and mole percent per element, plus a live 3D atom cluster and charts.' },
+];
+
+const related = [
+  { href: '/tools/atomic-mass-calculator', emoji: '🔬', title: 'Molar Mass Calculator', desc: 'Molar mass from a chemical formula.' },
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance equations up to 4 species instantly.' },
+  { href: '/tools/molecular-formula-calculator', emoji: '🧬', title: 'Molecular Formula Calculator', desc: 'Scale the empirical formula to the true molecular formula.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="mass percent turns directly into grams for a 100 g sample, grams divided by atomic mass gives moles, and dividing every mole value by the smallest one reveals the simplest whole-number atom ratio."
+  howIntro="If the resulting ratios aren't already whole numbers, that usually means the true ratio has a fraction like ½ or ⅓ hiding in it — multiplying every ratio by 2, 3, or 4 clears the fraction and reveals the correct whole-number subscripts."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where empirical formulas actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-sm text-slate-500">Enter 2 to 4 elements with their mass percent. Symbols are case-sensitive (Co = cobalt, CO = carbon + oxygen). Percentages are normalized to 100% automatically.</p>
+    <div id="rows" class="space-y-2">
+      <div class="ef-row grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+        <input type="text" class="ef-sym w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Symbol (e.g. C)" value="C" />
+        <input type="number" step="any" min="0" class="ef-pct w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Mass %" value="40.0" />
+        <span class="text-sm text-slate-400">%</span>
+      </div>
+      <div class="ef-row grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+        <input type="text" class="ef-sym w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Symbol (e.g. H)" value="H" />
+        <input type="number" step="any" min="0" class="ef-pct w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Mass %" value="6.7" />
+        <span class="text-sm text-slate-400">%</span>
+      </div>
+      <div class="ef-row grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+        <input type="text" class="ef-sym w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Symbol (e.g. O)" value="O" />
+        <input type="number" step="any" min="0" class="ef-pct w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Mass %" value="53.3" />
+        <span class="text-sm text-slate-400">%</span>
+      </div>
+      <div class="ef-row grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+        <input type="text" class="ef-sym w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Symbol (optional)" value="" />
+        <input type="number" step="any" min="0" class="ef-pct w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" placeholder="Mass %" value="" />
+        <span class="text-sm text-slate-400">%</span>
+      </div>
+    </div>
+    <div class="mt-6 rounded-xl bg-indigo-600 p-5 text-center text-white">
+      <div class="text-sm opacity-80">Empirical formula</div>
+      <div id="r-formula" class="mt-1 break-words font-mono text-2xl font-bold">—</div>
+    </div>
+    <div id="ef-breakdown" class="mt-4 space-y-1 text-sm text-slate-600"></div>
+    <p id="ef-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D atom cluster + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D atom cluster</h2>
+      <p class="mt-1 text-sm text-slate-500">Spheres represent the atoms in the empirical formula, sized and coloured by element, scaled to the mole-ratio subscripts. Illustrative only, not to scale or a real molecular structure. Drag to orbit (touch works too).</p>
+      <div id="cluster3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="cluster3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Empirical formula graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Mole ratio per element (should land near whole numbers)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ratio"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Mass % vs mole % per element</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-pct"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- atomic mass table (reused from the Molar Mass Calculator) ----
+      const atomicMasses = { H: 1.008, He: 4.0026, Li: 6.94, Be: 9.0122, B: 10.81, C: 12.011, N: 14.007, O: 16.00, F: 19.00, Ne: 20.180, Na: 22.990, Mg: 24.305, Al: 26.982, Si: 28.086, P: 30.974, S: 32.06, Cl: 35.45, Ar: 39.95, K: 39.098, Ca: 40.078, Sc: 44.956, Ti: 47.867, V: 50.942, Cr: 51.996, Mn: 54.938, Fe: 55.845, Co: 58.933, Ni: 58.693, Cu: 63.546, Zn: 65.38, Ga: 69.723, Ge: 72.63, As: 74.922, Se: 78.96, Br: 79.904, Kr: 83.80, Rb: 85.468, Sr: 87.62, Y: 88.906, Zr: 91.224, Nb: 92.906, Mo: 95.95, Tc: 98.0, Ru: 101.07, Rh: 102.91, Pd: 106.42, Ag: 107.87, Cd: 112.41, In: 114.82, Sn: 118.71, Sb: 121.76, Te: 127.60, I: 126.90, Xe: 131.29, Cs: 132.91, Ba: 137.33, La: 138.91, Ce: 140.12, Pr: 140.91, Nd: 144.24, Pm: 145.0, Sm: 150.36, Eu: 151.96, Gd: 157.25, Tb: 158.93, Dy: 162.50, Ho: 164.93, Er: 167.26, Tm: 168.93, Yb: 173.05, Lu: 174.97, Hf: 178.49, Ta: 180.95, W: 183.84, Re: 186.21, Os: 190.23, Ir: 192.22, Pt: 195.08, Au: 196.97, Hg: 200.59, Tl: 204.38, Pb: 207.2, Bi: 208.98, Po: 209.0, At: 210.0, Rn: 222.0, Fr: 223.0, Ra: 226.0, Ac: 227.0, Th: 232.04, Pa: 231.04, U: 238.03, Np: 237.0, Pu: 244.0, Am: 243.0, Cm: 247.0, Bk: 247.0, Cf: 251.0, Es: 252.0, Fm: 257.0, Md: 258.0, No: 259.0, Lr: 262.0, Rf: 267.0, Db: 268.0, Sg: 269.0, Bh: 270.0, Hs: 269.0, Mt: 278.0, Ds: 281.0, Rg: 282.0, Cn: 285.0, Nh: 286.0, Fl: 289.0, Mc: 290.0, Lv: 293.0, Ts: 294.0, Og: 294.0 };
+
+      const ELEM_COLOR = { H: 0xf1f5f9, C: 0x475569, O: 0xef4444, N: 0x3b82f6, S: 0xeab308, Cl: 0x22c55e, Na: 0xa855f7, Ca: 0xf97316, Cu: 0xf59e0b, Fe: 0xb45309, K: 0x8b5cf6, Mg: 0x14b8a6, Al: 0x94a3b8, Zn: 0x64748b, P: 0xf97316 };
+      function colorFor(sym) { return ELEM_COLOR[sym] || 0x6366f1; }
+      function radiusFor(sym) {
+        const m = atomicMasses[sym] || 20;
+        return Math.max(0.18, Math.min(0.42, 0.16 + Math.log10(m) * 0.11));
+      }
+
+      // ---- empirical formula algorithm ----
+      const TOL = 0.1; // tolerance for "close enough to whole number"
+      function nearWhole(x, tol) {
+        return Math.abs(x - Math.round(x)) <= tol;
+      }
+      function computeEmpirical(entries) {
+        // entries: [{ sym, pct }]
+        const total = entries.reduce((s, e) => s + e.pct, 0);
+        if (total <= 0) throw new Error('Mass percentages must sum to a positive number.');
+        // normalize to 100
+        const norm = entries.map((e) => ({ sym: e.sym, pct: (e.pct / total) * 100 }));
+        const moles = norm.map((e) => ({ sym: e.sym, pct: e.pct, mol: e.pct / atomicMasses[e.sym] }));
+        const minMol = Math.min(...moles.map((m) => m.mol));
+        let ratios = moles.map((m) => ({ sym: m.sym, pct: m.pct, mol: m.mol, ratio: m.mol / minMol }));
+
+        // try multipliers 1..4 to find whole numbers within tolerance
+        let k = 1, ok = false;
+        for (k = 1; k <= 4; k++) {
+          ok = ratios.every((r) => nearWhole(r.ratio * k, TOL));
+          if (ok) break;
+        }
+        if (!ok) k = 1; // fall back to plain rounding at k=1 if nothing matched cleanly
+
+        const finalRatios = ratios.map((r) => ({ sym: r.sym, pct: r.pct, mol: r.mol, ratio: r.ratio, subscript: Math.max(1, Math.round(r.ratio * k)) }));
+        const molePctTotal = finalRatios.reduce((s, r) => s + r.mol, 0);
+        finalRatios.forEach((r) => (r.molePct = (r.mol / molePctTotal) * 100));
+
+        const formula = finalRatios.map((r) => r.sym + (r.subscript === 1 ? '' : subscriptDigits(r.subscript))).join('');
+        const formulaPlain = finalRatios.map((r) => r.sym + (r.subscript === 1 ? '' : r.subscript)).join('');
+        return { entries: finalRatios, formula, formulaPlain, k };
+      }
+      const SUB_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉' };
+      function subscriptDigits(n) { return String(n).split('').map((d) => SUB_MAP[d] || d).join(''); }
+
+      // ---- calculator ----
+      let lastResult = null;
+      const charts = {};
+      let cluster = null;
+
+      function readRows() {
+        const rows = Array.from(document.querySelectorAll('.ef-row'));
+        const entries = [];
+        for (const row of rows) {
+          const sym = row.querySelector('.ef-sym').value.trim();
+          const pctStr = row.querySelector('.ef-pct').value.trim();
+          if (!sym && !pctStr) continue;
+          if (!sym) throw new Error('Enter an element symbol for every row with a mass %.');
+          if (!atomicMasses.hasOwnProperty(sym)) throw new Error('Unknown element symbol: "' + sym + '" (symbols are case-sensitive, e.g. Co vs CO).');
+          const pct = parseFloat(pctStr);
+          if (isNaN(pct) || pct <= 0) throw new Error('Enter a positive mass % for ' + sym + '.');
+          entries.push({ sym, pct });
+        }
+        const seen = new Set();
+        for (const e of entries) {
+          if (seen.has(e.sym)) throw new Error('Element "' + e.sym + '" is entered more than once.');
+          seen.add(e.sym);
+        }
+        if (entries.length < 2) throw new Error('Enter at least 2 elements.');
+        if (entries.length > 4) throw new Error('This tool supports up to 4 elements.');
+        return entries;
+      }
+
+      function update() {
+        el('ef-err').textContent = '';
+        el('ef-breakdown').innerHTML = '';
+        try {
+          const entries = readRows();
+          const result = computeEmpirical(entries);
+          el('r-formula').textContent = result.formula;
+          el('ef-breakdown').innerHTML = result.entries.map((r) =>
+            `<div><span class="font-medium">${r.sym}</span>: ${r.pct.toFixed(2)}% mass → ${r.mol.toFixed(4)} mol → ratio ${r.ratio.toFixed(3)} → subscript ${r.subscript} (${r.molePct.toFixed(2)}% mole)</div>`
+          ).join('');
+          lastResult = result;
+        } catch (e) {
+          el('r-formula').textContent = '—';
+          el('ef-err').textContent = e.message;
+          lastResult = null;
+        }
+        refreshViz();
+      }
+      document.querySelectorAll('.ef-sym, .ef-pct').forEach((inp) => inp.addEventListener('input', update));
+
+      // ---- 3D atom cluster ----
+      const MAX_ATOMS = 40;
+      function initCluster() {
+        const c = el('cluster3d'); if (!c) throw new Error('no cluster container');
+        const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const geo = new THREE.SphereGeometry(1, 16, 16);
+        const spheres = [];
+        for (let i = 0; i < MAX_ATOMS; i++) {
+          const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
+          const sph = new THREE.Mesh(geo, mat);
+          sph.visible = false;
+          s.scene.add(sph);
+          spheres.push(sph);
+        }
+        function layout(result) {
+          const list = [];
+          if (result) {
+            result.entries.forEach((r) => { for (let k = 0; k < r.subscript; k++) list.push(r.sym); });
+          }
+          const shown = list.slice(0, MAX_ATOMS);
+          const n = shown.length;
+          for (let i = 0; i < MAX_ATOMS; i++) {
+            const sph = spheres[i];
+            if (i < n) {
+              const sym = shown[i];
+              sph.visible = true;
+              sph.material.color.setHex(colorFor(sym));
+              sph.scale.setScalar(radiusFor(sym));
+              const R = 1.1 + Math.cbrt(n) * 0.55;
+              const gAngle = Math.PI * (3 - Math.sqrt(5));
+              const yFrac = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
+              const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
+              const theta = gAngle * i;
+              sph.position.set(Math.cos(theta) * rad * R, yFrac * R, Math.sin(theta) * rad * R);
+            } else {
+              sph.visible = false;
+            }
+          }
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0018); s.renderer.render(s.scene, s.camera); }
+        frame();
+        cluster = { layout, resize: s.resize };
+      }
+
+      // ---- charts ----
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.ratio = new Chart(el('chart-ratio'), {
+          type: 'bar',
+          data: { labels: [], datasets: [{ label: 'Mole ratio', data: [], backgroundColor: '#6366f1', borderRadius: 4 }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Ratio (relative to smallest)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.pct = new Chart(el('chart-pct'), {
+          type: 'bar',
+          data: { labels: [], datasets: [
+            { label: 'Mass %', data: [], backgroundColor: '#94a3b8', borderRadius: 4 },
+            { label: 'Mole %', data: [], backgroundColor: '#10b981', borderRadius: 4 },
+          ] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Percent' }, beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.ready = true;
+        updateCharts();
+      }
+      function updateCharts() {
+        if (!charts.ready) return;
+        if (lastResult) {
+          const syms = lastResult.entries.map((r) => r.sym);
+          charts.ratio.data.labels = syms;
+          charts.ratio.data.datasets[0].data = lastResult.entries.map((r) => +r.ratio.toFixed(3));
+          charts.ratio.data.datasets[0].backgroundColor = syms.map((s) => '#' + colorFor(s).toString(16).padStart(6, '0'));
+          charts.pct.data.labels = syms;
+          charts.pct.data.datasets[0].data = lastResult.entries.map((r) => +r.pct.toFixed(2));
+          charts.pct.data.datasets[1].data = lastResult.entries.map((r) => +r.molePct.toFixed(2));
+        } else {
+          charts.ratio.data.labels = []; charts.ratio.data.datasets[0].data = [];
+          charts.pct.data.labels = []; charts.pct.data.datasets[0].data = []; charts.pct.data.datasets[1].data = [];
+        }
+        charts.ratio.update();
+        charts.pct.update();
+      }
+
+      function refreshViz() {
+        try { if (cluster) cluster.layout(lastResult); } catch (e) {}
+        try { updateCharts(); } catch (e) {}
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[empirical-formula] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[empirical-formula] charts failed', e); }
+        if (window.THREE) {
+          try { initCluster(); refreshViz(); } catch (e) { console.error('[empirical-formula] cluster failed', e); el('cluster3d-fallback').classList.remove('hidden'); }
+        } else { el('cluster3d-fallback').classList.remove('hidden'); }
+        mountResize([cluster]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

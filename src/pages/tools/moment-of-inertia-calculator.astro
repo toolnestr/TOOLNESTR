@@ -1,0 +1,342 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Moment of Inertia Calculator';
+const description = 'Moment of inertia calculator with a live 3D spinning shape and charts. Compute I for a solid sphere, disk/cylinder, rod, or hoop from mass and radius, with worked examples.';
+const intro = 'Pick a shape — solid sphere, disk, rod, or hoop — enter its mass and radius (or length), and get the moment of inertia I instantly. A live 3D scene spins the chosen shape and charts show how I scales with mass and radius.';
+const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
+
+const faqs = [
+  { q: 'What is moment of inertia?', a: 'Moment of inertia (I) is the rotational equivalent of mass — it measures how hard it is to change an object\'s angular velocity about a given axis. I = Σmᵢrᵢ² for point masses, and standard formulas exist for common rigid-body shapes. Units are kg·m².' },
+  { q: 'Why does the same object have different I values?', a: 'Moment of inertia depends on the axis of rotation, not just the object. A rod spun about its centre (I = ⅟₁₂mL²) has a much smaller I than the same rod spun about one end (I = ⅓mL²), because more of its mass sits farther from the end axis.' },
+  { q: 'Why does radius matter more than mass?', a: 'I is proportional to mass but to the square of the distance from the axis (r²). Doubling the mass doubles I, but doubling the radius quadruples it — this is why mass distributed far from the axis (like a hoop) resists spin-up far more than the same mass concentrated near the axis (like a solid sphere).' },
+  { q: 'Which shape has the largest I for a given mass and radius?', a: 'A thin hoop or hollow cylinder, with I = mr² — all the mass sits at radius r. A solid sphere has the smallest, I = ⅖mr² = 0.4mr², because its mass is distributed from the centre outward, with much of it closer to the axis.' },
+  { q: 'How is moment of inertia used in real calculations?', a: 'It appears in rotational kinetic energy (KE = ½Iω²), angular momentum (L = Iω), and Newton\'s second law for rotation (τ = Iα) — the same roles that mass, ½mv², p = mv, and F = ma play in linear motion.' },
+];
+
+const badge = { label: 'Physics', color: 'blue' };
+const howto = {
+  name: 'How to use the Moment of Inertia Calculator',
+  description: 'Calculate the moment of inertia I for common rigid-body shapes from mass and radius or length.',
+  steps: [
+    { name: 'Pick a shape', text: 'Choose solid sphere, disk/cylinder, rod (about centre or end), hoop, or a point mass.' },
+    { name: 'Enter mass and radius (or length)', text: 'Rods use length L instead of radius; the others use radius r.' },
+    { name: 'Read the result', text: 'I solves instantly using the matching formula, and the 3D shape updates its spin.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'I = (2/5) m r²', note: 'solid sphere, about a central axis' },
+  { expr: 'I = (1/2) m r²', note: 'solid disk/cylinder, about its central axis' },
+  { expr: 'I = (1/12) m L²', note: 'thin rod, about its centre' },
+  { expr: 'I = (1/3) m L²', note: 'thin rod, about one end' },
+  { expr: 'I = m r²', note: 'thin hoop/hollow cylinder, or a point mass at radius r' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — solid cylinder flywheel', tone: 'slate',
+    given: 'A solid steel disk of mass 8.0 kg and radius 0.25 m spins about its central axis. Find I.',
+    rows: [
+      { label: 'Formula:', value: 'I = ½mr²' },
+      { label: 'Substitute:', value: 'I = 0.5 × 8.0 × (0.25)² = 0.5 × 8.0 × 0.0625' },
+      { label: 'Moment of inertia:', value: 'I = 0.25 kg·m²', full: true },
+    ],
+  },
+  {
+    title: 'Worked example 2 — rod about its end', tone: 'amber',
+    given: 'A thin uniform rod of mass 1.2 kg and length 0.80 m is swung about a pivot at one end. Find I, and compare to spinning it about its centre.',
+    rows: [
+      { label: 'About the end:', value: 'I = ⅓mL² = (1/3) × 1.2 × 0.80² = (1/3) × 1.2 × 0.64 = 0.256 kg·m²' },
+      { label: 'About the centre:', value: 'I = ⅟₁₂mL² = (1/12) × 1.2 × 0.64 = 0.064 kg·m²', full: true },
+    ],
+    note: 'The end-pivot value is exactly 4× the centre-pivot value (⅓ vs ⅟₁₂ = 4× when the mass distribution is the same rod) — spinning about the end is much harder to start or stop.',
+  },
+];
+
+const comparison = {
+  heading: 'Moment of inertia across common shapes',
+  note: 'All rows use the same mass m = 1 kg and radius (or length) r = 1 m for direct comparison.',
+  headers: [{ label: 'Shape' }, { label: 'Formula' }, { label: 'I at m=1kg, r=1m', sub: 'kg·m²' }],
+  rows: [
+    ['Solid sphere', 'I = ⅖mr²', '0.400'],
+    ['Solid disk/cylinder', 'I = ½mr²', '0.500'],
+    ['Thin rod (about centre)', 'I = ⅟₁₂mL²', '0.083'],
+    ['Thin rod (about end)', 'I = ⅓mL²', '0.333'],
+    ['Thin hoop / point mass', 'I = mr²', '1.000'],
+  ],
+  highlightIndex: 4,
+  footnote: 'For the same mass and radius, a hoop has the largest I (all mass at radius r) and a rod about its centre has the smallest (mass concentrated near the axis).',
+};
+
+const realWorld = [
+  { emoji: '🎡', title: 'Flywheels', body: 'Flywheels store rotational kinetic energy (KE = ½Iω²) to smooth out power delivery in engines and machinery. Engineers concentrate mass near the rim (closer to a hoop than a solid disk) to maximise I for a given mass, storing more energy at the same spin rate.' },
+  { emoji: '⛸️', title: 'Figure skaters', body: 'A skater pulling their arms in reduces their moment of inertia about the spin axis. Since angular momentum L = Iω is conserved with no external torque, a smaller I means a larger ω — the skater spins dramatically faster without adding any energy.' },
+  { emoji: '🏏', title: 'Sports equipment', body: 'Bats, rackets and golf clubs are designed with specific mass distributions to tune their moment of inertia (often called the "swing weight"). A higher I about the grip resists twisting on off-centre hits but is harder to swing quickly, which is why designs balance the two.' },
+];
+
+const misconceptions = [
+  { claim: '"Moment of inertia is just the mass of the object."', truth: 'I depends on both mass and how that mass is distributed relative to the axis — not mass alone. Two objects with identical mass can have very different I values, and the same object has different I values about different axes.' },
+  { claim: '"A heavier object always has a larger moment of inertia."', truth: 'Not necessarily. A lighter hoop can have a larger I than a heavier solid sphere of the same radius, because I ∝ r² and the hoop concentrates all its mass at the maximum radius while the sphere spreads mass toward the centre.' },
+  { claim: '"You can use one formula for a shape regardless of the axis."', truth: 'The formula changes with the axis of rotation. A rod about its centre (⅟₁₂mL²) and the same rod about its end (⅓mL²) differ by a factor of 4 — always match the formula to the actual pivot or axis.' },
+  { claim: '"Moment of inertia has the same units as mass."', truth: 'I is measured in kg·m² (mass times distance squared), not kg. It behaves like mass in rotational equations (τ = Iα mirrors F = ma) but is a distinct physical quantity with different units.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>University Physics Volume 1</em></strong> — §10.5 "Calculating Moments of Inertia" (free, peer-reviewed). <a href="https://openstax.org/books/university-physics-volume-1/pages/10-5-calculating-moments-of-inertia" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Halliday, Resnick &amp; Walker, <em>Fundamentals of Physics</em></strong> — Chapter 10, Rotation, Table of rotational inertias.' },
+  { html: '<strong>Serway &amp; Jewett, <em>Physics for Scientists and Engineers</em></strong> — Chapter 10, Rotation of a Rigid Object About a Fixed Axis.' },
+];
+const sourcesNote = 'Formulas assume idealised uniform-density shapes (thin rods and hoops, solid uniform spheres and cylinders). Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Choose the shape', body: 'Sphere, disk/cylinder, rod (centre or end), hoop, or a point mass all use different formulas.' },
+  { title: 'Enter mass and size', body: 'Rods take a length L; other shapes take a radius r.' },
+  { title: 'Watch it spin', body: 'Use the sliders to see how mass and radius change I and the spin in 3D.' },
+];
+
+const related = [
+  { href: '/tools/torque-calculator', emoji: '🔩', title: 'Torque Calculator', desc: 'τ = rFsinθ — solve torque, lever arm, force, or angle.' },
+  { href: '/tools/uniform-circular-motion-calculator', emoji: '🔄', title: 'Uniform Circular Motion Calculator', desc: 'Centripetal accel/force, period, ω from r and v.' },
+  { href: '/tools/momentum-calculator', emoji: '🎯', title: 'Momentum & Impulse Calculator', desc: 'p = mv plus a combined impulse mode.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="moment of inertia is rotational mass — how much an object resists changes in spin, based on both how much mass it has and how far that mass sits from the axis."
+  howIntro="Each shape has its own formula because the mass distribution relative to the axis differs: a hoop keeps all its mass at radius r (I = mr²), while a solid sphere spreads mass from the centre out (I = ⅖mr², the smallest coefficient of the common shapes). Rods depend on where the pivot sits — the centre (⅟₁₂mL²) or the end (⅓mL²)."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where moment of inertia actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block">
+      <span class="text-sm font-medium text-slate-700">Shape</span>
+      <select id="shape" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="sphere">Solid sphere — I = ⅖mr²</option>
+        <option value="disk" selected>Solid disk / cylinder — I = ½mr²</option>
+        <option value="rod-center">Thin rod, about centre — I = ⅟₁₂mL²</option>
+        <option value="rod-end">Thin rod, about end — I = ⅓mL²</option>
+        <option value="hoop">Thin hoop / hollow cylinder — I = mr²</option>
+        <option value="point">Point mass at radius r — I = mr²</option>
+      </select>
+    </label>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass (m)</span>
+        <input id="mass" type="number" step="any" placeholder="kg" value="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span id="size-label" class="text-sm font-medium text-slate-700">Radius (r)</span>
+        <input id="size" type="number" step="any" placeholder="m" value="0.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Moment of inertia (I)</div><div id="r-i" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Formula used</div><div id="r-formula" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="moi-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D spinning shape + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D spinning shape</h2>
+      <p class="mt-1 text-sm text-slate-500">The selected shape spins about its axis — a larger I spins more slowly for the same applied effort. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass <span id="out-bm" class="font-mono text-indigo-600">8.00 kg</span></span>
+          <input id="b-m" type="range" min="0.5" max="20" step="0.1" value="8" class="mt-2 w-full accent-indigo-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Radius / length <span id="out-br" class="font-mono text-indigo-600">0.25 m</span></span>
+          <input id="b-r" type="range" min="0.1" max="1" step="0.01" value="0.25" class="mt-2 w-full accent-indigo-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Moment of inertia I = <span id="out-bi" class="font-mono font-bold">0.250 kg·m²</span></div>
+      <div id="shape3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="shape3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Moment of inertia graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">I vs radius/length (at your current mass, shape) — a quadratic curve</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-r"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">I across all shapes (at your current mass, radius) — bar comparison</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-shapes"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
+
+      const SHAPES = {
+        sphere:     { label: 'Solid sphere', coeff: 2 / 5, formula: 'I = ⅖mr²', sizeLabel: 'Radius (r)' },
+        disk:       { label: 'Solid disk / cylinder', coeff: 1 / 2, formula: 'I = ½mr²', sizeLabel: 'Radius (r)' },
+        'rod-center': { label: 'Thin rod (about centre)', coeff: 1 / 12, formula: 'I = ⅟₁₂mL²', sizeLabel: 'Length (L)' },
+        'rod-end':  { label: 'Thin rod (about end)', coeff: 1 / 3, formula: 'I = ⅓mL²', sizeLabel: 'Length (L)' },
+        hoop:       { label: 'Thin hoop / hollow cylinder', coeff: 1, formula: 'I = mr²', sizeLabel: 'Radius (r)' },
+        point:      { label: 'Point mass', coeff: 1, formula: 'I = mr²', sizeLabel: 'Radius (r)' },
+      };
+
+      function computeI(shapeKey, m, r) { return SHAPES[shapeKey].coeff * m * r * r; }
+
+      // ---- calculator ----
+      function update() {
+        el('moi-err').textContent = '';
+        el('r-i').textContent = '—';
+        el('r-formula').textContent = '—';
+        const shapeKey = el('shape').value;
+        const m = parseFloat(el('mass').value);
+        const r = parseFloat(el('size').value);
+        el('size-label').textContent = SHAPES[shapeKey].sizeLabel;
+        if (isNaN(m) || isNaN(r)) return;
+        if (m < 0 || r < 0) { el('moi-err').textContent = 'Mass and size must be non-negative.'; return; }
+        const I = computeI(shapeKey, m, r);
+        el('r-i').textContent = fmt(I) + ' kg·m²';
+        el('r-formula').textContent = SHAPES[shapeKey].formula;
+      }
+      el('shape').addEventListener('change', update);
+      el('mass').addEventListener('input', update);
+      el('size').addEventListener('input', update);
+
+      // ---- 3D + charts shared state ----
+      const charts = {};
+      let shapeScene = null;
+      function bState() {
+        const shapeKey = el('shape').value;
+        const m = parseFloat(el('b-m').value), r = parseFloat(el('b-r').value);
+        const I = computeI(shapeKey, m, r);
+        return { shapeKey, m, r, I };
+      }
+      function onB() {
+        const s = bState();
+        el('out-bm').textContent = s.m.toFixed(2) + ' kg';
+        el('out-br').textContent = s.r.toFixed(2) + ' m';
+        el('out-bi').textContent = fmt(s.I) + ' kg·m²';
+        try { if (shapeScene) shapeScene.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-m').addEventListener('input', onB);
+      el('b-r').addEventListener('input', onB);
+      el('shape').addEventListener('change', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.r = new Chart(el('chart-r'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'I', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.3, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Radius / length (m)' } }, y: { title: { display: true, text: 'I (kg·m²)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.shapes = new Chart(el('chart-shapes'), {
+          type: 'bar',
+          data: {
+            labels: ['Rod (centre)', 'Sphere', 'Disk', 'Rod (end)', 'Hoop/point'],
+            datasets: [{ label: 'I', data: [0, 0, 0, 0, 0], backgroundColor: ['#94a3b8', '#34d399', '#6366f1', '#f59e0b', '#ef4444'] }],
+          },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'I (kg·m²)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        const L = [], D = [];
+        for (let rr = 0.1; rr <= 1.0001; rr += 0.05) { L.push(rr.toFixed(2)); D.push(+computeI(s.shapeKey, s.m, rr).toFixed(4)); }
+        charts.r.data.labels = L; charts.r.data.datasets[0].data = D; charts.r.update();
+
+        const order = ['rod-center', 'sphere', 'disk', 'rod-end', 'hoop'];
+        charts.shapes.data.datasets[0].data = order.map((k) => +computeI(k, s.m, s.r).toFixed(4));
+        charts.shapes.update();
+      }
+
+      // ---- 3D spinning shape ----
+      function buildMesh(THREE, shapeKey, r) {
+        const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, metalness: 0.1, roughness: 0.5 });
+        const rr = Math.max(0.15, r * 3);
+        switch (shapeKey) {
+          case 'sphere': return new THREE.Mesh(new THREE.SphereGeometry(rr, 32, 24), mat);
+          case 'disk': return new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, 0.4, 36), mat);
+          case 'hoop': {
+            const g = new THREE.Group();
+            const tube = new THREE.Mesh(new THREE.TorusGeometry(rr, Math.max(0.06, rr * 0.08), 12, 36), mat);
+            tube.rotation.x = Math.PI / 2;
+            g.add(tube);
+            return g;
+          }
+          case 'point': {
+            const g = new THREE.Group();
+            const armMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1 });
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, rr, 10), armMat);
+            arm.rotation.z = Math.PI / 2; arm.position.x = rr / 2;
+            g.add(arm);
+            const ball = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 16), mat);
+            ball.position.x = rr;
+            g.add(ball);
+            return g;
+          }
+          case 'rod-center': {
+            const rod = new THREE.Mesh(new THREE.BoxGeometry(rr * 2, 0.18, 0.18), mat);
+            return rod;
+          }
+          case 'rod-end':
+          default: {
+            const g = new THREE.Group();
+            const rod = new THREE.Mesh(new THREE.BoxGeometry(rr * 2, 0.18, 0.18), mat);
+            rod.position.x = rr;
+            g.add(rod);
+            return g;
+          }
+        }
+      }
+      function initShape() {
+        const c = el('shape3d'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(10, 10, 0xcbd5e1, 0xe2e8f0));
+        const spinGroup = new THREE.Group();
+        s.scene.add(spinGroup);
+        let mesh = null, spinSpeed = 0.02;
+
+        function rebuild(state) {
+          if (mesh) { spinGroup.remove(mesh); }
+          mesh = buildMesh(THREE, state.shapeKey, state.r);
+          spinGroup.add(mesh);
+          // Slower visual spin for larger I (rough normaliser).
+          const maxI = 20 * 1 * 1; // rough m_max * r_max^2
+          spinSpeed = reduceMotion ? 0 : Math.max(0.004, 0.06 - (state.I / maxI) * 0.05);
+        }
+        function update(state) { rebuild(state); }
+        function frame() {
+          requestAnimationFrame(frame);
+          if (!reduceMotion) { spinGroup.rotation.y += spinSpeed; s.spin(0.0006); }
+          s.renderer.render(s.scene, s.camera);
+        }
+        frame();
+        shapeScene = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[moment-of-inertia] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[moment-of-inertia] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[moment-of-inertia] charts failed', e); }
+        if (window.THREE) {
+          try { initShape(); } catch (e) { console.error('[moment-of-inertia] 3D failed', e); el('shape3d-fallback').classList.remove('hidden'); }
+        } else { el('shape3d-fallback').classList.remove('hidden'); }
+        mountResize([shapeScene]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

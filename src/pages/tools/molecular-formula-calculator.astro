@@ -1,0 +1,404 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Molecular Formula Calculator';
+const description = 'Free molecular formula calculator with a live 3D atom cluster and charts. Enter an empirical formula and actual molar mass to find the molecular formula, n multiplier, and full breakdown.';
+const intro = 'Enter an empirical formula (e.g., CH2O) and the compound\'s actual molar mass to find its molecular formula, the whole-number multiplier n, and a live 3D view of the empirical cluster scaling up.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is a molecular formula?', a: 'The molecular formula gives the actual number of atoms of each element in one molecule of a compound — e.g. glucose is C₆H₁₂O₆. It is always a whole-number multiple of the empirical formula, which shows only the simplest ratio of atoms.' },
+  { q: 'How do you find the molecular formula from the empirical formula?', a: 'Compute the empirical formula mass (sum of atomic masses in the empirical formula), then divide the actual molar mass by it: n = M(actual) / M(empirical). Round n to the nearest whole number and multiply every subscript in the empirical formula by n.' },
+  { q: 'Why do I need the actual molar mass as well as the empirical formula?', a: 'The empirical formula alone only fixes the ratio of atoms, not the true size of the molecule — CH₂O could be formaldehyde (n=1), acetic acid (n=2), glucose (n=6), or larger. The actual molar mass, usually from mass spectrometry or freezing-point depression, is what pins down n.' },
+  { q: 'What if n does not come out close to a whole number?', a: 'A small rounding gap (a percent or two) is normal experimental error. If n is off by more than about 5% from a whole number, it usually means the empirical formula or the measured molar mass has an error — double-check both inputs.' },
+  { q: 'Can the molecular formula equal the empirical formula?', a: 'Yes — whenever n = 1, the molecular and empirical formulas are identical. Water (H₂O) and methane (CH₄) are both cases where the simplest ratio is already the true molecular formula.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Molecular Formula Calculator',
+  description: 'Find a molecular formula from an empirical formula and the compound\'s actual molar mass.',
+  steps: [
+    { name: 'Enter the empirical formula', text: 'Type the simplest whole-number ratio formula, e.g. CH2O.' },
+    { name: 'Enter the actual molar mass', text: 'Type the experimentally determined molar mass in g/mol, e.g. 180.16.' },
+    { name: 'Read the result', text: 'The multiplier n and the full molecular formula solve instantly, with a live 3D cluster.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'M<sub>empirical</sub> = Σ(n<sub>i</sub> × A<sub>i</sub>)', note: 'empirical formula mass, same rule as molar mass' },
+  { expr: 'n = M<sub>actual</sub> / M<sub>empirical</sub>', note: 'rounded to the nearest whole number' },
+  { expr: 'molecular formula = empirical × n', note: 'multiply every subscript by n' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — glucose', tone: 'slate',
+    given: 'The empirical formula of a sugar is CH₂O, and its actual molar mass (measured) is 180.16 g/mol. Find the molecular formula.',
+    rows: [
+      { label: 'Empirical formula mass:', value: '12.011 + 2(1.008) + 16.00 = 30.03 g/mol' },
+      { label: 'Multiplier:', value: 'n = 180.16 ÷ 30.03 = 6.00 → n = 6' },
+      { label: 'Molecular formula:', value: 'C₍₁×₆₎H₍₂×₆₎O₍₁×₆₎ = <strong>C₆H₁₂O₆</strong> (glucose)', full: true },
+    ],
+  },
+  {
+    title: 'Worked example 2 — when n = 1', tone: 'amber',
+    given: 'A compound has empirical formula CH₄ and an actual molar mass of 16.04 g/mol. Find the molecular formula.',
+    rows: [
+      { label: 'Empirical formula mass:', value: '12.011 + 4(1.008) = 16.04 g/mol' },
+      { label: 'Multiplier:', value: 'n = 16.04 ÷ 16.04 = 1.00 → n = 1' },
+      { label: 'Molecular formula:', value: 'CH₄ × 1 = <strong>CH₄</strong> — identical to the empirical formula (methane)', full: true },
+    ],
+    note: 'Whenever the actual molar mass equals the empirical formula mass, n = 1 and the two formulas are the same compound.',
+  },
+];
+
+const comparison = {
+  heading: 'Empirical vs molecular formula for common compounds',
+  note: 'Same empirical formula, different actual molar mass, gives a different n and a different molecular formula.',
+  headers: [{ label: 'Compound' }, { label: 'Empirical' }, { label: 'Empirical mass' }, { label: 'Actual M' }, { label: 'n' }, { label: 'Molecular' }],
+  rows: [
+    ['Formaldehyde', 'CH₂O', '30.03 g/mol', '30.03 g/mol', '1', 'CH₂O'],
+    ['Acetic acid', 'CH₂O', '30.03 g/mol', '60.05 g/mol', '2', 'C₂H₄O₂'],
+    ['Glucose', 'CH₂O', '30.03 g/mol', '180.16 g/mol', '6', 'C₆H₁₂O₆'],
+    ['Benzene', 'CH', '13.02 g/mol', '78.11 g/mol', '6', 'C₆H₆'],
+    ['Hydrogen peroxide', 'HO', '17.01 g/mol', '34.01 g/mol', '2', 'H₂O₂'],
+  ],
+  highlightIndex: 2,
+  footnote: 'All three CH₂O rows share the same simplest ratio of atoms — only the actual molar mass tells them apart.',
+};
+
+const realWorld = [
+  { emoji: '🔬', title: 'Compound identification', body: 'Combustion analysis gives only the empirical formula (a ratio of atoms). Mass spectrometry or another independent method supplies the actual molar mass, and combining the two pins down exactly which molecule you have.' },
+  { emoji: '🕵️', title: 'Forensic & materials analysis', body: 'Analysts identifying an unknown substance from trace samples often start with elemental composition (empirical formula) and use mass spectrometry to fix the true molecular size — critical for correctly identifying drugs, polymers, or contaminants.' },
+  { emoji: '💊', title: 'Pharmaceutical structure determination', body: 'Confirming a new drug candidate\'s molecular formula (not just its atomic ratio) is a required step before its structure, dosage and purity can be established.' },
+];
+
+const misconceptions = [
+  { claim: '"The empirical and molecular formulas are always different."', truth: 'They are identical whenever n = 1 — e.g. water (H₂O) and methane (CH₄). "Empirical" just means simplest ratio; sometimes the simplest ratio already is the true molecule.' },
+  { claim: '"You can find the molecular formula from the empirical formula alone."', truth: 'No — the empirical formula only fixes the ratio of atoms. You always need an independent measurement of the actual molar mass (from mass spectrometry, freezing-point depression, or similar) to determine n.' },
+  { claim: '"n should be rounded no matter how far off it is."', truth: 'A small deviation (a percent or two) from a whole number is normal measurement error and should be rounded. But if n is off by more than roughly 5%, that signals a likely error in the empirical formula or the molar mass, not a valid rounding.' },
+  { claim: '"The empirical formula mass and the molecular formula mass are unrelated."', truth: 'They are directly related: molecular formula mass = empirical formula mass × n, exactly the same multiplier used to scale the atom counts.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — determining empirical and molecular formulas (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/3-2-determining-empirical-and-molecular-formulas" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3, Empirical Formulas from Analyses.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — determination of molecular formula from empirical formula and molar mass.' },
+];
+const sourcesNote = 'n = actual molar mass ÷ empirical formula mass, rounded to the nearest whole number. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter the empirical formula', body: 'Use standard element symbols and optional parentheses, e.g. CH2O or Ca(OH)2.' },
+  { title: 'Enter the actual molar mass', body: 'Type the experimentally measured molar mass in g/mol.' },
+  { title: 'Check the multiplier', body: 'A warning appears if n is not close to a whole number — check your formula and mass.' },
+];
+
+const related = [
+  { href: '/tools/atomic-mass-calculator', emoji: '🔬', title: 'Molar Mass Calculator', desc: 'M = Σ(atomic mass × count) for any formula.' },
+  { href: '/tools/empirical-formula-calculator', emoji: '🧫', title: 'Empirical Formula Calculator', desc: 'Find the simplest ratio from percent composition.' },
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance equations up to 4 species instantly.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="the molecular formula is the empirical formula scaled up by a whole number n — and n is found by comparing the empirical formula's mass to the compound's real, measured molar mass."
+  howIntro="Because the empirical formula only records the simplest ratio of atoms, many different molecules can share the same one — CH₂O is formaldehyde, acetic acid, or glucose, depending only on size. Dividing the actual molar mass by the empirical formula mass recovers that size as <span class='font-mono'>n = M<sub>actual</sub> / M<sub>empirical</sub></span>, then every subscript in the empirical formula is multiplied by n."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where this actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter an empirical formula and the compound's actual molar mass</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Empirical formula</span>
+        <input id="formula" type="text" placeholder="CH2O" value="CH2O" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Actual molar mass (g/mol)</span>
+        <input id="molar-mass" type="number" step="any" placeholder="180.16" value="180.16" class="mt-1 w-full rounded-xl border border-slate-300 p-3 text-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Molecular formula</div><div id="r-formula" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Empirical formula mass</div><div id="r-empmass" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Multiplier n</div><div id="r-n" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <div id="mf-breakdown" class="mt-4 space-y-1 text-sm text-slate-600"></div>
+    <p id="mf-warn" class="mt-3 text-center text-sm text-amber-600"></p>
+    <p id="mf-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D atom cluster + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D: empirical cluster scaling to molecular</h2>
+      <p class="mt-1 text-sm text-slate-500">Spheres represent atoms. The inner, smaller cluster is the empirical formula; the outer, larger cluster is the full molecular formula (empirical × n). Display is capped at 60 atoms for performance — illustrative, not to scale. Drag to orbit (touch works too).</p>
+      <div id="cluster3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="cluster3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="cluster3d-cap" class="mt-2 hidden text-center text-xs text-slate-400"></p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Molecular formula graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Empirical mass vs actual molar mass vs molecular mass</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-mass"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Atom count per element — empirical vs molecular</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-atoms"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- parser (reused from atomic-mass-calculator) ----
+      const atomicMasses = { H: 1.008, He: 4.0026, Li: 6.94, Be: 9.0122, B: 10.81, C: 12.011, N: 14.007, O: 16.00, F: 19.00, Ne: 20.180, Na: 22.990, Mg: 24.305, Al: 26.982, Si: 28.086, P: 30.974, S: 32.06, Cl: 35.45, Ar: 39.95, K: 39.098, Ca: 40.078, Sc: 44.956, Ti: 47.867, V: 50.942, Cr: 51.996, Mn: 54.938, Fe: 55.845, Co: 58.933, Ni: 58.693, Cu: 63.546, Zn: 65.38, Ga: 69.723, Ge: 72.63, As: 74.922, Se: 78.96, Br: 79.904, Kr: 83.80, Rb: 85.468, Sr: 87.62, Y: 88.906, Zr: 91.224, Nb: 92.906, Mo: 95.95, Tc: 98.0, Ru: 101.07, Rh: 102.91, Pd: 106.42, Ag: 107.87, Cd: 112.41, In: 114.82, Sn: 118.71, Sb: 121.76, Te: 127.60, I: 126.90, Xe: 131.29, Cs: 132.91, Ba: 137.33, La: 138.91, Ce: 140.12, Pr: 140.91, Nd: 144.24, Pm: 145.0, Sm: 150.36, Eu: 151.96, Gd: 157.25, Tb: 158.93, Dy: 162.50, Ho: 164.93, Er: 167.26, Tm: 168.93, Yb: 173.05, Lu: 174.97, Hf: 178.49, Ta: 180.95, W: 183.84, Re: 186.21, Os: 190.23, Ir: 192.22, Pt: 195.08, Au: 196.97, Hg: 200.59, Tl: 204.38, Pb: 207.2, Bi: 208.98, Po: 209.0, At: 210.0, Rn: 222.0, Fr: 223.0, Ra: 226.0, Ac: 227.0, Th: 232.04, Pa: 231.04, U: 238.03, Np: 237.0, Pu: 244.0, Am: 243.0, Cm: 247.0, Bk: 247.0, Cf: 251.0, Es: 252.0, Fm: 257.0, Md: 258.0, No: 259.0, Lr: 262.0, Rf: 267.0, Db: 268.0, Sg: 269.0, Bh: 270.0, Hs: 269.0, Mt: 278.0, Ds: 281.0, Rg: 282.0, Cn: 285.0, Nh: 286.0, Fl: 289.0, Mc: 290.0, Lv: 293.0, Ts: 294.0, Og: 294.0 };
+      function parseGroup(str, pos) {
+        let i = pos, counts = {};
+        while (i < str.length && str[i] !== ')' && str[i] !== ']') {
+          if (str[i] === '(' || str[i] === '[') {
+            const inner = parseGroup(str, i + 1);
+            i = inner.i;
+            if (i >= str.length || (str[i] !== ')' && str[i] !== ']')) throw new Error('Unmatched bracket in: ' + str);
+            i++;
+            let numStr = '';
+            while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
+            const mult = numStr ? parseInt(numStr, 10) : 1;
+            for (const sym in inner.counts) counts[sym] = (counts[sym] || 0) + inner.counts[sym] * mult;
+          } else if (str[i] >= 'A' && str[i] <= 'Z') {
+            let sym = str[i++];
+            while (i < str.length && str[i] >= 'a' && str[i] <= 'z') sym += str[i++];
+            if (!atomicMasses[sym]) throw new Error('Unknown element: ' + sym);
+            let numStr = '';
+            while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
+            const num = numStr ? parseInt(numStr, 10) : 1;
+            counts[sym] = (counts[sym] || 0) + num;
+          } else {
+            throw new Error('Invalid character: ' + str[i]);
+          }
+        }
+        return { counts, i };
+      }
+      function parseFormula(f) {
+        if (!f) return {};
+        const segments = f.split(/[·.]/).map(s => s.trim()).filter(s => s.length > 0);
+        if (segments.length === 0) return { error: 'Invalid formula' };
+        const result = {};
+        try {
+          for (const seg of segments) {
+            let idx = 0, coefStr = '';
+            while (idx < seg.length && seg[idx] >= '0' && seg[idx] <= '9') coefStr += seg[idx++];
+            const coef = coefStr ? parseInt(coefStr, 10) : 1;
+            const rest = seg.slice(idx);
+            if (!rest) throw new Error('Invalid formula segment: ' + seg);
+            const { counts, i } = parseGroup(rest, 0);
+            if (i !== rest.length) throw new Error('Unmatched bracket in: ' + rest);
+            for (const sym in counts) result[sym] = (result[sym] || 0) + counts[sym] * coef;
+          }
+        } catch (e) {
+          return { error: e.message };
+        }
+        return result;
+      }
+      function formulaString(counts) {
+        const SUB = { 0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄', 5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉' };
+        function sub(n) { return String(n).split('').map(d => SUB[d]).join(''); }
+        return Object.keys(counts).map(sym => sym + (counts[sym] > 1 ? sub(counts[sym]) : '')).join('');
+      }
+
+      // ---- element colour/radius palette for the 3D cluster ----
+      const ELEM_COLOR = { H: 0xf1f5f9, C: 0x475569, O: 0xef4444, N: 0x3b82f6, S: 0xeab308, Cl: 0x22c55e, Na: 0xa855f7, Ca: 0xf97316, Cu: 0xf59e0b, Fe: 0xb45309, K: 0x8b5cf6, Mg: 0x14b8a6, Al: 0x94a3b8, Zn: 0x64748b, P: 0xf97316 };
+      function colorFor(sym) { return ELEM_COLOR[sym] || 0x6366f1; }
+      function radiusFor(sym) {
+        const m = atomicMasses[sym] || 20;
+        return Math.max(0.18, Math.min(0.42, 0.16 + Math.log10(m) * 0.11));
+      }
+
+      // ---- calculator state shared with viz ----
+      let lastResult = null; // { empCounts, molCounts, empMass, actualMass, n, molMass }
+      const charts = {};
+      let cluster = null;
+
+      function update() {
+        const f = el('formula').value.trim();
+        const actualMass = parseFloat(el('molar-mass').value);
+        el('mf-err').textContent = '';
+        el('mf-warn').textContent = '';
+        el('mf-breakdown').innerHTML = '';
+        ['r-formula', 'r-empmass', 'r-n'].forEach(id => el(id).textContent = '—');
+        lastResult = null;
+
+        if (!f) { refreshViz(); return; }
+        const parsed = parseFormula(f);
+        if (parsed.error) { el('mf-err').textContent = parsed.error; refreshViz(); return; }
+        if (Object.keys(parsed).length === 0) { el('mf-err').textContent = 'Enter a formula.'; refreshViz(); return; }
+
+        let empMass = 0;
+        for (const sym in parsed) empMass += atomicMasses[sym] * parsed[sym];
+        el('r-empmass').textContent = empMass.toFixed(3) + ' g/mol';
+
+        if (isNaN(actualMass) || actualMass <= 0) { el('mf-err').textContent = 'Enter the actual molar mass (g/mol).'; refreshViz(); return; }
+
+        const nRaw = actualMass / empMass;
+        const n = Math.max(1, Math.round(nRaw));
+        const pctOff = Math.abs(nRaw - n) / n * 100;
+
+        el('r-n').textContent = n;
+        const molCounts = {};
+        for (const sym in parsed) molCounts[sym] = parsed[sym] * n;
+        const molMass = empMass * n;
+        el('r-formula').textContent = formulaString(molCounts);
+
+        const lines = Object.keys(parsed).map(sym =>
+          `<span class="font-medium">${sym}</span>: ${parsed[sym]} × ${n} = ${molCounts[sym]} atoms`
+        );
+        lines.push(`Molecular formula mass: ${empMass.toFixed(3)} × ${n} = ${molMass.toFixed(3)} g/mol`);
+        el('mf-breakdown').innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
+
+        if (pctOff > 5) {
+          el('mf-warn').textContent = `n = ${nRaw.toFixed(2)} is not close to a whole number — check your empirical formula and molar mass.`;
+        }
+
+        lastResult = { empCounts: parsed, molCounts, empMass, actualMass, n, molMass };
+        refreshViz();
+      }
+      el('formula').addEventListener('input', update);
+      el('molar-mass').addEventListener('input', update);
+
+      // ---- 3D atom cluster: empirical (inner) + molecular (outer) ----
+      const MAX_ATOMS = 60;
+      function initCluster() {
+        const c = el('cluster3d'); if (!c) throw new Error('no cluster container');
+        const s = makeScene(c, 9, new window.THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const THREE = window.THREE;
+        const geo = new THREE.SphereGeometry(1, 16, 16);
+        const spheres = [];
+        for (let i = 0; i < MAX_ATOMS; i++) {
+          const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
+          const sph = new THREE.Mesh(geo, mat);
+          sph.visible = false;
+          s.scene.add(sph);
+          spheres.push(sph);
+        }
+        function layout(res) {
+          if (!res) {
+            spheres.forEach(sp => sp.visible = false);
+            el('cluster3d-cap').classList.add('hidden');
+            return;
+          }
+          // empirical list (inner, small radius) + molecular list (outer shell, larger radius)
+          const empList = [];
+          for (const sym in res.empCounts) for (let k = 0; k < res.empCounts[sym]; k++) empList.push(sym);
+          const molList = [];
+          for (const sym in res.molCounts) for (let k = 0; k < res.molCounts[sym]; k++) molList.push(sym);
+
+          const empShown = empList.slice(0, Math.min(empList.length, Math.floor(MAX_ATOMS * 0.25)));
+          const molBudget = MAX_ATOMS - empShown.length;
+          const molShown = molList.slice(0, Math.max(0, molBudget));
+          const capped = molList.length > molShown.length;
+          el('cluster3d-cap').classList.toggle('hidden', !capped);
+          if (capped) el('cluster3d-cap').textContent = `Showing ${molShown.length} of ${molList.length} molecular atoms (capped for performance).`;
+
+          let idx = 0;
+          // inner empirical cluster
+          const nE = empShown.length;
+          const RE = 0.9 + Math.cbrt(nE) * 0.35;
+          const gAngle = Math.PI * (3 - Math.sqrt(5));
+          for (let i = 0; i < nE; i++) {
+            const sym = empShown[i];
+            const sph = spheres[idx++];
+            sph.visible = true;
+            sph.material.color.setHex(colorFor(sym));
+            sph.scale.setScalar(radiusFor(sym) * 0.85);
+            const yFrac = nE > 1 ? 1 - (i / (nE - 1)) * 2 : 0;
+            const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
+            const theta = gAngle * i;
+            sph.position.set(Math.cos(theta) * rad * RE - RE * 1.6, yFrac * RE, Math.sin(theta) * rad * RE);
+          }
+          // outer molecular cluster
+          const nM = molShown.length;
+          const RM = 1.3 + Math.cbrt(nM) * 0.55;
+          for (let i = 0; i < nM; i++) {
+            const sym = molShown[i];
+            const sph = spheres[idx++];
+            sph.visible = true;
+            sph.material.color.setHex(colorFor(sym));
+            sph.scale.setScalar(radiusFor(sym));
+            const yFrac = nM > 1 ? 1 - (i / (nM - 1)) * 2 : 0;
+            const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
+            const theta = gAngle * i;
+            sph.position.set(Math.cos(theta) * rad * RM + RM * 1.1, yFrac * RM, Math.sin(theta) * rad * RM);
+          }
+          for (; idx < MAX_ATOMS; idx++) spheres[idx].visible = false;
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0018); s.renderer.render(s.scene, s.camera); }
+        frame();
+        cluster = { layout, resize: s.resize };
+      }
+
+      // ---- charts ----
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.mass = new Chart(el('chart-mass'), {
+          type: 'bar',
+          data: { labels: ['Empirical mass', 'Actual molar mass', 'Molecular mass'], datasets: [{ label: 'g/mol', data: [0, 0, 0], backgroundColor: ['#94a3b8', '#6366f1', '#10b981'], borderRadius: 4 }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'g/mol' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.atoms = new Chart(el('chart-atoms'), {
+          type: 'bar',
+          data: { labels: [], datasets: [
+            { label: 'Empirical', data: [], backgroundColor: '#94a3b8', borderRadius: 4 },
+            { label: 'Molecular', data: [], backgroundColor: '#6366f1', borderRadius: 4 },
+          ] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Atom count' }, beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.ready = true;
+        updateCharts();
+      }
+      function updateCharts() {
+        if (!charts.ready) return;
+        if (lastResult) {
+          charts.mass.data.datasets[0].data = [+lastResult.empMass.toFixed(3), +lastResult.actualMass.toFixed(3), +lastResult.molMass.toFixed(3)];
+          const syms = Object.keys(lastResult.empCounts);
+          charts.atoms.data.labels = syms;
+          charts.atoms.data.datasets[0].data = syms.map(s => lastResult.empCounts[s]);
+          charts.atoms.data.datasets[1].data = syms.map(s => lastResult.molCounts[s]);
+        } else {
+          charts.mass.data.datasets[0].data = [0, 0, 0];
+          charts.atoms.data.labels = [];
+          charts.atoms.data.datasets[0].data = [];
+          charts.atoms.data.datasets[1].data = [];
+        }
+        charts.mass.update();
+        charts.atoms.update();
+      }
+
+      function refreshViz() {
+        try { if (cluster) cluster.layout(lastResult); } catch (e) {}
+        try { updateCharts(); } catch (e) {}
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[molecular-formula] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[molecular-formula] charts failed', e); }
+        if (window.THREE) {
+          try { initCluster(); refreshViz(); } catch (e) { console.error('[molecular-formula] cluster failed', e); el('cluster3d-fallback').classList.remove('hidden'); }
+        } else { el('cluster3d-fallback').classList.remove('hidden'); }
+        mountResize([cluster]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
