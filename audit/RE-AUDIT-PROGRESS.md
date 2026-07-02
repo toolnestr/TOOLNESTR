@@ -275,8 +275,14 @@ applies here). Set up from scratch this session:
       already; rest of the 40 unverified. NOTE: `uuid-generator` (security) + `htaccess-redirect-generator`,
       `markdown-to-html` (developers) load-breakage already fixed 2026-07-02 (see esm.sh/status section);
       their compute logic still needs the full audit.
-- [ ] **Charts + Images + Text + Creators** (~48 tools) — old audit explicitly did only a "light
-      review" here, lowest confidence of all. (Charts scatter/radar load-breakage already fixed.)
+- [ ] **Images + Text + Creators** (~37 tools) — old audit explicitly did only a "light
+      review" here, lowest confidence of all.
+- [x] **Charts (11)** — DONE 2026-07-02. Clean. The 4 computational ones verified: box-plot uses R-7
+      linear-interpolation quantiles + Tukey 1.5×IQR fences (verified live: 1..9 → median 5, Q1 3,
+      Q3 7); gauge maps value→angle over a 270° arc; percentage-bar value/total×100; histogram binning
+      handles the max-value edge. The other 7 (bar/pie/line/grouped/donut/scatter/radar) plot raw data
+      via SVG/chart.js — no math to get wrong. All 11 render live (parallel check); scatter+radar
+      confirm the esm.sh chart.js fix. No bugs.
 - [x] **SEO (11)** — DONE 2026-07-02. Clean. readability-checker uses correct textbook constants for
       all 4 scores (Flesch 206.835/1.015/84.6, F-K grade 0.39/11.8/15.59, Gunning Fog 0.4, SMOG
       1.043/3.1291) — verified live (flesch=100, syllables=10, avg=1.00 on a hand-computed sample).
