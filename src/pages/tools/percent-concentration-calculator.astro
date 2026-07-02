@@ -1,0 +1,474 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolLibs from '../../components/SubjectToolLibs.astro';
+
+const title = 'Percent Concentration Calculator';
+const description = 'Percent concentration calculator with a live 3D beaker and charts. Solve mass/volume (w/v), mass/mass (w/w) and volume/volume (v/v) percent, with worked examples.';
+const intro = 'Pick w/v, w/w or v/v, enter any two of percent, solute and solution — the third solves instantly. A live 3D beaker and charts show what the percentage means.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+const faqs = [
+  { q: 'What is percent concentration?', a: 'It expresses how much solute is in a solution as a percentage. The three common types are mass/volume (w/v, grams per 100 mL), mass/mass (w/w, grams per 100 g) and volume/volume (v/v, mL per 100 mL).' },
+  { q: 'What is the w/v percent formula?', a: 'Mass/volume percent = (mass of solute in grams ÷ volume of solution in mL) × 100. So a 5% (w/v) solution has 5 g of solute in every 100 mL of solution — e.g. saline and IV fluids are quoted this way.' },
+  { q: 'What is the difference between w/w and v/v percent?', a: 'w/w (mass/mass) is grams of solute per 100 g of solution and is temperature-independent; v/v (volume/volume) is mL of solute per 100 mL of solution and is used for liquid-in-liquid mixtures like alcohol (ABV).' },
+  { q: 'Is percent concentration the same as molarity?', a: 'No. Percent concentration compares amounts (mass or volume) without needing the molar mass, while molarity is moles per litre. You can convert between them if you know the density and molar mass.' },
+  { q: 'How do I read "0.9% saline"?', a: 'It is 0.9% w/v: 0.9 g of sodium chloride per 100 mL of solution, i.e. 9 g per litre. That matches the salt concentration of blood, which is why it is called physiological or normal saline.' },
+  { q: 'Does the percent type change the number?', a: 'Yes — the same solution can have different w/v, w/w and v/v percentages because mass and volume are not interchangeable. Always state which type you mean.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to use the Percent Concentration Calculator',
+    description: 'Calculate mass/volume, mass/mass or volume/volume percent concentration.',
+    step: [
+      { '@type': 'HowToStep', name: 'Choose the type', text: 'Select w/v (mass/volume), w/w (mass/mass) or v/v (volume/volume).' },
+      { '@type': 'HowToStep', name: 'Enter two values', text: 'Type any two of percent, solute amount and solution amount.' },
+      { '@type': 'HowToStep', name: 'Read the third', text: 'The remaining quantity solves instantly, and the 3D beaker shows the concentration.' },
+    ],
+  })} />
+
+  <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+    <span class="h-2 w-2 rounded-full bg-green-500"></span> Chemistry
+  </span>
+
+  <style is:global>
+    @media print {
+      .no-print { display: none !important; }
+      a[href]::after { content: none !important; }
+      section { break-inside: avoid; }
+    }
+  </style>
+
+  <!-- ============ CALCULATOR ============ -->
+  <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-wv" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Mass/Volume (w/v)</button>
+      <button id="mode-ww" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Mass/Mass (w/w)</button>
+      <button id="mode-vv" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Volume/Volume (v/v)</button>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Percent (%)</span>
+        <input id="pct" type="number" step="any" placeholder="%" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Solute (<span id="lab-solute">g</span>)</span>
+        <input id="solute" type="number" step="any" placeholder="amount of solute" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Solution (<span id="lab-soln">mL</span>)</span>
+        <input id="soln" type="number" step="any" placeholder="amount of solution" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Percent</div><div id="r-pct" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-r2" class="text-sm text-slate-500">Solute</div><div id="r-solute" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-r3" class="text-sm text-slate-500">Solution</div><div id="r-soln" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="pc-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ INTERACTIVE 3D BEAKER ============ -->
+  <section class="mt-8 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Live 3D concentration</h2>
+    <p class="mt-1 text-sm text-slate-500">Set the solute and solution amounts; the beaker fills to the solution volume and the particle density tracks the percentage. Drag to orbit (touch works too).</p>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Solute <span id="out-bsol" class="font-mono text-green-600">5.0</span></span>
+        <input id="b-sol" type="range" min="0" max="50" step="0.5" value="5" class="mt-2 w-full accent-green-600" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Solution <span id="out-bwhole" class="font-mono text-green-600">100</span></span>
+        <input id="b-whole" type="range" min="10" max="200" step="1" value="100" class="mt-2 w-full accent-green-600" />
+      </label>
+    </div>
+    <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Concentration = <span id="out-bpct" class="font-mono font-bold">5.00%</span> &nbsp;(<span id="out-bdesc">dilute</span>)</div>
+    <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+    <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+  </section>
+
+  <!-- ============ LIVE CHARTS ============ -->
+  <section class="mt-10 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Concentration graphs</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Solute needed vs solution amount (at your current %)</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-solute"></canvas></div>
+      </figure>
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Percent vs solution amount (fixed solute)</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-pct"></canvas></div>
+      </figure>
+      <figure class="sm:col-span-2">
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Everyday solutions by percent concentration</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-compare"></canvas></div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How percent concentration is calculated</h2>
+    <p class="mt-2 text-slate-600"><strong>The core idea in one line:</strong> percent concentration is just "part per hundred" — how much solute sits in every 100 units of solution.</p>
+    <p class="mt-3 text-slate-600">There are three flavours, differing only in whether you measure the parts by mass or volume:</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="font-mono text-sm text-slate-800">w/v % = (g ÷ mL) × 100</p><p class="mt-1 text-xs text-slate-500">mass/volume — g per 100 mL (saline, IV fluids)</p></div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="font-mono text-sm text-slate-800">w/w % = (g ÷ g) × 100</p><p class="mt-1 text-xs text-slate-500">mass/mass — g per 100 g (alloys, food labels)</p></div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><p class="font-mono text-sm text-slate-800">v/v % = (mL ÷ mL) × 100</p><p class="mt-1 text-xs text-slate-500">volume/volume — mL per 100 mL (alcohol ABV)</p></div>
+    </div>
+    <p class="mt-4 text-slate-600">All three rearrange the same way: solute = % × solution ÷ 100, and solution = solute × 100 ÷ %. The denominator is always the <strong>whole solution</strong>, not the solvent alone.</p>
+
+    <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 1 — making saline (w/v)</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> dissolve 9 g of NaCl and make up to 1000 mL of solution. What is the w/v percent?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Percent:</span> <span class="text-slate-600">(9 ÷ 1000) × 100 = 0.9% (w/v)</span></div>
+        <div><span class="font-medium text-slate-700">Meaning:</span> <span class="text-slate-600">0.9 g per 100 mL — physiological saline</span></div>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 2 — how much solute? (w/w)</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> you need 250 g of a 4% (w/w) sugar solution. How much sugar?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Solute:</span> <span class="text-slate-600">4 × 250 ÷ 100 = 10 g sugar</span></div>
+        <div><span class="font-medium text-slate-700">Solvent:</span> <span class="text-slate-600">250 − 10 = 240 g water</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STANDALONE 3D DIAGRAMS ============ -->
+  <section class="mt-12 no-print">
+    <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <div>
+        <div id="diag-strength" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">1. Higher % = denser packing</h3>
+        <p class="mt-1 text-sm text-slate-600">Two equal beakers: the right one holds a higher percent, so it's visibly packed with more solute particles per unit of solution. Percent is a density of "stuff dissolved."</p>
+      </div>
+      <div>
+        <div id="diag-whole" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">2. Divide by the whole solution</h3>
+        <p class="mt-1 text-sm text-slate-600">The percentage uses the <strong>total</strong> solution volume (solute + solvent after mixing), shown as the full liquid column — not just the solvent you started with.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Percent concentration of everyday solutions</h2>
+    <p class="mt-1 text-sm text-slate-600">Approximate values, for a sense of scale.</p>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full table-fixed text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-2 py-2.5 text-left font-semibold sm:px-3">Solution</th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Percent</th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Type</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Physiological saline</td><td class="px-2 py-2.5 sm:px-3 tabular-nums">0.9%</td><td class="px-2 py-2.5 sm:px-3">w/v</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Household vinegar</td><td class="px-2 py-2.5 sm:px-3 tabular-nums">5%</td><td class="px-2 py-2.5 sm:px-3">w/v</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Table wine (ABV)</td><td class="px-2 py-2.5 sm:px-3 tabular-nums">12%</td><td class="px-2 py-2.5 sm:px-3">v/v</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Rubbing alcohol</td><td class="px-2 py-2.5 sm:px-3 tabular-nums">70%</td><td class="px-2 py-2.5 sm:px-3">v/v</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Hydrogen peroxide (household)</td><td class="px-2 py-2.5 sm:px-3 tabular-nums">3%</td><td class="px-2 py-2.5 sm:px-3">w/v</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ REAL-WORLD CONTEXT ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Where percent concentration actually matters</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">💊 Medicine &amp; pharmacy</h3>
+        <p class="mt-1 text-sm text-slate-600">IV fluids, saline, dextrose and topical creams are all labelled in percent. w/v is the everyday clinical language of concentration because it needs no molar mass.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🍷 Food &amp; drink</h3>
+        <p class="mt-1 text-sm text-slate-600">Alcohol by volume (ABV) is v/v percent; sugar and salt on nutrition panels are effectively w/w. The same three formulas underpin recipes and quality control.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🏭 Industry &amp; cleaning</h3>
+        <p class="mt-1 text-sm text-slate-600">Bleach, disinfectants and alloys are specified by percent. Getting a disinfectant to the right w/v strength is the difference between effective and useless.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MISCONCEPTIONS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Percent is per 100 units of solvent."</p>
+        <p class="mt-1 text-sm text-slate-600">It's per 100 units of <em>solution</em> — solute plus solvent, measured after mixing. You make the total up to the mark, not add solute to 100 mL of water.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"w/v, w/w and v/v give the same number."</p>
+        <p class="mt-1 text-sm text-slate-600">They usually don't, because density links mass and volume differently for each substance. Always state which type — a 5% solution is ambiguous otherwise.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Percent concentration is the same as molarity."</p>
+        <p class="mt-1 text-sm text-slate-600">No. Percent compares amounts without molar mass; molarity is moles per litre. Converting between them needs the molar mass and often the density.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"w/v uses grams over grams."</p>
+        <p class="mt-1 text-sm text-slate-600">w/v is grams of solute over millilitres of solution (g/mL × 100). Its "100" represents 100 mL, so 1% w/v = 1 g per 100 mL = 10 g/L.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FORMULA SOURCES ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Formula sources &amp; further reading</h2>
+    <p class="mt-2 text-slate-600">Percent concentration definitions are standard general chemistry, traceable to:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li>• <strong>OpenStax, <em>Chemistry 2e</em></strong> — §3.4 "Other Units for Solution Concentrations" (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/3-4-other-units-for-solution-concentrations" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a></li>
+      <li>• <strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 13, Properties of Solutions (Concentration units).</li>
+      <li>• <strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 11, Properties of Solutions.</li>
+    </ul>
+    <p class="mt-3 text-xs text-slate-400">1% (w/v) = 1 g per 100 mL = 10 g/L. Results are rounded for display.</p>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick the type</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose w/v, w/w or v/v. The solute and solution units update to match.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter two values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill any two of percent, solute and solution; the third solves live.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">See it in the beaker</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the sliders to watch particle density track the percentage.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RELATED TOOLS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/molarity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🧪</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molarity Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">M = mol/L — solve for any variable.</p>
+      </a>
+      <a href="/tools/dilution-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">💧</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Dilution Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">C₁V₁ = C₂V₂ — solve for any variable.</p>
+      </a>
+      <a href="/tools/atomic-mass-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">⚗️</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molar Mass Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Sum atomic masses from a formula.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Libraries: Three.js + Chart.js + shared subject kit (window.STK) -->
+  <SubjectToolLibs />
+
+  <script is:inline>
+  (function () {
+    'use strict';
+    const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+    const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+    // ================= CALCULATOR =================
+    let mode = 'wv';
+    const unitMap = { wv: { solute: 'g', soln: 'mL' }, ww: { solute: 'g', soln: 'g' }, vv: { solute: 'mL', soln: 'mL' } };
+    function switchMode(m) {
+      mode = m;
+      [['wv', 'mode-wv'], ['ww', 'mode-ww'], ['vv', 'mode-vv']].forEach(([k, id]) => {
+        el(id).className = (k === m) ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+      });
+      el('lab-solute').textContent = unitMap[m].solute;
+      el('lab-soln').textContent = unitMap[m].soln;
+      el('lab-r2').textContent = 'Solute (' + unitMap[m].solute + ')';
+      el('lab-r3').textContent = 'Solution (' + unitMap[m].soln + ')';
+      update();
+    }
+    function update() {
+      const pct = parseFloat(el('pct').value), solute = parseFloat(el('solute').value), soln = parseFloat(el('soln').value);
+      const filled = [!isNaN(pct), !isNaN(solute), !isNaN(soln)];
+      el('pc-err').textContent = '';
+      ['r-pct', 'r-solute', 'r-soln'].forEach((id) => (el(id).textContent = '—'));
+      if (filled.filter(Boolean).length < 2) return;
+      let rp = NaN, rs = NaN, rw = NaN;
+      if (filled[1] && filled[2]) { if (soln === 0) { el('pc-err').textContent = 'Solution amount cannot be zero.'; return; } rp = solute / soln * 100; rs = solute; rw = soln; }
+      else if (filled[0] && filled[2]) { rs = pct * soln / 100; rp = pct; rw = soln; }
+      else if (filled[0] && filled[1]) { if (pct === 0) { el('pc-err').textContent = 'Percent cannot be zero when solving for solution amount.'; return; } rw = solute * 100 / pct; rp = pct; rs = solute; }
+      const u = unitMap[mode];
+      if (!isNaN(rp)) el('r-pct').textContent = fmt(rp) + '%';
+      if (!isNaN(rs)) el('r-solute').textContent = fmt(rs) + ' ' + u.solute;
+      if (!isNaN(rw)) el('r-soln').textContent = fmt(rw) + ' ' + u.soln;
+    }
+    el('mode-wv').addEventListener('click', () => switchMode('wv'));
+    el('mode-ww').addEventListener('click', () => switchMode('ww'));
+    el('mode-vv').addEventListener('click', () => switchMode('vv'));
+    ['pct', 'solute', 'soln'].forEach((id) => el(id).addEventListener('input', update));
+
+    // ================= 3D + charts =================
+    const charts = {};
+    let beaker = null;
+    function bState() {
+      const sol = parseFloat(el('b-sol').value), whole = parseFloat(el('b-whole').value);
+      return { sol, whole, pct: whole > 0 ? sol / whole * 100 : 0 };
+    }
+    function describe(p) {
+      if (p <= 0) return 'no solute';
+      if (p < 1) return 'very dilute';
+      if (p < 10) return 'dilute';
+      if (p < 40) return 'moderate';
+      if (p < 70) return 'concentrated';
+      return 'highly concentrated';
+    }
+    function onBChange() {
+      const s = bState();
+      el('out-bsol').textContent = s.sol.toFixed(1);
+      el('out-bwhole').textContent = s.whole.toFixed(0);
+      el('out-bpct').textContent = fmt(s.pct) + '%';
+      el('out-bdesc').textContent = describe(s.pct);
+      try { if (beaker) beaker.update(s); } catch (e) {}
+      try { if (charts.ready) updateCharts(s); } catch (e) {}
+    }
+    el('b-sol').addEventListener('input', onBChange);
+    el('b-whole').addEventListener('input', onBChange);
+
+    function initCharts() {
+      if (!window.Chart) return;
+      const base = chartSetup();
+      charts.solute = new Chart(el('chart-solute'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'solute', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Solution amount' } }, y: { title: { display: true, text: 'Solute needed' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.pct = new Chart(el('chart-pct'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: '%', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.10)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Solution amount' } }, y: { title: { display: true, text: 'Percent (%)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.compare = new Chart(el('chart-compare'), {
+        type: 'bar',
+        data: { labels: ['Saline', 'H₂O₂', 'Vinegar', 'Your soln', 'Wine', 'Alcohol'], datasets: [{ label: 'Percent', data: [0.9, 3, 5, 5, 12, 70], backgroundColor: ['#94a3b8', '#94a3b8', '#94a3b8', '#10b981', '#94a3b8', '#94a3b8'] }] },
+        options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Percent (%)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.ready = true;
+      updateCharts(bState());
+    }
+    function updateCharts(s) {
+      if (!charts.ready) return;
+      const p = s.pct;
+      const L = [], D = [];
+      for (let w = 10; w <= 200.001; w += 10) { L.push(w + ''); D.push(+(p * w / 100).toFixed(3)); }
+      charts.solute.data.labels = L; charts.solute.data.datasets[0].data = D; charts.solute.update();
+      const L2 = [], D2 = [];
+      for (let w = 10; w <= 200.001; w += 10) { L2.push(w + ''); D2.push(+(s.sol / w * 100).toFixed(3)); }
+      charts.pct.data.labels = L2; charts.pct.data.datasets[0].data = D2; charts.pct.update();
+      charts.compare.data.datasets[0].data[3] = +Math.max(p, 0.01).toFixed(2);
+      charts.compare.update();
+    }
+
+    // ================= 3D beaker =================
+    function glassBeaker(THREE) {
+      const g = new THREE.Group();
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+      return g;
+    }
+    function initBeaker() {
+      const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+      const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+      s.scene.add(glassBeaker(THREE));
+      const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
+      let liquid = null;
+      const MAX_P = 130;
+      const particleGeo = new THREE.SphereGeometry(0.11, 10, 10);
+      const particleMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+      const particles = [];
+      for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(particleGeo, particleMat); p.visible = false; s.scene.add(p); particles.push(p); }
+      function update(state) {
+        const frac = Math.max(0.05, Math.min(1, state.whole / 200));
+        const hLiq = frac * 4.6;
+        if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); }
+        liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hLiq, 40), liquidMat);
+        liquid.position.y = -2.4 + hLiq / 2; s.scene.add(liquid);
+        const nShow = Math.max(0, Math.min(MAX_P, Math.round(state.pct * 1.3)));
+        for (let i = 0; i < MAX_P; i++) {
+          const p = particles[i];
+          if (i < nShow) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
+          else p.visible = false;
+        }
+      }
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+      frame();
+      beaker = { update, resize: s.resize };
+      update(bState());
+    }
+
+    function beakerDiagram(container, pct, radius) {
+      const s = makeScene(container, 8, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+      s.scene.add(new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 4.6, 32, 1, true), glassMat));
+      const liq = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.94, radius * 0.94, 4.2, 32), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4 }));
+      liq.position.y = -0.1; s.scene.add(liq);
+      const pMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+      const n = Math.round(pct * 0.5);
+      for (let i = 0; i < n; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), pMat); const r = Math.sqrt(Math.random()) * radius * 0.85, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.1 + Math.random() * 4, Math.sin(a) * r); s.scene.add(p); }
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+      frame();
+      return { resize: s.resize };
+    }
+    function initDiagStrength() {
+      const c = el('diag-strength'); if (!c) throw new Error('no diag');
+      // two side-by-side beakers via a group-like layout: render one scene w/ two beakers
+      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+      const pMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+      function bk(x, n) {
+        const grp = new THREE.Group(); grp.position.x = x;
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+        grp.add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4.4, 30, 1, true), glassMat));
+        const liq = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.42, 4, 30), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4 }));
+        liq.position.y = -0.2; grp.add(liq);
+        for (let i = 0; i < n; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), pMat); const r = Math.sqrt(Math.random()) * 1.2, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2 + Math.random() * 3.8, Math.sin(a) * r); grp.add(p); }
+        return grp;
+      }
+      s.scene.add(bk(-2.6, 6)); s.scene.add(bk(2.6, 22));
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+      frame();
+      diagStrength = { resize: s.resize };
+    }
+    function initDiagWhole() {
+      const c = el('diag-whole'); if (!c) throw new Error('no diag');
+      diagWhole = beakerDiagram(c, 30, 1.8);
+    }
+
+    let diagStrength = null, diagWhole = null;
+
+    // ================= BOOT =================
+    function boot() {
+      try { switchMode('wv'); } catch (e) { console.error('[percent] calc init failed', e); }
+      try { onBChange(); } catch (e) { console.error('[percent] slider init failed', e); }
+      try { initCharts(); } catch (e) { console.error('[percent] charts failed', e); }
+      if (window.THREE) {
+        try { initBeaker(); } catch (e) { console.error('[percent] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
+        try { initDiagStrength(); } catch (e) { console.error('[percent] strength diagram failed', e); }
+        try { initDiagWhole(); } catch (e) { console.error('[percent] whole diagram failed', e); }
+      } else {
+        el('beaker3d-fallback').classList.remove('hidden');
+      }
+      mountResize([beaker, diagStrength, diagWhole]);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
+</ToolLayout>
