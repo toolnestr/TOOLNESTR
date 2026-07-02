@@ -416,6 +416,7 @@ export const tools = [
   { slug: 'acceleration-calculator', title: 'Acceleration Calculator', short: 'a = Δv/t — solve for any variable.', category: 'physics', emoji: '🚀', enabled: true, status: 'live' },
   { slug: 'terminal-velocity-calculator', title: 'Terminal Velocity Calculator', short: 'v_t = √(2mg / (ρ·A·Cd)) — falling speed with drag.', category: 'physics', emoji: '🪂', enabled: true, status: 'live' },
   { slug: 'escape-velocity-calculator', title: 'Escape Velocity Calculator', short: 'v_esc = √(2GM/r) — leave a body’s gravity for good.', category: 'physics', emoji: '🛰️', enabled: true, status: 'live' },
+  { slug: 'mechanical-efficiency-calculator', title: 'Mechanical Efficiency Calculator', short: 'η = output/input × 100% — from work or power.', category: 'physics', emoji: '⚙️', enabled: true, status: 'live' },
   { slug: 'ph-calculator', title: 'pH Calculator', short: 'pH from concentration or reverse.', category: 'engineering', emoji: '🧪', enabled: true, status: 'live' },
   { slug: 'dilution-calculator', title: 'Dilution Calculator', short: 'C1V1=C2V2 — solve for any variable.', category: 'chemistry', emoji: '💧', enabled: true, status: 'live' },
   { slug: 'percent-concentration-calculator', title: 'Percent Concentration Calculator', short: 'w/v, w/w and v/v percent — solve any variable.', category: 'chemistry', emoji: '🧴', enabled: true, status: 'live' },
