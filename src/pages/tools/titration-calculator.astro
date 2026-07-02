@@ -1,0 +1,387 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Titration Calculator';
+const description = 'Titration calculator with a live 3D burette/flask animation and charts. Solve M_acid x V_acid x n_acid = M_base x V_base x n_base for any variable, with worked examples.';
+const intro = 'Find the unknown molarity or volume in an acid-base titration from the equivalence-point condition, with stoichiometry (n_acid, n_base) for polyprotic acids and bases. A live 3D burette/flask animation and charts show the endpoint colour change and titration curve.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is titration?', a: 'Titration is a lab technique for finding an unknown concentration by slowly adding a solution of known concentration (the titrant) from a burette into a measured volume of the unknown (the analyte) until the reaction is exactly complete. The volume of titrant used at that point lets you calculate the unknown concentration.' },
+  { q: 'What is the equivalence point, and how is it different from the endpoint?', a: 'The equivalence point is the exact stoichiometric point where moles of acid and base (adjusted for their reacting ratio) are equal — a theoretical point defined by the chemistry. The endpoint is the point where an indicator visibly changes colour, which is what you actually observe during the experiment. A well-chosen indicator changes colour very close to the equivalence point, but the two are not identical by definition.' },
+  { q: 'Why use an indicator at all?', a: 'An indicator is a weak acid or base whose two forms have different colours, and it changes colour over a narrow pH range. Because the pH jumps sharply near the equivalence point (see the titration curve below), a well-matched indicator flips colour right around that jump, giving a visible signal for a point you cannot see directly.' },
+  { q: 'What does M_acid x V_acid = M_base x V_base assume?', a: 'This simplified 1:1 form assumes the acid and base react in a 1:1 mole ratio (one H+ neutralised per one OH-), which holds for monoprotic acids like HCl reacting with monobasic bases like NaOH. For polyprotic acids (like H2SO4, which supplies 2 H+) or multi-hydroxide bases (like Ca(OH)2), you must include the stoichiometric multipliers n_acid and n_base: M_acid x V_acid x n_acid = M_base x V_base x n_base.' },
+  { q: 'Is the titration curve on this page a real pH calculation?', a: 'No — it is a stylised, illustrative S-shaped (sigmoid) curve centred on the equivalence volume, meant to show the characteristic shape (a slow drift, then a steep jump, then another slow drift) rather than compute real pH from equilibrium constants. A rigorous curve requires the acid/base Ka or Kb, initial concentrations, and a full equilibrium calculation at every point — well beyond a simple ratio calculator.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Titration Calculator',
+  description: 'Solve the acid-base titration equivalence-point equation for molarity or volume, with adjustable stoichiometry.',
+  steps: [
+    { name: 'Set the stoichiometry', text: 'Enter n_acid and n_base — the number of H+ or OH- per formula unit (both default to 1 for simple monoprotic/monobasic reactions).' },
+    { name: 'Enter three of the four values', text: 'Type any three of M_acid, V_acid, M_base, V_base and leave the unknown blank.' },
+    { name: 'Read the result', text: 'The missing value solves instantly, and the 3D burette/flask animation and charts update.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'M<sub>acid</sub> × V<sub>acid</sub> × n<sub>acid</sub> = M<sub>base</sub> × V<sub>base</sub> × n<sub>base</sub>', note: 'equivalence-point condition' },
+  { expr: 'M<sub>acid</sub> × V<sub>acid</sub> = M<sub>base</sub> × V<sub>base</sub>', note: 'simplified 1:1 case, n<sub>acid</sub> = n<sub>base</sub> = 1' },
+  { expr: 'n = moles of H⁺ or OH⁻ per formula unit', note: 'e.g. n = 2 for H₂SO₄ or Ca(OH)₂' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — standardising an unknown HCl solution', tone: 'slate',
+    given: '25.00 mL of an unknown HCl solution is titrated with 0.100 M NaOH. The phenolphthalein endpoint is reached after 22.4 mL of NaOH is added. Both are monoprotic/monobasic (n_acid = n_base = 1). Find the HCl molarity.',
+    rows: [
+      { label: 'Formula:', value: 'M<sub>acid</sub> × V<sub>acid</sub> = M<sub>base</sub> × V<sub>base</sub>' },
+      { label: 'Rearrange:', value: 'M<sub>acid</sub> = (M<sub>base</sub> × V<sub>base</sub>) ÷ V<sub>acid</sub>' },
+      { label: 'Substitute:', value: 'M<sub>acid</sub> = (0.100 × 22.4) ÷ 25.00 = 2.24 ÷ 25.00' },
+      { label: 'M<sub>acid</sub>:', value: '0.0896 M', full: true },
+    ],
+    note: 'The units of volume cancel as long as both are in the same unit (mL here), so V_acid and V_base do not need to be converted to litres first.',
+  },
+  {
+    title: 'Worked example 2 — a diprotic acid (H₂SO₄) with NaOH', tone: 'amber',
+    given: '25.00 mL of an unknown H₂SO₄ solution is titrated with 0.200 M NaOH. The endpoint is reached after 30.0 mL of NaOH. H₂SO₄ supplies 2 H⁺ per molecule (n_acid = 2); NaOH supplies 1 OH⁻ (n_base = 1). Find the H₂SO₄ molarity.',
+    rows: [
+      { label: 'Formula:', value: 'M<sub>acid</sub> × V<sub>acid</sub> × n<sub>acid</sub> = M<sub>base</sub> × V<sub>base</sub> × n<sub>base</sub>' },
+      { label: 'Rearrange:', value: 'M<sub>acid</sub> = (M<sub>base</sub> × V<sub>base</sub> × n<sub>base</sub>) ÷ (V<sub>acid</sub> × n<sub>acid</sub>)' },
+      { label: 'Substitute:', value: 'M<sub>acid</sub> = (0.200 × 30.0 × 1) ÷ (25.00 × 2) = 6.00 ÷ 50.00' },
+      { label: 'M<sub>acid</sub>:', value: '0.120 M', full: true },
+    ],
+    note: 'Forgetting n_acid = 2 here would give the wrong answer (0.240 M) — double the true molarity — because each H₂SO₄ molecule neutralises two OH⁻, so fewer moles of acid are needed to match the same moles of base equivalents.',
+  },
+];
+
+const comparison = {
+  heading: 'Common acid-base indicators and their colour-change ranges',
+  note: 'Approximate standard transition (pH) ranges — pick an indicator whose range brackets the expected equivalence pH.',
+  headers: [{ label: 'Indicator' }, { label: 'pH range' }, { label: 'Colour change' }],
+  rows: [
+    ['Methyl orange', '≈ 3.1 – 4.4', 'Red → yellow'],
+    ['Litmus', '≈ 5.0 – 8.0 (~7 midpoint)', 'Red → blue'],
+    ['Phenolphthalein', '≈ 8.2 – 10.0', 'Colourless → pink'],
+  ],
+  highlightIndex: 2,
+  footnote: 'Phenolphthalein (colourless→pink) is the classic choice for strong acid/strong base titrations because the equivalence point sits near pH 7, inside its steep transition window; methyl orange suits titrations with a lower equivalence pH.',
+};
+
+const realWorld = [
+  { emoji: '🔬', title: 'Laboratory quality control', body: 'Titration is a routine QC check for the concentration of acids, bases and other reagents on the shelf — labs re-standardise stock solutions regularly because concentrations drift with evaporation and handling.' },
+  { emoji: '🍋', title: 'Food & beverage acidity testing', body: 'The acidity of wine, juice, vinegar and dairy products is measured by titrating a sample against a standard base, reporting results as "percent acid" (e.g. percent citric or tartaric acid) — a key quality and flavour metric.' },
+  { emoji: '💧', title: 'Water hardness & alkalinity testing', body: 'Municipal and industrial water testing uses titration to measure alkalinity (acid-neutralising capacity) and hardness, guiding treatment decisions like lime dosing or ion-exchange softening.' },
+  { emoji: '💊', title: 'Pharmaceutical assay', body: 'Drug manufacturers titrate active ingredients to confirm a tablet or solution contains the labelled dose within tolerance — a required step in pharmacopeial quality assurance.' },
+];
+
+const misconceptions = [
+  { claim: '"The equivalence point and the endpoint are exactly the same thing."', truth: 'The equivalence point is the true stoichiometric point defined by the reaction chemistry; the endpoint is the experimental signal (indicator colour change) used to approximate it. A well-chosen indicator makes the difference tiny, but they are conceptually distinct — the endpoint is always an estimate of the equivalence point.' },
+  { claim: '"Any indicator works for any titration."', truth: 'The indicator\'s colour-change pH range must bracket the pH at the equivalence point, or the visible endpoint will be noticeably off from the true equivalence point. Strong acid/strong base titrations (equivalence near pH 7) suit phenolphthalein or litmus; titrations with a more acidic equivalence point suit methyl orange.' },
+  { claim: '"M1V1 = M2V2 always applies directly."', truth: 'That simple form only holds when the acid and base react 1:1. For a diprotic acid like H₂SO₄ or a base like Ca(OH)₂ that supplies two reactive units per formula unit, you need the stoichiometric multipliers: M_acid × V_acid × n_acid = M_base × V_base × n_base.' },
+  { claim: '"The titration curve\'s steep jump happens exactly at pH 7."', truth: 'It happens at the equivalence point, which is only pH 7 for a strong acid vs strong base titration. Titrating a weak acid with a strong base gives an equivalence point above pH 7 (basic), and a weak base with a strong acid gives one below pH 7 (acidic), because the salt formed is not neutral.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — acid-base titrations and indicators (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/14-7-acid-base-titrations" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 4, Aqueous Reactions and Solution Stoichiometry (acid-base titrations).' },
+  { html: '<strong>Skoog, West &amp; Holler, <em>Fundamentals of Analytical Chemistry</em></strong> — titrimetric methods and indicator selection.' },
+];
+const sourcesNote = 'M_acid × V_acid × n_acid = M_base × V_base × n_base at the equivalence point; n = 1 for simple monoprotic/monobasic reactions. The titration curve shown is a stylised illustrative sigmoid, not a rigorous equilibrium calculation. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Set n_acid and n_base', body: 'Leave both at 1 for simple monoprotic/monobasic reactions, or change them for polyprotic acids and multi-hydroxide bases.' },
+  { title: 'Enter three values', body: 'Fill any three of M_acid, V_acid, M_base, V_base; the fourth solves live.' },
+  { title: 'Watch the endpoint', body: 'Use the titrant-volume slider to see the flask colour shift near the equivalence volume and watch the titration curve.' },
+];
+
+const related = [
+  { href: '/tools/normality-calculator', emoji: '⚗️', title: 'Normality Calculator', desc: 'N = eq/L and N = M×n — solve any variable.' },
+  { href: '/tools/henderson-hasselbalch-calculator', emoji: '🧯', title: 'Henderson-Hasselbalch Calculator', desc: 'pH = pKa + log([A-]/[HA]) — buffer pH.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+  { href: '/tools/ph-calculator', emoji: '🧪', title: 'pH Calculator', desc: 'pH = −log[H⁺] — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="at the equivalence point, the acid and base have reacted in exactly the ratio the chemistry demands — moles of H⁺ delivered equal moles of OH⁻ delivered, which is what M_acid×V_acid×n_acid = M_base×V_base×n_base captures."
+  howIntro="Rearranged, the same equation solves any one of the four quantities from the other three: M<sub>acid</sub> = (M<sub>base</sub>V<sub>base</sub>n<sub>base</sub>)/(V<sub>acid</sub>n<sub>acid</sub>), and similarly for V<sub>acid</sub>, M<sub>base</sub> or V<sub>base</sub>. In practice you never see the equivalence point directly — you watch for the endpoint, the volume at which an indicator changes colour, and use that volume as your best estimate of the true equivalence volume."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where titration actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">n_acid (H⁺ per formula unit)</span>
+        <input id="n-acid" type="number" step="any" value="1" min="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">n_base (OH⁻ per formula unit)</span>
+        <input id="n-base" type="number" step="any" value="1" min="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">M_acid (mol/L)</span>
+        <input id="m-acid" type="number" step="any" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">V_acid (mL)</span>
+        <input id="v-acid" type="number" step="any" placeholder="mL" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">M_base (mol/L)</span>
+        <input id="m-base" type="number" step="any" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">V_base (mL)</span>
+        <input id="v-base" type="number" step="any" placeholder="mL" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Enter any three of the four fields above and leave the unknown blank — it solves live. Volumes can be in mL or L as long as V_acid and V_base use the same unit.</p>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div id="box-1" class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">M_acid</div><div id="r-1" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div id="box-2" class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">V_acid</div><div id="r-2" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div id="box-3" class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">M_base</div><div id="r-3" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div id="box-4" class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">V_base</div><div id="r-4" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="tc-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D burette/flask + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D burette &amp; flask</h2>
+      <p class="mt-1 text-sm text-slate-500">Set the equivalence volume and drag the titrant-added slider; the flask colour stays clear until close to the equivalence volume, then shifts to pink — simulating a phenolphthalein endpoint. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Equivalence volume <span id="out-beq" class="font-mono text-green-600">20.0 mL</span></span>
+          <input id="b-eqv" type="range" min="1" max="50" step="0.5" value="20" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Titrant added <span id="out-bv" class="font-mono text-green-600">0.0 mL</span></span>
+          <input id="b-vadd" type="range" min="0" max="50" step="0.2" value="0" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">State: <span id="out-bstate" class="font-mono font-bold">before equivalence — clear</span></div>
+      <div id="titration3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="titration3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Titration graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Titration curve (illustrative) — pH vs volume of titrant added, steep jump at the equivalence point</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-curve"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Moles of acid vs moles of base delivered — the lines cross at the equivalence point</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-moles"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function update() {
+        el('tc-err').textContent = '';
+        [1, 2, 3, 4].forEach((i) => (el('r-' + i).textContent = '—'));
+        const nAcid = parseFloat(el('n-acid').value);
+        const nBase = parseFloat(el('n-base').value);
+        const mA = parseFloat(el('m-acid').value);
+        const vA = parseFloat(el('v-acid').value);
+        const mB = parseFloat(el('m-base').value);
+        const vB = parseFloat(el('v-base').value);
+        if (isNaN(nAcid) || isNaN(nBase) || nAcid <= 0 || nBase <= 0) { el('tc-err').textContent = 'n_acid and n_base must be positive numbers.'; return; }
+        const filled = [!isNaN(mA), !isNaN(vA), !isNaN(mB), !isNaN(vB)];
+        const count = filled.filter(Boolean).length;
+        if (count < 3) return;
+        if (count === 4) { el('tc-err').textContent = 'Leave one field blank to solve for it (or check all four are consistent).'; }
+
+        let rMA = mA, rVA = vA, rMB = mB, rVB = vB;
+        if (!filled[0]) {
+          if (vA === 0) { el('tc-err').textContent = 'V_acid cannot be zero.'; return; }
+          rMA = (mB * vB * nBase) / (vA * nAcid);
+        } else if (!filled[1]) {
+          if (mA === 0) { el('tc-err').textContent = 'M_acid cannot be zero when solving for V_acid.'; return; }
+          rVA = (mB * vB * nBase) / (mA * nAcid);
+        } else if (!filled[2]) {
+          if (vB === 0) { el('tc-err').textContent = 'V_base cannot be zero.'; return; }
+          rMB = (mA * vA * nAcid) / (vB * nBase);
+        } else if (!filled[3]) {
+          if (mB === 0) { el('tc-err').textContent = 'M_base cannot be zero when solving for V_base.'; return; }
+          rVB = (mA * vA * nAcid) / (mB * nBase);
+        }
+        if ([rMA, rVA, rMB, rVB].some((v) => isNaN(v) || v < 0)) { el('tc-err').textContent = 'Check inputs — values must be positive.'; return; }
+        el('r-1').textContent = fmt(rMA) + ' M';
+        el('r-2').textContent = fmt(rVA) + ' mL';
+        el('r-3').textContent = fmt(rMB) + ' M';
+        el('r-4').textContent = fmt(rVB) + ' mL';
+      }
+      ['n-acid', 'n-base', 'm-acid', 'v-acid', 'm-base', 'v-base'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let rig = null;
+      function bState() {
+        const eqV = parseFloat(el('b-eqv').value);
+        const vAdd = parseFloat(el('b-vadd').value);
+        // Simplified sigmoid-like "pH" centred at eqV for colour/curve purposes only.
+        const k = 0.6;
+        const ph = 7 + 6 * Math.tanh(k * (vAdd - eqV));
+        const nearEnd = Math.abs(vAdd - eqV) <= Math.max(0.5, eqV * 0.03);
+        const pastEnd = vAdd >= eqV;
+        return { eqV, vAdd, ph, nearEnd, pastEnd };
+      }
+      function onB() {
+        const s = bState();
+        el('out-beq').textContent = s.eqV.toFixed(1) + ' mL';
+        el('out-bv').textContent = s.vAdd.toFixed(1) + ' mL';
+        el('out-bstate').textContent = s.pastEnd ? 'past equivalence — pink' : (s.nearEnd ? 'near equivalence — turning pink' : 'before equivalence — clear');
+        try { if (rig) rig.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-eqv').addEventListener('input', onB);
+      el('b-vadd').addEventListener('input', onB);
+
+      function curveData(eqV) {
+        const labels = [], data = [];
+        const maxV = eqV * 2;
+        const k = 0.6;
+        for (let v = 0; v <= maxV + 0.001; v += maxV / 40) {
+          labels.push(v.toFixed(1));
+          data.push(+(7 + 6 * Math.tanh(k * (v - eqV))).toFixed(2));
+        }
+        return { labels, data };
+      }
+      function molesData(eqV) {
+        // moles(acid delivered) held constant reference; moles base delivered scales with volume.
+        const labels = [], acidMoles = [], baseMoles = [];
+        const maxV = eqV * 2;
+        const refMoles = 1; // normalised units
+        for (let v = 0; v <= maxV + 0.001; v += maxV / 40) {
+          labels.push(v.toFixed(1));
+          acidMoles.push(refMoles);
+          baseMoles.push(+((v / eqV) * refMoles).toFixed(3));
+        }
+        return { labels, acidMoles, baseMoles };
+      }
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        const eqV0 = parseFloat(el('b-eqv').value);
+        const c = curveData(eqV0);
+        charts.curve = new Chart(el('chart-curve'), {
+          type: 'line',
+          data: { labels: c.labels, datasets: [{ label: 'pH (illustrative)', data: c.data, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0.35, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Volume of titrant added (mL)' } }, y: { title: { display: true, text: 'pH (illustrative)' }, min: 0, max: 14 } }, plugins: { legend: { display: false } } }),
+        });
+        const m = molesData(eqV0);
+        charts.moles = new Chart(el('chart-moles'), {
+          type: 'line',
+          data: { labels: m.labels, datasets: [
+            { label: 'Moles of acid (fixed)', data: m.acidMoles, borderColor: '#f59e0b', pointRadius: 0, tension: 0 },
+            { label: 'Moles of base delivered', data: m.baseMoles, borderColor: '#6366f1', pointRadius: 0, tension: 0 },
+          ] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Volume of titrant added (mL)' } }, y: { title: { display: true, text: 'Moles (normalised)' }, beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.ready = true;
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        const c = curveData(s.eqV);
+        charts.curve.data.labels = c.labels; charts.curve.data.datasets[0].data = c.data; charts.curve.update();
+        const m = molesData(s.eqV);
+        charts.moles.data.labels = m.labels;
+        charts.moles.data.datasets[0].data = m.acidMoles;
+        charts.moles.data.datasets[1].data = m.baseMoles;
+        charts.moles.update();
+      }
+
+      // ---- interactive 3D burette + flask ----
+      function flaskColor(state) {
+        // Clear (light blue-white) before equivalence, shifting to pink after.
+        const clear = { r: 0xe0, g: 0xf2, b: 0xfe };
+        const pink = { r: 0xf4, g: 0x72, b: 0xb6 };
+        const span = Math.max(0.5, state.eqV * 0.06);
+        const t = Math.max(0, Math.min(1, (state.vAdd - (state.eqV - span)) / (span * 2)));
+        const r = Math.round(clear.r + (pink.r - clear.r) * t);
+        const g = Math.round(clear.g + (pink.g - clear.g) * t);
+        const b = Math.round(clear.b + (pink.b - clear.b) * t);
+        return (r << 16) | (g << 8) | b;
+      }
+      function buildRig(THREE) {
+        const g = new THREE.Group();
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.22, roughness: 0.1, side: THREE.DoubleSide });
+        // Burette: a tall thin cylinder up top.
+        const burette = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 5, 24, 1, true), glassMat);
+        burette.position.y = 4.2;
+        g.add(burette);
+        // Flask: cone-ish body approximated with a cylinder base + sphere neck for simplicity.
+        const flaskBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 2.1, 2.6, 32, 1, true), glassMat);
+        flaskBody.position.y = -1.6;
+        g.add(flaskBody);
+        const flaskBottom = new THREE.Mesh(new THREE.CircleGeometry(2.1, 32), glassMat);
+        flaskBottom.rotation.x = -Math.PI / 2; flaskBottom.position.y = -2.9;
+        g.add(flaskBottom);
+        const flaskNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 24, 1, true), glassMat);
+        flaskNeck.position.y = -0.1;
+        g.add(flaskNeck);
+        return g;
+      }
+      function initRig() {
+        const c = el('titration3d'); if (!c) throw new Error('no titration3d');
+        const s = makeScene(c, 14, new THREE.Vector3(0, -0.5, 0), MOL_OPTS);
+        s.scene.add(buildRig(THREE));
+        let liquid = null;
+        let drop = null;
+        const dropMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 });
+        drop = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), dropMat);
+        drop.position.set(0, 1.6, 0);
+        drop.visible = false;
+        // keep a scene ref for animating drop position over time
+        let dropT = 0;
+        function update(state) {
+          const color = flaskColor(state);
+          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); liquid.material.dispose(); }
+          const liquidMat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.55, roughness: 0.3 });
+          const frac = Math.max(0.06, Math.min(1, 0.3 + (state.vAdd / (state.eqV * 2)) * 0.6));
+          const hLiq = frac * 2.2;
+          liquid = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, hLiq, 32), liquidMat);
+          liquid.position.y = -2.85 + hLiq / 2;
+          s.scene.add(liquid);
+        }
+        function frame() {
+          requestAnimationFrame(frame);
+          if (!reduceMotion) {
+            s.spin(0.0012);
+            dropT += 0.03;
+            const cyc = dropT % 1;
+            if (!drop.parent) s.scene.add(drop);
+            drop.visible = true;
+            drop.position.y = 1.6 - cyc * 3.2;
+            drop.material.opacity = 0.85 * (1 - cyc * 0.3);
+          }
+          s.renderer.render(s.scene, s.camera);
+        }
+        frame();
+        rig = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[titration] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[titration] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[titration] charts failed', e); }
+        if (window.THREE) {
+          try { initRig(); } catch (e) { console.error('[titration] rig failed', e); el('titration3d-fallback').classList.remove('hidden'); }
+        } else { el('titration3d-fallback').classList.remove('hidden'); }
+        mountResize([rig]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

@@ -1,0 +1,342 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Neutralization Reaction Calculator';
+const description = 'Neutralization reaction calculator with a live 3D mixing beaker and charts. Mix an acid and a base by concentration and volume to find moles of H+ vs OH-, which is in excess, and whether the result is acidic, basic or neutral.';
+const intro = 'Mix a specific amount of acid with a specific amount of base and find out what is left over: excess acid, excess base, or an exact match. A live 3D beaker and charts show the H+ vs OH- balance as you adjust the amounts.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is a neutralization reaction?', a: 'A neutralization reaction is the reaction of an acid with a base to form a salt and water: acid + base → salt + water. In aqueous solution, this is really H⁺ (from the acid) combining with OH⁻ (from the base) to form H₂O, while the leftover ions form the salt.' },
+  { q: 'What determines if the mixed solution ends up acidic, basic, or neutral?', a: 'It comes down to which species has more moles available: moles of H⁺ (M_acid × V_acid × n_acid) versus moles of OH⁻ (M_base × V_base × n_base). If H⁺ moles are greater, the leftover H⁺ makes the solution acidic. If OH⁻ moles are greater, the leftover OH⁻ makes it basic. If they are exactly equal, all the H⁺ and OH⁻ have combined into water — for a strong acid and strong base, that gives a neutral solution.' },
+  { q: 'What is the salt product in a neutralization reaction?', a: 'The salt is whatever is left after the H⁺ and OH⁻ combine into water — the acid\'s anion paired with the base\'s cation. For example, HCl + NaOH → NaCl + H₂O: the salt is sodium chloride. The identity of the salt does not change based on how much of each reactant you use, only the leftover acid or base does.' },
+  { q: 'Does neutralization always give exactly pH 7?', a: 'No — only when a strong acid reacts with a strong base in exactly stoichiometric amounts. If either the acid or the base is weak, the resulting salt itself reacts with water (hydrolysis) and shifts the pH away from 7. For example, acetic acid + NaOH gives sodium acetate, a salt that makes the solution slightly basic (pH > 7) because acetate is a weak base. This calculator finds the H⁺/OH⁻ mole balance; it does not compute the exact resulting pH for weak-acid or weak-base systems.' },
+  { q: 'How is this different from a titration calculation?', a: 'Titration is the step-by-step process of slowly adding a solution of known concentration from a burette until an indicator signals the equivalence point — it is a lab technique for finding an unknown concentration. This calculator instead takes two solutions with amounts you already know and asks a stoichiometry question: given these exact starting quantities, is there leftover acid or leftover base once they react, and how much?' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Neutralization Reaction Calculator',
+  description: 'Find moles of H+ and OH- from concentration and volume, and determine which is in excess after an acid-base reaction.',
+  steps: [
+    { name: 'Enter the acid', text: 'Type the acid\'s molarity, volume, and n (H+ per formula unit — 1 for HCl, 2 for H2SO4).' },
+    { name: 'Enter the base', text: 'Type the base\'s molarity, volume, and n (OH- per formula unit — 1 for NaOH, 2 for Ca(OH)2).' },
+    { name: 'Read the result', text: 'Moles of H+ and OH- are compared instantly, showing the excess reagent and resulting character.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'mol H⁺ = M<sub>acid</sub> × V<sub>acid</sub> × n<sub>acid</sub>', note: 'moles of hydrogen ion available' },
+  { expr: 'mol OH⁻ = M<sub>base</sub> × V<sub>base</sub> × n<sub>base</sub>', note: 'moles of hydroxide ion available' },
+  { expr: 'excess = |mol H⁺ − mol OH⁻|', note: 'leftover reagent once reaction goes to completion' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — strong acid + strong base, excess acid', tone: 'slate',
+    given: '50 mL of 0.20 M HCl (n = 1) is mixed with 30 mL of 0.25 M NaOH (n = 1). What is left over?',
+    rows: [
+      { label: 'Moles H⁺:', value: '0.050 L × 0.20 M × 1 = 0.010 mol' },
+      { label: 'Moles OH⁻:', value: '0.030 L × 0.25 M × 1 = 0.0075 mol' },
+      { label: 'Excess:', value: '0.010 − 0.0075 = 0.0025 mol H⁺ remains', full: true },
+    ],
+    note: 'H⁺ is in excess, so the resulting solution is acidic — there is unreacted HCl beyond what the NaOH could neutralize.',
+  },
+  {
+    title: 'Worked example 2 — diprotic acid, excess base', tone: 'amber',
+    given: '20 mL of 0.15 M H₂SO₄ (n = 2, diprotic) is mixed with 40 mL of 0.20 M NaOH (n = 1). What is left over?',
+    rows: [
+      { label: 'Moles H⁺:', value: '0.020 L × 0.15 M × 2 = 0.0060 mol' },
+      { label: 'Moles OH⁻:', value: '0.040 L × 0.20 M × 1 = 0.0080 mol' },
+      { label: 'Excess:', value: '0.0080 − 0.0060 = 0.0020 mol OH⁻ remains', full: true },
+    ],
+    note: 'Each mole of H₂SO₄ supplies two moles of H⁺, so n = 2 is essential here — using n = 1 would wrongly predict excess acid instead of excess base.',
+  },
+];
+
+const comparison = {
+  heading: 'Common neutralization reactions and their salts',
+  note: 'The salt identity depends only on the acid and base used — not on how much of each you mix.',
+  headers: [{ label: 'Reaction' }, { label: 'Salt formed' }, { label: 'Resulting pH (stoichiometric mix)' }],
+  rows: [
+    ['HCl + NaOH → NaCl + H₂O', 'Sodium chloride', '≈ 7 (strong + strong)'],
+    ['H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O', 'Sodium sulfate', '≈ 7 (strong + strong)'],
+    ['HNO₃ + KOH → KNO₃ + H₂O', 'Potassium nitrate', '≈ 7 (strong + strong)'],
+    ['CH₃COOH + NaOH → CH₃COONa + H₂O', 'Sodium acetate', '&gt; 7 (weak acid + strong base — salt hydrolyzes basic)'],
+  ],
+  highlightIndex: 3,
+  footnote: 'Only strong acid + strong base pairs land at pH ≈ 7 when mixed in exact stoichiometric amounts. Weak-acid or weak-base pairs form salts that themselves shift the pH away from 7.',
+};
+
+const realWorld = [
+  { emoji: '💊', title: 'Antacids', body: 'Antacid tablets contain a mild base (like calcium carbonate or magnesium hydroxide) that neutralizes excess stomach acid (HCl), relieving heartburn by consuming H⁺ until the excess acid is used up.' },
+  { emoji: '🏭', title: 'Wastewater treatment', body: 'Industrial and municipal wastewater is often acidic or basic before discharge. Plant operators dose acid or base by the mole to bring effluent pH into a safe range, using the same H⁺/OH⁻ balance this calculator computes.' },
+  { emoji: '🌱', title: 'Soil pH correction', body: 'Agricultural lime (a base) neutralizes excess acidity in soil, while sulfur-based amendments can neutralize overly alkaline soil — both are large-scale acid-base stoichiometry problems, just spread across a field instead of a beaker.' },
+  { emoji: '🧯', title: 'Lab spill neutralization', body: 'Spilled acids and bases in a lab are neutralized with a counter-reagent before cleanup. Knowing the moles of acid or base spilled lets responders add just enough neutralizer without overshooting into the opposite extreme.' },
+];
+
+const misconceptions = [
+  { claim: '"Neutralization always produces a solution with pH exactly 7."', truth: 'Only true for a strong acid reacting with a strong base in exact stoichiometric amounts. If either partner is weak, the salt produced hydrolyzes in water and shifts the pH above or below 7 — see the acetic acid + NaOH row in the comparison table above.' },
+  { claim: '"The acid and base must be added in equal volumes to neutralize."', truth: 'What matters is equal moles of H⁺ and OH⁻ (M × V × n on each side), not equal volumes. A small volume of concentrated acid can neutralize a much larger volume of dilute base, or vice versa.' },
+  { claim: '"n is always 1 for every acid and base."', truth: 'n is the number of H⁺ (for acids) or OH⁻ (for bases) each formula unit supplies. HCl and NaOH have n = 1, but H₂SO₄ and Ca(OH)₂ have n = 2, and H₃PO₄ has n = 3. Forgetting n for polyprotic acids or polybasic bases is a common source of error, as in worked example 2 above.' },
+  { claim: '"Whichever reagent has the bigger volume is automatically in excess."', truth: 'Excess depends on total moles of H⁺ or OH⁻, which folds in concentration and n as well as volume. A larger volume of a dilute, low-n reagent can still be outweighed by a smaller volume of a concentrated, higher-n reagent.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — acid-base reactions and neutralization (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/4-3-acid-base-reactions" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 4, Aqueous Reactions and Solution Stoichiometry.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — acid-base neutralization and salt hydrolysis.' },
+];
+const sourcesNote = 'mol H⁺ = M_acid × V_acid × n_acid; mol OH⁻ = M_base × V_base × n_base. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter the acid side', body: 'Molarity, volume, and n (H⁺ per formula unit) for the acid.' },
+  { title: 'Enter the base side', body: 'Molarity, volume, and n (OH⁻ per formula unit) for the base.' },
+  { title: 'Read the excess', body: 'The larger of mol H⁺ / mol OH⁻ tells you which reagent — and how much — remains.' },
+];
+
+const related = [
+  { href: '/tools/titration-calculator', emoji: '🚰', title: 'Titration Calculator', desc: 'M1V1 = M2V2 — find an unknown concentration.' },
+  { href: '/tools/henderson-hasselbalch-calculator', emoji: '🧯', title: 'Henderson-Hasselbalch Calculator', desc: 'pH = pKa + log([A-]/[HA]) for buffers.' },
+  { href: '/tools/ph-calculator', emoji: '🧪', title: 'pH Calculator', desc: 'pH = -log[H+] — solve for any variable.' },
+  { href: '/tools/normality-calculator', emoji: '⚗️', title: 'Normality Calculator', desc: 'N = eq/L and N = M×n — solve any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="neutralization is a race between moles of H+ and moles of OH- — whichever side brings more, wins, and the leftover decides whether the mixture ends up acidic or basic."
+  howIntro="Because moles depend on concentration, volume, <em>and</em> how many H⁺ or OH⁻ each formula unit supplies (n), two solutions that look similar by volume can still neutralize very differently. Once mol H⁺ and mol OH⁻ are found, whichever is larger is left over after the smaller amount is fully consumed forming water."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where neutralization actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div class="rounded-xl border border-red-100 bg-red-50/40 p-4">
+        <h3 class="text-sm font-semibold text-red-700">Acid</h3>
+        <div class="mt-3 grid gap-3">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Molarity, M<sub>acid</sub> (mol/L)</span>
+            <input id="Ma" type="number" step="any" placeholder="e.g. 0.20" value="0.20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">Volume, V<sub>acid</sub> (L)</span>
+            <input id="Va" type="number" step="any" placeholder="e.g. 0.050" value="0.050" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">n<sub>acid</sub> (H⁺ per formula unit)</span>
+            <input id="na" type="number" step="1" min="1" placeholder="1 for HCl, 2 for H2SO4" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+      <div class="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+        <h3 class="text-sm font-semibold text-blue-700">Base</h3>
+        <div class="mt-3 grid gap-3">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Molarity, M<sub>base</sub> (mol/L)</span>
+            <input id="Mb" type="number" step="any" placeholder="e.g. 0.25" value="0.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">Volume, V<sub>base</sub> (L)</span>
+            <input id="Vb" type="number" step="any" placeholder="e.g. 0.030" value="0.030" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">n<sub>base</sub> (OH⁻ per formula unit)</span>
+            <input id="nb" type="number" step="1" min="1" placeholder="1 for NaOH, 2 for Ca(OH)2" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-red-50 p-5 text-center"><div class="text-sm text-red-600">Moles H⁺</div><div id="r-h" class="mt-1 text-2xl font-bold text-red-700">—</div></div>
+      <div class="rounded-xl bg-blue-50 p-5 text-center"><div class="text-sm text-blue-600">Moles OH⁻</div><div id="r-oh" class="mt-1 text-2xl font-bold text-blue-700">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Result</div><div id="r-result" class="mt-1 text-lg font-bold">—</div></div>
+    </div>
+    <p id="neu-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D mixing beaker + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D neutralization</h2>
+      <p class="mt-1 text-sm text-slate-500">Pour amounts of acid and base into the same beaker. The mixture color tracks whether H⁺ or OH⁻ ends up in excess. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Acid amount (mol H⁺) <span id="out-bh" class="font-mono text-red-600">0.010 mol</span></span>
+          <input id="b-h" type="range" min="0" max="0.02" step="0.0005" value="0.010" class="mt-2 w-full accent-red-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Base amount (mol OH⁻) <span id="out-boh" class="font-mono text-blue-600">0.0075 mol</span></span>
+          <input id="b-oh" type="range" min="0" max="0.02" step="0.0005" value="0.0075" class="mt-2 w-full accent-blue-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Excess = <span id="out-bex" class="font-mono font-bold">0.0025 mol H⁺ (acidic)</span></div>
+      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Neutralization graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Moles H⁺ vs moles OH⁻ — the bigger bar is in excess</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-bar"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Excess vs acid volume (fixed base) — crossover from excess base to excess acid</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-crossover"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function update() {
+        el('neu-err').textContent = '';
+        el('r-h').textContent = '—'; el('r-oh').textContent = '—'; el('r-result').textContent = '—';
+        const Ma = parseFloat(el('Ma').value), Va = parseFloat(el('Va').value), na = parseFloat(el('na').value);
+        const Mb = parseFloat(el('Mb').value), Vb = parseFloat(el('Vb').value), nb = parseFloat(el('nb').value);
+        if ([Ma, Va, na, Mb, Vb, nb].some((v) => isNaN(v))) return;
+        if (Ma < 0 || Va < 0 || Mb < 0 || Vb < 0) { el('neu-err').textContent = 'Concentrations and volumes cannot be negative.'; return; }
+        if (na < 1 || nb < 1) { el('neu-err').textContent = 'n must be at least 1.'; return; }
+        const molH = Ma * Va * na;
+        const molOH = Mb * Vb * nb;
+        el('r-h').textContent = fmt(molH) + ' mol';
+        el('r-oh').textContent = fmt(molOH) + ' mol';
+        const diff = molH - molOH;
+        const tol = Math.max(molH, molOH) * 1e-6;
+        if (Math.abs(diff) <= tol) {
+          el('r-result').textContent = 'Exact neutralization';
+        } else if (diff > 0) {
+          el('r-result').textContent = fmt(diff) + ' mol H⁺ excess (acidic)';
+        } else {
+          el('r-result').textContent = fmt(-diff) + ' mol OH⁻ excess (basic)';
+        }
+      }
+      ['Ma', 'Va', 'na', 'Mb', 'Vb', 'nb'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let beaker = null;
+      function bState() {
+        const h = parseFloat(el('b-h').value), oh = parseFloat(el('b-oh').value);
+        const diff = h - oh;
+        return { h, oh, diff };
+      }
+      function onB() {
+        const s = bState();
+        el('out-bh').textContent = s.h.toFixed(4) + ' mol';
+        el('out-boh').textContent = s.oh.toFixed(4) + ' mol';
+        const tol = Math.max(s.h, s.oh) * 1e-6 || 1e-9;
+        if (Math.abs(s.diff) <= tol) el('out-bex').textContent = 'exact neutralization';
+        else if (s.diff > 0) el('out-bex').textContent = fmt(s.diff) + ' mol H⁺ (acidic)';
+        else el('out-bex').textContent = fmt(-s.diff) + ' mol OH⁻ (basic)';
+        try { if (beaker) beaker.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-h').addEventListener('input', onB);
+      el('b-oh').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.bar = new Chart(el('chart-bar'), {
+          type: 'bar',
+          data: { labels: ['H⁺ (acid)', 'OH⁻ (base)'], datasets: [{ label: 'Moles', data: [0.010, 0.0075], backgroundColor: ['#ef4444', '#3b82f6'] }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Moles' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.crossover = new Chart(el('chart-crossover'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'Excess (mol, + = acid, − = base)', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.2, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Acid volume (L)' } }, y: { title: { display: true, text: 'Excess H⁺ (mol)' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        charts.bar.data.datasets[0].data = [s.h, s.oh]; charts.bar.update();
+        // Crossover: sweep acid volume 0..0.1 L at a fixed acid molarity (derived from current mol H+ / a reference 0.05L),
+        // holding moles OH- fixed at current base amount, n=1 assumed for the sweep illustration.
+        const Ma = 0.20; // reference molarity used purely to sweep volume for the illustrative crossover curve
+        const L = [], D = [];
+        for (let v = 0; v <= 0.1 + 1e-9; v += 0.005) {
+          const molHAtV = Ma * v;
+          L.push(v.toFixed(3));
+          D.push(+(molHAtV - s.oh).toFixed(5));
+        }
+        charts.crossover.data.labels = L; charts.crossover.data.datasets[0].data = D; charts.crossover.update();
+      }
+
+      // ---- interactive beaker ----
+      function glassBeaker(THREE) {
+        const g = new THREE.Group();
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        return g;
+      }
+      function mixColor(diff, scale) {
+        // diff > 0 => excess H+ => reddish; diff < 0 => excess OH- => blue-ish; diff ~ 0 => neutral/violet-clear.
+        const t = Math.max(-1, Math.min(1, diff / scale));
+        const acidic = { r: 0xef, g: 0x44, b: 0x44 };
+        const basic = { r: 0x38, g: 0x6b, b: 0xf4 };
+        const neutral = { r: 0xa7, g: 0x8b, b: 0xfa };
+        let c1, c2, f;
+        if (t >= 0) { c1 = neutral; c2 = acidic; f = t; } else { c1 = neutral; c2 = basic; f = -t; }
+        const r = Math.round(c1.r + (c2.r - c1.r) * f);
+        const g = Math.round(c1.g + (c2.g - c1.g) * f);
+        const b = Math.round(c1.b + (c2.b - c1.b) * f);
+        return (r << 16) | (g << 8) | b;
+      }
+      function initBeaker() {
+        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        s.scene.add(glassBeaker(THREE));
+        let liquid = null;
+        const hLiq = 4.2;
+        const MAX_P = 140;
+        const acidGeo = new THREE.SphereGeometry(0.1, 10, 10);
+        const acidMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+        const acidP = [], baseP = [];
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(acidGeo, acidMat); p.visible = false; s.scene.add(p); acidP.push(p); }
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(acidGeo, baseMat); p.visible = false; s.scene.add(p); baseP.push(p); }
+        function update(state) {
+          const scale = Math.max(0.001, Math.max(state.h, state.oh));
+          const color = mixColor(state.diff, scale);
+          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); liquid.material.dispose(); }
+          const liquidMat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5, roughness: 0.3 });
+          liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hLiq, 40), liquidMat);
+          liquid.position.y = -2.4 + hLiq / 2; s.scene.add(liquid);
+          const nAcid = Math.max(0, Math.min(MAX_P, Math.round((state.h / 0.02) * MAX_P)));
+          const nBase = Math.max(0, Math.min(MAX_P, Math.round((state.oh / 0.02) * MAX_P)));
+          for (let i = 0; i < MAX_P; i++) {
+            const p = acidP[i];
+            if (i < nAcid) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
+            else p.visible = false;
+          }
+          for (let i = 0; i < MAX_P; i++) {
+            const p = baseP[i];
+            if (i < nBase) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
+            else p.visible = false;
+          }
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        beaker = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[neutralization] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[neutralization] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[neutralization] charts failed', e); }
+        if (window.THREE) {
+          try { initBeaker(); } catch (e) { console.error('[neutralization] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
+        } else { el('beaker3d-fallback').classList.remove('hidden'); }
+        mountResize([beaker]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
