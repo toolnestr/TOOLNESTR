@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolLibs from '../../components/SubjectToolLibs.astro';
 
 const title = 'Projectile Motion Calculator';
 const description = 'Free projectile motion calculator with a live 3D trajectory simulator and charts. Find range, max height, time of flight and impact speed from launch speed and angle.';
@@ -369,15 +370,13 @@ const faqs = [
     </div>
   </section>
 
-  <!-- Libraries: Three.js (3D) + Chart.js (graphs), per project spec Section 4 -->
-  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <!-- Libraries: Three.js + Chart.js + shared subject kit (window.STK) -->
+  <SubjectToolLibs />
 
   <script is:inline>
   (function () {
     'use strict';
-    const el = (id) => document.getElementById(id);
-    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const { el, reduceMotion, fmt2: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
 
     // ---- unit system ----
     const FT = 3.28084;
@@ -385,13 +384,6 @@ const faqs = [
     const units = () => imperial
       ? { vel: 'ft/s', len: 'ft', acc: 'ft/s²', g: 32.174 }
       : { vel: 'm/s', len: 'm', acc: 'm/s²', g: 9.81 };
-
-    // ---- number formatting (spec Section 16) ----
-    function fmt(v) {
-      if (!isFinite(v)) return '—';
-      if (Math.abs(v) < 1e-9) v = 0;            // kill -0.00 / tiny artefacts
-      return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
 
     // ---- read inputs, keeping slider + number box in sync ----
     function readVal(sliderId, numId) {
@@ -535,9 +527,7 @@ const faqs = [
 
     function initCharts() {
       if (!window.Chart) return;
-      Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-      Chart.defaults.color = '#64748b';
-      const baseOpts = { responsive: true, maintainAspectRatio: false, animation: false };
+      const baseOpts = chartSetup();
 
       charts.height = new Chart(el('chart-height'), {
         type: 'line',
@@ -581,60 +571,13 @@ const faqs = [
       charts.range.data.labels = L; charts.range.data.datasets[0].data = D; charts.range.update();
     }
 
-    // ================= THREE.js SCENES =================
-    function makeScene(container, camRadius, target) {
-      const w = container.clientWidth, h = container.clientHeight || 240;
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(w, h);
-      container.appendChild(renderer.domElement);
-      renderer.domElement.style.touchAction = 'none';   // spec Section 5, bug 4
-      scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-      const dir = new THREE.DirectionalLight(0xffffff, 0.55); dir.position.set(6, 12, 8); scene.add(dir);
-
-      let azim = 0.9, pol = 1.15, radius = camRadius;
-      const tgt = target || new THREE.Vector3(0, 0, 0);
-      function place() {
-        camera.position.set(
-          tgt.x + radius * Math.sin(pol) * Math.sin(azim),
-          tgt.y + radius * Math.cos(pol),
-          tgt.z + radius * Math.sin(pol) * Math.cos(azim)
-        );
-        camera.lookAt(tgt);
-      }
-      place();
-
-      // manual orbit — mouse + touch (spec Section 5, bug 4)
-      let dragging = false, px = 0, py = 0;
-      function down(x, y) { dragging = true; px = x; py = y; }
-      function move(x, y) {
-        if (!dragging) return;
-        azim -= (x - px) * 0.008; pol += (y - py) * 0.008;
-        pol = Math.max(0.25, Math.min(Math.PI / 2 + 0.15, pol));
-        px = x; py = y; place();
-      }
-      function up() { dragging = false; }
-      const cvs = renderer.domElement;
-      cvs.addEventListener('mousedown', (e) => down(e.clientX, e.clientY));
-      window.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
-      window.addEventListener('mouseup', up);
-      cvs.addEventListener('touchstart', (e) => { const t = e.touches[0]; down(t.clientX, t.clientY); }, { passive: true });
-      cvs.addEventListener('touchmove', (e) => { const t = e.touches[0]; move(t.clientX, t.clientY); }, { passive: true });
-      cvs.addEventListener('touchend', up);
-
-      function resize() {
-        const w2 = container.clientWidth, h2 = container.clientHeight || 240;
-        camera.aspect = w2 / h2; camera.updateProjectionMatrix(); renderer.setSize(w2, h2);
-      }
-      return { scene, camera, renderer, resize, place, setTarget: (v) => { tgt.copy(v); place(); }, spin: (d) => { if (!dragging) { azim += d; place(); } }, isDragging: () => dragging, THREE };
-    }
+    // ================= THREE.js SCENES (via window.STK) =================
+    const PROJ_OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
 
     // ---- Scene 1: interactive live trajectory ----
     function initScene3d() {
       const c = el('scene3d'); if (!c) throw new Error('no container');
-      const s = makeScene(c, 14, new THREE.Vector3(4, 2, 0));
+      const s = makeScene(c, 14, new THREE.Vector3(4, 2, 0), PROJ_OPTS);
       const grid = new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0); grid.position.set(6, 0, 0); s.scene.add(grid);
       const arcMat = new THREE.LineBasicMaterial({ color: 0x6366f1 });
       let arcLine = null, scale = 1, pts = [];
@@ -679,21 +622,15 @@ const faqs = [
     }
 
     // ---- Scene 2: velocity vector decomposition (auto-rotating) ----
-    function arrow(THREE, from, to, color) {
-      const dir = new THREE.Vector3().subVectors(to, from);
-      const len = dir.length();
-      const a = new THREE.ArrowHelper(dir.clone().normalize(), from, len, color, Math.min(0.6, len * 0.25), Math.min(0.35, len * 0.16));
-      return a;
-    }
     function initDiagVectors() {
       const c = el('diag-vectors'); if (!c) throw new Error('no container');
-      const s = makeScene(c, 9, new THREE.Vector3(2, 1.4, 0));
+      const s = makeScene(c, 9, new THREE.Vector3(2, 1.4, 0), PROJ_OPTS);
       const g = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); g.position.set(2, 0, 0); s.scene.add(g);
       const O = new THREE.Vector3(0, 0, 0);
       const tip = new THREE.Vector3(4, 3, 0);
-      s.scene.add(arrow(THREE, O, tip, 0xef4444));                              // resultant v0
-      s.scene.add(arrow(THREE, O, new THREE.Vector3(4, 0, 0), 0x0ea5e9));        // horizontal
-      s.scene.add(arrow(THREE, new THREE.Vector3(4, 0, 0), tip, 0x10b981));      // vertical
+      s.scene.add(arrow(O, tip, 0xef4444));                              // resultant v0
+      s.scene.add(arrow(O, new THREE.Vector3(4, 0, 0), 0x0ea5e9));        // horizontal
+      s.scene.add(arrow(new THREE.Vector3(4, 0, 0), tip, 0x10b981));      // vertical
       function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.004); s.renderer.render(s.scene, s.camera); }
       frame();
       diagV = { resize: s.resize };
@@ -702,7 +639,7 @@ const faqs = [
     // ---- Scene 3: family of trajectories (auto-rotating) ----
     function initDiagFamily() {
       const c = el('diag-family'); if (!c) throw new Error('no container');
-      const s = makeScene(c, 15, new THREE.Vector3(5, 2, 0));
+      const s = makeScene(c, 15, new THREE.Vector3(5, 2, 0), PROJ_OPTS);
       const grid = new THREE.GridHelper(22, 22, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 0); s.scene.add(grid);
       const v0 = 12, g = 9.81, angles = [15, 30, 45, 60, 75];
       angles.forEach((a) => {
@@ -731,9 +668,7 @@ const faqs = [
       }
       updateAll();
 
-      function onResize() { [scene3d, diagV, diagF].forEach((x) => { try { x && x.resize(); } catch (e) {} }); }
-      window.addEventListener('resize', onResize);
-      window.addEventListener('orientationchange', () => setTimeout(onResize, 300));  // spec Section 5 checklist
+      mountResize([scene3d, diagV, diagF]);
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -1,5 +1,6 @@
 ---
 import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolLibs from '../../components/SubjectToolLibs.astro';
 
 const title = 'Molarity Calculator';
 const description = 'Free molarity calculator with a live 3D beaker and charts. Solve M = mol/L for molarity, moles, or volume, and handle dilutions with M₁V₁ = M₂V₂.';
@@ -274,23 +275,14 @@ const faqs = [
     </div>
   </section>
 
-  <!-- Libraries: Three.js (3D) + Chart.js (graphs), per project spec Section 4 -->
-  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <!-- Libraries: Three.js + Chart.js + shared subject kit (window.STK) -->
+  <SubjectToolLibs />
 
   <script is:inline>
   (function () {
     'use strict';
-    const el = (id) => document.getElementById(id);
-    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // ---- number formatting (spec Section 16) ----
-    function fmt(v) {
-      if (!isFinite(v)) return '—';
-      if (v !== 0 && (Math.abs(v) < 1e-3 || Math.abs(v) >= 1e5)) return v.toExponential(2);
-      if (Math.abs(v) < 1e-12) v = 0;
-      return parseFloat(v.toPrecision(4)).toLocaleString(undefined, { maximumFractionDigits: 4 });
-    }
+    const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+    const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
 
     // ================= CALCULATOR (works with zero dependencies) — preserves original logic =================
     let mode = 'mol';
@@ -387,9 +379,7 @@ const faqs = [
     // ================= CHARTS (Chart.js) =================
     function initCharts() {
       if (!window.Chart) return;
-      Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-      Chart.defaults.color = '#64748b';
-      const base = { responsive: true, maintainAspectRatio: false, animation: false };
+      const base = chartSetup();
 
       charts.dilute = new Chart(el('chart-dilute'), {
         type: 'line',
@@ -427,40 +417,7 @@ const faqs = [
       charts.compare.update();
     }
 
-    // ================= THREE.js SCENES =================
-    function makeScene(container, camRadius, target) {
-      const w = container.clientWidth, h = container.clientHeight || 240;
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(w, h);
-      container.appendChild(renderer.domElement);
-      renderer.domElement.style.touchAction = 'none';
-      scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-      const dir = new THREE.DirectionalLight(0xffffff, 0.5); dir.position.set(6, 12, 8); scene.add(dir);
-      let azim = 0.7, pol = 1.2, radius = camRadius;
-      const tgt = target || new THREE.Vector3(0, 0, 0);
-      function place() {
-        camera.position.set(tgt.x + radius * Math.sin(pol) * Math.sin(azim), tgt.y + radius * Math.cos(pol), tgt.z + radius * Math.sin(pol) * Math.cos(azim));
-        camera.lookAt(tgt);
-      }
-      place();
-      let dragging = false, px = 0, py = 0;
-      function down(x, y) { dragging = true; px = x; py = y; }
-      function move(x, y) { if (!dragging) return; azim -= (x - px) * 0.008; pol += (y - py) * 0.008; pol = Math.max(0.3, Math.min(Math.PI / 2 + 0.2, pol)); px = x; py = y; place(); }
-      function up() { dragging = false; }
-      const cvs = renderer.domElement;
-      cvs.addEventListener('mousedown', (e) => down(e.clientX, e.clientY));
-      window.addEventListener('mousemove', (e) => move(e.clientX, e.clientY));
-      window.addEventListener('mouseup', up);
-      cvs.addEventListener('touchstart', (e) => { const t = e.touches[0]; down(t.clientX, t.clientY); }, { passive: true });
-      cvs.addEventListener('touchmove', (e) => { const t = e.touches[0]; move(t.clientX, t.clientY); }, { passive: true });
-      cvs.addEventListener('touchend', up);
-      function resize() { const w2 = container.clientWidth, h2 = container.clientHeight || 240; camera.aspect = w2 / h2; camera.updateProjectionMatrix(); renderer.setSize(w2, h2); }
-      return { scene, camera, renderer, resize, place, spin: (d) => { if (!dragging) { azim += d; place(); } }, THREE };
-    }
-
+    // ================= THREE.js SCENES (via window.STK) =================
     function glassBeaker(THREE) {
       const g = new THREE.Group();
       const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1 });
@@ -474,7 +431,7 @@ const faqs = [
     // ---- interactive beaker ----
     function initBeaker() {
       const c = el('beaker3d'); if (!c) throw new Error('no beaker');
-      const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0));
+      const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
       s.scene.add(glassBeaker(THREE));
       const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
       let liquid = null;
@@ -510,7 +467,7 @@ const faqs = [
     // ---- diagram: dilution (two beakers, same particles) ----
     function initDiagDilute() {
       const c = el('diag-dilute'); if (!c) throw new Error('no diag');
-      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0));
+      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), MOL_OPTS);
       const pGeo = new THREE.SphereGeometry(0.12, 10, 10);
       const pMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
       function beakerAt(x, liquidH, radius, particleSpread) {
@@ -532,7 +489,7 @@ const faqs = [
     // ---- diagram: molarity as particles per litre cube ----
     function initDiagCube() {
       const c = el('diag-cube'); if (!c) throw new Error('no diag');
-      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0));
+      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), MOL_OPTS);
       const edge = new THREE.LineBasicMaterial({ color: 0x6366f1 });
       function cube(x, n) {
         const grp = new THREE.Group(); grp.position.x = x;
@@ -562,9 +519,7 @@ const faqs = [
       } else {
         el('beaker3d-fallback').classList.remove('hidden');
       }
-      function onResize() { [beaker, diagD, diagC].forEach((x) => { try { x && x.resize(); } catch (e) {} }); }
-      window.addEventListener('resize', onResize);
-      window.addEventListener('orientationchange', () => setTimeout(onResize, 300));
+      mountResize([beaker, diagD, diagC]);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
