@@ -3,7 +3,7 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-02
+**Last updated:** 2026-07-02 (Batch-1 completed — 20/20 tools built)
 
 > **⚠️ IMPORTANT REALITY RECONCILIATION (2026-07-02):** The spec was written against a *chat prototype* and assumes standalone single-file HTML tools with a dark navy theme + Three.js/Chart.js. The actual project is the **Astro site in this repo** (`micro-tools`, ~400 existing `.astro` tool pages using a shared `ToolLayout` + Tailwind **light** theme). Production decisions below override the spec wherever they conflict. Read the "Reconciliation Decisions" section before building anything.
 
@@ -128,10 +128,29 @@ and hand-verified per tool.
 Kit: `7217f73`. New pages created: uniform-circular-motion, percent-concentration, ppm, molality.
 Enhanced-in-place (moved to physics/chemistry category): free-fall, momentum, force, dilution.
 
-**Remaining Batch-1 tools (not yet built), to continue next:** Physics — Elastic Collision,
-Inelastic Collision, Impulse (own page), Torque, Angular Acceleration. Chemistry — Normality,
-Molar Mass (enhance existing atomic-mass), Chemical Equation Balancer, Limiting Reagent, Percent Yield.
-(Spec lists 10+10 per batch; the deploy set above is the first shippable half.)
+**Batch-1 completed (2026-07-02, commits `a742cfc`, `127e746`).** Built a shared page template
+`src/components/SubjectToolPage.astro` (data-driven: formulas, worked examples, comparison table,
+misconceptions, sources, how-to-use, related tools all render from props; each tool now only
+supplies its calculator + one interactive 3D/charts `viz` slot). Depth policy updated: 1 interactive
+3D scene + charts per tool (dropped the 2 standalone auto-rotating diagrams). Built the remaining
+10 tools on this template using 5 parallel agents:
+
+Physics: Elastic Collision, Inelastic Collision, Impulse, Torque, Angular Acceleration.
+Chemistry: Normality, Molar Mass (rebuilt `atomic-mass-calculator.astro`, moved engineering→chemistry),
+Chemical Equation Balancer, Limiting Reagent, Percent Yield.
+
+Post-build audit (code-only, live-browser step skipped per user for this batch): verified every
+file's `SubjectToolPage` slot/prop wiring, confirmed no duplicate Three.js/Chart.js imports, ran
+each tool's inline `<script>` through Node's `Function` constructor to confirm valid JS, and
+hand-verified core formulas (elastic/inelastic collision momentum+KE, torque, angular acceleration,
+equation-balancer GCD-reduction correctness, limiting-reagent ratio logic) against known values —
+all correct. Fixed one emoji collision in `tools.js` (Molar Mass's ⚗️ duplicated Normality's after
+the category move; changed to 🔬).
+
+**Batch-1 is now fully built: 20 flagship tools (10 Physics + 10 Chemistry) on `window.STK` +
+`SubjectToolPage`.** Not yet pushed to origin — local commits only, awaiting user go-ahead to push.
+Next: start Batch-2 (Biology's first tools, or continue the 10+10 Chem/Physics cadence per spec §23 —
+open question, see "Open Questions" below) once user reviews this batch.
 
 ## How to resume this project in a new session
 
