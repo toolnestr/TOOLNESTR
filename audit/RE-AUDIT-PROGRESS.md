@@ -210,6 +210,23 @@ oven fan -20°C, yeast ratios). Regression guards for roofing/insulation/stair a
 `sweep-checks.json`. **sweep.cjs now honors `BASE_URL`** (e.g. `http://localhost:4321`) so a build can
 be swept against local `astro preview` before deploying.
 
+**Follow-up (same day) — 3 MORE construction bugs, caught by real browser input (not code reading).**
+The user spotted `square-footage-calculator` showing no result for Circle radius 5. Root cause was a
+whole class my code-read + crash-sweep missed: **shape-tab tools where the number inputs are never
+wired to `update()`** — the tool only recomputed on a shape-button click, so typing a value did
+nothing. Worse, all three had a **second** bug: the visibility toggle compared the input-div prefix
+`'rect'` against `currentShape === 'rectangle'` (`s !== currentShape`), so **rectangle mode — the
+default on load — hid its own input fields entirely** (the page loaded showing a calculator with no
+visible inputs). Affected `square-footage-calculator`, `perimeter-calculator`, `pool-volume-calculator`.
+Fixed both: wired all inputs to `update()` on `input`, and changed the toggle to
+`!currentShape.startsWith(s)` (prefix-safe; no prefix is a prefix of another). Verified in a real
+browser across every mode: square-footage 12×10 → 120 sq ft (rect/circle/triangle all output),
+perimeter 12×10 → 44 ft, pool 30×15×6 → 20,196 gal. Added rectangle golden vectors for all three to
+`sweep-checks.json`. **Lesson: crash-detection + code-reading is not enough — drive each tool with
+real values in a browser and confirm a correct number actually renders.** `paint-coverage-calculator`
+was checked and is fine (it has an explicit Calculate button + Enter-key handler, so unwired `input`
+events are by design). No other tool sitewide has the `s !== currentShape` toggle pattern.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
