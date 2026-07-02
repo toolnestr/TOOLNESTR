@@ -264,11 +264,16 @@ answer → `FAIL`, console/network errors without a crash → `FLAG`.
 - **Converters: 69/69 pass, 26/26 correctness checks pass** (incl. all 6 fixed-bug regressions:
   text-to-binary emoji, ascii Latin-1, html-entity double-decode, feet-and-inches multiply-area,
   json-to-yaml array-of-objects, json-to-xml).
-- **Finance: 33 pass, 1 flag → FIXED.** `currency-converter`'s live FX call to
-  `https://api.frankfurter.app` was **blocked by CSP** (`connect-src`). Fixed by adding
-  `https://api.frankfurter.app` to the `connect-src` allowlist in `public/_headers` (same pattern
-  as `30fd923` which added `geocoding-api.open-meteo.com`). Single endpoint, no fallback in the
-  tool. **Needs deploy to go live** (see below).
+- **Finance: 33 pass, 1 flag → FIXED (two layers).** `currency-converter`'s live FX call failed.
+  The sweep first surfaced a **CSP** block; allowlisting `api.frankfurter.app` in `public/_headers`
+  cleared the CSP error but revealed the real problem underneath: **`api.frankfurter.app` is
+  deprecated — it now 301-redirects and sends NO `Access-Control-Allow-Origin` header, so the
+  browser fetch dies with a CORS error** (server-to-server curl still works, which is why it looked
+  fine outside a browser — always verify FX/3rd-party calls in an actual browser). The maintained
+  host `https://api.frankfurter.dev/v1/latest` returns 200 with `access-control-allow-origin: *`
+  and an identical `{amount,base,date,rates}` body. Final fix: switched the tool's fetch to
+  `api.frankfurter.dev/v1/latest` and changed the `connect-src` entry from `.app` to `.dev`.
+  Verified live: 1 USD → €0.8785, no error banner. Single endpoint, no fallback in the tool.
 - **Health: 30/30 pass, 3/3 checks pass** (bmi golden vector; weight-loss-goal imperial-mode
   regression; vo2-max female Cooper regression).
 - **Math: 22 pass, 1 FAIL → FIXED.** **`matrix-calculator` was completely non-functional in
@@ -290,11 +295,10 @@ answer → `FAIL`, console/network errors without a crash → `FLAG`.
   vector). prayer-times relies on crash-detection only in the sweep (its correctness is
   timezone-dependent and was verified in prior sessions).
 
-**Two production fixes staged locally, NOT yet deployed** (deploy needs explicit user go-ahead;
-the auto-approver blocks production Pages deploys): (1) `public/_headers` CSP += `api.frankfurter.app`,
-(2) `src/pages/tools/matrix-calculator.astro` readMatrix id fix. Both are in the built `dist/`.
-Deploy: `npx wrangler pages deploy dist --project-name=toolnestr --commit-dirty=true`, then verify
-live (currency-converter fetches rates; matrix-calculator computes with no console error).
+**Both production fixes DEPLOYED & verified live 2026-07-02** (user approved deploy+push):
+(1) `currency-converter` → `api.frankfurter.dev/v1/latest` + `connect-src` `.dev` (live: 1 USD → €0.8785),
+(2) `matrix-calculator` readMatrix id fix (live: ADD → `6 8 10 12`, 0 page errors). Deploy cmd used:
+`npx wrangler pages deploy dist --project-name=toolnestr --commit-dirty=true`.
 
 **Methodology gap — CLOSED.** The sweep no longer only checks for crashes. See `sweep-checks.json`
 for the assertion format (`fill` / `select` / `preClick` / `click` / `read` / `readValue` and
