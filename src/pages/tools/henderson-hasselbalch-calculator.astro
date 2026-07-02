@@ -1,0 +1,344 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Henderson-Hasselbalch (Buffer) Calculator';
+const description = 'Henderson-Hasselbalch calculator with a live 3D beaker and charts. Solve pH = pKa + log([A-]/[HA]), or find the [A-]/[HA] ratio needed for a target buffer pH.';
+const intro = 'Find buffer pH from pKa and the conjugate base/acid ratio, or work backwards to find the ratio needed for a target pH. A live 3D beaker and charts show how the HA/A⁻ balance shifts with the ratio.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is a buffer solution?', a: 'A buffer is a solution that resists changes in pH when small amounts of acid or base are added. It is made from a weak acid (HA) and its conjugate base (A⁻), usually in comparable amounts, so it can neutralise either added H⁺ or added OH⁻.' },
+  { q: 'What does the Henderson-Hasselbalch equation calculate?', a: 'It calculates the pH of a buffer from the acid\'s pKa and the ratio of conjugate base to weak acid: pH = pKa + log₁₀([A⁻]/[HA]). Rearranged, it also gives the ratio needed to hit a target pH — the key equation for preparing buffers in the lab.' },
+  { q: 'Why is buffering strongest near pH = pKa?', a: 'When [A⁻] = [HA] (ratio = 1), pH = pKa exactly, and the solution has roughly equal reserves of weak acid to soak up added base and conjugate base to soak up added acid. That balance gives the maximum resistance to pH change — buffer capacity is greatest within about one pH unit of pKa (pKa ± 1) and drops off sharply outside that range.' },
+  { q: 'What are common buffer systems in biology and chemistry?', a: 'Acetic acid/acetate (pKa ≈ 4.76) is a classic lab buffer. Phosphate (H₂PO₄⁻/HPO₄²⁻, pKa ≈ 7.21) buffers near physiological pH and is used in cell culture media. Bicarbonate/carbonic acid (pKa ≈ 6.1) is the primary buffer of human blood, working alongside respiration to hold blood pH near 7.4. Ammonia/ammonium (pKa ≈ 9.25) buffers in the basic range.' },
+  { q: 'Can I use Ka instead of pKa?', a: 'Yes — pKa = −log₁₀(Ka). If you know the acid dissociation constant Ka rather than pKa, convert it first. For example, acetic acid has Ka ≈ 1.8 × 10⁻⁵, so pKa = −log₁₀(1.8 × 10⁻⁵) ≈ 4.74–4.76 depending on the source.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Henderson-Hasselbalch Calculator',
+  description: 'Calculate buffer pH from pKa and the conjugate base/acid ratio, or find the ratio needed for a target pH.',
+  steps: [
+    { name: 'Pick a mode', text: 'Choose "Find pH" to solve pH from pKa and the ratio, or "Find ratio" to solve the [A⁻]/[HA] ratio needed for a target pH.' },
+    { name: 'Enter the values', text: 'Type pKa plus either the ratio (or separate [A⁻] and [HA]) — or pKa plus a target pH.' },
+    { name: 'Read the result', text: 'The pH or ratio solves instantly, and the 3D beaker updates to show the HA/A⁻ balance.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'pH = pKa + log₁₀([A⁻]/[HA])', note: 'Henderson-Hasselbalch equation' },
+  { expr: '[A⁻]/[HA] = 10<sup>(pH − pKa)</sup>', note: 'ratio needed for a target pH' },
+  { expr: 'pKa = −log₁₀(Ka)', note: 'from the acid dissociation constant' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — equal parts acetic acid/acetate', tone: 'slate',
+    given: 'An acetate buffer has pKa = 4.76 (acetic acid) with equal concentrations of acetate ([A⁻]) and acetic acid ([HA]), so the ratio [A⁻]/[HA] = 1. Find the pH.',
+    rows: [
+      { label: 'Formula:', value: 'pH = pKa + log₁₀([A⁻]/[HA])' },
+      { label: 'Substitute:', value: 'pH = 4.76 + log₁₀(1) = 4.76 + 0' },
+      { label: 'pH:', value: '4.76', full: true },
+    ],
+    note: 'When [A⁻] = [HA], log₁₀(1) = 0, so pH always equals pKa exactly — this is the point of maximum buffer capacity.',
+  },
+  {
+    title: 'Worked example 2 — phosphate buffer with a 2:1 ratio', tone: 'amber',
+    given: 'A phosphate buffer has pKa = 7.21 (HPO₄²⁻/H₂PO₄⁻ system), with [A⁻]/[HA] = 2 (twice as much conjugate base as acid). Find the pH.',
+    rows: [
+      { label: 'Formula:', value: 'pH = pKa + log₁₀([A⁻]/[HA])' },
+      { label: 'Substitute:', value: 'pH = 7.21 + log₁₀(2) = 7.21 + 0.301' },
+      { label: 'pH:', value: '≈ 7.51', full: true },
+    ],
+    note: 'log₁₀(2) ≈ 0.30103, so pH = 7.21 + 0.301 ≈ 7.511, rounded to 7.51 — close to physiological pH, which is why phosphate buffers are common in cell culture media.',
+  },
+];
+
+const comparison = {
+  heading: 'Common buffer systems and their pKa',
+  note: 'Approximate standard values at 25°C — exact pKa shifts slightly with ionic strength and temperature.',
+  headers: [{ label: 'Buffer system' }, { label: 'Conjugate pair' }, { label: 'pKa' }, { label: 'Effective range' }],
+  rows: [
+    ['Acetic acid / acetate', 'CH₃COOH / CH₃COO⁻', '≈ 4.76', '≈ 3.8 – 5.8'],
+    ['Carbonic acid / bicarbonate', 'H₂CO₃ / HCO₃⁻', '≈ 6.1', '≈ 5.1 – 7.1'],
+    ['Phosphate', 'H₂PO₄⁻ / HPO₄²⁻', '≈ 7.21', '≈ 6.2 – 8.2'],
+    ['Ammonia / ammonium', 'NH₄⁺ / NH₃', '≈ 9.25', '≈ 8.25 – 10.25'],
+  ],
+  highlightIndex: 1,
+  footnote: 'Effective buffering range is roughly pKa ± 1, where the ratio [A⁻]/[HA] stays between about 1:10 and 10:1. The bicarbonate system is the primary buffer of human blood.',
+};
+
+const realWorld = [
+  { emoji: '🩸', title: 'Blood pH buffering', body: 'The bicarbonate system (H₂CO₃/HCO₃⁻, pKa ≈ 6.1) keeps human blood pH tightly near 7.4, working together with respiration — exhaling CO₂ shifts the equilibrium and adjusts pH within seconds.' },
+  { emoji: '⚗️', title: 'Biochemistry lab buffer preparation', body: 'Researchers use the Henderson-Hasselbalch equation in reverse: pick a weak acid whose pKa is close to the target pH, then calculate the [A⁻]/[HA] ratio (and hence how much of each stock solution to mix) to hit that pH precisely.' },
+  { emoji: '💊', title: 'Pharmaceutical formulation', body: 'Drug stability and absorption often depend on formulation pH. Buffers keep injectable and oral formulations at a target pH throughout shelf life, preventing degradation or precipitation.' },
+  { emoji: '🧫', title: 'Cell culture media', body: 'Cell culture media are buffered — often with phosphate or bicarbonate/CO₂ systems — to hold pH near 7.2–7.4, the narrow range most mammalian cells need to survive and grow.' },
+];
+
+const misconceptions = [
+  { claim: '"A buffer keeps pH exactly constant no matter what."', truth: 'A buffer resists pH change within a limited capacity — roughly pKa ± 1. Add enough strong acid or base to use up all of the HA or A⁻ reserve, and the pH will swing rapidly, just like an unbuffered solution.' },
+  { claim: '"You need equal amounts of acid and base to buffer at all."', truth: 'Equal amounts ([A⁻] = [HA]) give the maximum capacity and set pH = pKa exactly, but a buffer still works at other ratios — it just resists change less well in one direction and targets a different pH (pH = pKa + log of the ratio).' },
+  { claim: '"pKa is the same as pH."', truth: 'pKa is a fixed property of the weak acid (from its Ka). pH is the actual acidity of the specific solution, which depends on pKa AND the ratio of conjugate base to acid present. They are only equal when the ratio is exactly 1.' },
+  { claim: '"Any weak acid can buffer any pH."', truth: 'A buffer only works well within about one pH unit of its pKa, because outside that window one of [A⁻] or [HA] becomes so small that the reserve to neutralise added acid or base runs out. Choose a weak acid whose pKa is close to the pH you need.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — acid-base equilibria and buffer solutions (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/14-6-buffers" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 17, Additional Aspects of Aqueous Equilibria (buffered solutions).' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — the Henderson-Hasselbalch equation and buffer capacity.' },
+];
+const sourcesNote = 'pH = pKa + log₁₀([A⁻]/[HA]); pKa = −log₁₀(Ka). pKa values for common buffers are standard reference approximations at 25°C. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Pick the mode', body: '"Find pH" solves pH from pKa and the ratio; "Find ratio" solves the ratio needed for a target pH.' },
+  { title: 'Enter the values', body: 'Type pKa and the ratio (or [A⁻] and [HA] separately), or pKa and your target pH.' },
+  { title: 'See it in the beaker', body: 'Use the sliders to watch the HA and A⁻ particle counts shift as the ratio changes.' },
+];
+
+const related = [
+  { href: '/tools/ph-calculator', emoji: '🧪', title: 'pH Calculator', desc: 'pH = −log[H⁺] — solve for any variable.' },
+  { href: '/tools/poh-calculator', emoji: '🔵', title: 'pOH Calculator', desc: 'pOH = −log[OH⁻]; pH + pOH = 14.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="a buffer's pH is set by two things — how strong its weak acid is (pKa) and how much conjugate base it has relative to remaining acid (the [A⁻]/[HA] ratio)."
+  howIntro="Because the equation is pH = pKa + log₁₀([A⁻]/[HA]), every tenfold change in the ratio shifts pH by exactly one unit, and when the ratio is 1 the log term vanishes, so pH = pKa exactly — the point where the buffer has the most reserve in both directions. Rearranged as [A⁻]/[HA] = 10^(pH − pKa), the same equation tells you how much conjugate base to mix with acid to prepare a buffer at any target pH."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where buffers actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-ph" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Find pH</button>
+      <button id="mode-ratio" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Find ratio for target pH</button>
+    </div>
+
+    <div id="ph-fields" class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">pKa</span>
+        <input id="pka1" type="number" step="any" placeholder="e.g. 4.76" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">[A⁻] (conjugate base)</span>
+        <input id="a-conc" type="number" step="any" placeholder="mol/L (or moles)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">[HA] (weak acid)</span>
+        <input id="ha-conc" type="number" step="any" placeholder="mol/L (or moles)" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Tip: enter pKa and just the ratio directly in [A⁻] if you leave [HA] as 1 — or fill both concentrations, units cancel in the ratio. pKa = −log₁₀(Ka) if you only have Ka.</p>
+
+    <div id="ratio-fields" class="hidden gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">pKa</span>
+        <input id="pka2" type="number" step="any" placeholder="e.g. 7.21" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Target pH</span>
+        <input id="target-ph" type="number" step="any" placeholder="e.g. 7.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div id="lab-1" class="text-sm opacity-80">pH</div><div id="r-1" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-2" class="text-sm text-slate-500">[A⁻]/[HA] ratio</div><div id="r-2" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-3" class="text-sm text-slate-500">pKa</div><div id="r-3" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="hh-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D buffer beaker</h2>
+      <p class="mt-1 text-sm text-slate-500">Set pKa and the [A⁻]/[HA] ratio; the beaker shows the weak acid (HA, amber) and conjugate base (A⁻, teal) as particle clusters whose relative counts track the ratio, and the pH readout updates live. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">pKa <span id="out-bpka" class="font-mono text-green-600">4.76</span></span>
+          <input id="b-pka" type="range" min="0" max="14" step="0.01" value="4.76" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[A⁻]/[HA] ratio <span id="out-bratio" class="font-mono text-green-600">1.00</span></span>
+          <input id="b-ratio" type="range" min="-2" max="2" step="0.02" value="0" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">pH = <span id="out-bph" class="font-mono font-bold">4.76</span></div>
+      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Buffer graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">pH vs log([A⁻]/[HA]) — a straight line, slope 1, intercept pKa</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-line"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Buffering: pH at three ratios — flattest, most-buffered point is near ratio = 1</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-bar"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      let mode = 'ph';
+      function switchMode(m) {
+        mode = m;
+        el('mode-ph').className = m === 'ph' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('mode-ratio').className = m === 'ratio' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('ph-fields').className = m === 'ph' ? 'grid gap-4 sm:grid-cols-3' : 'hidden';
+        el('ratio-fields').className = m === 'ratio' ? 'grid gap-4 sm:grid-cols-2' : 'hidden gap-4 sm:grid-cols-2';
+        el('lab-1').textContent = 'pH';
+        el('lab-2').textContent = '[A⁻]/[HA] ratio';
+        el('lab-3').textContent = 'pKa';
+        el('hh-err').textContent = '';
+        ['r-1', 'r-2', 'r-3'].forEach((id) => (el(id).textContent = '—'));
+        update();
+      }
+      function update() {
+        el('hh-err').textContent = '';
+        if (mode === 'ph') {
+          const pka = parseFloat(el('pka1').value);
+          const a = parseFloat(el('a-conc').value);
+          const ha = parseFloat(el('ha-conc').value);
+          if (isNaN(pka) || isNaN(a) || isNaN(ha)) { ['r-1', 'r-2', 'r-3'].forEach((id) => (el(id).textContent = '—')); return; }
+          if (a <= 0 || ha <= 0) { el('hh-err').textContent = '[A⁻] and [HA] must both be greater than 0.'; ['r-1', 'r-2', 'r-3'].forEach((id) => (el(id).textContent = '—')); return; }
+          const ratio = a / ha;
+          const ph = pka + Math.log10(ratio);
+          el('r-1').textContent = ph.toFixed(2);
+          el('r-2').textContent = fmt(ratio);
+          el('r-3').textContent = pka.toFixed(2);
+        } else {
+          const pka = parseFloat(el('pka2').value);
+          const targetPh = parseFloat(el('target-ph').value);
+          if (isNaN(pka) || isNaN(targetPh)) { ['r-1', 'r-2', 'r-3'].forEach((id) => (el(id).textContent = '—')); return; }
+          const ratio = Math.pow(10, targetPh - pka);
+          el('r-1').textContent = targetPh.toFixed(2);
+          el('r-2').textContent = fmt(ratio);
+          el('r-3').textContent = pka.toFixed(2);
+        }
+      }
+      el('mode-ph').addEventListener('click', () => switchMode('ph'));
+      el('mode-ratio').addEventListener('click', () => switchMode('ratio'));
+      ['pka1', 'a-conc', 'ha-conc', 'pka2', 'target-ph'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let beaker = null;
+      function bState() {
+        const pka = parseFloat(el('b-pka').value);
+        const logRatio = parseFloat(el('b-ratio').value);
+        const ratio = Math.pow(10, logRatio);
+        const ph = pka + logRatio;
+        return { pka, ratio, ph };
+      }
+      function onB() {
+        const s = bState();
+        el('out-bpka').textContent = s.pka.toFixed(2);
+        el('out-bratio').textContent = fmt(s.ratio);
+        el('out-bph').textContent = s.ph.toFixed(2);
+        try { if (beaker) beaker.update(s); } catch (e) {}
+      }
+      el('b-pka').addEventListener('input', onB);
+      el('b-ratio').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        const labels = [], data = [];
+        for (let lr = -2; lr <= 2.001; lr += 0.2) { labels.push(lr.toFixed(1)); data.push(+(4.76 + lr).toFixed(3)); }
+        charts.line = new Chart(el('chart-line'), {
+          type: 'line',
+          data: { labels, datasets: [{ label: 'pH', data, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'log₁₀([A⁻]/[HA])' } }, y: { title: { display: true, text: 'pH' } } }, plugins: { legend: { display: false } } }),
+        });
+        const barRatios = [0.1, 1, 10];
+        const barPh = barRatios.map((r) => 4.76 + Math.log10(r));
+        charts.bar = new Chart(el('chart-bar'), {
+          type: 'bar',
+          data: { labels: ['1:10 (mostly HA)', '1:1 (equal)', '10:1 (mostly A⁻)'], datasets: [{ label: 'pH', data: barPh, backgroundColor: ['#f59e0b', '#10b981', '#6366f1'] }] },
+          options: Object.assign({}, base, {
+            scales: { y: { title: { display: true, text: 'pH' } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => 'pH ≈ ' + ctx.parsed.y.toFixed(2) } } },
+          }),
+        });
+        charts.ready = true;
+        updateLineChart(bState());
+      }
+      function updateLineChart(s) {
+        if (!charts.ready) return;
+        const labels = [], data = [];
+        for (let lr = -2; lr <= 2.001; lr += 0.2) { labels.push(lr.toFixed(1)); data.push(+(s.pka + lr).toFixed(3)); }
+        charts.line.data.labels = labels; charts.line.data.datasets[0].data = data; charts.line.update();
+      }
+
+      // ---- interactive beaker ----
+      function glassBeaker(THREE) {
+        const g = new THREE.Group();
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        return g;
+      }
+      function initBeaker() {
+        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        s.scene.add(glassBeaker(THREE));
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.3 });
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, 4.6, 40), liquidMat);
+        liquid.position.y = -2.4 + 4.6 / 2; s.scene.add(liquid);
+        const hLiq = 4.6;
+        const MAX_P = 140;
+        const geo = new THREE.SphereGeometry(0.11, 10, 10);
+        const haMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b }); // HA, amber
+        const aMat = new THREE.MeshStandardMaterial({ color: 0x14b8a6 }); // A-, teal
+        const particles = [];
+        for (let i = 0; i < MAX_P; i++) {
+          const p = new THREE.Mesh(geo, i < MAX_P / 2 ? haMat : aMat);
+          p.visible = false; s.scene.add(p); particles.push(p);
+        }
+        function update(state) {
+          // Fraction of A- among (HA + A-): frac = ratio / (1 + ratio)
+          const frac = state.ratio / (1 + state.ratio);
+          const nA = Math.max(0, Math.min(MAX_P, Math.round(frac * MAX_P)));
+          const nHA = MAX_P - nA;
+          let idx = 0;
+          for (let i = 0; i < nHA; i++, idx++) {
+            const p = particles[idx]; p.material = haMat;
+            const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2;
+            p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r);
+            p.visible = true;
+          }
+          for (let i = 0; i < nA; i++, idx++) {
+            const p = particles[idx]; p.material = aMat;
+            const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2;
+            p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r);
+            p.visible = true;
+          }
+          for (; idx < MAX_P; idx++) particles[idx].visible = false;
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        beaker = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { switchMode('ph'); } catch (e) { console.error('[henderson-hasselbalch] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[henderson-hasselbalch] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[henderson-hasselbalch] charts failed', e); }
+        if (window.THREE) {
+          try { initBeaker(); } catch (e) { console.error('[henderson-hasselbalch] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
+        } else { el('beaker3d-fallback').classList.remove('hidden'); }
+        mountResize([beaker]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

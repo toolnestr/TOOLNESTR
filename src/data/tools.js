@@ -417,6 +417,7 @@ export const tools = [
   { slug: 'terminal-velocity-calculator', title: 'Terminal Velocity Calculator', short: 'v_t = √(2mg / (ρ·A·Cd)) — falling speed with drag.', category: 'physics', emoji: '🪂', enabled: true, status: 'live' },
   { slug: 'escape-velocity-calculator', title: 'Escape Velocity Calculator', short: 'v_esc = √(2GM/r) — leave a body’s gravity for good.', category: 'physics', emoji: '🛰️', enabled: true, status: 'live' },
   { slug: 'mechanical-efficiency-calculator', title: 'Mechanical Efficiency Calculator', short: 'η = output/input × 100% — from work or power.', category: 'physics', emoji: '⚙️', enabled: true, status: 'live' },
+  { slug: 'work-energy-theorem-calculator', title: 'Work-Energy Theorem Calculator', short: 'W_net = ΔKE = ½m(v_f²−v_i²) — solve for any variable.', category: 'physics', emoji: '🛞', enabled: true, status: 'live' },
   { slug: 'ph-calculator', title: 'pH Calculator', short: 'pH from concentration or reverse.', category: 'engineering', emoji: '🧪', enabled: true, status: 'live' },
   { slug: 'dilution-calculator', title: 'Dilution Calculator', short: 'C1V1=C2V2 — solve for any variable.', category: 'chemistry', emoji: '💧', enabled: true, status: 'live' },
   { slug: 'percent-concentration-calculator', title: 'Percent Concentration Calculator', short: 'w/v, w/w and v/v percent — solve any variable.', category: 'chemistry', emoji: '🧴', enabled: true, status: 'live' },
@@ -432,6 +433,7 @@ export const tools = [
   { slug: 'molecular-formula-calculator', title: 'Molecular Formula Calculator', short: 'Empirical formula + molar mass → molecular formula.', category: 'chemistry', emoji: '🧬', enabled: true, status: 'live' },
   { slug: 'mole-ratio-calculator', title: 'Mole Ratio Calculator', short: 'Convert moles of one species to another via coefficients.', category: 'chemistry', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'empirical-formula-calculator', title: 'Empirical Formula Calculator', short: 'Simplest whole-number formula from mass percent.', category: 'chemistry', emoji: '🧿', enabled: true, status: 'live' },
+  { slug: 'henderson-hasselbalch-calculator', title: 'Henderson-Hasselbalch (Buffer) Calculator', short: 'pH = pKa + log([A-]/[HA]) — solve pH or the buffer ratio.', category: 'chemistry', emoji: '🧯', enabled: true, status: 'live' },
   // ── Part 1: Finance (non-loan) ──
   { slug: 'roi-calculator', title: 'ROI Calculator', short: 'Return on investment from cost and gain.', category: 'finance', emoji: '📈', enabled: true, status: 'live' },
   { slug: 'emergency-fund-calculator', title: 'Emergency Fund Calculator', short: 'Recommended fund size from monthly costs.', category: 'finance', emoji: '🛡️', enabled: true, status: 'live' },
