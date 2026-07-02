@@ -272,9 +272,22 @@ applies here). Set up from scratch this session:
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
 - [ ] **Security + Developers** (40 tools) — old audit found/fixed 2 crypto bugs (MD5, HMAC-MD5)
-      already; rest of the 40 unverified
-- [ ] **Charts + Images + Text + Creators + SEO + PDF** (72 tools) — old audit explicitly did
-      only a "light review" here, lowest confidence of all
+      already; rest of the 40 unverified. NOTE: `uuid-generator` (security) + `htaccess-redirect-generator`,
+      `markdown-to-html` (developers) load-breakage already fixed 2026-07-02 (see esm.sh/status section);
+      their compute logic still needs the full audit.
+- [ ] **Charts + Images + Text + Creators** (~48 tools) — old audit explicitly did only a "light
+      review" here, lowest confidence of all. (Charts scatter/radar load-breakage already fixed.)
+- [x] **SEO (11)** — DONE 2026-07-02. Clean. readability-checker uses correct textbook constants for
+      all 4 scores (Flesch 206.835/1.015/84.6, F-K grade 0.39/11.8/15.59, Gunning Fog 0.4, SMOG
+      1.043/3.1291) — verified live (flesch=100, syllables=10, avg=1.00 on a hand-computed sample).
+      keyword-density verified live (apple/apple/banana → 66.67%/33.33%). meta-tag/robots/sitemap/
+      url-cleaner/heading-hierarchy/html-tag-inspector/keyword-extractor all sound. Only cosmetic
+      item: keyword-cloud-generator `angle = (i%2===0)?0:0` (dead ternary, all words horizontal) — not a
+      data bug, not fixed.
+- [x] **PDF (11 incl. pdf-to-text)** — DONE 2026-07-02. Logic clean: split ranges 0-based+clamped,
+      pdf-page-remover copies KEPT pages (avoids index-shift bug), pdf-rotate absolute-by-documented-
+      design, pdf-page-numbers correct. Earlier esm.sh/pdf-to-text/pdf-lib load-breakage already fixed
+      + deployed (see esm.sh section). No new bugs.
 
 ## Sanity sweep (post-fix regression check) — DONE (all 6 categories), 2 real bugs found & fixed
 
