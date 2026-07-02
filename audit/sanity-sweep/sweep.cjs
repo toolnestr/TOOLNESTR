@@ -23,6 +23,10 @@ const category = process.argv[2];
 const slugs = toolsByCat[category];
 if (!slugs) { console.error('unknown category', category); process.exit(1); }
 
+// Override with BASE_URL=http://localhost:4321 to sweep a local `astro preview` build
+// before deploying; defaults to live production.
+const BASE_URL = process.env.BASE_URL || 'https://toolnestr.com';
+
 const ACTION_WORDS = /calculate|convert|generate|compute|submit|encode|decode|encrypt|decrypt|format|analyze|check|search|create|build|apply|run|go|beautify|minify|validate|resize|compress/i;
 const PLACEHOLDERS = new Set(['', '-', '—', '0', '$0', 'nan', 'null', 'undefined']);
 
@@ -89,7 +93,7 @@ async function testTool(browser, slug) {
   page.on('pageerror', err => errors.push('pageerror: ' + err.message.slice(0, 200)));
   page.on('requestfailed', req => failedRequests.push(req.url()));
 
-  const url = `https://toolnestr.com/tools/${slug}`;
+  const url = `${BASE_URL}/tools/${slug}`;
   let result = { slug, url, status: 'PASS', check: 'none', checkNote: '', errors: [], failedRequests: [], note: '' };
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });

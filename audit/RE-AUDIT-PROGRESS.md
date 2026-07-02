@@ -185,6 +185,31 @@ it on the other 15 Islamic tools where it's more clearly warranted (Zakat, inher
 etc.). Added a `hideDisclaimer` prop on `ToolLayout` for this kind of per-tool override. Verified live:
 disclaimer gone on qibla-direction-finder, still present on zakat-calculator.
 
+### Construction (21) + Automotive (26) + Cooking (9) — done 2026-07-02 (Windows machine)
+Full re-audit of all 56 tools: read each tool's compute logic, verified formulas/constants against
+known references, ran the crash+correctness sweep, fixed bugs, verified live. **4 real bugs, two of
+them hard page-crashes caught instantly by the sweep:**
+- **insulation-calculator** (crash): declared `let location = 'attic'` at inline-script global scope,
+  colliding with the read-only `window.location` global → `SyntaxError: Identifier 'location' has
+  already been declared`, whole script dead. Renamed the var to `insLoc`.
+- **stair-calculator** (crash): a stray extra `)` on the `r-stringer` assignment line →
+  `SyntaxError: Unexpected token ')'`, whole script dead. Removed the extra paren.
+- **roofing-calculator** (2x over-estimate): `roofArea = footprint * mult * 2` — the two gable planes'
+  horizontal projections already sum to the full footprint, so the `* 2` doubled every result
+  (shingle bundles, squares). The tool's OWN FAQ says a 2,000 sq ft home needs ~20-25 squares; the
+  buggy code gave ~45. Removed the `* 2` → `footprint * mult`. Verified: 40x30 @ 6/12 → 1341.6 sq ft.
+- **ev-co2-savings** (1000x over-estimate): `trees = savings / 0.022` divided a **kg** CO2 value by
+  0.022 (that per-tree figure is in **metric tons**, ~22 kg), inflating the "equivalent trees" 1000x
+  (~124,000 instead of ~124). Fixed to `savings / 21.77` (kg/tree/yr, EPA). Verified: 10k mi, 3.5
+  mi/kWh, 25 mpg → 2.70 tons saved = 124 trees.
+The other 52 tools checked out: construction geometry (concrete cf/27, brick 144/unit-area, tile,
+paver, drywall, deck, fence, paint 350 sqft/gal, pool 7.48 gal/cuft), all 26 automotive incl. the EV
+math (mi/kWh handling, home-charger I=P/V + NEC 125%, 3-phase √3, gear-ratio 336 constant, tire
+sidewall, KE=½mv² regen, compression/displacement), and all 9 cooking converters (236.588 ml/cup,
+oven fan -20°C, yeast ratios). Regression guards for roofing/insulation/stair added to
+`sweep-checks.json`. **sweep.cjs now honors `BASE_URL`** (e.g. `http://localhost:4321`) so a build can
+be swept against local `astro preview` before deploying.
+
 ## Categories NOT YET re-audited (still only have the UNRELIABLE old "0 bugs" claim)
 
 Given what turned up in every category actually tested above, **do not trust "0 bugs" for these
@@ -226,7 +251,7 @@ applies here). Set up from scratch this session:
   gotcha as the original Windows notes, different cause) — always `cd` and set `PATH` in the same
   invocation as whatever command follows it.
 
-- [ ] **Construction + Automotive + Cooking** (56 tools)
+- [x] **Construction + Automotive + Cooking** (56 tools) — DONE 2026-07-02, 4 bugs fixed (see above)
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
 - [ ] **Security + Developers** (40 tools) — old audit found/fixed 2 crypto bugs (MD5, HMAC-MD5)
