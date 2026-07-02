@@ -234,65 +234,72 @@ applies here). Set up from scratch this session:
 - [ ] **Charts + Images + Text + Creators + SEO + PDF** (72 tools) — old audit explicitly did
       only a "light review" here, lowest confidence of all
 
-## Sanity sweep (post-fix regression check) — IN PROGRESS, interrupted twice, not yet trustworthy
+## Sanity sweep (post-fix regression check) — DONE (all 6 categories), 2 real bugs found & fixed
 
 **What this is:** a *separate, lighter* pass re-checking the categories already fixed above
 (Converters, Finance, Health & Fitness, Math, Engineering & Science, Everyday — ~226 live tools)
 for **regressions** since their fixes shipped. This is not the same as the "NOT YET re-audited"
 list below (those have never been touched at all).
 
-**Status as of this write-up:**
-- Script: `audit/sanity-sweep/sweep.cjs` — run as `node audit/sanity-sweep/sweep.cjs <category>`
-  (category = one of `converters finance health math engineering everyday`, matching the keys in
-  `audit/sanity-sweep/sweep-tools.json`, which it reads for the slug list per category — already
-  filtered to `enabled:true, status:'live'`). Loads each tool live at
-  `https://toolnestr.com/tools/<slug>`, fills any obvious input fields with a generic value
-  (`42` / `"Hello World 123"`), clicks the first button whose text matches an action-word regex,
-  and records console errors / failed requests / blank-page renders to
-  `audit/sanity-sweep/sweep-results-<category>.json`.
-- **Converters: done, 69/69 checked, 0 flags.** 9 tools had no obvious input field for the generic
-  script to interact with (listed in `audit/sanity-sweep/stragglers.json`: `csv-to-json`,
-  `json-to-yaml`, `json-to-xml`, `text-to-binary`, `text-to-hex`, `url-encoder-decoder`,
-  `html-entity-converter`, `morse-code-converter`, `regex-escaper`) — these need a manual/scripted
-  check with real input, not yet done.
-- **Finance: done, 34/34 checked, 1 flag** — `currency-converter`: the live FX API call to
-  `https://api.frankfurter.app/latest?from=USD` is being **blocked by CSP**
-  (`connect-src` doesn't allow `api.frankfurter.app`). This is a real, likely-live bug (the tool
-  probably can't fetch live rates in production right now) — **not yet fixed**, needs investigating
-  and either adding the domain to CSP (see `worker.js` / CSP config, same fix pattern as commit
-  `30fd923` which added `geocoding-api.open-meteo.com`) or confirming there's a fallback.
-- **Health, Math, Engineering, Everyday: not started.**
+**Completed 2026-07-02 on the Windows machine (PDC / OneDrive).** The methodology gap below was
+closed first: `sweep.cjs` now runs a targeted **correctness assertion** (known input → expected
+output) for each tool that has one in `audit/sanity-sweep/sweep-checks.json`, on top of the
+crash/console/blank-render detection. 44 correctness assertions total — one for every previously
+fixed bug (regression guard) plus golden-vector spot checks across the FactorConverter family and
+each category. Slugs without an assertion still get crash-detection only.
 
-**⚠️ Known methodology gap — fix this before trusting more PASS results:** the script only checks
-for crashes/console errors/blank renders. It does **NOT** verify the tool computed the *correct*
-value — filling `42` into every field and clicking a button proves the tool didn't crash, not that
-its math is right. A prior run of this exact sweep (agent, mid-session) caught this gap itself and
-was about to add real correctness checks (plausible input → known/hand-computed expected output,
-same method as the full category audits above) when it got killed by the user. **Do this before
-resuming Converters/Finance results with full confidence** — the 0-flags/1-flag results above only
-mean "didn't crash," not "produced correct output."
+**How it runs now (Windows, NOT the Linux box):** `node audit/sanity-sweep/sweep.cjs <category>`
+(`converters finance health math engineering everyday`). Reads `sweep-tools.json` (slug lists) and
+`sweep-checks.json` (assertions), both from `audit/sanity-sweep/` via paths relative to the script
+(cwd-independent). Drives the **real installed Chrome** via Playwright `channel:'chrome'`
+(`C:\Program Files\Google\Chrome\Application\chrome.exe`) against live `https://toolnestr.com` —
+**none of the Linux `LD_LIBRARY_PATH` / `libnspr4.so` / `playwright-deps` gymnastics apply here.**
+Setup on this machine: `npm install` then `npm install --no-save playwright` with
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` (system Chrome, no chromium download). Note: a full
+`npm install` prunes the `--no-save` playwright, so reinstall it after any `npm install`. Results
+written to `sweep-results-<category>.json`. Final per-tool status folds correctness in: a wrong
+answer → `FAIL`, console/network errors without a crash → `FLAG`.
 
-**Environment fix (do this first, every fresh machine/session — same libnspr4.so issue as below):**
-the missing shared libs are permanently extracted at `~/.local/share/playwright-deps` on this
-machine (survives session restarts, unlike `/tmp` scratch dirs). **Do NOT rely on shell `export`/
-`.bashrc`** — confirmed in this harness that Bash tool calls don't reliably inherit `.bashrc`
-exports (non-interactive shell, blocked by the `case $- in *i*) ;; *) return;; esac` guard at the
-top of `.bashrc`). Instead, set it inside the script itself, before `require('playwright')`:
-```js
-process.env.LD_LIBRARY_PATH = '/home/toolnestr/.local/share/playwright-deps' + (process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : '');
-```
-(already at the top of `sweep.cjs`). On a brand-new machine, regenerate that dir first: see the
-"Playwright on a no-sudo Linux box" note further down for the `apt-get download`/`dpkg-deb -x`
-steps, just point the extraction target at `~/.local/share/playwright-deps` instead of a scratch
-dir.
+**Results — all six categories swept, correctness-checked:**
+- **Converters: 69/69 pass, 26/26 correctness checks pass** (incl. all 6 fixed-bug regressions:
+  text-to-binary emoji, ascii Latin-1, html-entity double-decode, feet-and-inches multiply-area,
+  json-to-yaml array-of-objects, json-to-xml).
+- **Finance: 33 pass, 1 flag → FIXED.** `currency-converter`'s live FX call to
+  `https://api.frankfurter.app` was **blocked by CSP** (`connect-src`). Fixed by adding
+  `https://api.frankfurter.app` to the `connect-src` allowlist in `public/_headers` (same pattern
+  as `30fd923` which added `geocoding-api.open-meteo.com`). Single endpoint, no fallback in the
+  tool. **Needs deploy to go live** (see below).
+- **Health: 30/30 pass, 3/3 checks pass** (bmi golden vector; weight-loss-goal imperial-mode
+  regression; vo2-max female Cooper regression).
+- **Math: 22 pass, 1 FAIL → FIXED.** **`matrix-calculator` was completely non-functional in
+  production** — `readMatrix()` derived the rows/cols `<select>` id via
+  `containerId.replace('-grid','-rows')`, turning `'matrix-a-grid'` into `'matrix-a-rows'`, but the
+  selects are `a-rows`/`a-cols` (no `matrix-` prefix). `$('matrix-a-rows')` was `null`, so
+  `.value` threw on every `calculate()` — including the one at load (line ~450). The page threw
+  `Cannot read properties of null (reading 'value')` on load and produced no result on any op.
+  Fixed by deriving the prefix correctly (`containerId.replace('matrix-','').replace('-grid','')`
+  → `'a'`/`'b'`). Verified locally via `astro preview` + Playwright: ADD `[[1,2],[3,4]]+[[5,6],[7,8]]`
+  → `6 8 10 12`, MUL → `19 22 43 50`, DET → `-2`, zero page errors. **Needs deploy to go live.**
+  (This is exactly the kind of "runs but wrong / broken" defect the correctness dimension was added
+  to catch; the old crash-only sweep would also have flagged it via the pageerror, but it had never
+  been run against Math before.)
+- **Engineering: 44/44 pass, 3/3 checks pass** (ohms-law; frequency-converter ULF-band regression;
+  atomic-mass `Mg(OH)2` parentheses-parser regression — the one that used to crash).
+- **Everyday: 26/26 pass, 3/3 checks pass** (word-counter trailing-sentence regression;
+  age-calculator month-anchor / no-negative-days regression; date-difference UTC day-count golden
+  vector). prayer-times relies on crash-detection only in the sweep (its correctness is
+  timezone-dependent and was verified in prior sessions).
 
-**To resume this sweep, tell Claude:** *"continue the tool sanity sweep — see
-audit/RE-AUDIT-PROGRESS.md, Sanity sweep section"* — first add real correctness checks to
-`sweep.cjs` (per the gap above), re-verify Converters/Finance with the improved script, fix the
-`currency-converter` CSP flag, then continue with Health → Math → Engineering → Everyday. Commit
-and push progress to this file after **every** category — twice now this sweep has been
-interrupted (once by a usage-limit crash, once by a manual stop) mid-run with nothing saved; don't
-let a third attempt lose work again.
+**Two production fixes staged locally, NOT yet deployed** (deploy needs explicit user go-ahead;
+the auto-approver blocks production Pages deploys): (1) `public/_headers` CSP += `api.frankfurter.app`,
+(2) `src/pages/tools/matrix-calculator.astro` readMatrix id fix. Both are in the built `dist/`.
+Deploy: `npx wrangler pages deploy dist --project-name=toolnestr --commit-dirty=true`, then verify
+live (currency-converter fetches rates; matrix-calculator computes with no console error).
+
+**Methodology gap — CLOSED.** The sweep no longer only checks for crashes. See `sweep-checks.json`
+for the assertion format (`fill` / `select` / `preClick` / `click` / `read` / `readValue` and
+`expect.contains` | `expect.notContains` | `expect.computes`). To extend coverage, add more slugs
+there — the runner falls back to crash-detection for any slug without an entry.
 
 ## How to resume (full re-audit — categories never yet touched)
 
