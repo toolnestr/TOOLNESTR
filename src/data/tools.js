@@ -404,6 +404,7 @@ export const tools = [
   { slug: 'gravitational-force-calculator', title: 'Gravitational Force Calculator', short: "Newton's law of gravitation between masses.", category: 'engineering', emoji: '🌍', enabled: true, status: 'live' },
   { slug: 'projectile-motion-calculator', title: 'Projectile Motion Calculator', short: 'Range, height, and time from launch speed.', category: 'physics', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'free-fall-calculator', title: 'Free Fall Calculator', short: 'Time and velocity under gravity.', category: 'physics', emoji: '⬇️', enabled: true, status: 'live' },
+  { slug: 'uniform-circular-motion-calculator', title: 'Uniform Circular Motion Calculator', short: 'Centripetal accel/force, period, ω from r and v.', category: 'physics', emoji: '🔄', enabled: true, status: 'live' },
   { slug: 'ph-calculator', title: 'pH Calculator', short: 'pH from concentration or reverse.', category: 'engineering', emoji: '🧪', enabled: true, status: 'live' },
   { slug: 'dilution-calculator', title: 'Dilution Calculator', short: 'C1V1=C2V2 — solve for any variable.', category: 'chemistry', emoji: '💧', enabled: true, status: 'live' },
   { slug: 'percent-concentration-calculator', title: 'Percent Concentration Calculator', short: 'w/v, w/w and v/v percent — solve any variable.', category: 'chemistry', emoji: '🧴', enabled: true, status: 'live' },

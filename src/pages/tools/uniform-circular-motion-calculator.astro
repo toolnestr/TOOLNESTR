@@ -1,0 +1,468 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolLibs from '../../components/SubjectToolLibs.astro';
+
+const title = 'Uniform Circular Motion Calculator';
+const description = 'Uniform circular motion calculator with a live 3D orbit and charts. From radius, speed and mass find angular velocity, period, frequency, centripetal acceleration and force.';
+const intro = 'Enter a radius, speed and mass — get angular velocity, period, frequency, centripetal acceleration and force at once, with a live 3D orbit and charts to match.';
+const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
+const faqs = [
+  { q: 'What is uniform circular motion?', a: 'Motion in a circle at constant speed. The speed is steady but the velocity is always changing direction, so the object is constantly accelerating — the acceleration points toward the centre and is called centripetal acceleration.' },
+  { q: 'What is centripetal acceleration?', a: 'The centre-directed acceleration that keeps an object moving in a circle: a = v²/r = ω²r. Without it the object would fly off in a straight line (its tangential velocity), obeying Newton’s first law.' },
+  { q: 'What is centripetal force?', a: 'The net inward force that produces centripetal acceleration: F = mv²/r = mω²r. It is not a new kind of force — it is provided by tension, gravity, friction or the normal force depending on the situation.' },
+  { q: 'What is the difference between speed and angular velocity?', a: 'Linear speed v (m/s) is how fast the object moves along the circle; angular velocity ω (rad/s) is how fast the angle sweeps. They are linked by v = ωr, so a bigger radius means more linear speed for the same angular velocity.' },
+  { q: 'Is there such a thing as centrifugal force?', a: 'Centrifugal force is a fictitious force that appears only in the rotating frame of the object. In an inertial frame there is just the real inward centripetal force; the outward "push" you feel is your inertia resisting the change in direction.' },
+  { q: 'How are period and frequency related?', a: 'Period T is the time for one full revolution; frequency f is revolutions per second, and f = 1/T. Angular velocity ties them together: ω = 2π/T = 2πf.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to use the Uniform Circular Motion Calculator',
+    description: 'Calculate angular velocity, period, frequency, centripetal acceleration and force from radius, speed and mass.',
+    step: [
+      { '@type': 'HowToStep', name: 'Enter radius and speed', text: 'Type the circle radius r and the linear speed v.' },
+      { '@type': 'HowToStep', name: 'Add the mass', text: 'Enter the object mass m to get the centripetal force.' },
+      { '@type': 'HowToStep', name: 'Read all results', text: 'Angular velocity, period, frequency, centripetal acceleration and force appear together, and the 3D orbit updates.' },
+    ],
+  })} />
+
+  <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+    <span class="h-2 w-2 rounded-full bg-blue-500"></span> Physics
+  </span>
+
+  <style is:global>
+    @media print {
+      .no-print { display: none !important; }
+      a[href]::after { content: none !important; }
+      section { break-inside: avoid; }
+    }
+  </style>
+
+  <!-- ============ CALCULATOR ============ -->
+  <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter radius, speed and mass — everything updates live.</p>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Radius (r) <span class="text-slate-400">m</span></span>
+        <input id="r" type="number" step="any" value="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Speed (v) <span class="text-slate-400">m/s</span></span>
+        <input id="v" type="number" step="any" value="4" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass (m) <span class="text-slate-400">kg</span></span>
+        <input id="m" type="number" step="any" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Centripetal accel.</div><div id="r-a" class="mt-1 text-lg font-bold">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Centripetal force</div><div id="r-f" class="mt-1 text-lg font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Angular vel. ω</div><div id="r-w" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Period T</div><div id="r-t" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Frequency f</div><div id="r-freq" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="cm-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ INTERACTIVE 3D ORBIT ============ -->
+  <section class="mt-8 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Live 3D orbit</h2>
+    <p class="mt-1 text-sm text-slate-500">The ball circles at your radius and speed. The <span class="font-semibold text-red-500">red arrow</span> is the inward centripetal force; the <span class="font-semibold text-emerald-500">green arrow</span> is the tangential velocity. Drag to orbit the camera.</p>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Radius <span id="out-br" class="font-mono text-indigo-600">2.0 m</span></span>
+        <input id="b-r" type="range" min="0.5" max="6" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Speed <span id="out-bv" class="font-mono text-indigo-600">4.0 m/s</span></span>
+        <input id="b-v" type="range" min="0" max="12" step="0.1" value="4" class="mt-2 w-full accent-indigo-600" />
+      </label>
+    </div>
+    <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">a = v²/r = <span id="out-ba" class="font-mono font-bold">8.00 m/s²</span></div>
+    <div id="scene3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+    <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+  </section>
+
+  <!-- ============ LIVE CHARTS ============ -->
+  <section class="mt-10 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Circular motion graphs</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Centripetal acceleration vs speed (at your radius) — a parabola</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-av"></canvas></div>
+      </figure>
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Centripetal acceleration vs radius (at your speed) — an inverse curve</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ar"></canvas></div>
+      </figure>
+      <figure class="sm:col-span-2">
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Period vs speed (at your radius) — T = 2πr/v</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-tv"></canvas></div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How uniform circular motion is calculated</h2>
+    <p class="mt-2 text-slate-600"><strong>The core idea in one line:</strong> moving in a circle at constant speed still means constantly accelerating, because the <em>direction</em> of the velocity keeps changing — and that acceleration always points to the centre.</p>
+    <p class="mt-3 text-slate-600">From the radius r and speed v, every other quantity follows:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li><span class="font-mono text-slate-800">ω = v / r</span> — <strong>angular velocity</strong> (rad/s), how fast the angle sweeps.</li>
+      <li><span class="font-mono text-slate-800">T = 2πr / v = 2π / ω</span> — <strong>period</strong> (s), the time for one full lap.</li>
+      <li><span class="font-mono text-slate-800">f = 1 / T</span> — <strong>frequency</strong> (Hz), laps per second.</li>
+      <li><span class="font-mono text-slate-800">a = v² / r = ω²r</span> — <strong>centripetal acceleration</strong>, directed inward.</li>
+      <li><span class="font-mono text-slate-800">F = m·v² / r = m·ω²r</span> — <strong>centripetal force</strong>, the inward net force needed.</li>
+    </ul>
+    <p class="mt-4 text-slate-600">The centripetal force is never a new force — it's whatever real force happens to point inward: the tension in a whirled string, gravity for an orbiting satellite, friction for a cornering car, or the track's push on a roller-coaster loop.</p>
+
+    <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 1 — a ball on a string</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> a 0.20 kg ball is whirled on a 0.75 m string at 4 m/s. Find the acceleration and the string tension.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Acceleration:</span> <span class="text-slate-600">a = 4² / 0.75 = 21.33 m/s²</span></div>
+        <div><span class="font-medium text-slate-700">Tension (force):</span> <span class="text-slate-600">F = 0.20 × 21.33 = 4.27 N</span></div>
+        <div><span class="font-medium text-slate-700">Period:</span> <span class="text-slate-600">T = 2π × 0.75 / 4 = 1.18 s</span></div>
+        <div><span class="font-medium text-slate-700">Frequency:</span> <span class="text-slate-600">f = 1 / 1.18 = 0.85 Hz</span></div>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 2 — a car on a bend</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> a 1200 kg car takes a 50 m radius bend at 20 m/s (72 km/h). What friction force must the tyres provide?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Acceleration:</span> <span class="text-slate-600">a = 20² / 50 = 8 m/s²</span></div>
+        <div><span class="font-medium text-slate-700">Force:</span> <span class="text-slate-600">F = 1200 × 8 = 9600 N</span></div>
+        <div class="sm:col-span-2 text-slate-600">That's ~0.8× the car's weight — near the grip limit of dry tyres, which is why the same bend is dangerous in the wet.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STANDALONE 3D DIAGRAMS ============ -->
+  <section class="mt-12 no-print">
+    <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <div>
+        <div id="diag-vectors" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">1. Velocity is tangent, acceleration points in</h3>
+        <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-emerald-500">green velocity</span> always points along the circle (tangent); the <span class="font-semibold text-red-500">red acceleration</span> always points to the centre. They stay at 90° the whole way round.</p>
+      </div>
+      <div>
+        <div id="diag-radius" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">2. Tighter circle, harder turn</h3>
+        <p class="mt-1 text-sm text-slate-600">At the <strong>same speed</strong>, the small inner circle needs a much bigger inward force than the wide outer one — because a = v²/r grows as the radius shrinks.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Centripetal acceleration at 10 m/s</h2>
+    <p class="mt-1 text-sm text-slate-600">Same speed, different radius — the tighter the turn, the harder the acceleration.</p>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full table-fixed text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Radius<span class="block text-[10px] font-normal text-slate-400">m</span></th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Accel. a = v²/r<span class="block text-[10px] font-normal text-slate-400">m/s²</span></th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">In "g"<span class="block text-[10px] font-normal text-slate-400">×9.81</span></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700 tabular-nums">
+          <tr><td class="px-2 py-2.5 sm:px-3">2</td><td class="px-2 py-2.5 sm:px-3">50.0</td><td class="px-2 py-2.5 sm:px-3">5.1 g</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">5</td><td class="px-2 py-2.5 sm:px-3">20.0</td><td class="px-2 py-2.5 sm:px-3">2.0 g</td></tr>
+          <tr class="bg-indigo-50 font-semibold text-indigo-700"><td class="px-2 py-2.5 sm:px-3">10 ★</td><td class="px-2 py-2.5 sm:px-3">10.0</td><td class="px-2 py-2.5 sm:px-3">1.0 g</td></tr>
+          <tr><td class="px-2 py-2.5 sm:px-3">50</td><td class="px-2 py-2.5 sm:px-3">2.0</td><td class="px-2 py-2.5 sm:px-3">0.2 g</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">★ A 10 m radius turn at 10 m/s pulls about 1 g sideways. a = v²/r; "g" column divides by 9.81 m/s².</p>
+  </section>
+
+  <!-- ============ REAL-WORLD CONTEXT ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Where circular motion actually shows up</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🛰️ Satellites &amp; orbits</h3>
+        <p class="mt-1 text-sm text-slate-600">A satellite orbits because gravity supplies exactly the centripetal force its speed and altitude demand. Setting mg-gravity equal to mv²/r gives the orbital speed for any radius.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🏎️ Cornering &amp; banking</h3>
+        <p class="mt-1 text-sm text-slate-600">Race tracks and highway bends are banked so part of the normal force points inward, supplying centripetal force without relying only on tyre friction — letting cars corner faster and safer.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🎡 Rides &amp; centrifuges</h3>
+        <p class="mt-1 text-sm text-slate-600">Roller-coaster loops, rotor rides and lab centrifuges all exploit a = v²/r. A centrifuge spinning fast at small radius reaches thousands of g to separate materials by density.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MISCONCEPTIONS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Constant speed means no acceleration."</p>
+        <p class="mt-1 text-sm text-slate-600">Acceleration is any change in velocity, and velocity includes direction. In a circle the direction changes every instant, so there's always centripetal acceleration even at steady speed.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Centrifugal force throws you outward."</p>
+        <p class="mt-1 text-sm text-slate-600">There's no real outward force. You feel pushed out because your inertia wants to go straight; the seat or door pushes you inward to make you turn. "Centrifugal" is a fictitious force of the rotating frame.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"If the string breaks, the ball flies outward."</p>
+        <p class="mt-1 text-sm text-slate-600">It flies off along the tangent — straight, in the direction it was heading — not radially outward. Removing the centripetal force just lets Newton's first law take over.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Bigger radius always means faster."</p>
+        <p class="mt-1 text-sm text-slate-600">Only at fixed angular velocity (v = ωr). At fixed linear speed, a bigger radius means a gentler turn and smaller acceleration — the opposite effect. Be clear which quantity is held constant.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FORMULA SOURCES ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Formula sources &amp; further reading</h2>
+    <p class="mt-2 text-slate-600">Circular-motion kinematics and centripetal force are standard introductory mechanics, traceable to:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li>• <strong>OpenStax, <em>University Physics Volume 1</em></strong> — §4.4 "Uniform Circular Motion" and §6.3 "Centripetal Force" (free, peer-reviewed). <a href="https://openstax.org/books/university-physics-volume-1/pages/6-3-centripetal-force" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a></li>
+      <li>• <strong>Halliday, Resnick &amp; Walker, <em>Fundamentals of Physics</em></strong> — Chapter 4 (Uniform Circular Motion) and Chapter 6.</li>
+      <li>• <strong>Serway &amp; Jewett, <em>Physics for Scientists and Engineers</em></strong> — Chapter 6, Circular Motion and Other Applications of Newton's Laws.</li>
+    </ul>
+    <p class="mt-3 text-xs text-slate-400">Angular velocity is in radians per second. Results are rounded for display.</p>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter r, v and m</h3>
+        <p class="mt-1 text-sm text-slate-600">Type the radius, linear speed and mass in SI units (m, m/s, kg).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read five results</h3>
+        <p class="mt-1 text-sm text-slate-600">Angular velocity, period, frequency, centripetal acceleration and force all appear at once.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Watch the orbit</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the radius and speed sliders to see the velocity and force arrows respond in 3D.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RELATED TOOLS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">💥</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Force Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">F = ma — solve for any variable.</p>
+      </a>
+      <a href="/tools/momentum-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🎯</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Momentum &amp; Impulse Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">p = mv and Δp = FΔt.</p>
+      </a>
+      <a href="/tools/gravitational-force-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🌍</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Gravitational Force Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Newton's law of universal gravitation.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Libraries: Three.js + Chart.js + shared subject kit (window.STK) -->
+  <SubjectToolLibs />
+
+  <script is:inline>
+  (function () {
+    'use strict';
+    const { el, reduceMotion, fmt2: fmt, makeScene, mountResize, chartSetup } = window.STK;
+    const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.1, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
+    const TAU = Math.PI * 2;
+
+    // ================= CALCULATOR =================
+    function readVals() {
+      return { r: parseFloat(el('r').value), v: parseFloat(el('v').value), m: parseFloat(el('m').value) };
+    }
+    function update() {
+      const { r, v, m } = readVals();
+      const err = el('cm-err');
+      ['r-a', 'r-f', 'r-w', 'r-t', 'r-freq'].forEach((id) => (el(id).textContent = '—'));
+      if (isNaN(r) || isNaN(v)) { err.textContent = ''; return; }
+      if (r <= 0) { err.textContent = 'Radius must be greater than zero.'; return; }
+      if (v < 0) { err.textContent = 'Speed cannot be negative.'; return; }
+      err.textContent = '';
+      const a = v * v / r;
+      const w = v / r;
+      const T = v > 0 ? TAU * r / v : Infinity;
+      const f = v > 0 ? 1 / T : 0;
+      el('r-a').textContent = fmt(a) + ' m/s²';
+      if (!isNaN(m)) el('r-f').textContent = fmt(m * a) + ' N';
+      el('r-w').textContent = fmt(w) + ' rad/s';
+      el('r-t').textContent = isFinite(T) ? fmt(T) + ' s' : '∞';
+      el('r-freq').textContent = fmt(f) + ' Hz';
+    }
+    ['r', 'v', 'm'].forEach((id) => el(id).addEventListener('input', update));
+
+    // ================= 3D + charts =================
+    const charts = {};
+    let orbit = null;
+    function bState() {
+      const r = parseFloat(el('b-r').value), v = parseFloat(el('b-v').value);
+      return { r, v, a: r > 0 ? v * v / r : 0, w: r > 0 ? v / r : 0 };
+    }
+    function onBChange() {
+      const s = bState();
+      el('out-br').textContent = s.r.toFixed(1) + ' m';
+      el('out-bv').textContent = s.v.toFixed(1) + ' m/s';
+      el('out-ba').textContent = fmt(s.a) + ' m/s²';
+      try { if (orbit) orbit.update(s); } catch (e) {}
+      try { if (charts.ready) updateCharts(s); } catch (e) {}
+    }
+    el('b-r').addEventListener('input', onBChange);
+    el('b-v').addEventListener('input', onBChange);
+
+    function initCharts() {
+      if (!window.Chart) return;
+      const base = chartSetup();
+      charts.av = new Chart(el('chart-av'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'a', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Speed (m/s)' } }, y: { title: { display: true, text: 'a (m/s²)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.ar = new Chart(el('chart-ar'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'a', data: [], borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.10)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Radius (m)' } }, y: { title: { display: true, text: 'a (m/s²)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.tv = new Chart(el('chart-tv'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'T', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Speed (m/s)' } }, y: { title: { display: true, text: 'Period T (s)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.ready = true;
+      updateCharts(bState());
+    }
+    function updateCharts(s) {
+      if (!charts.ready) return;
+      const L = [], D = [];
+      for (let vv = 0; vv <= 12.001; vv += 1) { L.push(vv + ''); D.push(+(s.r > 0 ? vv * vv / s.r : 0).toFixed(2)); }
+      charts.av.data.labels = L; charts.av.data.datasets[0].data = D; charts.av.update();
+      const L2 = [], D2 = [];
+      for (let rr = 0.5; rr <= 6.001; rr += 0.5) { L2.push(rr.toFixed(1)); D2.push(+(s.v * s.v / rr).toFixed(2)); }
+      charts.ar.data.labels = L2; charts.ar.data.datasets[0].data = D2; charts.ar.update();
+      const L3 = [], D3 = [];
+      for (let vv = 1; vv <= 12.001; vv += 1) { L3.push(vv + ''); D3.push(+(TAU * s.r / vv).toFixed(2)); }
+      charts.tv.data.labels = L3; charts.tv.data.datasets[0].data = D3; charts.tv.update();
+    }
+
+    // ================= 3D orbit =================
+    function initScene3d() {
+      const c = el('scene3d'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), OPTS);
+      s.scene.add(new THREE.GridHelper(16, 16, 0xcbd5e1, 0xe2e8f0));
+      const hub = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+      s.scene.add(hub);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+      s.scene.add(ball);
+      let ring = null, fArrow = null, vArrow = null, st = { r: 4, w: 1, ang: 0 };
+      const SCALE = 1.8;
+      function build(state) {
+        st.r = state.r * SCALE; st.w = state.w;
+        if (ring) { s.scene.remove(ring); ring.geometry.dispose(); }
+        const pts = [];
+        for (let i = 0; i <= 64; i++) { const a = i / 64 * TAU; pts.push(new THREE.Vector3(Math.cos(a) * st.r, 0, Math.sin(a) * st.r)); }
+        ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xcbd5e1 }));
+        s.scene.add(ring);
+      }
+      function frame() {
+        requestAnimationFrame(frame);
+        if (!reduceMotion) s.spin(0.0016);
+        if (!reduceMotion) st.ang += st.w * 0.016;
+        const x = Math.cos(st.ang) * st.r, z = Math.sin(st.ang) * st.r;
+        ball.position.set(x, 0.35, z);
+        // centripetal force arrow: inward (toward centre)
+        if (fArrow) s.scene.remove(fArrow);
+        const inward = new THREE.Vector3(-x, 0, -z).normalize();
+        fArrow = new THREE.ArrowHelper(inward, new THREE.Vector3(x, 0.35, z), Math.min(st.r, 2.2), 0xef4444, 0.5, 0.3);
+        s.scene.add(fArrow);
+        // velocity arrow: tangent (perpendicular, direction of motion)
+        if (vArrow) s.scene.remove(vArrow);
+        const tang = new THREE.Vector3(-Math.sin(st.ang), 0, Math.cos(st.ang)).normalize();
+        vArrow = new THREE.ArrowHelper(tang, new THREE.Vector3(x, 0.35, z), 1.8, 0x10b981, 0.5, 0.3);
+        s.scene.add(vArrow);
+        s.renderer.render(s.scene, s.camera);
+      }
+      frame();
+      orbit = { update: build, resize: s.resize };
+      build(bState());
+    }
+
+    // ---- diagram: velocity/accel vectors on a circle ----
+    function initDiagVectors() {
+      const c = el('diag-vectors'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 11, new THREE.Vector3(0, 0, 0), OPTS);
+      const R = 3, pts = [];
+      for (let i = 0; i <= 64; i++) { const a = i / 64 * TAU; pts.push(new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R)); }
+      s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xcbd5e1 })));
+      [0, TAU / 3, 2 * TAU / 3].forEach((a) => {
+        const p = new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshStandardMaterial({ color: 0x6366f1 })); dot.position.copy(p); s.scene.add(dot);
+        s.scene.add(new THREE.ArrowHelper(new THREE.Vector3(-Math.cos(a), 0, -Math.sin(a)), p, 1.4, 0xef4444, 0.4, 0.25));    // inward a
+        s.scene.add(new THREE.ArrowHelper(new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), p, 1.4, 0x10b981, 0.4, 0.25));     // tangent v
+      });
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.004); s.renderer.render(s.scene, s.camera); }
+      frame();
+      diagVectors = { resize: s.resize };
+    }
+
+    // ---- diagram: two radii, same speed ----
+    function initDiagRadius() {
+      const c = el('diag-radius'); if (!c) throw new Error('no container');
+      const s = makeScene(c, 13, new THREE.Vector3(0, 0, 0), OPTS);
+      [[1.6, 0xef4444], [3.4, 0x0ea5e9]].forEach(([R, col]) => {
+        const pts = [];
+        for (let i = 0; i <= 64; i++) { const a = i / 64 * TAU; pts.push(new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R)); }
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col })));
+      });
+      const inner = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 20), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      const outer = new THREE.Mesh(new THREE.SphereGeometry(0.28, 20, 20), new THREE.MeshStandardMaterial({ color: 0x0ea5e9 }));
+      s.scene.add(inner); s.scene.add(outer);
+      let ang = 0;
+      function frame() {
+        requestAnimationFrame(frame);
+        if (!reduceMotion) { s.spin(0.003); ang += 0.03; }
+        inner.position.set(Math.cos(ang / 1.6) * 1.6, 0, Math.sin(ang / 1.6) * 1.6);   // same linear speed → smaller ω on bigger R
+        outer.position.set(Math.cos(ang / 3.4) * 3.4, 0, Math.sin(ang / 3.4) * 3.4);
+        s.renderer.render(s.scene, s.camera);
+      }
+      frame();
+      diagRadius = { resize: s.resize };
+    }
+
+    let diagVectors = null, diagRadius = null;
+
+    // ================= BOOT =================
+    function boot() {
+      try { update(); } catch (e) { console.error('[circular] calc init failed', e); }
+      try { onBChange(); } catch (e) { console.error('[circular] slider init failed', e); }
+      try { initCharts(); } catch (e) { console.error('[circular] charts failed', e); }
+      if (window.THREE) {
+        try { initScene3d(); } catch (e) { console.error('[circular] 3D failed', e); el('scene3d-fallback').classList.remove('hidden'); }
+        try { initDiagVectors(); } catch (e) { console.error('[circular] vectors diagram failed', e); }
+        try { initDiagRadius(); } catch (e) { console.error('[circular] radius diagram failed', e); }
+      } else {
+        el('scene3d-fallback').classList.remove('hidden');
+      }
+      mountResize([orbit, diagVectors, diagRadius]);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
+</ToolLayout>
