@@ -390,7 +390,7 @@ export const tools = [
   { slug: 'stair-calculator', title: 'Stair Calculator', short: 'Number of steps, rise, and run from height.', category: 'construction', emoji: '🪜', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'Solve density, mass, or volume from any two.', category: 'engineering', emoji: '⚖️', enabled: true, status: 'live' },
-  { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'engineering', emoji: '💥', enabled: true, status: 'live' },
+  { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },
   { slug: 'work-calculator', title: 'Work Calculator (Physics)', short: 'Work done by force over distance at angle.', category: 'engineering', emoji: '🔧', enabled: true, status: 'live' },
   { slug: 'kinetic-energy-calculator', title: 'Kinetic Energy Calculator', short: 'KE=½mv² — solve for any variable.', category: 'engineering', emoji: '⚡', enabled: true, status: 'live' },
   { slug: 'potential-energy-calculator', title: 'Potential Energy Calculator', short: 'PE=mgh — gravitational potential energy.', category: 'engineering', emoji: '📈', enabled: true, status: 'live' },
