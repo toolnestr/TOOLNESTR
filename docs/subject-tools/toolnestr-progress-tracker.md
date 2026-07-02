@@ -3,7 +3,27 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-02 (Batch-1 + Batch-2 both complete — 40/40 tools built, 20+20, balanced 10 Physics + 10 Chemistry each)
+**Last updated:** 2026-07-02 (Batch-1 + Batch-2 + Batch-3 all complete — 50/50 tools built, 25 Physics + 25 Chemistry)
+
+## Batch-3 — 10 more tools complete (2026-07-02, commit `99cfb3c`)
+
+Built via 10 parallel agents (one tool each, same technique as prior batches): Physics — Series
+Resistor, Parallel Resistor, Coulomb's Law, Simple Pendulum Period, Heat Transfer. Chemistry —
+Reaction Quotient (Q), Boyle's Law, Avogadro's Number, Enthalpy, Reaction Rate.
+
+Post-build audit (code-only, no live browser per standing user instruction): confirmed 0 duplicate
+slugs across 507 tools. Found and fixed one emoji collision — `parallel-resistor-calculator` and
+`coulombs-law-calculator` both independently picked ⚡; changed parallel-resistor to 🔋. Validated
+every inline `<script>`'s JS syntax via `new Function()`. Independently re-derived every core formula
+outside the agents' own reports: series R_total=650Ω, parallel 100Ω‖300Ω=75Ω, Coulomb's law F=0.2157N
+and F=5.617N, pendulum T=2.006s (L=1.0m) and L=0.994m (T=2.0s), heat transfer Q=502,320J and
+Q=−33,637.5J, reaction quotient Q=1250 (vs Kc=0.500, correctly predicts reverse direction), Boyle's
+law P2=8.00atm, Avogadro's number 3.011×10²³ particles, enthalpy ΔH=−890.3kJ (methane combustion,
+matches the standard textbook value), reaction rate 7.5×10⁻⁴ M/s (correctly distinguishing raw vs
+coefficient-normalized rate). All matched.
+
+**Batch-1 + Batch-2 + Batch-3 combined: 50 flagship tools (25 Physics + 25 Chemistry) on the shared
+template.** Pushed to origin/main — Cloudflare Pages auto-deploy triggered.
 
 > **⚠️ IMPORTANT REALITY RECONCILIATION (2026-07-02):** The spec was written against a *chat prototype* and assumes standalone single-file HTML tools with a dark navy theme + Three.js/Chart.js. The actual project is the **Astro site in this repo** (`micro-tools`, ~400 existing `.astro` tool pages using a shared `ToolLayout` + Tailwind **light** theme). Production decisions below override the spec wherever they conflict. Read the "Reconciliation Decisions" section before building anything.
 
