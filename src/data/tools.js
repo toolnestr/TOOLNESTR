@@ -394,7 +394,7 @@ export const tools = [
   { slug: 'work-calculator', title: 'Work Calculator (Physics)', short: 'Work done by force over distance at angle.', category: 'engineering', emoji: '🔧', enabled: true, status: 'live' },
   { slug: 'kinetic-energy-calculator', title: 'Kinetic Energy Calculator', short: 'KE=½mv² — solve for any variable.', category: 'engineering', emoji: '⚡', enabled: true, status: 'live' },
   { slug: 'potential-energy-calculator', title: 'Potential Energy Calculator', short: 'PE=mgh — gravitational potential energy.', category: 'engineering', emoji: '📈', enabled: true, status: 'live' },
-  { slug: 'momentum-calculator', title: 'Momentum & Impulse Calculator', short: 'p=mv plus impulse calculations.', category: 'engineering', emoji: '🎯', enabled: true, status: 'live' },
+  { slug: 'momentum-calculator', title: 'Momentum & Impulse Calculator', short: 'p=mv plus impulse calculations.', category: 'physics', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'wavelength-frequency-calculator', title: 'Wavelength Calculator', short: 'v=fλ — solve for wavelength or frequency.', category: 'engineering', emoji: '〰️', enabled: true, status: 'live' },
   { slug: 'half-life-calculator', title: 'Half-Life Calculator', short: 'Remaining quantity after N half-lives.', category: 'engineering', emoji: '☢️', enabled: true, status: 'live' },
   { slug: 'atomic-mass-calculator', title: 'Molar Mass Calculator', short: 'Molar mass from chemical formula.', category: 'engineering', emoji: '⚗️', enabled: true, status: 'live' },
