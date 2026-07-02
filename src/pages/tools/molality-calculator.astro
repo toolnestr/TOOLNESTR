@@ -1,0 +1,423 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolLibs from '../../components/SubjectToolLibs.astro';
+
+const title = 'Molality Calculator';
+const description = 'Molality calculator with a live 3D beaker and charts. Solve m = moles of solute ÷ kilograms of solvent, and see why molality (unlike molarity) does not change with temperature.';
+const intro = 'Enter any two of molality, moles of solute and kilograms of solvent to solve the third. A live 3D beaker and charts show how molality differs from molarity.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+const faqs = [
+  { q: 'What is molality?', a: 'Molality (m) is the moles of solute per kilogram of solvent: m = mol / kg. Its unit is mol/kg, sometimes written m or molal. Note it uses the mass of the solvent, not the volume of the solution.' },
+  { q: 'How is molality different from molarity?', a: 'Molarity is moles per litre of solution and changes slightly with temperature because volume expands or contracts. Molality is moles per kilogram of solvent and is temperature-independent, since mass never changes.' },
+  { q: 'When should I use molality instead of molarity?', a: 'Use molality for temperature-dependent work: boiling-point elevation, freezing-point depression, and any careful thermodynamics where the solution will be heated or cooled. Molarity is fine for room-temperature volumetric work.' },
+  { q: 'How do I calculate molality from mass?', a: 'Convert the solute mass to moles (mass ÷ molar mass), then divide by the solvent mass in kilograms. For 5.85 g NaCl (0.1 mol) in 0.5 kg water: m = 0.1 / 0.5 = 0.2 mol/kg.' },
+  { q: 'Does molality use the solvent or the solution mass?', a: 'The solvent only. Molality divides by the kilograms of solvent (e.g. the water), not the total mass of the solution. This is the single most common molality mistake.' },
+  { q: 'Why is molality used for freezing-point depression?', a: 'The colligative equations ΔTf = Kf·m and ΔTb = Kb·m are written in molality precisely because they must hold as temperature changes — and only molality stays constant when the solution is cooled or heated.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to use the Molality Calculator',
+    description: 'Calculate molality, moles of solute, or kilograms of solvent using m = mol/kg.',
+    step: [
+      { '@type': 'HowToStep', name: 'Enter two values', text: 'Type any two of molality, moles of solute and kilograms of solvent.' },
+      { '@type': 'HowToStep', name: 'Read the third', text: 'The remaining quantity solves instantly from m = mol/kg.' },
+      { '@type': 'HowToStep', name: 'See it in the beaker', text: 'Use the sliders to watch how concentration depends on the solvent mass.' },
+    ],
+  })} />
+
+  <span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+    <span class="h-2 w-2 rounded-full bg-green-500"></span> Chemistry
+  </span>
+
+  <style is:global>
+    @media print {
+      .no-print { display: none !important; }
+      a[href]::after { content: none !important; }
+      section { break-inside: avoid; }
+    }
+  </style>
+
+  <!-- ============ CALCULATOR ============ -->
+  <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter any two values — the third solves instantly.</p>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Molality (m)</span>
+        <input id="m" type="number" step="any" placeholder="mol/kg" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Moles of solute (n)</span>
+        <input id="n" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Solvent mass (kg)</span>
+        <input id="kg" type="number" step="any" placeholder="kg" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Molality</div><div id="r-m" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Moles of solute</div><div id="r-n" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Solvent mass</div><div id="r-kg" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="ml-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ INTERACTIVE 3D BEAKER ============ -->
+  <section class="mt-8 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Live 3D molality</h2>
+    <p class="mt-1 text-sm text-slate-500">Molality divides by the <strong>solvent mass</strong>. Add solvent (raise the level) and the same solute spreads thinner; add solute and the particle density climbs. Drag to orbit.</p>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Moles of solute <span id="out-bn" class="font-mono text-green-600">1.00 mol</span></span>
+        <input id="b-n" type="range" min="0" max="5" step="0.05" value="1" class="mt-2 w-full accent-green-600" />
+      </label>
+      <label class="block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Solvent mass <span id="out-bkg" class="font-mono text-green-600">1.00 kg</span></span>
+        <input id="b-kg" type="range" min="0.1" max="5" step="0.05" value="1" class="mt-2 w-full accent-green-600" />
+      </label>
+    </div>
+    <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Molality m = <span id="out-bm" class="font-mono font-bold">1.00 mol/kg</span></div>
+    <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+    <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+  </section>
+
+  <!-- ============ LIVE CHARTS ============ -->
+  <section class="mt-10 no-print">
+    <h2 class="text-lg font-bold text-slate-900">Molality graphs</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Molality vs solvent mass (fixed solute) — an inverse curve</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-mkg"></canvas></div>
+      </figure>
+      <figure>
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Freezing-point drop of water vs molality — ΔTf = Kf·m</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-fp"></canvas></div>
+      </figure>
+      <figure class="sm:col-span-2">
+        <figcaption class="mb-1 text-sm font-semibold text-slate-700">Molality vs molarity as temperature rises (molality stays flat)</figcaption>
+        <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-temp"></canvas></div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How molality is calculated</h2>
+    <p class="mt-2 text-slate-600"><strong>The core definition in one line:</strong> molality is moles of solute divided by kilograms of <em>solvent</em> — <span class="font-mono">m = n / kg</span>. The key word is solvent, not solution.</p>
+    <p class="mt-3 text-slate-600">It rearranges the usual three ways:</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center"><p class="font-mono text-slate-800">m = n / kg</p><p class="mt-1 text-xs text-slate-500">molality from moles &amp; solvent mass</p></div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center"><p class="font-mono text-slate-800">n = m × kg</p><p class="mt-1 text-xs text-slate-500">moles of solute needed</p></div>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center"><p class="font-mono text-slate-800">kg = n / m</p><p class="mt-1 text-xs text-slate-500">solvent mass required</p></div>
+    </div>
+    <p class="mt-4 text-slate-600">Because it is built on mass, molality never changes with temperature — a huge advantage over molarity, whose volume-based denominator drifts as the solution expands or contracts. That is why the colligative-property equations <span class="font-mono">ΔTf = Kf·m</span> and <span class="font-mono">ΔTb = Kb·m</span> are written in molality.</p>
+
+    <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 1 — molality from mass</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> dissolve 5.85 g of NaCl (molar mass 58.44 g/mol) in 0.500 kg of water. Find the molality.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Moles:</span> <span class="text-slate-600">5.85 ÷ 58.44 = 0.100 mol</span></div>
+        <div><span class="font-medium text-slate-700">Molality:</span> <span class="text-slate-600">m = 0.100 ÷ 0.500 = 0.200 mol/kg</span></div>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example 2 — antifreeze &amp; freezing point</h3>
+      <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> a 2.0 mol/kg solution of a non-ionising solute in water (Kf = 1.86 °C·kg/mol). How far does the freezing point drop?</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Freezing-point drop:</span> <span class="text-slate-600">ΔTf = 1.86 × 2.0 = 3.72 °C</span></div>
+        <div><span class="font-medium text-slate-700">New freezing point:</span> <span class="text-slate-600">0 − 3.72 = −3.72 °C</span></div>
+      </div>
+      <p class="mt-2 text-xs text-slate-500">This is exactly why molality — not molarity — is the right unit here: the solution is being cooled, and only molality stays constant as it does.</p>
+    </div>
+  </section>
+
+  <!-- ============ STANDALONE 3D DIAGRAMS ============ -->
+  <section class="mt-12 no-print">
+    <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+    <div class="mt-4 grid gap-6 sm:grid-cols-2">
+      <div>
+        <div id="diag-solvent" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">1. Per kg of solvent, not solution</h3>
+        <p class="mt-1 text-sm text-slate-600">The denominator is the water alone (the blue liquid mass), measured <em>before</em> the solute is added — not the total mixed solution. That's the difference from molarity.</p>
+      </div>
+      <div>
+        <div id="diag-temp" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+        <h3 class="mt-3 font-semibold text-slate-900">2. Heat it — molality holds</h3>
+        <p class="mt-1 text-sm text-slate-600">Warm the beaker and the liquid expands (its volume grows, so molarity falls), but the mass — and therefore the molality — is unchanged. Mass doesn't care about temperature.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Molality vs molarity at a glance</h2>
+    <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+      <table class="w-full table-fixed text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="px-2 py-2.5 text-left font-semibold sm:px-3">Property</th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Molality (m)</th>
+            <th class="px-2 py-2.5 font-semibold sm:px-3">Molarity (M)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Divides by</td><td class="px-2 py-2.5 sm:px-3">kg of solvent</td><td class="px-2 py-2.5 sm:px-3">L of solution</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Unit</td><td class="px-2 py-2.5 sm:px-3">mol/kg</td><td class="px-2 py-2.5 sm:px-3">mol/L</td></tr>
+          <tr class="bg-indigo-50 font-semibold text-indigo-700"><td class="px-2 py-2.5 text-left sm:px-3">Temperature-dependent?</td><td class="px-2 py-2.5 sm:px-3">No ★</td><td class="px-2 py-2.5 sm:px-3">Yes</td></tr>
+          <tr><td class="px-2 py-2.5 text-left sm:px-3">Best for</td><td class="px-2 py-2.5 sm:px-3">colligative / thermo</td><td class="px-2 py-2.5 sm:px-3">volumetric work</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">★ Mass is temperature-independent, so molality is too — the reason freezing/boiling-point formulas use it.</p>
+  </section>
+
+  <!-- ============ REAL-WORLD CONTEXT ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Where molality actually matters</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">❄️ Antifreeze &amp; de-icing</h3>
+        <p class="mt-1 text-sm text-slate-600">Freezing-point depression, ΔTf = Kf·m, is set by molality. Engine coolant and road salt are dosed to hit a target freeze point — a calculation that must survive being cooled, so molarity won't do.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🌡️ Boiling-point elevation</h3>
+        <p class="mt-1 text-sm text-slate-600">Adding solute raises the boiling point by ΔTb = Kb·m. Cooking pasta water and industrial evaporators both feel this molality-driven shift.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 class="font-semibold text-slate-900">🔬 Precise thermodynamics</h3>
+        <p class="mt-1 text-sm text-slate-600">Any measurement across a temperature range — activity coefficients, calorimetry, high-temperature reactions — uses molality so the concentration figure doesn't secretly change with the thermometer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MISCONCEPTIONS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+    <div class="mt-4 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Molality divides by the solution mass."</p>
+        <p class="mt-1 text-sm text-slate-600">It divides by the <em>solvent</em> mass only. Weigh the water (or other solvent) before dissolving — not the total mixture.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Molality and molarity are the same for water."</p>
+        <p class="mt-1 text-sm text-slate-600">They're close for dilute aqueous solutions (1 L water ≈ 1 kg) but diverge as concentration rises, and they respond differently to temperature. They are not interchangeable in general.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Use litres for the denominator."</p>
+        <p class="mt-1 text-sm text-slate-600">Molality uses kilograms of solvent, a mass. If you only have a volume, convert with the solvent density first (1 L water ≈ 1 kg).</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <p class="text-sm font-semibold text-red-600">"Heating a solution changes its molality."</p>
+        <p class="mt-1 text-sm text-slate-600">It doesn't. Heating changes volume (and hence molarity), but the masses of solute and solvent are unchanged, so molality is constant — its whole point.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FORMULA SOURCES ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Formula sources &amp; further reading</h2>
+    <p class="mt-2 text-slate-600">Molality and the colligative-property relations are standard general chemistry, traceable to:</p>
+    <ul class="mt-3 space-y-2 text-sm text-slate-600">
+      <li>• <strong>OpenStax, <em>Chemistry 2e</em></strong> — §11.4 "Colligative Properties" and §3.4 (molality). <a href="https://openstax.org/books/chemistry-2e/pages/11-4-colligative-properties" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a></li>
+      <li>• <strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 13, Properties of Solutions.</li>
+      <li>• <strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 11, Properties of Solutions.</li>
+    </ul>
+    <p class="mt-3 text-xs text-slate-400">Water: Kf = 1.86 °C·kg/mol, Kb = 0.512 °C·kg/mol. Results are rounded for display.</p>
+  </section>
+
+  <!-- ============ HOW TO USE ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter two values</h3>
+        <p class="mt-1 text-sm text-slate-600">Fill any two of molality, moles of solute and kilograms of solvent.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the third</h3>
+        <p class="mt-1 text-sm text-slate-600">The missing quantity solves instantly from m = mol/kg.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Explore in 3D</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the sliders to see how the solvent mass drives the concentration.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RELATED TOOLS ============ -->
+  <section class="mt-12">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <a href="/tools/molarity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🧪</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molarity Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">M = mol/L — solve for any variable.</p>
+      </a>
+      <a href="/tools/percent-concentration-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">🧴</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Percent Concentration Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">w/v, w/w and v/v percent.</p>
+      </a>
+      <a href="/tools/dilution-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+        <span class="text-lg">💧</span>
+        <h3 class="mt-1 text-sm font-semibold text-slate-900">Dilution Calculator</h3>
+        <p class="mt-0.5 text-xs text-slate-500">C₁V₁ = C₂V₂ — solve for any variable.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Libraries: Three.js + Chart.js + shared subject kit (window.STK) -->
+  <SubjectToolLibs />
+
+  <script is:inline>
+  (function () {
+    'use strict';
+    const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+    const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+    const KF = 1.86;
+
+    // ================= CALCULATOR =================
+    function update() {
+      const m = parseFloat(el('m').value), n = parseFloat(el('n').value), kg = parseFloat(el('kg').value);
+      const filled = [!isNaN(m), !isNaN(n), !isNaN(kg)];
+      el('ml-err').textContent = '';
+      ['r-m', 'r-n', 'r-kg'].forEach((id) => (el(id).textContent = '—'));
+      if (filled.filter(Boolean).length < 2) return;
+      let rm = NaN, rn = NaN, rkg = NaN;
+      if (filled[1] && filled[2]) { if (kg === 0) { el('ml-err').textContent = 'Solvent mass cannot be zero.'; return; } rm = n / kg; rn = n; rkg = kg; }
+      else if (filled[0] && filled[2]) { rn = m * kg; rm = m; rkg = kg; }
+      else if (filled[0] && filled[1]) { if (m === 0) { el('ml-err').textContent = 'Molality cannot be zero when solving for solvent mass.'; return; } rkg = n / m; rm = m; rn = n; }
+      if (!isNaN(rm)) el('r-m').textContent = fmt(rm) + ' mol/kg';
+      if (!isNaN(rn)) el('r-n').textContent = fmt(rn) + ' mol';
+      if (!isNaN(rkg)) el('r-kg').textContent = fmt(rkg) + ' kg';
+    }
+    ['m', 'n', 'kg'].forEach((id) => el(id).addEventListener('input', update));
+
+    // ================= 3D + charts =================
+    const charts = {};
+    let beaker = null;
+    function bState() {
+      const n = parseFloat(el('b-n').value), kg = parseFloat(el('b-kg').value);
+      return { n, kg, m: kg > 0 ? n / kg : 0 };
+    }
+    function onBChange() {
+      const s = bState();
+      el('out-bn').textContent = s.n.toFixed(2) + ' mol';
+      el('out-bkg').textContent = s.kg.toFixed(2) + ' kg';
+      el('out-bm').textContent = fmt(s.m) + ' mol/kg';
+      try { if (beaker) beaker.update(s); } catch (e) {}
+      try { if (charts.ready) updateCharts(s); } catch (e) {}
+    }
+    el('b-n').addEventListener('input', onBChange);
+    el('b-kg').addEventListener('input', onBChange);
+
+    function initCharts() {
+      if (!window.Chart) return;
+      const base = chartSetup();
+      charts.mkg = new Chart(el('chart-mkg'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'm', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0.3, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Solvent mass (kg)' } }, y: { title: { display: true, text: 'Molality (mol/kg)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.fp = new Chart(el('chart-fp'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: 'ΔTf', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.10)', fill: true, tension: 0, pointRadius: 0 }] },
+        options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Molality (mol/kg)' } }, y: { title: { display: true, text: 'Freezing-point drop (°C)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+      });
+      charts.temp = new Chart(el('chart-temp'), {
+        type: 'line',
+        data: { labels: ['0°C', '20°C', '40°C', '60°C', '80°C', '100°C'], datasets: [
+          { label: 'Molality (flat)', data: [1, 1, 1, 1, 1, 1], borderColor: '#10b981', pointRadius: 0, tension: 0 },
+          { label: 'Molarity (falls)', data: [1.000, 0.998, 0.992, 0.983, 0.971, 0.958], borderColor: '#ef4444', pointRadius: 0, tension: 0.2 },
+        ] },
+        options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Relative concentration' } } }, plugins: { legend: { position: 'bottom' } } }),
+      });
+      // freezing-point line
+      const L = [], D = [];
+      for (let mm = 0; mm <= 5.001; mm += 0.5) { L.push(mm.toFixed(1)); D.push(+(KF * mm).toFixed(3)); }
+      charts.fp.data.labels = L; charts.fp.data.datasets[0].data = D; charts.fp.update();
+      charts.ready = true;
+      updateCharts(bState());
+    }
+    function updateCharts(s) {
+      if (!charts.ready) return;
+      const L = [], D = [];
+      for (let kk = 0.1; kk <= 5.001; kk += 0.1) { L.push(kk.toFixed(1)); D.push(+(s.n / kk).toFixed(4)); }
+      charts.mkg.data.labels = L; charts.mkg.data.datasets[0].data = D; charts.mkg.update();
+    }
+
+    // ================= 3D beaker =================
+    function glassBeaker(THREE) {
+      const g = new THREE.Group();
+      const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+      return g;
+    }
+    function initBeaker() {
+      const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+      const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+      s.scene.add(glassBeaker(THREE));
+      const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
+      let liquid = null;
+      const MAX_P = 120;
+      const particleGeo = new THREE.SphereGeometry(0.11, 10, 10);
+      const particleMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+      const particles = [];
+      for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(particleGeo, particleMat); p.visible = false; s.scene.add(p); particles.push(p); }
+      function update(state) {
+        const frac = Math.max(0.02, Math.min(1, state.kg / 5));
+        const hLiq = frac * 4.6;
+        if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); }
+        liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hLiq, 40), liquidMat);
+        liquid.position.y = -2.4 + hLiq / 2; s.scene.add(liquid);
+        const nShow = Math.max(0, Math.min(MAX_P, Math.round(state.m * 22)));
+        for (let i = 0; i < MAX_P; i++) {
+          const p = particles[i];
+          if (i < nShow) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
+          else p.visible = false;
+        }
+      }
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+      frame();
+      beaker = { update, resize: s.resize };
+      update(bState());
+    }
+
+    function makeSolventBeaker(container, liquidH) {
+      const s = makeScene(container, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+      s.scene.add(glassBeaker(THREE));
+      const liq = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, liquidH, 40), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 }));
+      liq.position.y = -2.4 + liquidH / 2; s.scene.add(liq);
+      const pMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+      for (let i = 0; i < 16; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), pMat); const r = Math.sqrt(Math.random()) * 1.8, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * liquidH, Math.sin(a) * r); s.scene.add(p); }
+      function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+      frame();
+      return { resize: s.resize };
+    }
+
+    let diagSolvent = null, diagTemp = null;
+    function initDiagSolvent() { const c = el('diag-solvent'); if (!c) throw new Error('no diag'); diagSolvent = makeSolventBeaker(c, 3.4); }
+    function initDiagTemp() { const c = el('diag-temp'); if (!c) throw new Error('no diag'); diagTemp = makeSolventBeaker(c, 3.9); }
+
+    // ================= BOOT =================
+    function boot() {
+      try { update(); } catch (e) { console.error('[molality] calc init failed', e); }
+      try { onBChange(); } catch (e) { console.error('[molality] slider init failed', e); }
+      try { initCharts(); } catch (e) { console.error('[molality] charts failed', e); }
+      if (window.THREE) {
+        try { initBeaker(); } catch (e) { console.error('[molality] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
+        try { initDiagSolvent(); } catch (e) { console.error('[molality] solvent diagram failed', e); }
+        try { initDiagTemp(); } catch (e) { console.error('[molality] temp diagram failed', e); }
+      } else {
+        el('beaker3d-fallback').classList.remove('hidden');
+      }
+      mountResize([beaker, diagSolvent, diagTemp]);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
+</ToolLayout>
