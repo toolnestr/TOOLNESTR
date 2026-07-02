@@ -1,14 +1,11 @@
 # Tool Re-Audit Progress (Session Continuity Log)
 
 ## STATUS SUMMARY (updated 2026-07-02)
-**15 of 20 categories audited (~374 of 460 live tools, ~81%). All fixes deployed live + pushed.**
+**ALL 20 categories audited (460 live tools, 100%).**
 
 - **Audited & clean/fixed:** Networking, Converters, Engineering, Finance, Health, Automotive,
-  Everyday, Math, Construction, Cooking, SEO, PDF, Charts, Creators, Image.
-- **Still to audit (5 categories, ~86 tools):** Developers (25), Islamic (16), Security (15),
-  Text (15), Time & Date (15). All 5 are confirmed free of load-breakage (sitewide load-scan);
-  what remains is their compute-logic verification. Security is highest-value (real crypto; old
-  audit already fixed 2 hash bugs there).
+  Everyday, Math, Construction, Cooking, SEO, PDF, Charts, Creators, Image, Developers, Islamic,
+  Security, Text, Time & Date.
 - **Bugs fixed this pass (all live + pushed):** matrix-calculator (dead on load), roofing (2×),
   ev-co2 (1000× trees), insulation + stair (crashes), currency-converter (dead FX host → CORS),
   square-footage + perimeter + pool-volume (hidden inputs / no result on typing), + 9 tools broken
@@ -291,10 +288,39 @@ applies here). Set up from scratch this session:
 - [x] **Construction + Automotive + Cooking** (56 tools) — DONE 2026-07-02, 4 bugs fixed (see above)
 - [ ] **Time & Date** (15 tools)
 - [ ] **Islamic** (16 tools) — has external API dependencies (prayer times), verify those too
-- [ ] **Security + Developers** (40 tools) — old audit found/fixed 2 crypto bugs (MD5, HMAC-MD5)
-      already; rest of the 40 unverified. NOTE: `uuid-generator` (security) + `htaccess-redirect-generator`,
-      `markdown-to-html` (developers) load-breakage already fixed 2026-07-02 (see esm.sh/status section);
-      their compute logic still needs the full audit.
+- [x] **Developers (25) + Islamic (16) + Security (15) + Text (15) + Time & Date (15)** — DONE
+      2026-07-02 (final 5, parallel golden-vector audit). **7 new bugs found & fixed:**
+      1. **md5 / sha256 / crc32 / hmac / random-token / yaml-validator (6 tools)** — same
+         `window.status` collision class as uuid/htaccess/insulation, but crashing **on button
+         click** rather than on load (which is why the sitewide load-scan missed them): top-level
+         `var status = el('status')` in a classic script maps to the global `window.status` string
+         accessor, so `status.classList` was undefined → every Generate/Compute/Validate click threw.
+         Renamed to `statusEl` in all 6. (sql-formatter & bcrypt-checker use the same name inside an
+         IIFE/arrow scope → function-scoped, safe, left alone. Sitewide grep confirms no other
+         reserved-window-property `var` collisions remain: only two `let history` which safely shadow.)
+      2. **day-of-the-week-calculator** — Zeller's congruence mapped h to the WRONG day for every
+         date: Zeller defines h=0=Saturday; with the tool's `[Mon..Sun]` array Saturday is index 5,
+         but the code used `(h+6)%7` → every result shifted one day forward (Jan 1 2000 showed
+         Sunday; it was Saturday). Fixed to `(h+5)%7` + a positive-modulo guard (the −2J term can
+         make JS `%` negative for early years). Verified on 3 known dates: Jan 1 2000 = Saturday,
+         Jul 4 1776 = Thursday, Aug 15 1990 = Wednesday. Also corrected the page's worked example
+         (h=4, not 3, for Aug 15 1990).
+      **Everything else verified correct with authoritative vectors (live/local browser):**
+      Security — MD5("abc")=9001…f72, SHA-256("abc")=ba78…15ad, CRC32("123456789")=cbf43926,
+      HMAC-SHA256(key, quick-brown-fox)=f7bc…3cd8 (all standard test vectors, post-fix);
+      password-entropy computes; aes/rsa/bcrypt/qr/csr/x509 load-scan-clean (WebCrypto/parser tools).
+      Developers — base64("Hello")=SGVsbG8=, 255→FF/11111111, #ff0000→rgb 255, timestamp 0→1970,
+      JWT decode (John Doe), crontab `0 9 * * 1`→Monday, sql-formatter safe, json/regex/diff/etc.
+      loadscan-clean; token estimators are heuristics by design. Islamic — zakat 2.5% (100,000 →
+      2,500 live), nisab constants correct (gold 87.48 g, silver 612.36 g), khums 20%, inheritance
+      uses correct Quranic fixed shares (husband ¼/½, wife ⅛/¼, mother ⅙/⅓, daughters ½/⅔),
+      Gregorian↔Hijri both directions verified (11 Mar 2024 ↔ Ramadan 1445), prayer-times/qibla
+      already verified in earlier sessions. Text — syllable("banana")=3, palindrome(racecar),
+      pig-latin(hello→ellohay), reverser(hello→olleh), slug("Hello World Test"→hello-world-test),
+      upside-down works, reading-time fixed earlier. Time & Date — day-of-week (3 dates, post-fix),
+      week-number (2024-01-04→W1), day-of-year (Feb 1→32), zodiac (Mar 25→Aries), moon-phase
+      (2024-01-11→New Moon), business-days (Jan 1–8 2024→6), work-hours (9-5, 60 min break→7 h),
+      age-in-seconds computes; clocks/timers are Intl/timer-based.
 - [ ] **Text** (~15 tools) — old audit explicitly did only a "light review" here.
 - [x] **Creators (12)** — DONE 2026-07-02. Clean. numerology reduce() correctly preserves master
       numbers 11/22/33 w/ correct Pythagorean chart (verified live: 2000-01-01 → life path 4). Text/
