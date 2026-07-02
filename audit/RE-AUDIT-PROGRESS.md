@@ -234,15 +234,75 @@ applies here). Set up from scratch this session:
 - [ ] **Charts + Images + Text + Creators + SEO + PDF** (72 tools) — old audit explicitly did
       only a "light review" here, lowest confidence of all
 
-## How to resume
+## Sanity sweep (post-fix regression check) — IN PROGRESS, interrupted twice, not yet trustworthy
 
-**Immediate next step:** Engineering & Science is done (see commit above). Pick the next category
-from the "NOT YET re-audited" list — **Construction + Automotive + Cooking (56 tools)** is next in
-line. Tell Claude: *"continue the tool audit, category-wise, starting with Construction +
-Automotive + Cooking"* (or whichever category). Point it at this file
-(`audit/RE-AUDIT-PROGRESS.md`) for full context — it explains the method, deployment steps, and
-exactly what's done vs pending. Update this file's category list as each one completes, same
-format as above (tools count, commit hash, bug list).
+**What this is:** a *separate, lighter* pass re-checking the categories already fixed above
+(Converters, Finance, Health & Fitness, Math, Engineering & Science, Everyday — ~226 live tools)
+for **regressions** since their fixes shipped. This is not the same as the "NOT YET re-audited"
+list below (those have never been touched at all).
+
+**Status as of this write-up:**
+- Script: `audit/sanity-sweep/sweep.cjs` — run as `node audit/sanity-sweep/sweep.cjs <category>`
+  (category = one of `converters finance health math engineering everyday`, matching the keys in
+  `audit/sanity-sweep/sweep-tools.json`, which it reads for the slug list per category — already
+  filtered to `enabled:true, status:'live'`). Loads each tool live at
+  `https://toolnestr.com/tools/<slug>`, fills any obvious input fields with a generic value
+  (`42` / `"Hello World 123"`), clicks the first button whose text matches an action-word regex,
+  and records console errors / failed requests / blank-page renders to
+  `audit/sanity-sweep/sweep-results-<category>.json`.
+- **Converters: done, 69/69 checked, 0 flags.** 9 tools had no obvious input field for the generic
+  script to interact with (listed in `audit/sanity-sweep/stragglers.json`: `csv-to-json`,
+  `json-to-yaml`, `json-to-xml`, `text-to-binary`, `text-to-hex`, `url-encoder-decoder`,
+  `html-entity-converter`, `morse-code-converter`, `regex-escaper`) — these need a manual/scripted
+  check with real input, not yet done.
+- **Finance: done, 34/34 checked, 1 flag** — `currency-converter`: the live FX API call to
+  `https://api.frankfurter.app/latest?from=USD` is being **blocked by CSP**
+  (`connect-src` doesn't allow `api.frankfurter.app`). This is a real, likely-live bug (the tool
+  probably can't fetch live rates in production right now) — **not yet fixed**, needs investigating
+  and either adding the domain to CSP (see `worker.js` / CSP config, same fix pattern as commit
+  `30fd923` which added `geocoding-api.open-meteo.com`) or confirming there's a fallback.
+- **Health, Math, Engineering, Everyday: not started.**
+
+**⚠️ Known methodology gap — fix this before trusting more PASS results:** the script only checks
+for crashes/console errors/blank renders. It does **NOT** verify the tool computed the *correct*
+value — filling `42` into every field and clicking a button proves the tool didn't crash, not that
+its math is right. A prior run of this exact sweep (agent, mid-session) caught this gap itself and
+was about to add real correctness checks (plausible input → known/hand-computed expected output,
+same method as the full category audits above) when it got killed by the user. **Do this before
+resuming Converters/Finance results with full confidence** — the 0-flags/1-flag results above only
+mean "didn't crash," not "produced correct output."
+
+**Environment fix (do this first, every fresh machine/session — same libnspr4.so issue as below):**
+the missing shared libs are permanently extracted at `~/.local/share/playwright-deps` on this
+machine (survives session restarts, unlike `/tmp` scratch dirs). **Do NOT rely on shell `export`/
+`.bashrc`** — confirmed in this harness that Bash tool calls don't reliably inherit `.bashrc`
+exports (non-interactive shell, blocked by the `case $- in *i*) ;; *) return;; esac` guard at the
+top of `.bashrc`). Instead, set it inside the script itself, before `require('playwright')`:
+```js
+process.env.LD_LIBRARY_PATH = '/home/toolnestr/.local/share/playwright-deps' + (process.env.LD_LIBRARY_PATH ? ':' + process.env.LD_LIBRARY_PATH : '');
+```
+(already at the top of `sweep.cjs`). On a brand-new machine, regenerate that dir first: see the
+"Playwright on a no-sudo Linux box" note further down for the `apt-get download`/`dpkg-deb -x`
+steps, just point the extraction target at `~/.local/share/playwright-deps` instead of a scratch
+dir.
+
+**To resume this sweep, tell Claude:** *"continue the tool sanity sweep — see
+audit/RE-AUDIT-PROGRESS.md, Sanity sweep section"* — first add real correctness checks to
+`sweep.cjs` (per the gap above), re-verify Converters/Finance with the improved script, fix the
+`currency-converter` CSP flag, then continue with Health → Math → Engineering → Everyday. Commit
+and push progress to this file after **every** category — twice now this sweep has been
+interrupted (once by a usage-limit crash, once by a manual stop) mid-run with nothing saved; don't
+let a third attempt lose work again.
+
+## How to resume (full re-audit — categories never yet touched)
+
+**Immediate next step (after the sanity sweep above is caught up):** Engineering & Science is done
+(see commit above). Pick the next category from the "NOT YET re-audited" list — **Construction +
+Automotive + Cooking (56 tools)** is next in line. Tell Claude: *"continue the tool audit,
+category-wise, starting with Construction + Automotive + Cooking"* (or whichever category). Point
+it at this file (`audit/RE-AUDIT-PROGRESS.md`) for full context — it explains the method,
+deployment steps, and exactly what's done vs pending. Update this file's category list as each one
+completes, same format as above (tools count, commit hash, bug list).
 
 **Playwright on a no-sudo Linux box — libnspr4.so missing:** `npx playwright install chromium`
 downloads the browser binary fine, but the bundled `chromium_headless_shell` fails to launch with
