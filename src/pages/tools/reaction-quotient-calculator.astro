@@ -1,0 +1,391 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Reaction Quotient (Q) Calculator';
+const description = 'Calculate the reaction quotient Q = [C]^c[D]^d / [A]^a[B]^b at any point in a reaction, compare it to Kc, and predict which direction the reaction will shift. Live 3D visualization and charts.';
+const intro = 'Enter coefficients and current (not necessarily equilibrium) concentrations for up to two reactants and two products, plus the known Kc, to compute Q and predict which way the reaction will proceed.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is the reaction quotient Q?', a: 'Q is the same ratio as the equilibrium constant expression — Q = [C]^c[D]^d / [A]^a[B]^b — but evaluated using the concentrations present at any moment during a reaction, not necessarily at equilibrium. It has the identical mathematical form as Kc, just applied to whatever concentrations you currently have.' },
+  { q: 'How is Q different from Kc?', a: 'Kc is a single fixed number for a reaction at a given temperature — it is the value Q takes on specifically once the system has reached equilibrium. Q, by contrast, can be calculated at any point in the reaction and changes continuously as concentrations change, until it settles at Kc.' },
+  { q: 'What does Q < Kc mean?', a: 'Q < Kc means there is not yet enough product relative to reactant to satisfy the equilibrium ratio. The reaction proceeds forward (net production of products) until Q rises to meet Kc and the system reaches equilibrium.' },
+  { q: 'What does Q > Kc mean?', a: 'Q > Kc means there is more product than the equilibrium ratio allows. The reaction proceeds in reverse (net consumption of products, regeneration of reactants) until Q falls to meet Kc.' },
+  { q: 'Does Q change as the reaction proceeds while Kc stays constant?', a: 'Yes. Kc is fixed at a given temperature, but Q depends on whatever concentrations exist right now, so it changes continuously as the reaction runs. Once the reaction reaches equilibrium, Q stops changing because it has become equal to Kc.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Reaction Quotient Calculator',
+  description: 'Compute Q from current concentrations, compare it to a known Kc, and predict reaction direction.',
+  steps: [
+    { name: 'Enter reactants', text: 'Type the coefficient and current concentration for reactant A, and optionally reactant B.' },
+    { name: 'Enter products', text: 'Type the coefficient and current concentration for product C, and optionally product D.' },
+    { name: 'Enter Kc and read the verdict', text: 'Type the known equilibrium constant Kc; the calculator computes Q and tells you whether the reaction will run forward, in reverse, or is already at equilibrium.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'Q = [C]<sup>c</sup>[D]<sup>d</sup> / [A]<sup>a</sup>[B]<sup>b</sup>', note: 'same form as K<sub>c</sub>, but evaluated at any point, not just equilibrium' },
+  { expr: 'Q &lt; K<sub>c</sub> → forward', note: 'Q &gt; K<sub>c</sub> → reverse &nbsp;|&nbsp; Q = K<sub>c</sub> → at equilibrium' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — ammonia synthesis, not yet at equilibrium', tone: 'slate',
+    given: 'N₂ + 3 H₂ ⇌ 2 NH₃, with Kc = 0.500 at this temperature. Right now (not necessarily equilibrium): [N₂] = 0.20 M, [H₂] = 0.10 M, [NH₃] = 0.50 M.',
+    rows: [
+      { label: 'Numerator:', value: '[NH₃]² = (0.50)² = 0.25' },
+      { label: 'Denominator:', value: '[N₂]¹[H₂]³ = 0.20 × (0.10)³ = 0.20 × 0.001 = 0.0002' },
+      { label: 'Q:', value: 'Q = 0.25 ÷ 0.0002 = 1250', full: true },
+      { label: 'Compare:', value: 'Q (1250) is much greater than Kc (0.500)', full: true },
+    ],
+    note: 'Since Q ≫ Kc, there is far more product than equilibrium allows — the reaction proceeds in reverse, converting NH₃ back into N₂ and H₂ until Q falls to 0.500.',
+  },
+  {
+    title: 'Worked example 2 — simple 1:1 reaction, predicting forward shift', tone: 'amber',
+    given: 'A ⇌ B, with Kc = 5 (given). Right now: [A] = 0.50 M, [B] = 0.50 M. Both coefficients are 1, no second reactant or product.',
+    rows: [
+      { label: 'Q:', value: 'Q = [B]¹ ÷ [A]¹ = 0.50 ÷ 0.50 = 1' },
+      { label: 'Compare:', value: 'Q (1) is less than Kc (5)', full: true },
+    ],
+    note: 'Since Q < Kc, the reaction has not yet made enough B — it proceeds forward, converting more A into B until Q rises to 5.',
+  },
+];
+
+const comparison = {
+  heading: 'Comparing Q to Kc',
+  note: 'Q tells you which direction a reaction not at equilibrium will move to reach equilibrium.',
+  headers: [{ label: 'Comparison' }, { label: 'Direction' }, { label: 'What happens to concentrations' }],
+  rows: [
+    ['Q &lt; Kc', 'Forward (toward products)', 'Reactant concentrations fall, product concentrations rise, until Q = Kc'],
+    ['Q = Kc', 'Already at equilibrium', 'No net change — forward and reverse rates are equal'],
+    ['Q &gt; Kc', 'Reverse (toward reactants)', 'Product concentrations fall, reactant concentrations rise, until Q = Kc'],
+  ],
+  highlightIndex: 1,
+  footnote: '"Q = Kc" here means Q is within a small tolerance of Kc, since exact equality is rarely observed with rounded real-world measurements.',
+};
+
+const realWorld = [
+  { emoji: '🏭', title: 'Industrial reaction direction', body: 'Chemical engineers use Q vs Kc to check whether a reactor is still converting reactants to product or has drifted past equilibrium, guiding decisions like when to remove product or add fresh reactant to keep a process running forward.' },
+  { emoji: '🔁', title: 'Driving reactions forward by removing product', body: 'Continuously removing product from a reaction mixture keeps Q below Kc, so by Le Chatelier\'s principle (viewed through Q) the reaction keeps running forward instead of stalling once it would otherwise reach equilibrium.' },
+  { emoji: '🧬', title: 'Metabolic reaction directionality', body: 'Cells keep many metabolic reactions running in one direction by maintaining concentrations far from equilibrium (Q far from Kc) — for example rapidly consuming a product so the reaction is perpetually pulled forward.' },
+];
+
+const misconceptions = [
+  { claim: '"Q and Kc are the same thing."', truth: 'They share the identical algebraic form, but Kc is the one specific value Q takes on only when the system is at equilibrium. Q can equal almost any value depending on whatever concentrations currently exist.' },
+  { claim: '"A reaction with Q ≠ Kc is impossible or wrong."', truth: 'Most reactions are not at equilibrium most of the time — that is completely normal. Q ≠ Kc simply tells you the system has not finished reacting yet, and which direction it is heading.' },
+  { claim: '"Q changes Kc."', truth: 'Q never changes Kc. Kc is fixed at a given temperature; Q is just a snapshot of the current concentrations, and it evolves toward Kc as the reaction proceeds, not the other way around.' },
+  { claim: '"If Q is close to Kc the reaction has stopped."', truth: 'The reaction keeps going (net) until Q actually equals Kc. Being close does not mean equilibrium has been reached — only that the net rate of change has slowed.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 13, Section 13.2, Equilibrium Constants (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/13-2-equilibrium-constants" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 15, Chemical Equilibrium, "The Reaction Quotient."' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 13, Chemical Equilibrium.' },
+];
+const sourcesNote = 'A blank reactant or product field is treated as absent (excluded from the expression). Results are rounded for display. "At equilibrium" comparisons use a small numerical tolerance.';
+
+const howToUse = [
+  { title: 'Enter reactants', body: 'Coefficient and current concentration for A, optionally B.' },
+  { title: 'Enter products', body: 'Coefficient and current concentration for C, optionally D.' },
+  { title: 'Enter Kc, read direction', body: 'See the computed Q and whether the reaction runs forward, reverse, or is at equilibrium.' },
+];
+
+const related = [
+  { href: '/tools/equilibrium-constant-calculator', emoji: '🔁', title: 'Equilibrium Constant (Keq) Calculator', desc: 'Compute Kc from equilibrium concentrations.' },
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance equations up to 4 species instantly.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="Q has the same mathematical form as Kc — products over reactants, each raised to its coefficient — but it is evaluated at any point in a reaction, not only at equilibrium. Comparing Q to the known Kc tells you which direction the reaction will proceed."
+  howIntro="If Q &lt; Kc, the numerator (products) is smaller than the equilibrium ratio requires, so the reaction runs forward, building more product. If Q &gt; Kc, the numerator is larger than required, so the reaction runs in reverse, consuming product. If Q equals Kc (within a small tolerance), the system is already at equilibrium and there is no net change. A blank species field is treated as absent, so the expression naturally collapses for reactions with only one reactant or one product."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where predicting reaction direction actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-xs text-slate-500">Leave a species' concentration blank to exclude it from the expression (useful for single-reactant or single-product reactions). Concentrations here are the CURRENT ones — they do not need to be at equilibrium.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-indigo-700">Reactants (denominator)</h3>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. a (A)</span>
+            <input id="a-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">[A] mol/L (current)</span>
+            <input id="a-conc" type="number" step="any" min="0" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. b (B)</span>
+            <input id="b-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">[B] mol/L (optional)</span>
+            <input id="b-conc" type="number" step="any" min="0" placeholder="blank = absent" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-green-700">Products (numerator)</h3>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. c (C)</span>
+            <input id="c-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">[C] mol/L (current)</span>
+            <input id="c-conc" type="number" step="any" min="0" placeholder="mol/L" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. d (D)</span>
+            <input id="d-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">[D] mol/L (optional)</span>
+            <input id="d-conc" type="number" step="any" min="0" placeholder="blank = absent" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <label class="block max-w-xs"><span class="text-xs font-medium text-slate-700">Known K<sub>c</sub> for this reaction</span>
+        <input id="kc-known" type="number" step="any" min="0" placeholder="e.g. 0.500" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Reaction quotient Q</div><div id="r-q" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Compared to Kc</div><div id="r-cmp" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-green-50 p-5 text-center"><div class="text-sm text-green-700">Predicted direction</div><div id="r-dir" class="mt-1 text-lg font-bold text-green-800">—</div></div>
+    </div>
+    <p id="q-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: 3D sphere groups + arrow + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D reactants vs products, with predicted shift</h2>
+      <p class="mt-1 text-sm text-slate-500">Each group's size illustrates the relative current concentration on that side (illustrative, not a literal particle count). The arrow shows the predicted direction the reaction will shift based on comparing Q to Kc. Drag to orbit.</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Reactant concentration <span id="out-vreact" class="font-mono text-green-600">0.50 M</span></span>
+          <input id="v-react" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Product concentration <span id="out-vprod" class="font-mono text-green-600">0.50 M</span></span>
+          <input id="v-prod" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <label class="mt-3 block max-w-xs">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Known Kc (1:1) <span id="out-vkc" class="font-mono text-amber-600">1.00</span></span>
+        <input id="v-kc" type="range" min="0.05" max="5" step="0.05" value="1" class="mt-2 w-full accent-amber-500" />
+      </label>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Live Q (1:1) = <span id="out-vq" class="font-mono font-bold">1.00</span> — <span id="out-vverdict" class="font-semibold">at equilibrium</span></div>
+      <div id="q3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
+      <p id="q3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Reaction quotient graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Reactant-side vs product-side magnitude</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-sides"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Q vs Kc position</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-qkc"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function readSpecies(coeffId, concId) {
+        const coeff = parseFloat(el(coeffId).value);
+        const raw = el(concId).value;
+        if (raw === '' || raw === null) return null; // absent species
+        const conc = parseFloat(raw);
+        if (isNaN(conc) || isNaN(coeff)) return null;
+        return { coeff, conc };
+      }
+      function sideValue(species) {
+        let val = 1;
+        for (const s of species) {
+          if (!s) continue;
+          val *= Math.pow(s.conc, s.coeff);
+        }
+        return val;
+      }
+      function updateCalc() {
+        el('q-err').textContent = '';
+        el('r-q').textContent = '—'; el('r-cmp').textContent = '—'; el('r-dir').textContent = '—';
+        const A = readSpecies('a-coeff', 'a-conc');
+        const B = readSpecies('b-coeff', 'b-conc');
+        const C = readSpecies('c-coeff', 'c-conc');
+        const D = readSpecies('d-coeff', 'd-conc');
+        if (!A && !B) { return; }
+        if (!C && !D) { return; }
+        for (const s of [A, B, C, D]) { if (s && s.conc < 0) { el('q-err').textContent = 'Concentrations cannot be negative.'; return; } }
+        for (const s of [A, B, C, D]) { if (s && s.coeff <= 0) { el('q-err').textContent = 'Coefficients must be positive.'; return; } }
+        const num = sideValue([C, D]);
+        const den = sideValue([A, B]);
+        if (den === 0) { el('q-err').textContent = 'Reactant concentration cannot be zero.'; return; }
+        const q = num / den;
+        el('r-q').textContent = fmt(q);
+
+        const kcRaw = el('kc-known').value;
+        if (kcRaw === '' || kcRaw === null) { el('r-cmp').textContent = 'Enter Kc'; el('r-dir').textContent = '—'; updateCharts(); return; }
+        const kc = parseFloat(kcRaw);
+        if (isNaN(kc) || kc < 0) { el('q-err').textContent = 'Kc must be a non-negative number.'; return; }
+        if (kc === 0) { el('r-cmp').textContent = 'Kc = 0'; el('r-dir').textContent = 'Undefined'; updateCharts(); return; }
+
+        const ratio = q / kc;
+        const tol = 0.02; // 2% tolerance for "at equilibrium"
+        let cmp, dir;
+        if (Math.abs(ratio - 1) <= tol) { cmp = 'Q ≈ Kc'; dir = 'Already at equilibrium'; }
+        else if (q < kc) { cmp = 'Q < Kc'; dir = 'Forward (→ products)'; }
+        else { cmp = 'Q > Kc'; dir = 'Reverse (→ reactants)'; }
+        el('r-cmp').textContent = cmp;
+        el('r-dir').textContent = dir;
+        updateCharts();
+      }
+      ['a-coeff', 'a-conc', 'b-coeff', 'b-conc', 'c-coeff', 'c-conc', 'd-coeff', 'd-conc', 'kc-known'].forEach((id) => el(id).addEventListener('input', updateCalc));
+
+      // ---- 3D + charts state (independent live sliders, simple 1:1 illustration) ----
+      function vState() {
+        const react = parseFloat(el('v-react').value);
+        const prod = parseFloat(el('v-prod').value);
+        const kc = parseFloat(el('v-kc').value);
+        const q = react > 0 ? prod / react : 0;
+        const tol = 0.02;
+        let verdict = 'at equilibrium', dirSign = 0;
+        if (kc > 0) {
+          const ratio = q / kc;
+          if (Math.abs(ratio - 1) <= tol) { verdict = 'at equilibrium'; dirSign = 0; }
+          else if (q < kc) { verdict = 'forward (→ products)'; dirSign = 1; }
+          else { verdict = 'reverse (→ reactants)'; dirSign = -1; }
+        }
+        return { react, prod, kc, q, verdict, dirSign };
+      }
+      let scene3d = null;
+      const charts = {};
+      function onSlider() {
+        const s = vState();
+        el('out-vreact').textContent = s.react.toFixed(2) + ' M';
+        el('out-vprod').textContent = s.prod.toFixed(2) + ' M';
+        el('out-vkc').textContent = fmt(s.kc);
+        el('out-vq').textContent = fmt(s.q);
+        el('out-vverdict').textContent = s.verdict;
+        try { if (scene3d) scene3d.update(s); } catch (e) {}
+        try { if (charts.ready) { updateSideChart(s); updateQKcChart(s); } } catch (e) {}
+      }
+      el('v-react').addEventListener('input', onSlider);
+      el('v-prod').addEventListener('input', onSlider);
+      el('v-kc').addEventListener('input', onSlider);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.sides = new Chart(el('chart-sides'), {
+          type: 'bar',
+          data: { labels: ['Reactant side', 'Product side'], datasets: [{ label: 'Concentration (M)', data: [0.5, 0.5], backgroundColor: ['#6366f1', '#10b981'] }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Concentration (M)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.qkc = new Chart(el('chart-qkc'), {
+          type: 'bar',
+          data: { labels: ['Q', 'Kc'], datasets: [{ label: 'Value', data: [1, 1], backgroundColor: ['#f59e0b', '#6366f1'] }] },
+          options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Value' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateSideChart(vState());
+        updateQKcChart(vState());
+      }
+      function updateSideChart(s) {
+        if (!charts.ready) return;
+        charts.sides.data.datasets[0].data = [s.react, s.prod];
+        charts.sides.update();
+      }
+      function updateQKcChart(s) {
+        if (!charts.ready) return;
+        charts.qkc.data.datasets[0].data = [s.q, s.kc];
+        charts.qkc.update();
+      }
+
+      // ---- 3D sphere groups + direction arrow ----
+      function initScene() {
+        const c = el('q3d'); if (!c) throw new Error('no q3d container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const matReact = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
+        const matProd = new THREE.MeshStandardMaterial({ color: 0x10b981 });
+        const MAX_P = 60;
+        const geo = new THREE.SphereGeometry(0.35, 12, 12);
+        const pilesR = [], pilesP = [];
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matReact); p.visible = false; s.scene.add(p); pilesR.push(p); }
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matProd); p.visible = false; s.scene.add(p); pilesP.push(p); }
+
+        // Direction arrow (cone + shaft) between the two piles
+        const arrowGroup = new THREE.Group();
+        const shaftGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 10);
+        const headGeo = new THREE.ConeGeometry(0.22, 0.5, 12);
+        const arrowMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b });
+        const shaft = new THREE.Mesh(shaftGeo, arrowMat);
+        const head = new THREE.Mesh(headGeo, arrowMat);
+        shaft.rotation.z = Math.PI / 2;
+        head.rotation.z = -Math.PI / 2;
+        arrowGroup.add(shaft, head);
+        arrowGroup.position.set(0, 2.2, 0);
+        arrowGroup.visible = false;
+        s.scene.add(arrowGroup);
+
+        function layout(pile, count, cx) {
+          const perRow = 6;
+          for (let i = 0; i < pile.length; i++) {
+            const p = pile[i];
+            if (i < count) {
+              const row = Math.floor(i / perRow), col = i % perRow;
+              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
+              p.visible = true;
+            } else p.visible = false;
+          }
+        }
+        function update(state) {
+          const nR = Math.max(1, Math.min(MAX_P, Math.round(state.react * 40)));
+          const nP = Math.max(1, Math.min(MAX_P, Math.round(state.prod * 40)));
+          layout(pilesR, nR, -3.2);
+          layout(pilesP, nP, 3.2);
+          if (state.dirSign === 0) {
+            arrowGroup.visible = false;
+          } else {
+            arrowGroup.visible = true;
+            // dirSign = 1 -> forward (reactants -> products, point right/+x)
+            // dirSign = -1 -> reverse (products -> reactants, point left/-x)
+            head.position.x = state.dirSign > 0 ? 0.8 : -0.8;
+            shaft.position.x = 0;
+            arrowGroup.rotation.y = state.dirSign > 0 ? 0 : Math.PI;
+          }
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        frame();
+        scene3d = { update, resize: s.resize };
+        update(vState());
+      }
+
+      function boot() {
+        try {
+          el('a-conc').value = '0.20'; el('b-conc').value = '0.10'; el('c-conc').value = '0.50'; el('d-conc').value = '';
+          el('a-coeff').value = '1'; el('b-coeff').value = '3'; el('c-coeff').value = '2'; el('d-coeff').value = '1';
+          el('kc-known').value = '0.500';
+          updateCalc();
+        } catch (e) { console.error('[reaction-quotient] calc init failed', e); }
+        try { onSlider(); } catch (e) { console.error('[reaction-quotient] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[reaction-quotient] charts failed', e); }
+        if (window.THREE) {
+          try { initScene(); } catch (e) { console.error('[reaction-quotient] scene failed', e); el('q3d-fallback').classList.remove('hidden'); }
+        } else { el('q3d-fallback').classList.remove('hidden'); }
+        mountResize([scene3d]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

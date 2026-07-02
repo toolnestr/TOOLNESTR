@@ -1,0 +1,340 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Parallel Resistor Calculator';
+const description = 'Parallel resistor calculator with a live 3D circuit and charts. Solve total resistance for 2-4 resistors in parallel and branch currents, with worked examples.';
+const intro = 'Find the total resistance of resistors wired in parallel, plus the current through each branch. A live 3D circuit and charts show why total resistance always drops below the smallest resistor.';
+const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
+
+const faqs = [
+  { q: 'What happens to voltage across resistors in parallel?', a: 'Voltage is the same across every resistor in a parallel combination — each branch connects to the same two nodes, so each sees the full supply voltage. This is the defining feature of a parallel connection.' },
+  { q: 'What happens to current in a parallel circuit?', a: 'Current splits between the branches. Each branch carries I = V/R for its own resistance, so branches with lower resistance carry more current. The branch currents add up to the total current drawn from the supply.' },
+  { q: 'Why is total resistance always less than the smallest resistor?', a: 'Adding a parallel branch gives current an extra path, so the combination always conducts at least as well as the best single branch. Mathematically, 1/R_total = 1/R1 + 1/R2 + ... is always bigger than 1/R_smallest alone, so R_total is always smaller than the smallest R.' },
+  { q: 'How is parallel different from series?', a: 'In series, resistances add directly (R_total = R1+R2+...) and current is the same through every resistor while voltage divides. In parallel, reciprocals add and voltage is the same across every resistor while current divides.' },
+  { q: 'Can I mix series and parallel resistors?', a: 'Yes — real circuits often combine both. Solve parallel sub-groups down to a single equivalent resistance first, then add that equivalent in series with the rest of the circuit (or vice versa), working from the innermost combination outward.' },
+];
+
+const badge = { label: 'Physics', color: 'blue' };
+const howto = {
+  name: 'How to use the Parallel Resistor Calculator',
+  description: 'Calculate the total resistance of 2-4 resistors in parallel, plus branch and total current for a given supply voltage.',
+  steps: [
+    { name: 'Enter resistor values', text: 'Type in 2 to 4 resistor values in ohms; leave unused rows blank.' },
+    { name: 'Optionally add a supply voltage', text: 'Enter a voltage to also see the current through each branch and the total current.' },
+    { name: 'Read the result', text: 'Total resistance solves instantly, always below your smallest resistor.' },
+  ],
+};
+
+const formulas = [
+  { expr: '1/R<sub>total</sub> = 1/R₁ + 1/R₂ + 1/R₃ + …', note: 'reciprocals add for any number of parallel resistors' },
+  { expr: 'R<sub>total</sub> = (R₁ × R₂) / (R₁ + R₂)', note: 'shortcut for exactly two resistors' },
+  { expr: 'I<sub>i</sub> = V / R<sub>i</sub>', note: 'current through branch i, same V across every branch' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — two resistors (product-over-sum)', tone: 'slate',
+    given: 'A 100 Ω resistor and a 300 Ω resistor are connected in parallel. Find the total resistance.',
+    rows: [
+      { label: 'Formula:', value: 'R<sub>total</sub> = (R₁ × R₂) / (R₁ + R₂)' },
+      { label: 'Substitute:', value: 'R<sub>total</sub> = (100 × 300) / (100 + 300) = 30,000 / 400' },
+      { label: 'Result:', value: 'R<sub>total</sub> = 75 Ω', full: true },
+    ],
+    note: '75 Ω is less than both 100 Ω and 300 Ω — the hallmark of a parallel combination.',
+  },
+  {
+    title: 'Worked example 2 — three resistors with branch currents', tone: 'amber',
+    given: 'Resistors of 100 Ω, 200 Ω and 300 Ω are connected in parallel across a 12 V supply. Find R_total, each branch current, and the total current.',
+    rows: [
+      { label: 'Reciprocal sum:', value: '1/R<sub>total</sub> = 1/100 + 1/200 + 1/300 = 0.01 + 0.005 + 0.00333 = 0.01833' },
+      { label: 'Total resistance:', value: 'R<sub>total</sub> = 1 / 0.01833 ≈ 54.5 Ω', full: true },
+      { label: 'Branch currents:', value: 'I₁ = 12/100 = 0.12 A, I₂ = 12/200 = 0.06 A, I₃ = 12/300 = 0.04 A' },
+      { label: 'Total current:', value: 'I<sub>total</sub> = 0.12 + 0.06 + 0.04 = 0.22 A' },
+    ],
+    note: 'Check: I = V/R_total = 12 / 54.5 ≈ 0.22 A — matches the sum of branch currents.',
+  },
+];
+
+const comparison = {
+  heading: 'Series vs parallel resistor rules',
+  note: 'The two combination types behave as opposites for resistance, voltage, and current.',
+  headers: [{ label: 'Quantity' }, { label: 'Series' }, { label: 'Parallel' }],
+  rows: [
+    ['Total resistance', 'R<sub>total</sub> = R₁ + R₂ + …', '1/R<sub>total</sub> = 1/R₁ + 1/R₂ + …'],
+    ['Compared to individual R', 'Always greater than the largest R', 'Always less than the smallest R'],
+    ['Voltage', 'Divides across resistors', 'Same across every resistor'],
+    ['Current', 'Same through every resistor', 'Divides across branches'],
+  ],
+  highlightIndex: 1,
+  footnote: 'Adding a resistor in series always increases R_total; adding one in parallel always decreases it.',
+};
+
+const realWorld = [
+  { emoji: '🏠', title: 'Household electrical wiring', body: 'Wall outlets and light fixtures on a circuit are wired in parallel so each device sees the same full supply voltage (e.g. 120 V or 230 V) and can be switched independently without affecting the others.' },
+  { emoji: '🔋', title: 'Parallel battery banks', body: 'Connecting batteries in parallel keeps the voltage the same as a single cell while combining their current capacity — the pack behaves like one larger battery with lower internal resistance.' },
+  { emoji: '🧩', title: 'Multi-path circuit design', body: 'Engineers use parallel branches to give current redundant paths, distribute load across components, and fine-tune an equivalent resistance that no single off-the-shelf resistor provides.' },
+];
+
+const misconceptions = [
+  { claim: '"Adding more resistors in parallel increases total resistance."', truth: 'It always decreases (or at worst leaves unchanged in the limiting case) R_total. Each extra branch gives current another path, so the combination always conducts current more easily than any single branch alone.' },
+  { claim: '"Voltage is different across each parallel branch."', truth: 'Voltage is identical across every resistor in a parallel group — they all connect between the same two nodes. It is current, not voltage, that differs between branches.' },
+  { claim: '"You can just average the resistances."', truth: 'Averaging only works for identical resistors (R_total = R/n). For different values you must add reciprocals: 1/R_total = 1/R1 + 1/R2 + …, then invert.' },
+  { claim: '"Parallel and series total resistance are calculated the same way."', truth: 'They are opposites: series resistances add directly, while parallel resistances add as reciprocals, which is why parallel combinations always end up smaller than any individual resistor.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>University Physics Volume 2</em></strong> — Chapter 10, Direct-Current Circuits, resistors in parallel (free, peer-reviewed). <a href="https://openstax.org/books/university-physics-volume-2/pages/10-2-resistors-in-series-and-parallel" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Halliday, Resnick &amp; Walker, <em>Fundamentals of Physics</em></strong> — Chapter 27, Circuits, resistors in parallel.' },
+  { html: '<strong>Serway &amp; Jewett, <em>Physics for Scientists and Engineers</em></strong> — Direct Current Circuits chapter.' },
+];
+const sourcesNote = '1/R_total = sum of reciprocals for parallel resistors; branch current I = V/R with a shared supply voltage. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter your resistors', body: 'Fill in 2 to 4 resistor values in ohms; leave any unused rows blank.' },
+  { title: 'Add a supply voltage (optional)', body: 'Enter volts to also see current per branch and total current drawn.' },
+  { title: 'Explore the 3D circuit', body: 'Drag the sliders to see R_total drop as resistors change, live in 3D.' },
+];
+
+const related = [
+  { href: '/tools/ohms-law-calculator', emoji: '🔌', title: "Ohm's Law Calculator", desc: 'Solve V = I × R for any variable.' },
+  { href: '/tools/series-resistor-calculator', emoji: '➕', title: 'Series Resistor Calculator', desc: 'R_total = R1 + R2 + … for series circuits.' },
+  { href: '/tools/capacitor-charge-time-calculator', emoji: '🔋', title: 'Capacitor Charge Time Calculator', desc: 'RC time constant and charge/discharge curves.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="in a parallel circuit every resistor shares the same voltage, so adding branches only adds more paths for current — total resistance always falls below the smallest individual resistor."
+  howIntro="Rearranged, the reciprocal sum handles any number of branches: compute 1/R for each resistor, add them, then invert the sum to get R_total. For exactly two resistors, the algebra simplifies to the handy product-over-sum shortcut R<sub>total</sub> = (R₁R₂)/(R₁+R₂). Once R_total is known, the current drawn from the supply is I = V/R_total, and it splits between branches in inverse proportion to their resistance."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where parallel resistance actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-4 text-sm text-slate-500">Enter 2 to 4 resistor values (Ω). Leave unused rows blank. Supply voltage is optional.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resistor R₁ (Ω)</span>
+        <input id="r1" type="number" step="any" placeholder="Ω" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resistor R₂ (Ω)</span>
+        <input id="r2" type="number" step="any" placeholder="Ω" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resistor R₃ (Ω) <span class="text-xs text-slate-400">optional</span></span>
+        <input id="r3" type="number" step="any" placeholder="Ω" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Resistor R₄ (Ω) <span class="text-xs text-slate-400">optional</span></span>
+        <input id="r4" type="number" step="any" placeholder="Ω" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Supply voltage (V) <span class="text-xs text-slate-400">optional — for branch currents</span></span>
+        <input id="vs" type="number" step="any" placeholder="Volts" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white sm:col-span-2"><div class="text-sm opacity-80">Total resistance</div><div id="r-total" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Total current</div><div id="r-itotal" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Smallest resistor</div><div id="r-min" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <div id="branch-currents" class="mt-4 hidden grid gap-2 sm:grid-cols-4"></div>
+    <p id="pr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D circuit + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D parallel circuit</h2>
+      <p class="mt-1 text-sm text-slate-500">Drag the sliders to change up to three resistors wired between two common rails. R_total updates live and always stays below the smallest resistor. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-3">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₁ <span id="out-r1" class="font-mono text-indigo-600">100 Ω</span></span>
+          <input id="s-r1" type="range" min="10" max="1000" step="5" value="100" class="mt-2 w-full accent-indigo-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₂ <span id="out-r2" class="font-mono text-indigo-600">200 Ω</span></span>
+          <input id="s-r2" type="range" min="10" max="1000" step="5" value="200" class="mt-2 w-full accent-indigo-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₃ <span id="out-r3" class="font-mono text-indigo-600">300 Ω</span></span>
+          <input id="s-r3" type="range" min="10" max="1000" step="5" value="300" class="mt-2 w-full accent-indigo-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">R<sub>total</sub> = <span id="out-rt" class="font-mono font-bold">—</span> &nbsp;(always less than the smallest resistor, <span id="out-rmin" class="font-mono">—</span>)</div>
+      <div id="circuit3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="circuit3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Parallel resistance graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">R_total vs number of 100 Ω resistors added in parallel</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-rn"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Current per branch at the given supply voltage (current divider)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ib"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function parInvSum(vals) {
+        let s = 0;
+        for (const v of vals) s += 1 / v;
+        return s;
+      }
+      function updateCalc() {
+        el('pr-err').textContent = '';
+        el('r-total').textContent = '—';
+        el('r-itotal').textContent = '—';
+        el('r-min').textContent = '—';
+        el('branch-currents').innerHTML = '';
+        el('branch-currents').className = 'mt-4 hidden grid gap-2 sm:grid-cols-4';
+
+        const ids = ['r1', 'r2', 'r3', 'r4'];
+        const vals = [];
+        for (const id of ids) {
+          const raw = el(id).value;
+          if (raw === '') continue;
+          const n = parseFloat(raw);
+          if (isNaN(n)) continue;
+          if (n <= 0) { el('pr-err').textContent = 'Resistor values must be greater than zero.'; return; }
+          vals.push(n);
+        }
+        if (vals.length < 2) { el('pr-err').textContent = 'Enter at least two resistor values.'; return; }
+
+        const rTotal = 1 / parInvSum(vals);
+        const rMin = Math.min(...vals);
+        el('r-total').textContent = fmt(rTotal) + ' Ω';
+        el('r-min').textContent = fmt(rMin) + ' Ω';
+
+        const vsRaw = el('vs').value;
+        if (vsRaw !== '') {
+          const V = parseFloat(vsRaw);
+          if (!isNaN(V)) {
+            const iTotal = V / rTotal;
+            el('r-itotal').textContent = fmt(iTotal) + ' A';
+            const box = el('branch-currents');
+            box.className = 'mt-4 grid gap-2 sm:grid-cols-4';
+            vals.forEach((r, i) => {
+              const I = V / r;
+              const d = document.createElement('div');
+              d.className = 'rounded-lg bg-slate-50 p-3 text-center';
+              d.innerHTML = '<div class="text-xs text-slate-500">Branch ' + (i + 1) + ' (' + fmt(r) + ' Ω)</div><div class="mt-0.5 text-sm font-bold text-slate-800">' + fmt(I) + ' A</div>';
+              box.appendChild(d);
+            });
+          }
+        }
+      }
+      ['r1', 'r2', 'r3', 'r4', 'vs'].forEach((id) => el(id).addEventListener('input', updateCalc));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let circuit = null;
+      function sState() {
+        const r1 = parseFloat(el('s-r1').value), r2 = parseFloat(el('s-r2').value), r3 = parseFloat(el('s-r3').value);
+        const rt = 1 / parInvSum([r1, r2, r3]);
+        return { r1, r2, r3, rt, rmin: Math.min(r1, r2, r3) };
+      }
+      function onS() {
+        const s = sState();
+        el('out-r1').textContent = s.r1.toFixed(0) + ' Ω';
+        el('out-r2').textContent = s.r2.toFixed(0) + ' Ω';
+        el('out-r3').textContent = s.r3.toFixed(0) + ' Ω';
+        el('out-rt').textContent = fmt(s.rt) + ' Ω';
+        el('out-rmin').textContent = fmt(s.rmin) + ' Ω';
+        try { if (circuit) circuit.update(s); } catch (e) {}
+        try { if (charts.ready) updateBarChart(s); } catch (e) {}
+      }
+      ['s-r1', 's-r2', 's-r3'].forEach((id) => el(id).addEventListener('input', onS));
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+
+        // Chart 1: R_total vs number of 100 ohm resistors added (n = 1..10)
+        const nLabels = [], nData = [];
+        for (let n = 1; n <= 10; n++) { nLabels.push(String(n)); nData.push(+(100 / n).toFixed(3)); }
+        charts.rn = new Chart(el('chart-rn'), {
+          type: 'line',
+          data: { labels: nLabels, datasets: [{ label: 'R_total', data: nData, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.3, pointRadius: 2 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Number of 100 Ω resistors in parallel' } }, y: { title: { display: true, text: 'R_total (Ω)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+
+        // Chart 2: current per branch (bar), current divider
+        charts.ib = new Chart(el('chart-ib'), {
+          type: 'bar',
+          data: { labels: ['R₁', 'R₂', 'R₃'], datasets: [{ label: 'Branch current (A)', data: [0, 0, 0], backgroundColor: ['#6366f1', '#10b981', '#f59e0b'] }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Branch' } }, y: { title: { display: true, text: 'Current (A)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateBarChart(sState());
+      }
+      function updateBarChart(s) {
+        if (!charts.ready) return;
+        const V = 12; // fixed illustrative supply voltage for the current-divider chart
+        charts.ib.data.datasets[0].data = [+(V / s.r1).toFixed(4), +(V / s.r2).toFixed(4), +(V / s.r3).toFixed(4)];
+        charts.ib.data.labels = ['R₁ (' + s.r1.toFixed(0) + ' Ω)', 'R₂ (' + s.r2.toFixed(0) + ' Ω)', 'R₃ (' + s.r3.toFixed(0) + ' Ω)'];
+        charts.ib.update();
+      }
+
+      // ---- interactive 3D parallel circuit ----
+      function railsAndBranches(THREE) {
+        const g = new THREE.Group();
+        const railMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 });
+        const railGeo = new THREE.CylinderGeometry(0.08, 0.08, 6, 16);
+        const railTop = new THREE.Mesh(railGeo, railMat); railTop.rotation.z = Math.PI / 2; railTop.position.y = 2; g.add(railTop);
+        const railBot = new THREE.Mesh(railGeo, railMat); railBot.rotation.z = Math.PI / 2; railBot.position.y = -2; g.add(railBot);
+        return g;
+      }
+      function initCircuit() {
+        const c = el('circuit3d'); if (!c) throw new Error('no circuit3d');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        s.scene.add(railsAndBranches(THREE));
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
+        const wireMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.4, roughness: 0.4 });
+        const xs = [-2, 0, 2];
+        const resistors = xs.map((x) => {
+          const grp = new THREE.Group();
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.6, 20), bodyMat);
+          grp.add(body);
+          const wireGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 10);
+          const wTop = new THREE.Mesh(wireGeo, wireMat); wTop.position.y = 1.4; grp.add(wTop);
+          const wBot = new THREE.Mesh(wireGeo, wireMat); wBot.position.y = -1.4; grp.add(wBot);
+          grp.position.x = x;
+          s.scene.add(grp);
+          return { grp, body };
+        });
+        function update(state) {
+          const rs = [state.r1, state.r2, state.r3];
+          resistors.forEach((r, i) => {
+            const rv = rs[i];
+            // Thicker body = lower resistance (more conductive), scaled visually.
+            const scale = Math.max(0.5, Math.min(1.6, 220 / rv));
+            r.body.scale.set(scale, 1, scale);
+          });
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        circuit = { update, resize: s.resize };
+        update(sState());
+      }
+
+      function boot() {
+        try { updateCalc(); } catch (e) { console.error('[parallel-resistor] calc init failed', e); }
+        try { onS(); } catch (e) { console.error('[parallel-resistor] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[parallel-resistor] charts failed', e); }
+        if (window.THREE) {
+          try { initCircuit(); } catch (e) { console.error('[parallel-resistor] circuit failed', e); el('circuit3d-fallback').classList.remove('hidden'); }
+        } else { el('circuit3d-fallback').classList.remove('hidden'); }
+        mountResize([circuit]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

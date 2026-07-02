@@ -1,0 +1,326 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Reaction Rate Calculator';
+const description = 'Reaction rate calculator with a live 3D particle-density visual and charts. Solve rate = |Δ[X]| / (coefficient × Δt) for a reactant or product, with the stoichiometry-normalized overall rate explained.';
+const intro = 'Enter a species’ initial and final concentration, the elapsed time, and its stoichiometric coefficient — the calculator finds that species’ raw rate of change and the coefficient-normalized overall reaction rate. A live 3D beaker and charts show concentration falling (or rising) over time.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is reaction rate?', a: 'Reaction rate is how fast a reactant is consumed or a product is formed, usually expressed as a change in molar concentration per unit time (M/s). The average rate over an interval is rate = |Δ[X]| / Δt; the overall, stoichiometry-normalized rate divides that by the species’ coefficient in the balanced equation.' },
+  { q: 'Why is there a minus sign for reactants?', a: 'A reactant’s concentration decreases as the reaction proceeds, so Δ[reactant] = [final] − [initial] is negative. Rate is defined to be a positive quantity, so the reactant expression carries a leading minus sign: rate = −Δ[reactant]/Δt. Products form, so Δ[product] is already positive and needs no minus sign.' },
+  { q: 'What is the difference between average rate and instantaneous rate?', a: 'Average rate (what this calculator computes) is the net concentration change divided by the total elapsed time — a secant slope on the concentration-vs-time curve. Instantaneous rate is the slope of the tangent line at one specific moment, found by shrinking Δt toward zero. They are equal only for a reaction with a perfectly constant (zero-order) rate.' },
+  { q: 'How does stoichiometry affect the rate expression?', a: 'For aA + bB → cC + dD, each species changes concentration at a different pace set by its coefficient. Dividing each species’ raw rate of change by its own coefficient — rate = −(1/a)Δ[A]/Δt = −(1/b)Δ[B]/Δt = +(1/c)Δ[C]/Δt = +(1/d)Δ[D]/Δt — normalizes them to one shared, coefficient-independent overall reaction rate.' },
+  { q: 'Can reaction rate be negative?', a: 'The rate itself is defined to always be reported as a positive (or zero) number — that is exactly why reactant expressions include the leading minus sign. A raw, un-normalized Δ[X]/Δt can be negative (for a reactant) or positive (for a product), but "the rate" of the reaction is conventionally positive.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Reaction Rate Calculator',
+  description: 'Calculate a species’ average rate of change and the stoichiometry-normalized overall reaction rate.',
+  steps: [
+    { name: 'Choose reactant or product', text: 'Pick whether the species you are tracking is consumed (reactant) or formed (product).' },
+    { name: 'Enter the values', text: 'Type the initial concentration, final concentration, elapsed time, and stoichiometric coefficient.' },
+    { name: 'Read the results', text: 'The raw rate of change and the coefficient-normalized overall rate solve instantly, and the 3D beaker updates.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'rate = −Δ[A] / (a·Δt)', note: 'reactant A, coefficient a — minus sign keeps rate positive' },
+  { expr: 'rate = +Δ[C] / (c·Δt)', note: 'product C, coefficient c' },
+  { expr: 'Δ[X] = [X]<sub>final</sub> − [X]<sub>initial</sub>', note: 'raw concentration change' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — decomposition of N₂O₅', tone: 'slate',
+    given: '2N₂O₅ → 4NO₂ + O₂. [N₂O₅] drops from 0.500 M to 0.350 M over 100 s. N₂O₅ has coefficient a = 2. Find the overall reaction rate.',
+    rows: [
+      { label: 'Raw change:', value: 'Δ[N₂O₅] = 0.350 − 0.500 = −0.150 M' },
+      { label: 'Raw rate of consumption:', value: '−Δ[N₂O₅]/Δt = 0.150 ÷ 100 = 1.5×10⁻³ M/s' },
+      { label: 'Normalize by coefficient:', value: 'rate = −Δ[N₂O₅] ÷ (a·Δt) = 0.150 ÷ (2×100) = 0.150 ÷ 200' },
+      { label: 'Overall reaction rate:', value: 'rate = 7.5×10⁻⁴ M/s', full: true },
+    ],
+    note: 'The raw rate (1.5×10⁻³ M/s) and the coefficient-normalized overall rate (7.5×10⁻⁴ M/s) are different numbers — dividing by a = 2 is what makes the rate independent of which species you tracked.',
+  },
+  {
+    title: 'Worked example 2 — finding a product’s formation rate from the overall rate', tone: 'amber',
+    given: 'Same reaction, same interval: the overall rate is 7.5×10⁻⁴ M/s (from example 1). NO₂ has coefficient c = 4. Find NO₂’s raw rate of formation, Δ[NO₂]/Δt.',
+    rows: [
+      { label: 'Normalized-rate relation:', value: 'rate = +Δ[NO₂] ÷ (c·Δt) → Δ[NO₂]/Δt = c × rate' },
+      { label: 'Substitute:', value: 'Δ[NO₂]/Δt = 4 × 7.5×10⁻⁴ = 3.0×10⁻³ M/s' },
+      { label: 'Overall rate (normalized) for NO₂:', value: 'still 7.5×10⁻⁴ M/s — identical to the N₂O₅-based value', full: true },
+    ],
+    note: 'Do not conflate the two numbers: the raw rate of formation (3.0×10⁻³ M/s) is four times faster in molar terms than N₂O₅ is consumed (1.5×10⁻³ M/s), simply because NO₂’s coefficient (4) is twice N₂O₅’s (2). But once each raw rate is divided by its own coefficient, both species give the exact same coefficient-normalized overall rate: 7.5×10⁻⁴ M/s.',
+  },
+];
+
+const comparison = {
+  heading: 'Typical reaction-rate timescales (illustrative)',
+  note: 'Real rates span many orders of magnitude and depend on concentration, temperature and catalysts — these are rough, qualitative scales for intuition, not precise universal values.',
+  headers: [{ label: 'Reaction type' }, { label: 'Typical timescale' }, { label: 'Relative rate' }],
+  rows: [
+    ['Explosive reactions', 'fractions of a second', 'extremely fast'],
+    ['Combustion (e.g. a flame)', 'seconds', 'fast'],
+    ['Acid–base neutralization', 'seconds to minutes', 'fast to moderate'],
+    ['Food spoilage / enzymatic browning', 'hours to days', 'slow'],
+    ['Rusting / corrosion', 'months to years', 'very slow'],
+    ['Radioactive decay (varies hugely by isotope)', 'fractions of a second to billions of years', 'depends entirely on the isotope'],
+  ],
+  highlightIndex: 1,
+  footnote: 'These bands illustrate relative order-of-magnitude intuition only — always use measured rate data for real kinetics work.',
+};
+
+const realWorld = [
+  { emoji: '🏭', title: 'Industrial reactor design', body: 'Chemical engineers size reactors and choose temperature, pressure and catalysts specifically to push reaction rate as high as is safely and economically practical, since rate directly sets a plant’s throughput.' },
+  { emoji: '🍎', title: 'Food spoilage & preservation', body: 'Refrigeration, drying and preservatives all work by slowing the rate of the chemical and microbial reactions that spoil food — cutting the rate constant is the entire point of a cold chain.' },
+  { emoji: '💊', title: 'Drug metabolism', body: 'Pharmacokinetics tracks the rate at which the body metabolizes and clears a drug, which determines dosing intervals — many drugs follow first-order kinetics where the rate depends on how much drug remains.' },
+  { emoji: '🚗', title: 'Catalytic converters', body: 'A catalytic converter works by dramatically increasing the rate of otherwise slow reactions (like CO oxidation) at the temperatures and timescales available inside an exhaust system, without being consumed itself.' },
+];
+
+const misconceptions = [
+  { claim: '"Reaction rate is constant throughout a reaction."', truth: 'For most reactions the rate slows down as reactants are used up and their concentration drops, since rate typically depends on concentration. Only zero-order reactions have a rate that stays constant regardless of concentration.' },
+  { claim: '"A fast reaction always has a large equilibrium constant."', truth: 'Rate (kinetics) and equilibrium position (thermodynamics, Kc) are independent concepts. A reaction can reach equilibrium quickly but sit mostly on the reactant side (small Kc), or reach a strongly product-favored equilibrium (large Kc) only slowly.' },
+  { claim: '"The rate is the same number no matter which species you track."', truth: 'The raw rate of change, Δ[X]/Δt, differs between species whenever their stoichiometric coefficients differ. Only after dividing each species’ raw rate by its own coefficient do all species give the same coefficient-normalized overall rate.' },
+  { claim: '"Average rate and instantaneous rate are the same thing."', truth: 'Average rate uses the net change over a finite interval (a secant slope); instantaneous rate is the tangent slope at one instant. They coincide only for a reaction whose rate happens to be constant over that interval.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 12, Kinetics, "Rates of Reactions" (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/12-1-chemical-reaction-rates" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 14, Chemical Kinetics.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 12, Chemical Kinetics, reaction rates and stoichiometry.' },
+];
+const sourcesNote = 'rate = −(1/coefficient)·Δ[reactant]/Δt = +(1/coefficient)·Δ[product]/Δt. This tool computes average rate over the given interval, not instantaneous or order-specific rate. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Pick reactant or product', body: 'Choose whether the tracked species is consumed or formed during the reaction.' },
+  { title: 'Enter the four values', body: 'Initial concentration, final concentration, elapsed time, and stoichiometric coefficient.' },
+  { title: 'Read both rates', body: 'The raw rate of change and the coefficient-normalized overall rate both display, with the 3D beaker and charts updating live.' },
+];
+
+const related = [
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance equations up to 4 species instantly.' },
+  { href: '/tools/equilibrium-constant-calculator', emoji: '🔁', title: 'Equilibrium Constant (Keq) Calculator', desc: 'Kc from equilibrium concentrations.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="reaction rate is how fast a concentration changes — a reactant’s drop or a product’s rise, divided by the time it took, then normalized by the species’ stoichiometric coefficient so every species in the equation gives the same overall rate."
+  howIntro="For a general reaction aA + bB → cC + dD, dividing each species’ raw rate of change by its own coefficient gives one shared overall rate: rate = −(1/a)Δ[A]/Δt = −(1/b)Δ[B]/Δt = +(1/c)Δ[C]/Δt = +(1/d)Δ[D]/Δt. The leading minus sign on reactants exists purely so that the reported rate is a positive number, since reactant concentrations fall (Δ[A] &lt; 0) while product concentrations rise (Δ[C] &gt; 0)."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where reaction rate actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-react" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Reactant (consumed)</button>
+      <button id="mode-prod" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Product (formed)</button>
+    </div>
+    <p class="mb-4 text-sm text-slate-500">Enter the species’ initial and final concentration, the elapsed time, and its stoichiometric coefficient.</p>
+    <div class="grid gap-4 sm:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">[X]<sub>initial</sub></span>
+        <input id="ci" type="number" step="any" placeholder="M" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">[X]<sub>final</sub></span>
+        <input id="cf" type="number" step="any" placeholder="M" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Δt (time)</span>
+        <input id="dt" type="number" step="any" placeholder="s" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Coefficient</span>
+        <input id="coef" type="number" step="any" value="1" min="0.0001" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-raw" class="text-sm text-slate-500">Raw rate of change |Δ[X]/Δt|</div><div id="r-raw" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Overall reaction rate (normalized)</div><div id="r-overall" class="mt-1 text-2xl font-bold">—</div></div>
+    </div>
+    <p id="rr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D concentration change</h2>
+      <p class="mt-1 text-sm text-slate-500">Set the initial concentration, final concentration and elapsed time; the beaker’s particle density shows the concentration falling (reactant) or rising (product), and the rate updates live. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-3">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[X]<sub>initial</sub> <span id="out-bci" class="font-mono text-green-600">0.50 M</span></span>
+          <input id="b-ci" type="range" min="0" max="2" step="0.01" value="0.5" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[X]<sub>final</sub> <span id="out-bcf" class="font-mono text-green-600">0.35 M</span></span>
+          <input id="b-cf" type="range" min="0" max="2" step="0.01" value="0.35" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Δt <span id="out-bdt" class="font-mono text-green-600">100 s</span></span>
+          <input id="b-dt" type="range" min="1" max="500" step="1" value="100" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Raw rate |Δ[X]/Δt| = <span id="out-brate" class="font-mono font-bold">—</span></div>
+      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Reaction rate graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Concentration vs time (illustrative decay/formation curve)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ct"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Rate vs Δt at fixed Δ[X] — an inverse curve</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-rdt"></canvas></div>
+        </figure>
+      </div>
+      <p class="mt-2 text-xs text-slate-400">The concentration-vs-time curve is a simple illustrative shape (exponential decay for reactants, saturating rise for products) — this calculator finds the <em>average</em> rate over an interval, not the instantaneous, order-specific rate that real kinetics (zero/first/second-order) would predict.</p>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      let species = 'reactant';
+      function switchMode(m) {
+        species = m;
+        el('mode-react').className = m === 'reactant' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('mode-prod').className = m === 'product' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        update();
+      }
+      function update() {
+        el('rr-err').textContent = '';
+        el('r-raw').textContent = '—';
+        el('r-overall').textContent = '—';
+        const ci = parseFloat(el('ci').value), cf = parseFloat(el('cf').value), dt = parseFloat(el('dt').value), coef = parseFloat(el('coef').value);
+        if (isNaN(ci) || isNaN(cf) || isNaN(dt) || isNaN(coef)) return;
+        if (dt <= 0) { el('rr-err').textContent = 'Time must be greater than zero.'; return; }
+        if (coef <= 0) { el('rr-err').textContent = 'Coefficient must be greater than zero.'; return; }
+        const delta = cf - ci;
+        const rawRate = Math.abs(delta) / dt;
+        const overallRate = Math.abs(delta) / (coef * dt);
+        if (species === 'reactant' && delta > 0) {
+          el('rr-err').textContent = 'Warning: a reactant’s concentration should decrease ([X]final < [X]initial).';
+        } else if (species === 'product' && delta < 0) {
+          el('rr-err').textContent = 'Warning: a product’s concentration should increase ([X]final > [X]initial).';
+        }
+        el('r-raw').textContent = fmt(rawRate) + ' M/s';
+        el('r-overall').textContent = fmt(overallRate) + ' M/s';
+      }
+      el('mode-react').addEventListener('click', () => switchMode('reactant'));
+      el('mode-prod').addEventListener('click', () => switchMode('product'));
+      ['ci', 'cf', 'dt', 'coef'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let beaker = null;
+      function bState() {
+        const ci = parseFloat(el('b-ci').value), cf = parseFloat(el('b-cf').value), dt = parseFloat(el('b-dt').value);
+        return { ci, cf, dt, rate: dt > 0 ? Math.abs(cf - ci) / dt : 0 };
+      }
+      function onB() {
+        const s = bState();
+        el('out-bci').textContent = s.ci.toFixed(2) + ' M';
+        el('out-bcf').textContent = s.cf.toFixed(2) + ' M';
+        el('out-bdt').textContent = s.dt.toFixed(0) + ' s';
+        el('out-brate').textContent = fmt(s.rate) + ' M/s';
+        try { if (beaker) beaker.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-ci').addEventListener('input', onB);
+      el('b-cf').addEventListener('input', onB);
+      el('b-dt').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.ct = new Chart(el('chart-ct'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: '[X]', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.12)', fill: true, tension: 0.35, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Concentration (M)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.rdt = new Chart(el('chart-rdt'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'Rate', data: [], borderColor: '#f59e0b', pointRadius: 0, tension: 0.3 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Δt (s)' } }, y: { title: { display: true, text: 'Rate (M/s)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        // Illustrative concentration-vs-time curve between (0, ci) and (dt, cf).
+        const N = 24, L = [], D = [];
+        const k = s.dt > 0 ? -Math.log(Math.max(1e-6, Math.min(1, s.cf > 0 || s.ci > 0 ? (s.cf / (s.ci || 1e-6)) : 1))) / s.dt : 0;
+        for (let i = 0; i <= N; i++) {
+          const t = (s.dt * i) / N;
+          L.push(fmt(t));
+          let val;
+          if (s.ci <= 0) { val = s.cf * (i / N); }
+          else if (isFinite(k) && k > 0) { val = s.ci * Math.exp(-k * t); }
+          else { val = s.ci + (s.cf - s.ci) * (i / N); }
+          D.push(+val.toFixed(4));
+        }
+        charts.ct.data.labels = L; charts.ct.data.datasets[0].data = D; charts.ct.update();
+
+        const delta = Math.abs(s.cf - s.ci);
+        const L2 = [], D2 = [];
+        for (let t = 5; t <= 500; t += 20) { L2.push(t.toFixed(0)); D2.push(+(delta / t).toFixed(5)); }
+        charts.rdt.data.labels = L2; charts.rdt.data.datasets[0].data = D2; charts.rdt.update();
+      }
+
+      // ---- interactive beaker ----
+      function glassBeaker(THREE) {
+        const g = new THREE.Group();
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        return g;
+      }
+      function initBeaker() {
+        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        s.scene.add(glassBeaker(THREE));
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, 4.6, 40), liquidMat);
+        liquid.position.y = -2.4 + 4.6 / 2; s.scene.add(liquid);
+        const MAX_P = 140;
+        const particleGeo = new THREE.SphereGeometry(0.11, 10, 10);
+        const particleMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
+        const particles = [];
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(particleGeo, particleMat); p.visible = false; s.scene.add(p); particles.push(p); }
+        function update(state) {
+          const cShow = species === 'reactant' ? state.ci : state.cf;
+          const nShow = Math.max(0, Math.min(MAX_P, Math.round(cShow * 60)));
+          for (let i = 0; i < MAX_P; i++) {
+            const p = particles[i];
+            if (i < nShow) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * 4.6, Math.sin(a) * r); p.visible = true; }
+            else p.visible = false;
+          }
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        beaker = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { switchMode('reactant'); } catch (e) { console.error('[reaction-rate] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[reaction-rate] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[reaction-rate] charts failed', e); }
+        if (window.THREE) {
+          try { initBeaker(); } catch (e) { console.error('[reaction-rate] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
+        } else { el('beaker3d-fallback').classList.remove('hidden'); }
+        mountResize([beaker]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
