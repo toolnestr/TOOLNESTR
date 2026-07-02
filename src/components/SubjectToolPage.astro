@@ -1,0 +1,227 @@
+---
+// Shared page template for the educational subject tools (Physics /
+// Chemistry / Biology). Renders every repeating section from data props so a
+// tool page only supplies its unique calculator + one interactive 3D/charts
+// block (via the `calculator` and `viz` slots) plus a few content arrays.
+//
+// Depth policy (2026-07-02): ONE interactive 3D scene per tool (in the `viz`
+// slot) + charts. The old two standalone auto-rotating 3D diagrams are dropped.
+//
+// Loads ToolLayout (breadcrumb/H1/intro/FAQ/SEO) and SubjectToolLibs
+// (Three.js + Chart.js + window.STK). Place the tool's own <script is:inline>
+// inside the `viz` slot AFTER its markup — SubjectToolLibs is emitted first.
+import ToolLayout from '../layouts/ToolLayout.astro';
+import SubjectToolLibs from './SubjectToolLibs.astro';
+
+const {
+  title, description, intro, category, faqs = [], hideDisclaimer = false,
+  badge = { label: category?.name || '', color: 'blue' },
+  howto,                 // { name, description, steps:[{name,text}] }
+  coreIdea,              // string — bold lead of "How it works"
+  howIntro,              // string — paragraph after the formulas
+  formulas = [],         // [{ expr, note }]
+  workedExamples = [],   // [{ title, tone:'slate'|'amber', given, rows:[{label,value}], note }]
+  comparison,            // { heading, note, headers:[{label,sub}], rows:[[...]], highlightIndex, footnote }
+  realWorld = [],        // [{ emoji, title, body }]
+  realWorldHeading = 'Where this actually matters',
+  misconceptions = [],   // [{ claim, truth }]
+  assumptions,           // { heading, intro, items:[{title,body}] }
+  sources = [],          // [{ html }]
+  sourcesIntro = 'The formulas here are standard, traceable to:',
+  sourcesNote,           // string (small print under sources)
+  howToUse = [],         // [{ title, body }]
+  related = [],          // [{ href, emoji, title, desc }]
+} = Astro.props;
+
+// Badge colour map — literal classes so Tailwind's JIT keeps them.
+const badgeClasses = {
+  blue: 'bg-blue-100 text-blue-700',
+  green: 'bg-green-100 text-green-700',
+  purple: 'bg-purple-100 text-purple-700',
+};
+const badgeDot = { blue: 'bg-blue-500', green: 'bg-green-500', purple: 'bg-purple-500' };
+const bc = badgeClasses[badge.color] || badgeClasses.blue;
+const bd = badgeDot[badge.color] || badgeDot.blue;
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} hideDisclaimer={hideDisclaimer}>
+  {howto && (
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'HowTo',
+      name: howto.name, description: howto.description,
+      step: howto.steps.map((s) => ({ '@type': 'HowToStep', name: s.name, text: s.text })),
+    })} />
+  )}
+
+  <span class={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${bc}`}>
+    <span class={`h-2 w-2 rounded-full ${bd}`}></span> {badge.label}
+  </span>
+
+  <style is:global>
+    @media print {
+      .no-print { display: none !important; }
+      a[href]::after { content: none !important; }
+      section { break-inside: avoid; }
+    }
+  </style>
+
+  <!-- Libraries first: Three.js + Chart.js + window.STK must exist before the
+       tool's own inline <script> (which lives in the `viz` slot) runs. -->
+  <SubjectToolLibs />
+
+  <!-- Unique: calculator -->
+  <slot name="calculator" />
+
+  <!-- Unique: one interactive 3D scene + charts (+ the tool's inline script) -->
+  <slot name="viz" />
+
+  <!-- ============ HOW IT WORKS (data-driven) ============ -->
+  {(coreIdea || formulas.length > 0 || howIntro) && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">How it works</h2>
+      {coreIdea && <p class="mt-2 text-slate-600"><strong>The core idea in one line:</strong> {coreIdea}</p>}
+      {formulas.length > 0 && (
+        <div class={`mt-4 grid gap-3 ${formulas.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          {formulas.map((f) => (
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="font-mono text-sm text-slate-800" set:html={f.expr} />
+              {f.note && <p class="mt-1 text-sm text-slate-600" set:html={f.note} />}
+            </div>
+          ))}
+        </div>
+      )}
+      {howIntro && <p class="mt-4 text-slate-600" set:html={howIntro} />}
+      <slot name="explainer" />
+
+      {workedExamples.map((ex) => (
+        <div class={`mt-6 rounded-xl border p-5 ${ex.tone === 'amber' ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+          <h3 class="font-semibold text-slate-900">{ex.title}</h3>
+          {ex.given && <p class="mt-1 text-sm text-slate-600"><strong>Given:</strong> <span set:html={ex.given} /></p>}
+          <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+            {ex.rows.map((r) => (
+              <div class={r.full ? 'sm:col-span-2' : ''}><span class="font-medium text-slate-700">{r.label}</span> <span class="text-slate-600" set:html={r.value} /></div>
+            ))}
+          </div>
+          {ex.note && <p class="mt-2 text-xs text-slate-500" set:html={ex.note} />}
+        </div>
+      ))}
+    </section>
+  )}
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  {comparison && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">{comparison.heading}</h2>
+      {comparison.note && <p class="mt-1 text-sm text-slate-600">{comparison.note}</p>}
+      <div class="mt-3 overflow-hidden rounded-xl border border-slate-200">
+        <table class="w-full table-fixed text-center text-xs sm:text-sm">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr>
+              {comparison.headers.map((h, i) => (
+                <th class={`px-2 py-2.5 font-semibold sm:px-3 ${i === 0 ? 'text-left' : ''}`}>{h.label}{h.sub && <span class="block text-[10px] font-normal text-slate-400">{h.sub}</span>}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700 tabular-nums">
+            {comparison.rows.map((row, ri) => (
+              <tr class={ri === comparison.highlightIndex ? 'bg-indigo-50 font-semibold text-indigo-700' : ''}>
+                {row.map((cell, ci) => (<td class={`px-2 py-2.5 sm:px-3 ${ci === 0 ? 'text-left' : ''}`} set:html={cell} />))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {comparison.footnote && <p class="mt-2 text-xs text-slate-400" set:html={comparison.footnote} />}
+    </section>
+  )}
+
+  <!-- ============ REAL-WORLD CONTEXT ============ -->
+  {realWorld.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">{realWorldHeading}</h2>
+      <div class="mt-4 space-y-4">
+        {realWorld.map((r) => (
+          <div class="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 class="font-semibold text-slate-900">{r.emoji} {r.title}</h3>
+            <p class="mt-1 text-sm text-slate-600" set:html={r.body} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- ============ MISCONCEPTIONS ============ -->
+  {misconceptions.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+      <div class="mt-4 space-y-4">
+        {misconceptions.map((m) => (
+          <div class="rounded-xl border border-slate-200 bg-white p-5">
+            <p class="text-sm font-semibold text-red-600" set:html={m.claim} />
+            <p class="mt-1 text-sm text-slate-600" set:html={m.truth} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- ============ ASSUMPTIONS (optional) ============ -->
+  {assumptions && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">{assumptions.heading}</h2>
+      {assumptions.intro && <p class="mt-2 text-slate-600" set:html={assumptions.intro} />}
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        {assumptions.items.map((it) => (
+          <div class="rounded-xl border border-slate-200 bg-white p-4">
+            <h3 class="text-sm font-semibold text-slate-900">{it.title}</h3>
+            <p class="mt-1 text-sm text-slate-600" set:html={it.body} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- ============ SOURCES ============ -->
+  {sources.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">Formula sources &amp; further reading</h2>
+      <p class="mt-2 text-slate-600">{sourcesIntro}</p>
+      <ul class="mt-3 space-y-2 text-sm text-slate-600">
+        {sources.map((s) => (<li set:html={'• ' + s.html} />))}
+      </ul>
+      {sourcesNote && <p class="mt-3 text-xs text-slate-400" set:html={sourcesNote} />}
+    </section>
+  )}
+
+  <!-- ============ HOW TO USE ============ -->
+  {howToUse.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">How to use this calculator</h2>
+      <div class={`mt-4 grid gap-4 ${howToUse.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        {howToUse.map((h, i) => (
+          <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">{i + 1}</span>
+            <h3 class="mt-3 font-semibold text-slate-900">{h.title}</h3>
+            <p class="mt-1 text-sm text-slate-600" set:html={h.body} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- ============ RELATED TOOLS ============ -->
+  {related.length > 0 && (
+    <section class="mt-12">
+      <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        {related.map((r) => (
+          <a href={r.href} class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
+            <span class="text-lg">{r.emoji}</span>
+            <h3 class="mt-1 text-sm font-semibold text-slate-900">{r.title}</h3>
+            <p class="mt-0.5 text-xs text-slate-500">{r.desc}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+</ToolLayout>

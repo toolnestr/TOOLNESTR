@@ -410,6 +410,7 @@ export const tools = [
   { slug: 'percent-concentration-calculator', title: 'Percent Concentration Calculator', short: 'w/v, w/w and v/v percent — solve any variable.', category: 'chemistry', emoji: '🧴', enabled: true, status: 'live' },
   { slug: 'ppm-calculator', title: 'PPM Calculator', short: 'Parts per million + ppm/%/ppb/mg-L conversions.', category: 'chemistry', emoji: '🌫️', enabled: true, status: 'live' },
   { slug: 'molality-calculator', title: 'Molality Calculator', short: 'm = mol solute / kg solvent — solve any variable.', category: 'chemistry', emoji: '🧊', enabled: true, status: 'live' },
+  { slug: 'normality-calculator', title: 'Normality Calculator', short: 'N = eq/L and N = M×n — solve any variable.', category: 'chemistry', emoji: '⚗️', enabled: true, status: 'live' },
   // ── Part 1: Finance (non-loan) ──
   { slug: 'roi-calculator', title: 'ROI Calculator', short: 'Return on investment from cost and gain.', category: 'finance', emoji: '📈', enabled: true, status: 'live' },
   { slug: 'emergency-fund-calculator', title: 'Emergency Fund Calculator', short: 'Recommended fund size from monthly costs.', category: 'finance', emoji: '🛡️', enabled: true, status: 'live' },
