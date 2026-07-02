@@ -405,7 +405,7 @@ export const tools = [
   { slug: 'projectile-motion-calculator', title: 'Projectile Motion Calculator', short: 'Range, height, and time from launch speed.', category: 'physics', emoji: '🎯', enabled: true, status: 'live' },
   { slug: 'free-fall-calculator', title: 'Free Fall Calculator', short: 'Time and velocity under gravity.', category: 'physics', emoji: '⬇️', enabled: true, status: 'live' },
   { slug: 'ph-calculator', title: 'pH Calculator', short: 'pH from concentration or reverse.', category: 'engineering', emoji: '🧪', enabled: true, status: 'live' },
-  { slug: 'dilution-calculator', title: 'Dilution Calculator', short: 'C1V1=C2V2 — solve for any variable.', category: 'engineering', emoji: '💧', enabled: true, status: 'live' },
+  { slug: 'dilution-calculator', title: 'Dilution Calculator', short: 'C1V1=C2V2 — solve for any variable.', category: 'chemistry', emoji: '💧', enabled: true, status: 'live' },
   // ── Part 1: Finance (non-loan) ──
   { slug: 'roi-calculator', title: 'ROI Calculator', short: 'Return on investment from cost and gain.', category: 'finance', emoji: '📈', enabled: true, status: 'live' },
   { slug: 'emergency-fund-calculator', title: 'Emergency Fund Calculator', short: 'Recommended fund size from monthly costs.', category: 'finance', emoji: '🛡️', enabled: true, status: 'live' },
