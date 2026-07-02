@@ -147,10 +147,30 @@ equation-balancer GCD-reduction correctness, limiting-reagent ratio logic) again
 all correct. Fixed one emoji collision in `tools.js` (Molar Mass's ⚗️ duplicated Normality's after
 the category move; changed to 🔬).
 
-**Batch-1 is now fully built: 20 flagship tools (10 Physics + 10 Chemistry) on `window.STK` +
-`SubjectToolPage`.** Not yet pushed to origin — local commits only, awaiting user go-ahead to push.
-Next: start Batch-2 (Biology's first tools, or continue the 10+10 Chem/Physics cadence per spec §23 —
-open question, see "Open Questions" below) once user reviews this batch.
+**Batch-1 is fully built: 20 flagship tools (10 Physics + 10 Chemistry) on `window.STK` +
+`SubjectToolPage`.** Pushed to origin/main (commits `a742cfc`, `127e746`, `5dcd3fa`) — Cloudflare
+Pages auto-deploy triggered.
+
+## Batch-2 — 12 more tools complete (2026-07-02, commit `25c01c5`)
+
+Built via 7 parallel agents (same technique as Batch-1's tail): Physics — Moment of Inertia,
+Centripetal Force, Terminal Velocity, Escape Velocity, Average Velocity, Acceleration. Chemistry —
+Theoretical Yield, Actual Yield, Mole Ratio, Empirical Formula, Molecular Formula, pOH.
+
+Post-build audit (code-only, no live browser per user instruction this round): confirmed 0 duplicate
+slugs and 0 new emoji collisions across all 489 tools (Node ESM import check), validated every
+inline `<script>`'s JS syntax via `new Function()`, and independently re-derived formulas outside
+the agents' own reports — moment of inertia (disk I=0.25, rod-end/rod-center ratio=4), centripetal
+force (car cornering Fc=9600N), terminal velocity (v_t≈53.48 m/s skydiver), escape velocity
+(Earth≈11.19 km/s, Moon≈2.375 km/s — both match canonical reference values), pOH (pOH=3.00 from
+[OH⁻]=1e-3, pOH=4.5 from pH=9.5), and theoretical yield (thermite 10g Al→20.7g Fe). All matched.
+
+**Batch-1 + Batch-2 combined: 32 flagship tools (16 Physics + 16 Chemistry) on the shared template.**
+Not yet pushed — awaiting user go-ahead. Remaining un-built from spec §8's Physics/Chemistry lists:
+Physics 17-50 (Kinetic/Potential Energy already exist as basic engineering pages, Work/Power/
+electricity/waves/thermo/fluids/optics/gravity sections), Chemistry 17-50 (Buffer, Ka/Kb, Titration,
+Keq, gas laws beyond ideal, atomic/periodic, thermochemistry, electrochemistry, kinetics/nuclear).
+Next: Batch-3, or pivot to Biology's first tools per the open cadence question below.
 
 ## How to resume this project in a new session
 
