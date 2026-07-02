@@ -1,0 +1,357 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Limiting Reagent Calculator';
+const description = 'Find the limiting reagent between two reactants with a live 3D visualization and charts. Compare moles/coefficient ratios and see leftover excess reagent.';
+const intro = 'Enter the moles (or mass and molar mass) and stoichiometric coefficients of two reactants to find which one limits the reaction, and how much of the other is left over.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is a limiting reagent?', a: 'The limiting reagent is the reactant that runs out first, stopping the reaction and capping how much product can form. The other reactant is left over in excess.' },
+  { q: 'How do you find the limiting reagent?', a: 'Divide each reactant\'s moles by its coefficient in the balanced equation: moles ÷ coefficient. The reactant with the smaller ratio is limiting, because it runs out first relative to what the reaction needs.' },
+  { q: 'How do I calculate the leftover excess reagent?', a: 'Use the limiting reagent\'s ratio to find how much of the excess reagent is actually consumed: consumed = (limiting ratio) × (excess coefficient). Subtract that from the excess reagent\'s starting moles to get what remains.' },
+  { q: 'Can I use mass instead of moles?', a: 'Yes — convert mass to moles first with moles = mass ÷ molar mass. This calculator includes a mass+molar-mass mode that does that conversion automatically for each reactant.' },
+  { q: 'Why does the limiting reagent determine the theoretical yield?', a: 'Because the reaction cannot proceed past the point where the limiting reagent is consumed, the moles of product are always calculated from the limiting reagent\'s moles and the product\'s coefficient — never from the excess reagent.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Limiting Reagent Calculator',
+  description: 'Determine which of two reactants limits a reaction and how much of the other remains.',
+  steps: [
+    { name: 'Enter reactant amounts', text: 'Type moles directly, or switch to mass + molar mass for each reactant.' },
+    { name: 'Enter the coefficients', text: 'Use the coefficients for A and B from the balanced equation.' },
+    { name: 'Read the result', text: 'The calculator names the limiting reagent, shows both ratios, and the excess remaining.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'ratio = mol ÷ coefficient', note: 'compute for each reactant' },
+  { expr: 'limiting = min(ratio<sub>A</sub>, ratio<sub>B</sub>)', note: 'smaller ratio runs out first' },
+  { expr: 'excess remaining = mol<sub>other</sub> − (ratio<sub>limiting</sub> × coeff<sub>other</sub>)', note: 'moles of the non-limiting reactant left over' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — ammonia synthesis', tone: 'slate',
+    given: 'N₂ + 3 H₂ → 2 NH₃. You have 2.0 mol N₂ and 3.0 mol H₂.',
+    rows: [
+      { label: 'Ratio N₂:', value: '2.0 ÷ 1 = 2.0' },
+      { label: 'Ratio H₂:', value: '3.0 ÷ 3 = 1.0' },
+      { label: 'Limiting reagent:', value: 'H₂ (smaller ratio: 1.0 &lt; 2.0)' },
+      { label: 'N₂ consumed:', value: '1.0 × 1 = 1.0 mol → excess N₂ = 2.0 − 1.0 = 1.0 mol', full: true },
+    ],
+    note: 'Product formed: moles NH₃ = 1.0 (limiting ratio) × 2 (NH₃ coefficient) = 2.0 mol.',
+  },
+  {
+    title: 'Worked example 2 — using mass', tone: 'amber',
+    given: '2 H₂ + O₂ → 2 H₂O. You have 10.0 g H₂ (M = 2.016 g/mol) and 40.0 g O₂ (M = 32.00 g/mol).',
+    rows: [
+      { label: 'Moles H₂:', value: '10.0 ÷ 2.016 = 4.96 mol' },
+      { label: 'Moles O₂:', value: '40.0 ÷ 32.00 = 1.25 mol' },
+      { label: 'Ratio H₂:', value: '4.96 ÷ 2 = 2.48' },
+      { label: 'Ratio O₂:', value: '1.25 ÷ 1 = 1.25' },
+      { label: 'Limiting reagent:', value: 'O₂ (smaller ratio: 1.25 &lt; 2.48)', full: true },
+      { label: 'Excess H₂:', value: 'consumed = 1.25 × 2 = 2.50 mol → excess = 4.96 − 2.50 = 2.46 mol', full: true },
+    ],
+  },
+];
+
+const comparison = {
+  heading: 'Limiting vs excess reagent',
+  note: 'Both reactants start the reaction; only one determines how far it can go.',
+  headers: [{ label: 'Property' }, { label: 'Limiting reagent' }, { label: 'Excess reagent' }],
+  rows: [
+    ['mol ÷ coefficient', 'Smaller', 'Larger'],
+    ['Amount remaining after reaction', 'Zero (fully consumed)', 'Greater than zero'],
+    ['Determines theoretical yield?', 'Yes', 'No'],
+    ['Typical lab strategy', 'Measured precisely', 'Often added in excess deliberately'],
+  ],
+  highlightIndex: 0,
+  footnote: 'Chemists often add the more expensive or reactive species as the limiting reagent and the cheaper one in excess to drive the reaction to completion.',
+};
+
+const realWorld = [
+  { emoji: '🏭', title: 'Industrial reactor efficiency', body: 'Plants deliberately feed one reagent in excess (often the cheaper one) so the more valuable reagent is the limiting one and gets converted as completely as possible, minimizing waste of the expensive input.' },
+  { emoji: '💊', title: 'Pharmaceutical synthesis', body: 'Drug synthesis routes are costed and planned around the limiting reagent — often a complex, expensive intermediate — so its molar quantity sets the maximum batch of active ingredient achievable.' },
+  { emoji: '🔬', title: 'Analytical & lab chemistry', body: 'Titrations, precipitations and gravimetric analysis all rely on knowing which reagent limits the reaction to correctly relate the measured product back to the concentration of an unknown.' },
+];
+
+const misconceptions = [
+  { claim: '"The reactant with fewer moles is always limiting."', truth: 'Not necessarily — it depends on the stoichiometric coefficients too. 1 mol of a reactant with coefficient 1 can out-ratio 5 mol of a reactant with coefficient 10 (ratio 1.0 vs 0.5).' },
+  { claim: '"The limiting reagent has the smallest mass."', truth: 'Mass is irrelevant until converted to moles and divided by its coefficient — molar mass differences mean the smaller mass can easily correspond to more moles.' },
+  { claim: '"You need both reactants\' coefficients to be equal to compare them."', truth: 'The whole point of dividing by each coefficient is to normalize different coefficients onto a comparable "reaction units" scale — unequal coefficients are the normal case.' },
+  { claim: '"Excess reagent has no effect on the outcome."', truth: 'Excess reagent can shift equilibrium, affect reaction rate, or need to be removed/recycled downstream — it is left over, not irrelevant to the process.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 4.4, Reaction Yields (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/4-4-reaction-yields" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3.7, Limiting Reactants.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 3, Stoichiometry, section on limiting reactants.' },
+];
+const sourcesNote = 'Limiting reagent = the reactant with the smaller (moles ÷ coefficient) ratio. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter amounts', body: 'Moles directly, or toggle to mass + molar mass per reactant.' },
+  { title: 'Enter coefficients', body: 'From the balanced equation for reactants A and B.' },
+  { title: 'Read the verdict', body: 'See which reagent limits the reaction and how much excess remains.' },
+];
+
+const related = [
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance an equation to get coefficients.' },
+  { href: '/tools/percent-yield-calculator', emoji: '🎯', title: 'Percent Yield Calculator', desc: 'Actual vs theoretical yield, solve any variable.' },
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="whichever reactant runs out first — smallest moles-divided-by-coefficient ratio — stops the reaction and sets the ceiling on how much product can form."
+  howIntro="Dividing each reactant's moles by its own coefficient converts both amounts onto the same 'reaction units' scale, so they become directly comparable regardless of how the equation is written. The smaller ratio identifies the limiting reagent; multiplying that ratio by the other reactant's coefficient tells you exactly how much of it gets consumed, and the rest is the excess remaining."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where limiting reagents actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-mol" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Moles directly</button>
+      <button id="mode-mass" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Mass + molar mass</button>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-indigo-700">Reactant A</h3>
+        <div id="a-mol-fields" class="mt-2">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Moles A (mol)</span>
+            <input id="a-mol" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+        <div id="a-mass-fields" class="mt-2 hidden space-y-2">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Mass A (g)</span>
+            <input id="a-mass" type="number" step="any" placeholder="g" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">Molar mass A (g/mol)</span>
+            <input id="a-molar" type="number" step="any" placeholder="g/mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+        <label class="mt-2 block"><span class="text-sm font-medium text-slate-700">Coefficient A</span>
+          <input id="a-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      </div>
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-green-700">Reactant B</h3>
+        <div id="b-mol-fields" class="mt-2">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Moles B (mol)</span>
+            <input id="b-mol" type="number" step="any" placeholder="mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+        <div id="b-mass-fields" class="mt-2 hidden space-y-2">
+          <label class="block"><span class="text-sm font-medium text-slate-700">Mass B (g)</span>
+            <input id="b-mass" type="number" step="any" placeholder="g" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-sm font-medium text-slate-700">Molar mass B (g/mol)</span>
+            <input id="b-molar" type="number" step="any" placeholder="g/mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+        <label class="mt-2 block"><span class="text-sm font-medium text-slate-700">Coefficient B</span>
+          <input id="b-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      </div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Limiting reagent</div><div id="r-limiting" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Ratios (A / B)</div><div id="r-ratios" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Excess remaining</div><div id="r-excess" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="lr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: 3D piles + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D reactant piles</h2>
+      <p class="mt-1 text-sm text-slate-500">Each pile is sized by moles of that reactant. Drag the slider to change moles of A and watch which pile empties (limiting) first. Drag to orbit.</p>
+      <label class="mt-3 block">
+        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Moles A (live) <span id="out-amol" class="font-mono text-green-600">2.00 mol</span></span>
+        <input id="b-amol" type="range" min="0.1" max="10" step="0.1" value="2" class="mt-2 w-full accent-green-600" />
+      </label>
+      <div id="lr3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
+      <p id="lr3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Limiting reagent graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">mol ÷ coefficient — shorter bar is limiting</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ratios"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Excess B remaining vs moles A (fixed moles B)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-excess"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      let mode = 'mol';
+      function switchMode(m) {
+        mode = m;
+        el('mode-mol').className = m === 'mol' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('mode-mass').className = m === 'mass' ? 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white' : 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('a-mol-fields').className = m === 'mol' ? 'mt-2' : 'mt-2 hidden';
+        el('a-mass-fields').className = m === 'mass' ? 'mt-2 space-y-2' : 'mt-2 hidden space-y-2';
+        el('b-mol-fields').className = m === 'mol' ? 'mt-2' : 'mt-2 hidden';
+        el('b-mass-fields').className = m === 'mass' ? 'mt-2 space-y-2' : 'mt-2 hidden space-y-2';
+        updateCalc();
+      }
+      function getMoles(prefix) {
+        if (mode === 'mol') {
+          const v = parseFloat(el(prefix + '-mol').value);
+          return isNaN(v) ? null : v;
+        }
+        const mass = parseFloat(el(prefix + '-mass').value), molar = parseFloat(el(prefix + '-molar').value);
+        if (isNaN(mass) || isNaN(molar) || molar <= 0) return null;
+        return mass / molar;
+      }
+      function updateCalc() {
+        el('lr-err').textContent = '';
+        el('r-limiting').textContent = '—'; el('r-ratios').textContent = '—'; el('r-excess').textContent = '—';
+        const molA = getMoles('a'), molB = getMoles('b');
+        const coeffA = parseFloat(el('a-coeff').value), coeffB = parseFloat(el('b-coeff').value);
+        if (molA === null || molB === null || isNaN(coeffA) || isNaN(coeffB)) return;
+        if (coeffA <= 0 || coeffB <= 0) { el('lr-err').textContent = 'Coefficients must be positive.'; return; }
+        if (molA < 0 || molB < 0) { el('lr-err').textContent = 'Amounts cannot be negative.'; return; }
+        const ratioA = molA / coeffA, ratioB = molB / coeffB;
+        const aLimiting = ratioA <= ratioB;
+        const limitingName = aLimiting ? 'A' : 'B';
+        el('r-limiting').textContent = 'Reactant ' + limitingName;
+        el('r-ratios').textContent = fmt(ratioA) + ' / ' + fmt(ratioB);
+        if (aLimiting) {
+          const consumedB = ratioA * coeffB;
+          const excessB = molB - consumedB;
+          el('r-excess').textContent = fmt(excessB) + ' mol B';
+        } else {
+          const consumedA = ratioB * coeffA;
+          const excessA = molA - consumedA;
+          el('r-excess').textContent = fmt(excessA) + ' mol A';
+        }
+        updateCharts();
+      }
+      el('mode-mol').addEventListener('click', () => switchMode('mol'));
+      el('mode-mass').addEventListener('click', () => switchMode('mass'));
+      ['a-mol', 'a-mass', 'a-molar', 'a-coeff', 'b-mol', 'b-mass', 'b-molar', 'b-coeff'].forEach((id) => el(id).addEventListener('input', updateCalc));
+
+      // ---- 3D + charts state (independent live slider, mirrors mol A) ----
+      function bState() {
+        const aMol = parseFloat(el('b-amol').value);
+        const bMol = parseFloat(el('b-mol') && !el('b-mol-fields').className.includes('hidden') ? el('b-mol').value : NaN);
+        const coeffA = parseFloat(el('a-coeff').value) || 1;
+        const coeffB = parseFloat(el('b-coeff').value) || 1;
+        const fixedB = isNaN(bMol) ? 3 : bMol;
+        return { aMol, bMol: fixedB, coeffA, coeffB };
+      }
+      let scene3d = null;
+      function onSlider() {
+        const s = bState();
+        el('out-amol').textContent = s.aMol.toFixed(2) + ' mol';
+        try { if (scene3d) scene3d.update(s); } catch (e) {}
+      }
+      el('b-amol').addEventListener('input', onSlider);
+
+      // ---- charts ----
+      const charts = {};
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.ratios = new Chart(el('chart-ratios'), {
+          type: 'bar',
+          data: { labels: ['A', 'B'], datasets: [{ label: 'mol / coeff', data: [0, 0], backgroundColor: ['#6366f1', '#10b981'] }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'mol / coefficient' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.excess = new Chart(el('chart-excess'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'Excess B (mol)', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', fill: true, tension: 0.25, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Moles A' } }, y: { title: { display: true, text: 'Excess B remaining (mol)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts();
+      }
+      function updateCharts() {
+        if (!charts.ready) return;
+        const molA = getMoles('a'), molB = getMoles('b');
+        const coeffA = parseFloat(el('a-coeff').value) || 1, coeffB = parseFloat(el('b-coeff').value) || 1;
+        const ra = molA === null ? 0 : molA / coeffA;
+        const rb = molB === null ? 0 : molB / coeffB;
+        charts.ratios.data.datasets[0].data = [ra, rb];
+        charts.ratios.data.datasets[0].backgroundColor = [ra <= rb ? '#4f46e5' : '#a5b4fc', rb < ra ? '#059669' : '#86efac'];
+        charts.ratios.update();
+
+        const fixedB = molB === null ? 3 : molB;
+        const L = [], D = [];
+        for (let a = 0.1; a <= 10.001; a += 0.2) {
+          const ratioA = a / coeffA, ratioB = fixedB / coeffB;
+          let excessB;
+          if (ratioA <= ratioB) { excessB = fixedB - ratioA * coeffB; } else { excessB = fixedB; }
+          L.push(a.toFixed(1)); D.push(+Math.max(0, excessB).toFixed(4));
+        }
+        charts.excess.data.labels = L; charts.excess.data.datasets[0].data = D; charts.excess.update();
+      }
+
+      // ---- 3D piles ----
+      function initScene() {
+        const c = el('lr3d'); if (!c) throw new Error('no lr3d container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const matA = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
+        const matB = new THREE.MeshStandardMaterial({ color: 0x10b981 });
+        const matLimit = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        const MAX_P = 60;
+        const geo = new THREE.SphereGeometry(0.35, 12, 12);
+        const pilesA = [], pilesB = [];
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matA); p.visible = false; s.scene.add(p); pilesA.push(p); }
+        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matB); p.visible = false; s.scene.add(p); pilesB.push(p); }
+
+        function layout(pile, count, cx, mat, isLimiting) {
+          const perRow = 6;
+          for (let i = 0; i < pile.length; i++) {
+            const p = pile[i];
+            if (i < count) {
+              const row = Math.floor(i / perRow), col = i % perRow;
+              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
+              p.material = isLimiting ? matLimit : mat;
+              p.visible = true;
+            } else p.visible = false;
+          }
+        }
+        function update(state) {
+          const ratioA = state.aMol / state.coeffA, ratioB = state.bMol / state.coeffB;
+          const aLimiting = ratioA <= ratioB;
+          const nA = Math.max(1, Math.min(MAX_P, Math.round(state.aMol * 4)));
+          const nB = Math.max(1, Math.min(MAX_P, Math.round(state.bMol * 4)));
+          layout(pilesA, nA, -3.2, matA, aLimiting);
+          layout(pilesB, nB, 3.2, matB, !aLimiting);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        frame();
+        scene3d = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { switchMode('mol'); } catch (e) { console.error('[limiting-reagent] calc init failed', e); }
+        try { el('a-mol').value = '2'; el('b-mol').value = '3'; el('a-coeff').value = '1'; el('b-coeff').value = '3'; updateCalc(); } catch (e) {}
+        try { onSlider(); } catch (e) { console.error('[limiting-reagent] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[limiting-reagent] charts failed', e); }
+        if (window.THREE) {
+          try { initScene(); } catch (e) { console.error('[limiting-reagent] scene failed', e); el('lr3d-fallback').classList.remove('hidden'); }
+        } else { el('lr3d-fallback').classList.remove('hidden'); }
+        mountResize([scene3d]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

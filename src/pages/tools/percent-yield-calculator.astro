@@ -1,0 +1,329 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Percent Yield Calculator';
+const description = 'Percent yield calculator with a live 3D beaker fill level and charts. Solve % yield = (actual / theoretical) × 100 for any of the three variables.';
+const intro = 'Find percent yield from actual and theoretical yield, or solve for either yield given the other two. A live 3D beaker shows the actual fill level against the theoretical line.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is percent yield?', a: 'Percent yield is the ratio of the actual amount of product obtained in a reaction to the theoretical maximum predicted by stoichiometry, expressed as a percentage: % yield = (actual ÷ theoretical) × 100.' },
+  { q: 'What is theoretical yield?', a: 'Theoretical yield is the maximum amount of product a reaction could produce, calculated from the limiting reagent using stoichiometry, assuming the reaction goes to completion with no losses.' },
+  { q: 'Why is actual yield always less than theoretical yield?', a: 'Real reactions lose product to side reactions, incomplete conversion, purification steps (filtration, recrystallization, transfer losses), and reactions that do not go fully to completion — so actual yield is almost always below 100%.' },
+  { q: 'Can percent yield be over 100%?', a: 'It can appear so, usually due to impurities, residual solvent, or measurement error inflating the measured mass of "product" — true percent yield cannot exceed 100% for a correctly identified, pure product.' },
+  { q: 'How is percent yield different from atom economy?', a: 'Percent yield compares actual product recovered to the theoretical maximum for a given reaction. Atom economy is a separate measure of how much of the reactant atoms end up in the desired product versus waste byproducts, even at 100% yield.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Percent Yield Calculator',
+  description: 'Calculate percent yield, or solve for actual or theoretical yield given the other two values.',
+  steps: [
+    { name: 'Pick what to solve for', text: 'Choose % yield, actual yield, or theoretical yield.' },
+    { name: 'Enter the two known values', text: 'Type the two quantities you already have — in grams or moles.' },
+    { name: 'Read the result', text: 'The third value solves instantly, and the 3D beaker fill level updates.' },
+  ],
+};
+
+const formulas = [
+  { expr: '% yield = (actual ÷ theoretical) × 100', note: 'the core definition' },
+  { expr: 'actual = (% yield ÷ 100) × theoretical', note: 'solve for actual yield' },
+  { expr: 'theoretical = actual ÷ (% yield ÷ 100)', note: 'solve for theoretical yield' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — aspirin synthesis', tone: 'slate',
+    given: 'A student\'s aspirin synthesis has a theoretical yield of 5.20 g. They recover 4.42 g of purified aspirin. Find the percent yield.',
+    rows: [
+      { label: 'Formula:', value: '% yield = (actual ÷ theoretical) × 100' },
+      { label: 'Substitute:', value: '% yield = (4.42 ÷ 5.20) × 100' },
+      { label: 'Result:', value: '% yield = 85.0%', full: true },
+    ],
+    note: 'A yield in the 80–90% range is typical for a well-executed undergraduate organic synthesis.',
+  },
+  {
+    title: 'Worked example 2 — solving for theoretical yield', tone: 'amber',
+    given: 'A reaction is reported to have an 72.0% yield, and the chemist actually isolated 18.0 g of product. Find the theoretical yield.',
+    rows: [
+      { label: 'Rearrange:', value: 'theoretical = actual ÷ (% yield ÷ 100)' },
+      { label: 'Substitute:', value: 'theoretical = 18.0 ÷ (72.0 ÷ 100) = 18.0 ÷ 0.72' },
+      { label: 'Result:', value: 'theoretical = 25.0 g', full: true },
+    ],
+  },
+];
+
+const comparison = {
+  heading: 'Typical percent yield by reaction context',
+  note: 'Approximate ranges seen in practice — actual results vary widely by reaction and technique.',
+  headers: [{ label: 'Context' }, { label: 'Typical % yield' }, { label: 'Why' }],
+  rows: [
+    ['Undergraduate teaching lab', '60–90%', 'Time-limited technique, multiple transfer/purification losses'],
+    ['Optimized industrial process', '90–99%', 'Engineered for minimal loss, recycled excess reagent'],
+    ['Multi-step total synthesis', '&lt;50% overall', 'Yield losses compound across many sequential steps'],
+    ['Simple 1-step precipitation', '85–98%', 'Few transfer steps, straightforward isolation'],
+  ],
+  highlightIndex: 1,
+  footnote: 'Percent yield close to 100% signals an efficient, well-controlled reaction and workup; values over 100% usually indicate impure product.',
+};
+
+const realWorld = [
+  { emoji: '🏭', title: 'Process chemistry & scale-up', body: 'Percent yield directly drives production cost — a process chemist optimizing from 70% to 95% yield can cut raw-material costs and waste disposal by a comparable margin at industrial scale.' },
+  { emoji: '💊', title: 'Pharmaceutical manufacturing', body: 'Multi-step drug syntheses compound percent yield across every step, so even small per-step improvements have an outsized effect on the overall yield and cost of the final active pharmaceutical ingredient.' },
+  { emoji: '🧪', title: 'Academic & research labs', body: 'Reported percent yield in a paper or lab report is a standard way to judge how efficiently a synthesis was executed, and is required reporting for any new synthetic method.' },
+];
+
+const misconceptions = [
+  { claim: '"Percent yield over 100% means the reaction was better than expected."', truth: 'It almost always signals a measurement or purity problem — leftover solvent, unreacted starting material, or an inaccurate theoretical yield calculation — not a genuinely super-efficient reaction.' },
+  { claim: '"Percent yield and purity are the same thing."', truth: 'Percent yield measures quantity recovered relative to the theoretical maximum; purity measures how much of that recovered mass is actually the desired compound. A product can have high yield and low purity, or vice versa.' },
+  { claim: '"Low percent yield means the reaction didn\'t work."', truth: 'A low yield can still mean the reaction proceeded correctly — losses often come from workup and purification steps, not from the chemistry itself failing.' },
+  { claim: '"Theoretical yield is what you should always aim to match exactly."', truth: 'Theoretical yield assumes ideal, complete conversion with zero losses — an idealized ceiling, not a realistic target. High yields (80%+) are usually considered excellent.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 4.4, Reaction Yields (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/4-4-reaction-yields" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3.7, Limiting Reactants and Percent Yield.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 3, Stoichiometry, section on percent yield.' },
+];
+const sourcesNote = 'Percent yield = (actual yield ÷ theoretical yield) × 100. Actual and theoretical yield must use the same units (both grams or both moles). Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Choose the unknown', body: '% yield, actual yield, or theoretical yield.' },
+  { title: 'Enter the two known values', body: 'Use consistent units (both g or both mol) for actual and theoretical.' },
+  { title: 'See the beaker fill', body: 'Drag the sliders to watch the actual fill level track the theoretical outline.' },
+];
+
+const related = [
+  { href: '/tools/limiting-reagent-calculator', emoji: '⚖️', title: 'Limiting Reagent Calculator', desc: 'Find which reactant runs out first.' },
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance an equation to get coefficients.' },
+  { href: '/tools/atomic-mass-calculator', emoji: '⚗️', title: 'Molar Mass Calculator', desc: 'Molar mass from a chemical formula.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="percent yield is simply what you actually got divided by the theoretical maximum you could have gotten, turned into a percentage — a direct measure of how efficiently a reaction was carried out."
+  howIntro="Rearranged, the same relationship solves any of the three quantities: actual = (%yield/100) × theoretical, and theoretical = actual ÷ (%yield/100). Because theoretical yield comes from stoichiometry (via the limiting reagent), percent yield is the natural bridge between the ideal, calculated amount of product and what actually ends up in the flask."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where percent yield actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-pct" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Solve % yield</button>
+      <button id="mode-actual" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Solve actual yield</button>
+      <button id="mode-theo" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Solve theoretical yield</button>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">% Yield</span>
+        <input id="f-pct" type="number" step="any" placeholder="%" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Actual yield</span>
+        <input id="f-actual" type="number" step="any" placeholder="g or mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Theoretical yield</span>
+        <input id="f-theo" type="number" step="any" placeholder="g or mol" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Use the same unit (g or mol) for actual and theoretical yield.</p>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div id="lab-1" class="text-sm opacity-80">% Yield</div><div id="r-1" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-2" class="text-sm text-slate-500">Actual yield</div><div id="r-2" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-3" class="text-sm text-slate-500">Theoretical yield</div><div id="r-3" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="py-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D yield beaker</h2>
+      <p class="mt-1 text-sm text-slate-500">The dashed outline marks the theoretical yield level; the filled liquid tracks the actual yield. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Theoretical yield <span id="out-btheo" class="font-mono text-green-600">10.00</span></span>
+          <input id="b-theo" type="range" min="1" max="20" step="0.1" value="10" class="mt-2 w-full accent-green-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Actual yield <span id="out-bactual" class="font-mono text-green-600">8.00</span></span>
+          <input id="b-actual" type="range" min="0" max="20" step="0.1" value="8" class="mt-2 w-full accent-green-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">% Yield = <span id="out-bpct" class="font-mono font-bold">80.0%</span></div>
+      <div id="yield3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="yield3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Percent yield graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Actual vs theoretical yield</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-bar"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">% yield vs actual yield (fixed theoretical)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-line"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      let mode = 'pct';
+      function switchMode(m) {
+        mode = m;
+        const active = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white';
+        const inactive = 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('mode-pct').className = m === 'pct' ? active : inactive;
+        el('mode-actual').className = m === 'actual' ? active : inactive;
+        el('mode-theo').className = m === 'theo' ? active : inactive;
+        el('f-pct').disabled = m === 'pct';
+        el('f-actual').disabled = m === 'actual';
+        el('f-theo').disabled = m === 'theo';
+        [el('f-pct'), el('f-actual'), el('f-theo')].forEach((inp) => { inp.classList.toggle('bg-slate-50', inp.disabled); inp.classList.toggle('text-slate-400', inp.disabled); });
+        update();
+      }
+      function update() {
+        el('py-err').textContent = '';
+        ['r-1', 'r-2', 'r-3'].forEach((id) => (el(id).textContent = '—'));
+        const pct = parseFloat(el('f-pct').value), actual = parseFloat(el('f-actual').value), theo = parseFloat(el('f-theo').value);
+        if (mode === 'pct') {
+          if (isNaN(actual) || isNaN(theo)) return;
+          if (theo === 0) { el('py-err').textContent = 'Theoretical yield cannot be zero.'; return; }
+          if (actual < 0 || theo < 0) { el('py-err').textContent = 'Yields cannot be negative.'; return; }
+          const p = (actual / theo) * 100;
+          el('r-1').textContent = fmt(p) + '%'; el('r-2').textContent = fmt(actual); el('r-3').textContent = fmt(theo);
+        } else if (mode === 'actual') {
+          if (isNaN(pct) || isNaN(theo)) return;
+          if (theo < 0 || pct < 0) { el('py-err').textContent = 'Values cannot be negative.'; return; }
+          const a = (pct / 100) * theo;
+          el('r-1').textContent = fmt(pct) + '%'; el('r-2').textContent = fmt(a); el('r-3').textContent = fmt(theo);
+        } else {
+          if (isNaN(pct) || isNaN(actual)) return;
+          if (pct === 0) { el('py-err').textContent = '% yield cannot be zero when solving for theoretical yield.'; return; }
+          if (actual < 0 || pct < 0) { el('py-err').textContent = 'Values cannot be negative.'; return; }
+          const t = actual / (pct / 100);
+          el('r-1').textContent = fmt(pct) + '%'; el('r-2').textContent = fmt(actual); el('r-3').textContent = fmt(t);
+        }
+      }
+      el('mode-pct').addEventListener('click', () => switchMode('pct'));
+      el('mode-actual').addEventListener('click', () => switchMode('actual'));
+      el('mode-theo').addEventListener('click', () => switchMode('theo'));
+      ['f-pct', 'f-actual', 'f-theo'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let beaker = null;
+      function bState() {
+        const theo = parseFloat(el('b-theo').value), actual = parseFloat(el('b-actual').value);
+        return { theo, actual: Math.min(actual, theo * 1.5), pct: theo > 0 ? (actual / theo) * 100 : 0 };
+      }
+      function onB() {
+        const s = bState();
+        el('out-btheo').textContent = s.theo.toFixed(2);
+        el('out-bactual').textContent = parseFloat(el('b-actual').value).toFixed(2);
+        el('out-bpct').textContent = fmt(s.pct) + '%';
+        try { if (beaker) beaker.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-theo').addEventListener('input', onB);
+      el('b-actual').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.bar = new Chart(el('chart-bar'), {
+          type: 'bar',
+          data: { labels: ['Yield'], datasets: [
+            { label: 'Actual', data: [0], backgroundColor: '#10b981' },
+            { label: 'Theoretical', data: [0], backgroundColor: '#94a3b8' },
+          ] },
+          options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Yield (g or mol)' }, beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.line = new Chart(el('chart-line'), {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: '% yield', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0.25, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Actual yield' } }, y: { title: { display: true, text: '% yield' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        charts.bar.data.datasets[0].data = [parseFloat(el('b-actual').value)];
+        charts.bar.data.datasets[1].data = [s.theo];
+        charts.bar.update();
+
+        const L = [], D = [];
+        const maxA = s.theo * 1.5;
+        for (let a = 0; a <= maxA + 0.001; a += Math.max(0.1, maxA / 40)) {
+          L.push(a.toFixed(1)); D.push(+((a / s.theo) * 100).toFixed(2));
+        }
+        charts.line.data.labels = L; charts.line.data.datasets[0].data = D; charts.line.update();
+      }
+
+      // ---- interactive beaker: dashed theoretical outline + filled actual liquid ----
+      function glassBeaker(THREE) {
+        const g = new THREE.Group();
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        return g;
+      }
+      function initBeaker() {
+        const c = el('yield3d'); if (!c) throw new Error('no yield3d container');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        s.scene.add(glassBeaker(THREE));
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, roughness: 0.3 });
+        const outlineMat = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.18, gapSize: 0.12 });
+        let liquid = null, outline = null;
+        function heightFor(v, theoMax) {
+          const frac = Math.max(0.02, Math.min(1, v / (theoMax * 1.5)));
+          return frac * 4.6;
+        }
+        function update(state) {
+          const theoMax = Math.max(1, state.theo);
+          const hActual = heightFor(state.actual, theoMax);
+          const hTheo = heightFor(state.theo, theoMax);
+          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); }
+          liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hActual, 40), liquidMat);
+          liquid.position.y = -2.4 + hActual / 2; s.scene.add(liquid);
+
+          if (outline) { s.scene.remove(outline); outline.geometry.dispose(); }
+          const yTheo = -2.4 + hTheo;
+          const pts = [];
+          const segs = 64;
+          for (let i = 0; i <= segs; i++) { const a = (i / segs) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * 2.15, yTheo, Math.sin(a) * 2.15)); }
+          const outlineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+          outline = new THREE.LineLoop(outlineGeo, outlineMat);
+          outline.computeLineDistances();
+          s.scene.add(outline);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        frame();
+        beaker = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { switchMode('pct'); } catch (e) { console.error('[percent-yield] calc init failed', e); }
+        try { el('f-actual').value = '8'; el('f-theo').value = '10'; update(); } catch (e) {}
+        try { onB(); } catch (e) { console.error('[percent-yield] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[percent-yield] charts failed', e); }
+        if (window.THREE) {
+          try { initBeaker(); } catch (e) { console.error('[percent-yield] beaker failed', e); el('yield3d-fallback').classList.remove('hidden'); }
+        } else { el('yield3d-fallback').classList.remove('hidden'); }
+        mountResize([beaker]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

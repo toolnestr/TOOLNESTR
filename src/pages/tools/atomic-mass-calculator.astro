@@ -1,10 +1,11 @@
 ---
-import ToolLayout from '../../layouts/ToolLayout.astro';
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
 
 const title = 'Molar Mass Calculator';
-const description = 'Free online molar mass calculator. Enter a chemical formula to calculate the molecular or molar mass in g/mol from atomic masses.';
-const intro = 'Type a chemical formula (e.g., H2O, NaCl, C6H12O6) to calculate its molar mass.';
-const category = { id: 'engineering', name: 'Engineering & Science' };
+const description = 'Free molar mass calculator with a live 3D atom cluster and charts. Enter any chemical formula to get molar mass, per-element breakdown, and atom counts from IUPAC atomic weights.';
+const intro = 'Type a chemical formula (e.g., H2O, NaCl, C6H12O6, CuSO4.5H2O) to calculate its molar mass, see a per-element breakdown, and view a live 3D atom cluster.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
 const faqs = [
   { q: 'What is molar mass?', a: 'Molar mass is the mass of one mole of a substance, expressed in grams per mole (g/mol). It is calculated by summing the atomic masses of all atoms in a chemical formula.' },
   { q: 'How is molar mass calculated?', a: 'Multiply each element\'s atomic mass by its subscript in the formula, then sum. For example, H₂O: (2 × 1.008) + (1 × 16.00) = 18.016 g/mol.' },
@@ -12,213 +13,372 @@ const faqs = [
   { q: 'What elements do you support?', a: 'All 118 known elements from Hydrogen to Oganesson, using standard atomic weights from IUPAC. The calculator correctly handles parentheses and hydrated compounds like CuSO₄·5H₂O.' },
   { q: 'Why is molar mass important in chemistry?', a: 'Molar mass is essential for converting between mass and moles, preparing solutions of known concentration, determining empirical formulas, and performing stoichiometric calculations in chemical reactions.' },
 ];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Molar Mass Calculator',
+  description: 'Calculate the molar mass of any chemical formula from IUPAC atomic weights.',
+  steps: [
+    { name: 'Type the formula', text: 'Enter any valid chemical formula, e.g. H2O, Ca(OH)2, or CuSO4.5H2O for hydrates.' },
+    { name: 'Read the results', text: 'Molar mass, element count and atom count solve instantly, with a full breakdown.' },
+    { name: 'Explore the 3D view', text: 'The atom cluster and charts update live to match the parsed formula.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'M = Σ(n<sub>i</sub> × A<sub>i</sub>)', note: 'sum of atomic mass × count, over every element i' },
+  { expr: 'A<sub>i</sub> = weighted average', note: 'from an element&rsquo;s naturally occurring isotopes (IUPAC)' },
+  { expr: 'mol = mass / M', note: 'rearranged to convert grams ↔ moles' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — glucose', tone: 'slate',
+    given: 'Calculate the molar mass of glucose, C₆H₁₂O₆.',
+    rows: [
+      { label: 'Carbon (C):', value: '6 × 12.011 = 72.066 g/mol' },
+      { label: 'Hydrogen (H):', value: '12 × 1.008 = 12.096 g/mol' },
+      { label: 'Oxygen (O):', value: '6 × 16.00 = 96.00 g/mol' },
+      { label: 'Total:', value: '72.066 + 12.096 + 96.00 = <strong>180.162 g/mol</strong>', full: true },
+    ],
+  },
+  {
+    title: 'Worked example 2 — a hydrate', tone: 'amber',
+    given: 'Calculate the molar mass of copper(II) sulfate pentahydrate, CuSO₄·5H₂O.',
+    rows: [
+      { label: 'Anhydrous part:', value: 'Cu + S + 4O = 63.546 + 32.06 + 64.00 = 159.606 g/mol' },
+      { label: 'Water of hydration:', value: '5 × H₂O = 5 × 18.016 = 90.08 g/mol' },
+      { label: 'Total:', value: '159.606 + 90.08 = <strong>249.686 g/mol</strong>', full: true },
+    ],
+    note: 'The dot (or middle dot ·) in a hydrate formula means addition — parse each side separately, then sum.',
+  },
+];
+
+const comparison = {
+  heading: 'Molar mass of familiar compounds',
+  note: 'Same principle — sum atomic masses × counts — applied to compounds you already know.',
+  headers: [{ label: 'Compound' }, { label: 'Formula' }, { label: 'Molar mass' }],
+  rows: [
+    ['Water', 'H₂O', '18.02 g/mol'],
+    ['Table salt', 'NaCl', '58.44 g/mol'],
+    ['Carbon dioxide', 'CO₂', '44.01 g/mol'],
+    ['Glucose', 'C₆H₁₂O₆', '180.16 g/mol'],
+    ['Sulfuric acid', 'H₂SO₄', '98.08 g/mol'],
+    ['CuSO₄ pentahydrate', 'CuSO₄·5H₂O', '249.69 g/mol'],
+  ],
+  highlightIndex: 3,
+  footnote: 'Values rounded to 2 decimal places from IUPAC standard atomic weights.',
+};
+
+const realWorld = [
+  { emoji: '🧪', title: 'Chemistry student', body: 'Check homework and verify manual molar mass calculations. The breakdown feature shows the contribution of each element, helping you learn the pattern for different compound types.' },
+  { emoji: '🧫', title: 'Lab technician', body: 'Prepare solutions of exact molarity by first calculating the molar mass of the solute. This ensures accurate concentration measurements for experiments and quality control.' },
+  { emoji: '💊', title: 'Pharmacist', body: 'Calculate the molar mass of active pharmaceutical ingredients to determine correct dosages and compounding ratios. Ensure medication formulations meet regulatory specifications.' },
+  { emoji: '📊', title: 'Materials scientist', body: 'Determine the molar mass of polymers, coordination compounds, and novel materials. Use the breakdown to understand the composition and properties of synthesized compounds.' },
+];
+
+const misconceptions = [
+  { claim: '"Molar mass and molecular weight are totally different things."', truth: 'They are numerically the same for molecular compounds — both add up atomic masses over a formula. Molar mass carries units of g/mol; molecular weight (relative molecular mass) is technically unitless, but in everyday lab use the two terms and numbers are interchangeable.' },
+  { claim: '"Atomic mass and molar mass are the same measurement."', truth: 'Atomic mass is the mass of one atom (in atomic mass units, u) for a single element. Molar mass is the mass of one mole (6.022 × 10²³ particles) of a substance, in g/mol. Numerically they match per element because 1 u/atom scales to 1 g/mol — but atomic mass describes one atom, molar mass describes a mole of atoms, molecules, or formula units.' },
+  { claim: '"The dot in a hydrate formula means multiplication of everything."', truth: 'The dot (or ·) only adds the water molecules to the anhydrous formula\'s total — it does not multiply the whole compound. CuSO₄·5H₂O is CuSO₄ plus 5 separate H₂O molecules, summed.' },
+  { claim: '"Case doesn\'t matter when typing element symbols."', truth: 'It does: "Co" is cobalt, but "CO" is carbon monoxide (carbon + oxygen). Element symbols are always capital-first, lowercase-second (if a second letter exists) — mixing up case changes the formula\'s meaning entirely.' },
+];
+
+const sources = [
+  { html: '<strong>IUPAC, <em>Standard Atomic Weights</em></strong> — the atomic mass values used throughout this calculator, periodically revised by the Commission on Isotopic Abundances and Atomic Weights. <a href="https://iupac.org/what-we-do/periodic-table-of-elements/" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">iupac.org</a>' },
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — formula mass and the mole concept (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/3-1-formula-mass-and-the-mole-concept" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3, Stoichiometry: Calculations with Chemical Formulas and Equations.' },
+];
+const sourcesNote = 'Molar mass = Σ(atomic mass × atom count) over every element in the formula. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Type the formula', body: 'Enter any valid chemical formula using standard element symbols. Use parentheses for polyatomic groups, e.g. Ca(OH)2 or Al2(SO4)3.' },
+  { title: 'View the breakdown', body: 'The calculator shows a per-element breakdown of atomic count and mass contribution, and updates the 3D atom cluster live.' },
+  { title: 'Check for errors', body: 'Invalid element symbols or malformed formulas are caught with a clear error message. All 118 elements are supported with IUPAC-standard atomic weights.' },
+];
+
+const related = [
+  { href: '/tools/molarity-calculator', emoji: '🧪', title: 'Molarity Calculator', desc: 'M = mol/L — solve for any variable.' },
+  { href: '/tools/dilution-calculator', emoji: '💧', title: 'Dilution Calculator', desc: 'C₁V₁ = C₂V₂ — solve for any variable.' },
+  { href: '/tools/ph-calculator', emoji: '🧫', title: 'pH Calculator', desc: 'pH from hydrogen ion concentration.' },
+];
 ---
 
-<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
-  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="molar mass is just addition — multiply each element's atomic mass by how many times it appears in the formula, then sum every element."
+  howIntro="Rearranged, the same idea converts grams to moles and back: <span class='font-mono'>mol = mass / M</span>. Parentheses multiply everything inside a group, and the dot in a hydrate formula (like CuSO₄·5H₂O) simply adds a separate group's atoms to the total."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where molar mass actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
     <p class="mb-4 text-sm text-slate-500">Enter a chemical formula to calculate its molar mass</p>
     <label class="block"><span class="text-sm font-medium text-slate-700">Chemical formula</span>
-      <input id="formula" type="text" placeholder="H2O" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <input id="formula" type="text" placeholder="H2O" value="H2O" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-lg outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
     <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
       <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Molar mass</div><div id="r-mass" class="mt-1 text-2xl font-bold">—</div></div>
       <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Element count</div><div id="r-elements" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
       <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Atom count</div><div id="r-atoms" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
     </div>
     <div id="mass-breakdown" class="mt-4 space-y-1 text-sm text-slate-600"></div>
-    <p id="mass-err" class="mt-3 text-center text-sm text-red-600"></p>
+    <p id="mass-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <figure class="mt-10 overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
-    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="am-title am-desc">
-      <title id="am-title">Molecule broken into atoms diagram</title>
-      <desc id="am-desc">A water molecule H2O shown with its constituent atoms, each labelled with atomic mass, illustrating the sum-of-masses principle</desc>
-      <g transform="translate(30,20)">
-        <circle cx="280" cy="130" r="45" fill="#fce7f3" stroke="#ec4899" stroke-width="2.5"/>
-        <text x="280" y="125" text-anchor="middle" fill="#be185d" font-size="22" font-weight="bold">O</text>
-        <text x="280" y="148" text-anchor="middle" fill="#be185d" font-size="12">16.00 g/mol</text>
-        <circle cx="150" cy="70" r="35" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2.5"/>
-        <text x="150" y="65" text-anchor="middle" fill="#0369a1" font-size="20" font-weight="bold">H</text>
-        <text x="150" y="85" text-anchor="middle" fill="#0369a1" font-size="11">1.008 g/mol</text>
-        <circle cx="410" cy="70" r="35" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2.5"/>
-        <text x="410" y="65" text-anchor="middle" fill="#0369a1" font-size="20" font-weight="bold">H</text>
-        <text x="410" y="85" text-anchor="middle" fill="#0369a1" font-size="11">1.008 g/mol</text>
-        <line x1="185" y1="88" x2="245" y2="112" stroke="#94a3b8" stroke-width="2"/>
-        <line x1="315" y1="112" x2="375" y2="88" stroke="#94a3b8" stroke-width="2"/>
-        <text x="280" y="215" text-anchor="middle" fill="#4338ca" font-size="18" font-weight="bold">H₂O = 2 × 1.008 + 16.00 = 18.016 g/mol</text>
-        <text x="280" y="240" text-anchor="middle" fill="#64748b" font-size="13">Sum all atomic masses to find the molecular mass</text>
-      </g>
-    </svg>
-    <figcaption class="mt-2 text-center text-xs text-slate-400">A water molecule showing two hydrogen atoms and one oxygen atom. The molar mass is the sum of each element's atomic mass multiplied by its count.</figcaption>
-  </figure>
+  <!-- ============ VIZ: one interactive 3D atom cluster + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D atom cluster</h2>
+      <p class="mt-1 text-sm text-slate-500">Spheres represent the atoms in your formula, sized and coloured by element. Display is capped at 40 atoms for performance — it is illustrative, not to scale or a real molecular structure. Drag to orbit (touch works too).</p>
+      <div id="cluster3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="cluster3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="cluster3d-cap" class="mt-2 hidden text-center text-xs text-slate-400"></p>
+    </section>
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">How molar mass is calculated</h2>
-    <p class="mt-2 text-slate-600">Molar mass is found by summing the atomic masses of each element in a chemical formula, multiplied by the number of atoms of that element. The atomic masses come from the periodic table and are weighted averages of an element's naturally occurring isotopes. The formula is: <span class="font-mono">M = Σ(nᵢ × Aᵢ)</span>, where nᵢ is the number of atoms of element i and Aᵢ is its atomic mass. The result is in grams per mole (g/mol).</p>
-    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
-      <h3 class="font-semibold text-slate-900">Worked example</h3>
-      <p class="mt-1 text-sm text-slate-600">Calculate the molar mass of glucose, C₆H₁₂O₆.</p>
-      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
-        <div><span class="font-medium text-slate-700">Carbon (C):</span> <span class="text-slate-600">6 × 12.011 = 72.066 g/mol</span></div>
-        <div><span class="font-medium text-slate-700">Hydrogen (H):</span> <span class="text-slate-600">12 × 1.008 = 12.096 g/mol</span></div>
-        <div><span class="font-medium text-slate-700">Oxygen (O):</span> <span class="text-slate-600">6 × 16.00 = 96.00 g/mol</span></div>
-        <div><span class="font-medium text-slate-700">Total:</span> <span class="text-slate-600">72.066 + 12.096 + 96.00 = 180.162 g/mol</span></div>
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Molar mass graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Mass contribution by element (current formula)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-elements"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Molar mass vs common compounds</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-compare"></canvas></div>
+        </figure>
       </div>
-    </div>
-    <h3 class="mt-6 font-semibold text-slate-900">Parsing complex formulas</h3>
-    <p class="mt-1 text-slate-600">The calculator understands parentheses, nested parentheses, and hydrated compounds. For example, CuSO₄·5H₂O is parsed as copper(II) sulfate pentahydrate: Cu + S + 4O + 10H + 5O. The dot notation for hydrates is treated as addition. Subscripts can be single or multi-digit, and the formula is case-sensitive for element symbols (capital first letter, lowercase second letter if present).</p>
-  </section>
+    </section>
 
-  <section class="mt-10 grid gap-4 sm:grid-cols-2">
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F9EA;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Chemistry Student</h3>
-      <p class="mt-1 text-sm text-slate-600">Check homework and verify manual molar mass calculations. The breakdown feature shows the contribution of each element, helping you learn the pattern for different compound types.</p>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F9F1;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Lab Technician</h3>
-      <p class="mt-1 text-sm text-slate-600">Prepare solutions of exact molarity by first calculating the molar mass of the solute. This ensures accurate concentration measurements for experiments and quality control.</p>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F4A1;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Pharmacist</h3>
-      <p class="mt-1 text-sm text-slate-600">Calculate the molar mass of active pharmaceutical ingredients to determine correct dosages and compounding ratios. Ensure medication formulations meet regulatory specifications.</p>
-    </div>
-    <div class="rounded-xl border border-slate-200 bg-white p-5">
-      <span class="text-2xl">&#x1F4CA;</span>
-      <h3 class="mt-2 font-semibold text-slate-900">Materials Scientist</h3>
-      <p class="mt-1 text-sm text-slate-600">Determine the molar mass of polymers, coordination compounds, and novel materials. Use the breakdown to understand the composition and properties of synthesized compounds.</p>
-    </div>
-  </section>
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const MOL_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">How to use the molar mass calculator</h2>
-    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Type the formula</h3>
-        <p class="mt-1 text-sm text-slate-600">Enter any valid chemical formula using standard element symbols. Use parentheses for polyatomic groups, e.g., Ca(OH)2 or Al2(SO4)3.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
-        <h3 class="mt-3 font-semibold text-slate-900">View the breakdown</h3>
-        <p class="mt-1 text-sm text-slate-600">The calculator shows a per-element breakdown of atomic count and mass contribution. This helps verify your manual work and understand the composition.</p>
-      </div>
-      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
-        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
-        <h3 class="mt-3 font-semibold text-slate-900">Check for errors</h3>
-        <p class="mt-1 text-sm text-slate-600">Invalid element symbols or malformed formulas are caught with a clear error message. The calculator supports all 118 elements with IUPAC-standard atomic weights.</p>
-      </div>
-    </div>
-  </section>
+      // ---- parser (unchanged logic) ----
+      const atomicMasses = { H: 1.008, He: 4.0026, Li: 6.94, Be: 9.0122, B: 10.81, C: 12.011, N: 14.007, O: 16.00, F: 19.00, Ne: 20.180, Na: 22.990, Mg: 24.305, Al: 26.982, Si: 28.086, P: 30.974, S: 32.06, Cl: 35.45, Ar: 39.95, K: 39.098, Ca: 40.078, Sc: 44.956, Ti: 47.867, V: 50.942, Cr: 51.996, Mn: 54.938, Fe: 55.845, Co: 58.933, Ni: 58.693, Cu: 63.546, Zn: 65.38, Ga: 69.723, Ge: 72.63, As: 74.922, Se: 78.96, Br: 79.904, Kr: 83.80, Rb: 85.468, Sr: 87.62, Y: 88.906, Zr: 91.224, Nb: 92.906, Mo: 95.95, Tc: 98.0, Ru: 101.07, Rh: 102.91, Pd: 106.42, Ag: 107.87, Cd: 112.41, In: 114.82, Sn: 118.71, Sb: 121.76, Te: 127.60, I: 126.90, Xe: 131.29, Cs: 132.91, Ba: 137.33, La: 138.91, Ce: 140.12, Pr: 140.91, Nd: 144.24, Pm: 145.0, Sm: 150.36, Eu: 151.96, Gd: 157.25, Tb: 158.93, Dy: 162.50, Ho: 164.93, Er: 167.26, Tm: 168.93, Yb: 173.05, Lu: 174.97, Hf: 178.49, Ta: 180.95, W: 183.84, Re: 186.21, Os: 190.23, Ir: 192.22, Pt: 195.08, Au: 196.97, Hg: 200.59, Tl: 204.38, Pb: 207.2, Bi: 208.98, Po: 209.0, At: 210.0, Rn: 222.0, Fr: 223.0, Ra: 226.0, Ac: 227.0, Th: 232.04, Pa: 231.04, U: 238.03, Np: 237.0, Pu: 244.0, Am: 243.0, Cm: 247.0, Bk: 247.0, Cf: 251.0, Es: 252.0, Fm: 257.0, Md: 258.0, No: 259.0, Lr: 262.0, Rf: 267.0, Db: 268.0, Sg: 269.0, Bh: 270.0, Hs: 269.0, Mt: 278.0, Ds: 281.0, Rg: 282.0, Cn: 285.0, Nh: 286.0, Fl: 289.0, Mc: 290.0, Lv: 293.0, Ts: 294.0, Og: 294.0 };
+      function parseGroup(str, pos) {
+        let i = pos, counts = {};
+        while (i < str.length && str[i] !== ')' && str[i] !== ']') {
+          if (str[i] === '(' || str[i] === '[') {
+            const inner = parseGroup(str, i + 1);
+            i = inner.i;
+            if (i >= str.length || (str[i] !== ')' && str[i] !== ']')) throw new Error('Unmatched bracket in: ' + str);
+            i++;
+            let numStr = '';
+            while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
+            const mult = numStr ? parseInt(numStr, 10) : 1;
+            for (const sym in inner.counts) counts[sym] = (counts[sym] || 0) + inner.counts[sym] * mult;
+          } else if (str[i] >= 'A' && str[i] <= 'Z') {
+            let sym = str[i++];
+            while (i < str.length && str[i] >= 'a' && str[i] <= 'z') sym += str[i++];
+            if (!atomicMasses[sym]) throw new Error('Unknown element: ' + sym);
+            let numStr = '';
+            while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
+            const num = numStr ? parseInt(numStr, 10) : 1;
+            counts[sym] = (counts[sym] || 0) + num;
+          } else {
+            throw new Error('Invalid character: ' + str[i]);
+          }
+        }
+        return { counts, i };
+      }
+      function parseFormula(f) {
+        if (!f) return {};
+        const segments = f.split(/[·.]/).map(s => s.trim()).filter(s => s.length > 0);
+        if (segments.length === 0) return { error: 'Invalid formula' };
+        const result = {};
+        try {
+          for (const seg of segments) {
+            let idx = 0, coefStr = '';
+            while (idx < seg.length && seg[idx] >= '0' && seg[idx] <= '9') coefStr += seg[idx++];
+            const coef = coefStr ? parseInt(coefStr, 10) : 1;
+            const rest = seg.slice(idx);
+            if (!rest) throw new Error('Invalid formula segment: ' + seg);
+            const { counts, i } = parseGroup(rest, 0);
+            if (i !== rest.length) throw new Error('Unmatched bracket in: ' + rest);
+            for (const sym in counts) result[sym] = (result[sym] || 0) + counts[sym] * coef;
+          }
+        } catch (e) {
+          return { error: e.message };
+        }
+        return result;
+      }
 
-  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
-    <h2 class="text-xl font-bold text-slate-900">Tips for molar mass calculations</h2>
-    <div class="mt-4 space-y-5">
-      <div>
-        <h3 class="font-semibold text-slate-900">Case sensitivity matters</h3>
-        <p class="mt-1 text-sm text-slate-600">Use correct capitalisation: "Co" is cobalt, "CO" is carbon monoxide. "Na" (sodium) is valid, but "na" will be rejected. The first letter is always uppercase, the second (if present) lowercase.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-slate-900">Hydrates use dot notation</h3>
-        <p class="mt-1 text-sm text-slate-600">For hydrated compounds like CuSO₄·5H₂O, type "CuSO4.5H2O". The dot tells the parser to add the water molecules. Without the dot, the formula would be parsed differently.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-slate-900">Use this with the molarity calculator</h3>
-        <p class="mt-1 text-sm text-slate-600">First calculate the molar mass of a compound, then use the molarity calculator to prepare solutions of specific concentrations. This two-step process is fundamental in chemistry lab work.</p>
-      </div>
-    </div>
-  </section>
+      // ---- element colour/radius palette for the 3D cluster ----
+      const ELEM_COLOR = { H: 0xf1f5f9, C: 0x475569, O: 0xef4444, N: 0x3b82f6, S: 0xeab308, Cl: 0x22c55e, Na: 0xa855f7, Ca: 0xf97316, Cu: 0xf59e0b, Fe: 0xb45309, K: 0x8b5cf6, Mg: 0x14b8a6, Al: 0x94a3b8, Zn: 0x64748b, P: 0xf97316 };
+      function colorFor(sym) { return ELEM_COLOR[sym] || 0x6366f1; }
+      function radiusFor(sym) {
+        const m = atomicMasses[sym] || 20;
+        return Math.max(0.18, Math.min(0.42, 0.16 + Math.log10(m) * 0.11));
+      }
 
-  <section class="mt-10">
-    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
-    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-      <a href="/tools/molarity-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x1F9EA;</span>
-        <h3 class="mt-1 text-sm font-semibold text-slate-900">Molarity Calculator</h3>
-        <p class="mt-0.5 text-xs text-slate-500">M = mol/L — solve for any variable.</p>
-      </a>
-      <a href="/tools/dilution-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x1F4A7;</span>
-        <h3 class="mt-1 text-sm font-semibold text-slate-900">Dilution Calculator</h3>
-        <p class="mt-0.5 text-xs text-slate-500">C1V1 = C2V2 — solve for any variable.</p>
-      </a>
-      <a href="/tools/ph-calculator" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-        <span class="text-lg">&#x1F9EA;</span>
-        <h3 class="mt-1 text-sm font-semibold text-slate-900">pH Calculator</h3>
-        <p class="mt-0.5 text-xs text-slate-500">pH from hydrogen ion concentration.</p>
-      </a>
-    </div>
-  </section>
+      // ---- calculator state shared with viz ----
+      let lastResult = null; // { counts, total, atomCount, elemCount }
+      const charts = {};
+      let cluster = null;
 
-  <script is:inline>
-    const el = (id) => document.getElementById(id);
-    const atomicMasses = { H: 1.008, He: 4.0026, Li: 6.94, Be: 9.0122, B: 10.81, C: 12.011, N: 14.007, O: 16.00, F: 19.00, Ne: 20.180, Na: 22.990, Mg: 24.305, Al: 26.982, Si: 28.086, P: 30.974, S: 32.06, Cl: 35.45, Ar: 39.95, K: 39.098, Ca: 40.078, Sc: 44.956, Ti: 47.867, V: 50.942, Cr: 51.996, Mn: 54.938, Fe: 55.845, Co: 58.933, Ni: 58.693, Cu: 63.546, Zn: 65.38, Ga: 69.723, Ge: 72.63, As: 74.922, Se: 78.96, Br: 79.904, Kr: 83.80, Rb: 85.468, Sr: 87.62, Y: 88.906, Zr: 91.224, Nb: 92.906, Mo: 95.95, Tc: 98.0, Ru: 101.07, Rh: 102.91, Pd: 106.42, Ag: 107.87, Cd: 112.41, In: 114.82, Sn: 118.71, Sb: 121.76, Te: 127.60, I: 126.90, Xe: 131.29, Cs: 132.91, Ba: 137.33, La: 138.91, Ce: 140.12, Pr: 140.91, Nd: 144.24, Pm: 145.0, Sm: 150.36, Eu: 151.96, Gd: 157.25, Tb: 158.93, Dy: 162.50, Ho: 164.93, Er: 167.26, Tm: 168.93, Yb: 173.05, Lu: 174.97, Hf: 178.49, Ta: 180.95, W: 183.84, Re: 186.21, Os: 190.23, Ir: 192.22, Pt: 195.08, Au: 196.97, Hg: 200.59, Tl: 204.38, Pb: 207.2, Bi: 208.98, Po: 209.0, At: 210.0, Rn: 222.0, Fr: 223.0, Ra: 226.0, Ac: 227.0, Th: 232.04, Pa: 231.04, U: 238.03, Np: 237.0, Pu: 244.0, Am: 243.0, Cm: 247.0, Bk: 247.0, Cf: 251.0, Es: 252.0, Fm: 257.0, Md: 258.0, No: 259.0, Lr: 262.0, Rf: 267.0, Db: 268.0, Sg: 269.0, Bh: 270.0, Hs: 269.0, Mt: 278.0, Ds: 281.0, Rg: 282.0, Cn: 285.0, Nh: 286.0, Fl: 289.0, Mc: 290.0, Lv: 293.0, Ts: 294.0, Og: 294.0 };
-    function parseGroup(str, pos) {
-      let i = pos, counts = {};
-      while (i < str.length && str[i] !== ')' && str[i] !== ']') {
-        if (str[i] === '(' || str[i] === '[') {
-          const inner = parseGroup(str, i + 1);
-          i = inner.i;
-          if (i >= str.length || (str[i] !== ')' && str[i] !== ']')) throw new Error('Unmatched bracket in: ' + str);
-          i++;
-          let numStr = '';
-          while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
-          const mult = numStr ? parseInt(numStr, 10) : 1;
-          for (const sym in inner.counts) counts[sym] = (counts[sym] || 0) + inner.counts[sym] * mult;
-        } else if (str[i] >= 'A' && str[i] <= 'Z') {
-          let sym = str[i++];
-          while (i < str.length && str[i] >= 'a' && str[i] <= 'z') sym += str[i++];
-          if (!atomicMasses[sym]) throw new Error('Unknown element: ' + sym);
-          let numStr = '';
-          while (i < str.length && str[i] >= '0' && str[i] <= '9') numStr += str[i++];
-          const num = numStr ? parseInt(numStr, 10) : 1;
-          counts[sym] = (counts[sym] || 0) + num;
+      function update() {
+        const f = el('formula').value.trim();
+        el('mass-err').textContent = '';
+        el('mass-breakdown').innerHTML = '';
+        if (!f) {
+          ['r-mass', 'r-elements', 'r-atoms'].forEach(id => el(id).textContent = '—');
+          lastResult = null;
+          refreshViz();
+          return;
+        }
+        const result = parseFormula(f);
+        if (result.error) {
+          el('mass-err').textContent = result.error;
+          ['r-mass', 'r-elements', 'r-atoms'].forEach(id => el(id).textContent = '—');
+          lastResult = null;
+          refreshViz();
+          return;
+        }
+        let total = 0, atomCount = 0, elemCount = 0, lines = [];
+        for (let sym in result) {
+          const mass = atomicMasses[sym] * result[sym];
+          total += mass; atomCount += result[sym]; elemCount++;
+          lines.push(`<span class="font-medium">${sym}</span>: ${result[sym]} × ${atomicMasses[sym]} = ${mass.toFixed(3)} g/mol`);
+        }
+        el('r-mass').textContent = total.toFixed(3) + ' g/mol';
+        el('r-elements').textContent = elemCount;
+        el('r-atoms').textContent = atomCount;
+        el('mass-breakdown').innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
+        lastResult = { counts: result, total, atomCount, elemCount };
+        refreshViz();
+      }
+      el('formula').addEventListener('input', update);
+
+      // ---- 3D atom cluster ----
+      const MAX_ATOMS = 40;
+      function initCluster() {
+        const c = el('cluster3d'); if (!c) throw new Error('no cluster container');
+        const s = makeScene(c, 8, new window.THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const THREE = window.THREE;
+        const geo = new THREE.SphereGeometry(1, 16, 16);
+        const spheres = [];
+        for (let i = 0; i < MAX_ATOMS; i++) {
+          const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
+          const sph = new THREE.Mesh(geo, mat);
+          sph.visible = false;
+          s.scene.add(sph);
+          spheres.push(sph);
+        }
+        function layout(counts) {
+          // flatten counts into an ordered list of symbols, capped at MAX_ATOMS
+          const list = [];
+          if (counts) {
+            for (const sym in counts) {
+              for (let k = 0; k < counts[sym]; k++) list.push(sym);
+            }
+          }
+          const shown = list.slice(0, MAX_ATOMS);
+          const capped = list.length > MAX_ATOMS;
+          el('cluster3d-cap').classList.toggle('hidden', !capped);
+          if (capped) el('cluster3d-cap').textContent = `Showing ${MAX_ATOMS} of ${list.length} atoms (capped for performance).`;
+
+          const n = shown.length;
+          for (let i = 0; i < MAX_ATOMS; i++) {
+            const sph = spheres[i];
+            if (i < n) {
+              const sym = shown[i];
+              sph.visible = true;
+              sph.material.color.setHex(colorFor(sym));
+              sph.scale.setScalar(radiusFor(sym));
+              // simple spherical packing: golden-angle distribution on a sphere shell, with radius scaled by n
+              const R = 1.1 + Math.cbrt(n) * 0.55;
+              const gAngle = Math.PI * (3 - Math.sqrt(5));
+              const yFrac = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
+              const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
+              const theta = gAngle * i;
+              sph.position.set(Math.cos(theta) * rad * R, yFrac * R, Math.sin(theta) * rad * R);
+            } else {
+              sph.visible = false;
+            }
+          }
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0018); s.renderer.render(s.scene, s.camera); }
+        frame();
+        cluster = { layout, resize: s.resize };
+      }
+
+      // ---- charts ----
+      const COMPARE_COMPOUNDS = [
+        { label: 'H₂O', mass: 18.02 },
+        { label: 'NaCl', mass: 58.44 },
+        { label: 'CO₂', mass: 44.01 },
+        { label: 'C₆H₁₂O₆', mass: 180.16 },
+        { label: 'H₂SO₄', mass: 98.08 },
+      ];
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.elements = new Chart(el('chart-elements'), {
+          type: 'bar',
+          data: { labels: [], datasets: [{ label: 'Mass contribution (g/mol)', data: [], backgroundColor: '#6366f1', borderRadius: 4 }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'g/mol' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.compare = new Chart(el('chart-compare'), {
+          type: 'bar',
+          data: {
+            labels: COMPARE_COMPOUNDS.map(c => c.label),
+            datasets: [{ label: 'Molar mass (g/mol)', data: COMPARE_COMPOUNDS.map(c => c.mass), backgroundColor: COMPARE_COMPOUNDS.map(() => '#94a3b8'), borderRadius: 4 }],
+          },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'g/mol' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts();
+      }
+      function updateCharts() {
+        if (!charts.ready) return;
+        // element contribution chart
+        if (lastResult) {
+          const syms = Object.keys(lastResult.counts);
+          charts.elements.data.labels = syms;
+          charts.elements.data.datasets[0].data = syms.map(s => +(atomicMasses[s] * lastResult.counts[s]).toFixed(3));
+          charts.elements.data.datasets[0].backgroundColor = syms.map(s => '#' + colorFor(s).toString(16).padStart(6, '0'));
         } else {
-          throw new Error('Invalid character: ' + str[i]);
+          charts.elements.data.labels = [];
+          charts.elements.data.datasets[0].data = [];
         }
-      }
-      return { counts, i };
-    }
-    function parseFormula(f) {
-      if (!f) return {};
-      const segments = f.split(/[·.]/).map(s => s.trim()).filter(s => s.length > 0);
-      if (segments.length === 0) return { error: 'Invalid formula' };
-      const result = {};
-      try {
-        for (const seg of segments) {
-          let idx = 0, coefStr = '';
-          while (idx < seg.length && seg[idx] >= '0' && seg[idx] <= '9') coefStr += seg[idx++];
-          const coef = coefStr ? parseInt(coefStr, 10) : 1;
-          const rest = seg.slice(idx);
-          if (!rest) throw new Error('Invalid formula segment: ' + seg);
-          const { counts, i } = parseGroup(rest, 0);
-          if (i !== rest.length) throw new Error('Unmatched bracket in: ' + rest);
-          for (const sym in counts) result[sym] = (result[sym] || 0) + counts[sym] * coef;
+        charts.elements.update();
+
+        // comparison chart: append/highlight the current formula's result
+        const labels = COMPARE_COMPOUNDS.map(c => c.label);
+        const data = COMPARE_COMPOUNDS.map(c => c.mass);
+        const colors = COMPARE_COMPOUNDS.map(() => '#94a3b8');
+        if (lastResult && lastResult.total > 0) {
+          labels.push(el('formula').value.trim() || 'Current');
+          data.push(+lastResult.total.toFixed(3));
+          colors.push('#6366f1');
         }
-      } catch (e) {
-        return { error: e.message };
+        charts.compare.data.labels = labels;
+        charts.compare.data.datasets[0].data = data;
+        charts.compare.data.datasets[0].backgroundColor = colors;
+        charts.compare.update();
       }
-      return result;
-    }
-    function update() {
-      const f = el('formula').value.trim();
-      el('mass-err').textContent = '';
-      el('mass-breakdown').innerHTML = '';
-      if (!f) { ['r-mass', 'r-elements', 'r-atoms'].forEach(id => el(id).textContent = '—'); return; }
-      const result = parseFormula(f);
-      if (result.error) { el('mass-err').textContent = result.error; ['r-mass', 'r-elements', 'r-atoms'].forEach(id => el(id).textContent = '—'); return; }
-      let total = 0, atomCount = 0, elemCount = 0, lines = [];
-      for (let sym in result) {
-        const mass = atomicMasses[sym] * result[sym];
-        total += mass; atomCount += result[sym]; elemCount++;
-        lines.push(`<span class="font-medium">${sym}</span>: ${result[sym]} × ${atomicMasses[sym]} = ${mass.toFixed(3)} g/mol`);
+
+      function refreshViz() {
+        try { if (cluster) cluster.layout(lastResult ? lastResult.counts : null); } catch (e) {}
+        try { updateCharts(); } catch (e) {}
       }
-      el('r-mass').textContent = total.toFixed(3) + ' g/mol';
-      el('r-elements').textContent = elemCount;
-      el('r-atoms').textContent = atomCount;
-      el('mass-breakdown').innerHTML = lines.map(l => '<div>' + l + '</div>').join('');
-    }
-    el('formula').addEventListener('input', update);
-  </script>
-</ToolLayout>
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[molar-mass] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[molar-mass] charts failed', e); }
+        if (window.THREE) {
+          try { initCluster(); refreshViz(); } catch (e) { console.error('[molar-mass] cluster failed', e); el('cluster3d-fallback').classList.remove('hidden'); }
+        } else { el('cluster3d-fallback').classList.remove('hidden'); }
+        mountResize([cluster]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

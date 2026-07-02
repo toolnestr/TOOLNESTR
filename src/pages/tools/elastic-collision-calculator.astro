@@ -1,0 +1,316 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Elastic Collision Calculator';
+const description = 'Elastic collision calculator with a live 3D two-body scene and charts. Solve final velocities v1\' and v2\' for a 1D elastic collision, with kinetic energy conservation checked automatically.';
+const intro = 'Enter two masses and their initial velocities to find the final velocities after a perfectly elastic 1D collision. A live 3D scene shows the spheres approach, collide and rebound, and charts confirm that momentum and kinetic energy are both conserved.';
+const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
+
+const faqs = [
+  { q: 'What is an elastic collision?', a: 'An elastic collision is one where both momentum and kinetic energy are conserved. The objects bounce off each other without any permanent deformation, heat, or sound loss — an idealisation that real collisions only approach, such as billiard balls or gas molecules.' },
+  { q: 'What is the formula for elastic collision final velocities?', a: "For two masses m1 and m2 with initial velocities u1 and u2 along one line, the final velocities are v1' = ((m1−m2)u1 + 2m2u2)/(m1+m2) and v2' = ((m2−m1)u2 + 2m1u1)/(m1+m2). Both come from solving momentum and kinetic-energy conservation simultaneously." },
+  { q: 'What happens when two equal masses collide elastically?', a: 'If m1 = m2, the formulas simplify to v1\' = u2 and v2\' = u1 — the objects simply exchange velocities. This is why a moving billiard ball that hits an identical stationary ball stops dead, transferring all its motion to the other ball.' },
+  { q: 'What if a moving object hits a much heavier stationary one?', a: 'As m2 → ∞ with u2 = 0, v1\' → −u1 (the light object bounces straight back at the same speed) and v2\' → 0 (the heavy object barely moves) — like a ball bouncing off a wall.' },
+  { q: 'Is kinetic energy really conserved, or just close?', a: 'By definition, a perfectly elastic collision conserves kinetic energy exactly: ½m1u1² + ½m2u2² = ½m1v1\'² + ½m2v2\'². This calculator checks that equality using your inputs — real collisions (like most sports and vehicle impacts) always lose a small amount to sound, heat and deformation, so they are only approximately elastic at best.' },
+];
+
+const badge = { label: 'Physics', color: 'blue' };
+const howto = {
+  name: 'How to use the Elastic Collision Calculator',
+  description: "Calculate the final velocities of two masses after a 1D elastic collision using v1' = ((m1−m2)u1 + 2m2u2)/(m1+m2) and v2' = ((m2−m1)u2 + 2m1u1)/(m1+m2).",
+  steps: [
+    { name: 'Enter both masses', text: 'Type m1 and m2 in kilograms (or any consistent mass unit).' },
+    { name: 'Enter both initial velocities', text: 'Type u1 and u2 in m/s. Use negative values for objects moving in the opposite direction.' },
+    { name: 'Read the results', text: "The final velocities v1' and v2' solve instantly, with a kinetic-energy conservation check and a live 3D collision." },
+  ],
+};
+
+const formulas = [
+  { expr: "v1' = [(m1−m2)u1 + 2m2u2] / (m1+m2)", note: 'final velocity of mass 1' },
+  { expr: "v2' = [(m2−m1)u2 + 2m1u1] / (m1+m2)", note: 'final velocity of mass 2' },
+  { expr: 'KE_before = KE_after', note: 'kinetic energy is conserved (elastic only)' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — equal masses, one stationary', tone: 'slate',
+    given: 'A 2.0 kg ball moving at 6.0 m/s strikes a stationary 2.0 kg ball head-on. Find both final velocities.',
+    rows: [
+      { label: "v1' :", value: "v1' = [(2−2)(6) + 2(2)(0)] / 4 = 0 m/s" },
+      { label: "v2' :", value: "v2' = [(2−2)(0) + 2(2)(6)] / 4 = 6.0 m/s" },
+      { label: 'Check:', value: 'Equal masses simply exchange velocities — the moving ball stops, the stationary one takes off at 6.0 m/s.', full: true },
+    ],
+  },
+  {
+    title: 'Worked example 2 — unequal masses, both moving', tone: 'amber',
+    given: 'm1 = 3.0 kg at u1 = 4.0 m/s meets m2 = 5.0 kg at u2 = −2.0 m/s (moving the opposite way). Find v1\' and v2\', and verify kinetic energy.',
+    rows: [
+      { label: "v1' :", value: "v1' = [(3−5)(4) + 2(5)(−2)] / 8 = (−8 − 20)/8 = −3.5 m/s" },
+      { label: "v2' :", value: "v2' = [(5−3)(−2) + 2(3)(4)] / 8 = (−4 + 24)/8 = 2.5 m/s" },
+      { label: 'KE before:', value: '½(3)(4²) + ½(5)(2²) = 24 + 10 = 34 J' },
+      { label: 'KE after:', value: '½(3)(3.5²) + ½(5)(2.5²) = 18.375 + 15.625 = 34 J ✓', full: true },
+    ],
+    note: 'Momentum before: 3(4)+5(−2)=2 kg·m/s; momentum after: 3(−3.5)+5(2.5)=−10.5+12.5=2 kg·m/s ✓ — both conserved.',
+  },
+];
+
+const comparison = {
+  heading: 'Elastic vs inelastic vs perfectly inelastic collisions',
+  note: 'All three conserve momentum. What changes is kinetic energy and whether the objects stick together.',
+  headers: [{ label: 'Collision type' }, { label: 'Momentum' }, { label: 'Kinetic energy' }, { label: 'After collision' }],
+  rows: [
+    ['Elastic', 'Conserved', 'Conserved', 'Objects separate, bounce apart'],
+    ['Inelastic (general)', 'Conserved', 'Some KE lost to heat/sound/deformation', 'Objects separate, may deform'],
+    ['Perfectly inelastic', 'Conserved', 'Maximum KE lost (but not necessarily all)', 'Objects stick together, move as one'],
+  ],
+  highlightIndex: 0,
+  footnote: 'Momentum conservation holds for every closed collision — it is kinetic energy that distinguishes the types.',
+};
+
+const realWorld = [
+  { emoji: '🎱', title: 'Billiards and pool', body: 'A cue ball striking an identical stationary ball nearly stops dead while the target ball shoots off — the equal-mass elastic-collision result, and the reason pool is playable with predictable physics.' },
+  { emoji: '⚛️', title: 'Gas molecules and particle physics', body: 'Ideal-gas kinetic theory assumes molecules collide elastically, which is why pressure and temperature stay stable over time. Rutherford scattering and other particle-collision experiments use the same equations to infer particle masses.' },
+  { emoji: '🪐', title: 'Newton\'s cradle', body: 'The swinging-ball desk toy is a chain of near-elastic collisions: momentum and kinetic energy pass almost losslessly from the first ball to the last, which is why exactly one ball swings out on the far side.' },
+];
+
+const misconceptions = [
+  { claim: '"All collisions conserve kinetic energy."', truth: 'Only elastic collisions do. Momentum is always conserved in a closed system, but kinetic energy is conserved only in the idealised elastic case — most real-world collisions (car crashes, a dropped ball of clay) lose kinetic energy to heat, sound and deformation.' },
+  { claim: '"Elastic means the objects stick together."', truth: 'The opposite: in an elastic collision the objects bounce apart and keep separate velocities. It is the perfectly inelastic collision where objects stick together and move with one shared final velocity.' },
+  { claim: '"A bouncier object always means a more elastic collision."', truth: 'Bounciness (coefficient of restitution) is related but not identical — a very light superball can bounce dramatically without the collision being perfectly elastic, since some energy still converts to sound and vibration.' },
+  { claim: '"If both objects end up moving, the collision must be elastic."', truth: 'Not necessarily — many inelastic collisions leave both objects moving too, just with less total kinetic energy than before. The defining test is whether KE_before equals KE_after, not whether motion continues.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>University Physics Volume 1</em></strong> — §9.4 "Types of Collisions" (free, peer-reviewed). <a href="https://openstax.org/books/university-physics-volume-1/pages/9-4-types-of-collisions" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Halliday, Resnick &amp; Walker, <em>Fundamentals of Physics</em></strong> — Chapter 9, Center of Mass and Linear Momentum, elastic collisions in one dimension.' },
+  { html: '<strong>Serway &amp; Jewett, <em>Physics for Scientists and Engineers</em></strong> — Chapter 9, Linear Momentum and Collisions.' },
+];
+const sourcesNote = "Formulas assume a 1D (head-on) collision with no external forces. Results are rounded for display.";
+
+const howToUse = [
+  { title: 'Enter the masses', body: 'Type m1 and m2 — any consistent mass unit works since it cancels in the ratio.' },
+  { title: 'Enter the velocities', body: 'Type u1 and u2 in m/s; use negative signs for objects approaching from opposite directions.' },
+  { title: 'Check the physics', body: "Read v1' and v2', then confirm momentum and kinetic energy both match before and after." },
+];
+
+const related = [
+  { href: '/tools/inelastic-collision-calculator', emoji: '💥', title: 'Inelastic Collision Calculator', desc: 'Perfectly inelastic — objects stick together.' },
+  { href: '/tools/momentum-calculator', emoji: '🎯', title: 'Momentum & Impulse Calculator', desc: 'p = mv and the impulse–momentum theorem.' },
+  { href: '/tools/force-calculator', emoji: '💥', title: 'Force Calculator', desc: 'F = ma — solve for any variable.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="an elastic collision conserves both momentum and kinetic energy — solving the two conservation equations together gives a fixed formula for each final velocity."
+  howIntro="Because both conservation laws hold simultaneously, the two unknowns (v1' and v2') are fully determined by the two masses and two initial velocities — no extra information about the collision itself is needed. Special cases are easy to check: equal masses exchange velocities, and a very heavy stationary target barely moves while a light incoming object bounces straight back."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where elastic collisions actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass 1 (m1)</span>
+        <input id="m1" type="number" step="any" placeholder="kg" value="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Mass 2 (m2)</span>
+        <input id="m2" type="number" step="any" placeholder="kg" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial velocity 1 (u1)</span>
+        <input id="u1" type="number" step="any" placeholder="m/s" value="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial velocity 2 (u2)</span>
+        <input id="u2" type="number" step="any" placeholder="m/s" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Final velocity 1 (v1')</div><div id="r-v1" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Final velocity 2 (v2')</div><div id="r-v2" class="mt-1 text-2xl font-bold">—</div></div>
+    </div>
+    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Momentum before / after</div><div id="r-p" class="mt-1 text-lg font-semibold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-sm text-slate-500">Kinetic energy before / after</div><div id="r-ke" class="mt-1 text-lg font-semibold text-slate-800">—</div></div>
+    </div>
+    <p id="ec-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: one interactive 3D collision + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D elastic collision</h2>
+      <p class="mt-1 text-sm text-slate-500">Sphere size reflects relative mass. Drag the sliders to change mass 1 and initial velocity 1; the spheres approach, collide and rebound using the elastic-collision formulas. Drag to orbit (touch works too).</p>
+      <div class="mt-3 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass 1 <span id="out-bm1" class="font-mono text-indigo-600">2.0 kg</span></span>
+          <input id="b-m1" type="range" min="0.5" max="10" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
+        </label>
+        <label class="block">
+          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Initial velocity 1 <span id="out-bu1" class="font-mono text-indigo-600">5.0 m/s</span></span>
+          <input id="b-u1" type="range" min="0.5" max="10" step="0.1" value="5" class="mt-2 w-full accent-indigo-600" />
+        </label>
+      </div>
+      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">v1' = <span id="out-bv1p" class="font-mono font-bold">—</span> &nbsp;|&nbsp; v2' = <span id="out-bv2p" class="font-mono font-bold">—</span></div>
+      <div id="collision3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
+      <p id="collision3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Collision graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Velocity before vs after (mass 2 stationary at start)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-vel"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Kinetic energy conservation check</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ke"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
+
+      function solveElastic(m1, m2, u1, u2) {
+        const denom = m1 + m2;
+        const v1 = ((m1 - m2) * u1 + 2 * m2 * u2) / denom;
+        const v2 = ((m2 - m1) * u2 + 2 * m1 * u1) / denom;
+        return { v1, v2 };
+      }
+
+      // ---- calculator ----
+      function update() {
+        el('ec-err').textContent = '';
+        ['r-v1', 'r-v2', 'r-p', 'r-ke'].forEach((id) => (el(id).textContent = '—'));
+        const m1 = parseFloat(el('m1').value), m2 = parseFloat(el('m2').value);
+        const u1 = parseFloat(el('u1').value), u2 = parseFloat(el('u2').value);
+        if ([m1, m2, u1, u2].some((x) => isNaN(x))) return;
+        if (m1 <= 0 || m2 <= 0) { el('ec-err').textContent = 'Masses must be positive.'; return; }
+        const { v1, v2 } = solveElastic(m1, m2, u1, u2);
+        el('r-v1').textContent = fmt(v1) + ' m/s';
+        el('r-v2').textContent = fmt(v2) + ' m/s';
+        const pBefore = m1 * u1 + m2 * u2, pAfter = m1 * v1 + m2 * v2;
+        const keBefore = 0.5 * m1 * u1 * u1 + 0.5 * m2 * u2 * u2;
+        const keAfter = 0.5 * m1 * v1 * v1 + 0.5 * m2 * v2 * v2;
+        el('r-p').textContent = fmt(pBefore) + ' / ' + fmt(pAfter) + ' kg·m/s';
+        el('r-ke').textContent = fmt(keBefore) + ' / ' + fmt(keAfter) + ' J';
+      }
+      ['m1', 'm2', 'u1', 'u2'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- 3D + charts ----
+      const charts = {};
+      let scene3d = null;
+      function bState() {
+        const m1 = parseFloat(el('b-m1').value), m2 = 2;
+        const u1 = parseFloat(el('b-u1').value), u2 = 0;
+        const { v1, v2 } = solveElastic(m1, m2, u1, u2);
+        return { m1, m2, u1, u2, v1, v2 };
+      }
+      function onB() {
+        const s = bState();
+        el('out-bm1').textContent = s.m1.toFixed(1) + ' kg';
+        el('out-bu1').textContent = s.u1.toFixed(1) + ' m/s';
+        el('out-bv1p').textContent = fmt(s.v1) + ' m/s';
+        el('out-bv2p').textContent = fmt(s.v2) + ' m/s';
+        try { if (scene3d) scene3d.update(s); } catch (e) {}
+        try { if (charts.ready) updateCharts(s); } catch (e) {}
+      }
+      el('b-m1').addEventListener('input', onB);
+      el('b-u1').addEventListener('input', onB);
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.vel = new Chart(el('chart-vel'), {
+          type: 'bar',
+          data: { labels: ['Object 1', 'Object 2'], datasets: [
+            { label: 'Before', data: [0, 0], backgroundColor: '#94a3b8' },
+            { label: 'After', data: [0, 0], backgroundColor: '#6366f1' },
+          ] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Velocity (m/s)' } } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.ke = new Chart(el('chart-ke'), {
+          type: 'bar',
+          data: { labels: ['Before', 'After'], datasets: [{ label: 'Total kinetic energy (J)', data: [0, 0], backgroundColor: ['#94a3b8', '#10b981'] }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Kinetic energy (J)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+        updateCharts(bState());
+      }
+      function updateCharts(s) {
+        if (!charts.ready) return;
+        charts.vel.data.datasets[0].data = [+s.u1.toFixed(3), +s.u2.toFixed(3)];
+        charts.vel.data.datasets[1].data = [+s.v1.toFixed(3), +s.v2.toFixed(3)];
+        charts.vel.update();
+        const keBefore = 0.5 * s.m1 * s.u1 * s.u1 + 0.5 * s.m2 * s.u2 * s.u2;
+        const keAfter = 0.5 * s.m1 * s.v1 * s.v1 + 0.5 * s.m2 * s.v2 * s.v2;
+        charts.ke.data.datasets[0].data = [+keBefore.toFixed(3), +keAfter.toFixed(3)];
+        charts.ke.update();
+      }
+
+      // ---- interactive 3D collision ----
+      function initScene3d() {
+        const c = el('collision3d'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 0.5, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0));
+        const mat1 = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
+        const mat2 = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        let sph1 = null, sph2 = null;
+        let t = 0, cur = bState();
+        function radius(m) { return Math.max(0.4, Math.cbrt(m) * 0.6); }
+        function build() {
+          if (sph1) { s.scene.remove(sph1); sph1.geometry.dispose(); }
+          if (sph2) { s.scene.remove(sph2); sph2.geometry.dispose(); }
+          sph1 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m1), 24, 24), mat1);
+          sph2 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m2), 24, 24), mat2);
+          s.scene.add(sph1); s.scene.add(sph2);
+        }
+        function update(state) { cur = state; build(); t = 0; }
+        function frame() {
+          requestAnimationFrame(frame);
+          if (!reduceMotion && sph1 && sph2) {
+            t += 0.012;
+            const ph = t % 3;
+            const r1 = radius(cur.m1), r2 = radius(cur.m2);
+            const contact = r1 + r2;
+            const startX1 = -8, startX2 = 6;
+            if (ph < 1.4) {
+              // approach phase (u2 assumed 0, resting at startX2)
+              const frac = ph / 1.4;
+              sph1.position.x = startX1 + frac * (startX2 - contact - startX1);
+              sph2.position.x = startX2;
+            } else {
+              // rebound phase using computed v1', v2'
+              const frac = (ph - 1.4) / 1.6;
+              const collideX1 = startX2 - contact;
+              const dir1 = cur.v1 >= 0 ? 1 : -1, dir2 = cur.v2 >= 0 ? 1 : -1;
+              sph1.position.x = collideX1 + dir1 * frac * Math.min(9, Math.abs(cur.v1) * 0.9);
+              sph2.position.x = startX2 + dir2 * frac * Math.min(9, Math.abs(cur.v2) * 0.9);
+            }
+            sph1.position.y = r1; sph2.position.y = r2;
+            s.spin(0.0012);
+          }
+          s.renderer.render(s.scene, s.camera);
+        }
+        frame();
+        scene3d = { update, resize: s.resize };
+        update(bState());
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[elastic-collision] calc init failed', e); }
+        try { onB(); } catch (e) { console.error('[elastic-collision] slider init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[elastic-collision] charts failed', e); }
+        if (window.THREE) {
+          try { initScene3d(); } catch (e) { console.error('[elastic-collision] 3D failed', e); el('collision3d-fallback').classList.remove('hidden'); }
+        } else { el('collision3d-fallback').classList.remove('hidden'); }
+        mountResize([scene3d]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

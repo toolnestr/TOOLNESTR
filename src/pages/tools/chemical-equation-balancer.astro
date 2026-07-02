@@ -1,0 +1,359 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Chemical Equation Balancer';
+const description = 'Balance chemical equations instantly with a live atom-count chart. Enter an unbalanced equation like CH4 + O2 -> CO2 + H2O and get whole-number coefficients.';
+const intro = 'Type an unbalanced equation with up to four species (reactants + products) and get the smallest whole-number coefficients, with a live atom-count chart proving both sides match.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What does it mean to "balance" a chemical equation?', a: 'Balancing means finding whole-number coefficients so the number of atoms of each element is identical on both sides, satisfying the law of conservation of mass — atoms are rearranged in a reaction, never created or destroyed.' },
+  { q: 'How does this balancer find the coefficients?', a: 'For equations with up to four species, it searches whole-number coefficients from 1 to 12 for every species and keeps the first combination where every element\'s atom count matches on both sides, then reduces the set by its greatest common divisor to get the smallest ratio.' },
+  { q: 'Why is there a 4-species and coefficient-12 limit?', a: 'This is a brute-force search: with 4 species and coefficients up to 12 that is at most 12⁴ ≈ 20,000 checks, which is instant. Larger equations need a linear-algebra (matrix) method instead of trial coefficients.' },
+  { q: 'Does it support parentheses like Ca(OH)2 or hydrates?', a: 'No — this tool intentionally parses simple element+subscript formulas only (e.g. CO2, Fe2O3, NH3). For polyatomic groups in parentheses or hydrate dot-notation, use the Molar Mass Calculator\'s parser as a mental model, or expand the formula manually first (Ca(OH)2 → CaO2H2).' },
+  { q: 'What if no balanced equation is found?', a: 'You will see an explicit error. This usually means the equation as written is chemically impossible (an element appears on one side only) or needs coefficients above 12 — rare for standard textbook reactions.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Chemical Equation Balancer',
+  description: 'Balance a chemical equation and see the atom counts confirm both sides match.',
+  steps: [
+    { name: 'Type the equation', text: 'Use + between species and -> or = between reactants and products, e.g. CH4 + O2 -> CO2 + H2O.' },
+    { name: 'Balance it', text: 'The tool searches whole-number coefficients and returns the smallest set that conserves every element.' },
+    { name: 'Check the atom counts', text: 'The bar chart compares atoms of each element on the reactant and product side — balanced means the bars pair up exactly.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'Σ(atoms of X)<sub>reactants</sub> = Σ(atoms of X)<sub>products</sub>', note: 'for every element X — the balance condition' },
+  { expr: 'c₁A + c₂B → c₃C + c₄D', note: 'find integer c₁…c₄ satisfying the balance condition' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — combustion of methane', tone: 'slate',
+    given: 'Balance CH₄ + O₂ → CO₂ + H₂O.',
+    rows: [
+      { label: 'Start:', value: '1 CH₄ + 1 O₂ → 1 CO₂ + 1 H₂O (unbalanced: 2 O on the left, 3 O on the right)' },
+      { label: 'Balance C, H first:', value: 'CH₄ already gives 1 C and 4 H, matched by 1 CO₂ and 2 H₂O' },
+      { label: 'Balance O last:', value: 'Right side now needs 2 (CO₂) + 2 (H₂O) = 4 O, so O₂ needs coefficient 2' },
+      { label: 'Balanced:', value: 'CH₄ + 2 O₂ → CO₂ + 2 H₂O', full: true },
+    ],
+    note: 'Check: left has 1 C, 4 H, 4 O; right has 1 C, 4 H, 4 O. Balanced.',
+  },
+  {
+    title: 'Worked example 2 — rusting of iron', tone: 'amber',
+    given: 'Balance Fe + O₂ → Fe₂O₃.',
+    rows: [
+      { label: 'Balance Fe:', value: 'Fe₂O₃ has 2 Fe, so use 2 Fe on the left' },
+      { label: 'Balance O:', value: 'Fe₂O₃ has 3 O; to get a whole number of O₂ molecules, double everything: 4 Fe + 3 O₂ → 2 Fe₂O₃' },
+      { label: 'Balanced:', value: '4 Fe + 3 O₂ → 2 Fe₂O₃', full: true },
+    ],
+    note: 'Check: left has 4 Fe, 6 O; right has 4 Fe, 6 O. Balanced — this is why odd O₂ counts often force doubling.',
+  },
+];
+
+const comparison = {
+  heading: 'Balancing method vs equation complexity',
+  note: 'Trial-and-error/search methods work well for small equations; bigger ones need algebra.',
+  headers: [{ label: 'Method' }, { label: 'Best for' }, { label: 'Limitation' }],
+  rows: [
+    ['Inspection (by hand)', 'Simple, familiar reactions', 'Slow and error-prone for many elements'],
+    ['Coefficient search (this tool)', 'Up to 4 species, small coefficients', 'Impractical beyond ~4 species or coeffs &gt; 12'],
+    ['Linear algebra (matrix/null space)', 'Any size, including redox equations', 'Needs matrix setup — overkill for textbook problems'],
+  ],
+  highlightIndex: 1,
+  footnote: 'All three methods enforce the same rule: atoms of each element must match on both sides.',
+};
+
+const realWorld = [
+  { emoji: '🏭', title: 'Industrial process design', body: 'Balanced equations tell engineers the exact mole ratios of feedstock needed per unit of product — the starting point for reactor sizing and raw-material cost estimates in ammonia, ethylene and cement plants.' },
+  { emoji: '🚀', title: 'Rocket propellant chemistry', body: 'Combustion equations for propellants (e.g. hydrazine and dinitrogen tetroxide) must be balanced to compute the exact oxidizer-to-fuel mass ratio that maximizes thrust without leftover unburned fuel.' },
+  { emoji: '🧪', title: 'Lab synthesis planning', body: 'Before running a reaction, chemists balance the equation to know the mole ratio of reagents to weigh out — the same ratio then feeds directly into limiting-reagent and percent-yield calculations.' },
+];
+
+const misconceptions = [
+  { claim: '"You can change the subscripts to balance an equation."', truth: 'Never — subscripts define what the substance is (H₂O vs H₂O₂ are different compounds). Only the coefficients in front of each formula may change during balancing.' },
+  { claim: '"Balanced coefficients are unique."', truth: 'Any multiple of a balanced set is also technically balanced (2, 4, 2, 4 works too) — by convention the smallest whole-number ratio is reported, which is what this tool returns after reducing by the GCD.' },
+  { claim: '"A coefficient of 1 should be written explicitly."', truth: 'By convention a coefficient of 1 is omitted — "CH₄" means "1 CH₄". This tool follows that convention in its output.' },
+  { claim: '"Balancing tells you whether a reaction actually happens."', truth: 'Balancing only enforces atom conservation. Whether a reaction proceeds, how fast, and how far depends on thermodynamics and kinetics — a balanced equation can still be non-spontaneous.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 4.1, Writing and Balancing Chemical Equations (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/4-1-writing-and-balancing-chemical-equations" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 3, Stoichiometry: Calculations with Chemical Formulas and Equations.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 3, Stoichiometry, section on balancing chemical equations.' },
+];
+const sourcesNote = 'Coefficients are found by whole-number search (1–12 per species, up to 4 species) and reduced to the smallest ratio. Parentheses and hydrate notation are not supported.';
+
+const howToUse = [
+  { title: 'Type the equation', body: 'Separate species with + and reactants from products with -> (or =).' },
+  { title: 'Read the coefficients', body: 'The balanced equation appears with the smallest whole-number coefficients.' },
+  { title: 'Verify with the chart', body: 'Compare atom counts per element on each side — matching bars confirm the balance.' },
+];
+
+const related = [
+  { href: '/tools/limiting-reagent-calculator', emoji: '⚖️', title: 'Limiting Reagent Calculator', desc: 'Find which reactant runs out first.' },
+  { href: '/tools/percent-yield-calculator', emoji: '🎯', title: 'Percent Yield Calculator', desc: 'Actual vs theoretical yield, solve any variable.' },
+  { href: '/tools/atomic-mass-calculator', emoji: '⚗️', title: 'Molar Mass Calculator', desc: 'Molar mass from a chemical formula.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="atoms are never created or destroyed in a reaction, so the same count of every element must appear on both sides — balancing just finds the coefficients that make that true."
+  howIntro="Because subscripts are fixed by chemical identity, only the coefficients in front of each formula can change. For small equations, trying whole-number coefficients until every element's atom count matches is a fast and reliable method — that is exactly what this tool automates."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where equation balancing actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-sm text-slate-500">Enter an unbalanced equation using + and -&gt; (or =). Up to 4 total species, simple formulas only (no parentheses).</p>
+    <label class="block"><span class="text-sm font-medium text-slate-700">Equation</span>
+      <input id="eq-input" type="text" placeholder="CH4 + O2 -> CO2 + H2O" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono text-base outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button id="ex-1" type="button" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">CH4 + O2 -&gt; CO2 + H2O</button>
+      <button id="ex-2" type="button" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">Fe + O2 -&gt; Fe2O3</button>
+      <button id="ex-3" type="button" class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200">N2 + H2 -&gt; NH3</button>
+    </div>
+    <div class="mt-6 rounded-xl bg-indigo-600 p-5 text-center text-white">
+      <div class="text-sm opacity-80">Balanced equation</div>
+      <div id="r-balanced" class="mt-1 break-words font-mono text-xl font-bold">—</div>
+    </div>
+    <p id="bal-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: 3D spheres + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Live 3D species view</h2>
+      <p class="mt-1 text-sm text-slate-500">Each cluster represents one species, sized by its balanced coefficient. Reactants on the left, products on the right. Drag to orbit.</p>
+      <div id="eqn3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
+      <p id="eqn3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Atom-count check</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Atoms per element — reactant side vs product side</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-atoms"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Coefficients by species</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:260px;"><canvas id="chart-coeffs"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- parsing + balancing ----
+      function parseSpecies(str) {
+        str = str.trim();
+        const counts = {};
+        let i = 0;
+        if (!str.length) throw new Error('Empty species in equation.');
+        while (i < str.length) {
+          const c = str[i];
+          if (c >= 'A' && c <= 'Z') {
+            let sym = c; i++;
+            while (i < str.length && str[i] >= 'a' && str[i] <= 'z') { sym += str[i]; i++; }
+            let numStr = '';
+            while (i < str.length && str[i] >= '0' && str[i] <= '9') { numStr += str[i]; i++; }
+            const num = numStr ? parseInt(numStr, 10) : 1;
+            counts[sym] = (counts[sym] || 0) + num;
+          } else {
+            throw new Error('Unexpected character "' + c + '" — this balancer supports simple formulas only (no parentheses).');
+          }
+        }
+        return counts;
+      }
+
+      function parseEquation(eqStr) {
+        const arrowMatch = eqStr.match(/->|=|→/);
+        if (!arrowMatch) throw new Error('Equation must contain -> or = to separate reactants and products.');
+        const idx = eqStr.indexOf(arrowMatch[0]);
+        const lhs = eqStr.slice(0, idx), rhs = eqStr.slice(idx + arrowMatch[0].length);
+        const reactants = lhs.split('+').map((s) => s.trim()).filter(Boolean);
+        const products = rhs.split('+').map((s) => s.trim()).filter(Boolean);
+        if (!reactants.length || !products.length) throw new Error('Need at least one reactant and one product.');
+        const total = reactants.length + products.length;
+        if (total > 4) throw new Error('This balancer supports up to 4 total species (reactants + products). Try a simpler equation.');
+        const reactantCounts = reactants.map(parseSpecies);
+        const productCounts = products.map(parseSpecies);
+        return { reactants, products, reactantCounts, productCounts };
+      }
+
+      function elementsOf(...countsArrs) {
+        const set = new Set();
+        countsArrs.forEach((arr) => arr.forEach((c) => Object.keys(c).forEach((e) => set.add(e))));
+        return [...set];
+      }
+
+      function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+      function tryBalance(eqStr, maxCoeff) {
+        maxCoeff = maxCoeff || 12;
+        const { reactants, products, reactantCounts, productCounts } = parseEquation(eqStr);
+        const elems = elementsOf(reactantCounts, productCounts);
+        const nR = reactants.length, nP = products.length, n = nR + nP;
+
+        function* combos(depth, current) {
+          if (depth === n) { yield current.slice(); return; }
+          for (let c = 1; c <= maxCoeff; c++) {
+            current.push(c);
+            yield* combos(depth + 1, current);
+            current.pop();
+          }
+        }
+
+        let best = null;
+        for (const coeffs of combos(0, [])) {
+          let ok = true;
+          for (const eSym of elems) {
+            let sumR = 0, sumP = 0;
+            for (let i = 0; i < nR; i++) sumR += (reactantCounts[i][eSym] || 0) * coeffs[i];
+            for (let j = 0; j < nP; j++) sumP += (productCounts[j][eSym] || 0) * coeffs[nR + j];
+            if (sumR !== sumP) { ok = false; break; }
+          }
+          if (ok) { best = coeffs; break; }
+        }
+        if (!best) throw new Error('No balanced whole-number solution found with coefficients 1–' + maxCoeff + '. Check the formulas are correct.');
+
+        let g = best[0];
+        for (let i = 1; i < best.length; i++) g = gcd(g, best[i]);
+        const reduced = best.map((c) => c / g);
+
+        return { reactants, products, reactantCounts, productCounts, coeffs: reduced, nR, nP, elems };
+      }
+
+      function fmtEq(res) {
+        const { reactants, products, coeffs, nR } = res;
+        const lhs = reactants.map((r, i) => (coeffs[i] === 1 ? '' : coeffs[i] + ' ') + r).join(' + ');
+        const rhs = products.map((p, j) => (coeffs[nR + j] === 1 ? '' : coeffs[nR + j] + ' ') + p).join(' + ');
+        return lhs + ' → ' + rhs;
+      }
+
+      // ---- calculator ----
+      let lastResult = null;
+      function updateCalc() {
+        const raw = el('eq-input').value;
+        el('bal-err').textContent = '';
+        if (!raw.trim()) { el('r-balanced').textContent = '—'; lastResult = null; return; }
+        try {
+          const res = tryBalance(raw);
+          lastResult = res;
+          el('r-balanced').textContent = fmtEq(res);
+          renderScene(res);
+          updateCharts(res);
+        } catch (e) {
+          lastResult = null;
+          el('r-balanced').textContent = '—';
+          el('bal-err').textContent = e.message;
+        }
+      }
+      el('eq-input').addEventListener('input', updateCalc);
+      el('ex-1').addEventListener('click', () => { el('eq-input').value = 'CH4 + O2 -> CO2 + H2O'; updateCalc(); });
+      el('ex-2').addEventListener('click', () => { el('eq-input').value = 'Fe + O2 -> Fe2O3'; updateCalc(); });
+      el('ex-3').addEventListener('click', () => { el('eq-input').value = 'N2 + H2 -> NH3'; updateCalc(); });
+
+      // ---- charts ----
+      const charts = {};
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.atoms = new Chart(el('chart-atoms'), {
+          type: 'bar',
+          data: { labels: [], datasets: [
+            { label: 'Reactant side', data: [], backgroundColor: '#6366f1' },
+            { label: 'Product side', data: [], backgroundColor: '#10b981' },
+          ] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Atom count' }, beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { position: 'bottom' } } }),
+        });
+        charts.coeffs = new Chart(el('chart-coeffs'), {
+          type: 'bar',
+          data: { labels: [], datasets: [{ label: 'Coefficient', data: [], backgroundColor: '#f59e0b' }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Coefficient' }, beginAtZero: true, ticks: { precision: 0 } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+      }
+      function updateCharts(res) {
+        if (!charts.ready || !res) return;
+        const { elems, reactantCounts, productCounts, nR, coeffs, reactants, products } = res;
+        const rTot = {}, pTot = {};
+        elems.forEach((eSym) => {
+          rTot[eSym] = reactantCounts.reduce((s, c, i) => s + (c[eSym] || 0) * coeffs[i], 0);
+          pTot[eSym] = productCounts.reduce((s, c, j) => s + (c[eSym] || 0) * coeffs[nR + j], 0);
+        });
+        charts.atoms.data.labels = elems;
+        charts.atoms.data.datasets[0].data = elems.map((e2) => rTot[e2]);
+        charts.atoms.data.datasets[1].data = elems.map((e2) => pTot[e2]);
+        charts.atoms.update();
+
+        const labels = reactants.concat(products);
+        charts.coeffs.data.labels = labels;
+        charts.coeffs.data.datasets[0].data = coeffs;
+        charts.coeffs.update();
+      }
+
+      // ---- 3D species view ----
+      let sceneObj = null;
+      const speciesColors = [0x6366f1, 0x10b981, 0xf59e0b, 0xef4444];
+      function initScene() {
+        const c = el('eqn3d'); if (!c) throw new Error('no eqn3d container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        frame();
+        sceneObj = { s, group: null, resize: s.resize };
+      }
+      function renderScene(res) {
+        if (!sceneObj || !window.THREE) return;
+        const { s } = sceneObj;
+        if (sceneObj.group) { s.scene.remove(sceneObj.group); sceneObj.group = null; }
+        const group = new THREE.Group();
+        const n = res.nR + res.nP;
+        const spacing = 5.5;
+        const startX = -((n - 1) * spacing) / 2;
+        const allCoeffs = res.coeffs;
+        for (let idx = 0; idx < n; idx++) {
+          const cnt = Math.max(1, Math.min(12, allCoeffs[idx]));
+          const cluster = new THREE.Group();
+          const mat = new THREE.MeshStandardMaterial({ color: speciesColors[idx % speciesColors.length] });
+          const perRow = Math.ceil(Math.sqrt(cnt));
+          for (let k = 0; k < cnt; k++) {
+            const sph = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), mat);
+            const row = Math.floor(k / perRow), col = k % perRow;
+            sph.position.set((col - (perRow - 1) / 2) * 1.3, row * 1.3 - 1, 0);
+            cluster.add(sph);
+          }
+          cluster.position.x = startX + idx * spacing;
+          group.add(cluster);
+        }
+        s.scene.add(group);
+        sceneObj.group = group;
+      }
+
+      function boot() {
+        try { initCharts(); } catch (e) { console.error('[balancer] charts failed', e); }
+        if (window.THREE) {
+          try { initScene(); } catch (e) { console.error('[balancer] scene failed', e); el('eqn3d-fallback').classList.remove('hidden'); }
+        } else { el('eqn3d-fallback').classList.remove('hidden'); }
+        el('eq-input').value = 'CH4 + O2 -> CO2 + H2O';
+        updateCalc();
+        mountResize([sceneObj]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
