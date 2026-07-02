@@ -113,6 +113,26 @@ Status values: `Not started` / `In progress` / `Built, not audited` / `In audit 
 
 ---
 
+## Batch 1 deploy set — 10 flagship tools complete (2026-07-02)
+
+**5 Physics + 5 Chemistry, all on `window.STK`, all builds clean (491 pages), pushed to origin/main
+(Cloudflare Pages auto-deploy — wrangler is NOT authed on this machine, so deploy goes via git push,
+not `wrangler pages deploy`).** Live-preview audit skipped per user; formula/golden-vector checks kept
+and hand-verified per tool.
+
+| Subject | Tools (commit) |
+|---|---|
+| Physics | Projectile (ref), Free Fall `f41b5f1`, Momentum `f95da76`, Force/F=ma `e5607f0`, Uniform Circular Motion `5018c59` |
+| Chemistry | Molarity (ref), Dilution `3b8bdd4`, Percent Concentration `f4e66e9`, PPM `20f912a`, Molality `ee0ed01` |
+
+Kit: `7217f73`. New pages created: uniform-circular-motion, percent-concentration, ppm, molality.
+Enhanced-in-place (moved to physics/chemistry category): free-fall, momentum, force, dilution.
+
+**Remaining Batch-1 tools (not yet built), to continue next:** Physics — Elastic Collision,
+Inelastic Collision, Impulse (own page), Torque, Angular Acceleration. Chemistry — Normality,
+Molar Mass (enhance existing atomic-mass), Chemical Equation Balancer, Limiting Reagent, Percent Yield.
+(Spec lists 10+10 per batch; the deploy set above is the first shippable half.)
+
 ## How to resume this project in a new session
 
 Both files live in the repo at **`docs/subject-tools/`**.
