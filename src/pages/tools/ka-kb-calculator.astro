@@ -1,0 +1,377 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Ka/Kb Equilibrium Constant Calculator';
+const description = 'Calculate the acid dissociation constant Ka, estimate [H+] and pH from Ka and initial concentration, or convert between Ka and Kb for a conjugate acid-base pair, with a live 3D visualization and charts.';
+const intro = 'Estimate [H+] and pH for a weak acid from Ka and its initial concentration, compute Ka directly from equilibrium concentrations, or convert between Ka and Kb for a conjugate acid-base pair using Ka × Kb = Kw.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is Ka?', a: 'Ka is the acid dissociation constant — the equilibrium constant for a weak acid HA breaking apart into H⁺ and its conjugate base A⁻: HA ⇌ H⁺ + A⁻, so Ka = [H⁺][A⁻]/[HA]. A larger Ka means the acid dissociates more, so it is a (relatively) stronger weak acid.' },
+  { q: 'What is Kb?', a: 'Kb is the base dissociation constant — the equilibrium constant for a weak base B reacting with water to form its conjugate acid BH⁺ and OH⁻: B + H₂O ⇌ BH⁺ + OH⁻, so Kb = [BH⁺][OH⁻]/[B]. A larger Kb means the base ionizes more, so it is a (relatively) stronger weak base.' },
+  { q: 'How are Ka and Kb related?', a: 'For a conjugate acid-base pair (like acetic acid CH₃COOH and its conjugate base acetate CH₃COO⁻), Ka × Kb = Kw, where Kw = 1.0 × 10⁻¹⁴ at 25°C is the ion-product constant of water. Equivalently, pKa + pKb = 14. This means the two constants are locked together — you only ever need one to find the other.' },
+  { q: 'What does a small Ka mean?', a: 'A small Ka (much less than 1, e.g. 10⁻⁵ or smaller) means the acid barely dissociates — at equilibrium, the solution is mostly still intact HA molecules, with only a small fraction ionized into H⁺ and A⁻. This is the defining feature of a weak acid, in contrast to a strong acid like HCl, which dissociates essentially 100%.' },
+  { q: 'When is the [H+] ≈ √(Ka × C0) approximation valid?', a: 'This shortcut assumes the fraction of acid that dissociates is small enough that C0 (the initial concentration) is approximately unchanged at equilibrium — a good approximation when dissociation is under about 5%, which usually holds when Ka is small and C0 is not too dilute. If Ka is relatively large or C0 is very small, dissociation exceeds 5% and you should solve the full quadratic equilibrium expression instead for an accurate answer.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Ka/Kb Equilibrium Constant Calculator',
+  description: 'Estimate [H+]/pH from Ka and concentration, compute Ka from equilibrium data, or convert between Ka and Kb.',
+  steps: [
+    { name: 'Pick a mode', text: 'Choose "Estimate [H+] from Ka" (the common textbook case), "Ka from concentrations" (exact equilibrium values), or "Ka ⇄ Kb conversion".' },
+    { name: 'Enter the values', text: 'Type Ka and initial concentration C0, or the equilibrium concentrations [H+], [A-], [HA], or Ka (or Kb) to convert.' },
+    { name: 'Read the result', text: 'The calculator solves instantly and shows pH, pKa, pKb, or Kb/Ka as relevant, plus the 3D diagrams and charts for context.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'K<sub>a</sub> = [H⁺][A⁻] / [HA]', note: 'acid dissociation constant' },
+  { expr: 'K<sub>b</sub> = [BH⁺][OH⁻] / [B]', note: 'base dissociation constant' },
+  { expr: 'K<sub>a</sub> × K<sub>b</sub> = K<sub>w</sub> = 1.0×10⁻¹⁴', note: 'conjugate acid-base pair, 25°C' },
+  { expr: '[H⁺] ≈ √(K<sub>a</sub> × C₀)', note: 'small-dissociation approximation' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — estimating pH of acetic acid solution', tone: 'slate',
+    given: 'A 0.10 M acetic acid (CH₃COOH) solution has Ka = 1.8 × 10⁻⁵. Estimate [H⁺] and pH using the small-dissociation approximation.',
+    rows: [
+      { label: 'Formula:', value: '[H⁺] ≈ √(Ka × C₀)' },
+      { label: 'Substitute:', value: '[H⁺] ≈ √(1.8×10⁻⁵ × 0.10) = √(1.8×10⁻⁶)' },
+      { label: '[H⁺]:', value: '≈ 1.342 × 10⁻³ M' },
+      { label: 'pH:', value: '= −log₁₀(1.342×10⁻³) ≈ 2.87', full: true },
+    ],
+    note: 'The fraction dissociated is [H⁺]/C₀ ≈ 1.34%, well under the 5% guideline, so the approximation is valid here.',
+  },
+  {
+    title: 'Worked example 2 — converting Ka to Kb for the conjugate base', tone: 'amber',
+    given: 'Acetic acid has Ka = 1.8 × 10⁻⁵. Find Kb and pKb for its conjugate base, acetate (CH₃COO⁻).',
+    rows: [
+      { label: 'Formula:', value: 'Kb = Kw / Ka' },
+      { label: 'Substitute:', value: 'Kb = 1.0×10⁻¹⁴ / 1.8×10⁻⁵' },
+      { label: 'Kb:', value: '≈ 5.556 × 10⁻¹⁰' },
+      { label: 'pKb:', value: '= −log₁₀(5.556×10⁻¹⁰) ≈ 9.26', full: true },
+    ],
+    note: 'Check: pKa ≈ −log₁₀(1.8×10⁻⁵) ≈ 4.74, and pKa + pKb ≈ 4.74 + 9.26 = 14.00, confirming the pair rule.',
+  },
+];
+
+const comparison = {
+  heading: 'Ka values for common weak acids',
+  note: 'Approximate standard reference values at 25°C — a larger Ka means a stronger (more dissociated) weak acid.',
+  headers: [{ label: 'Weak acid' }, { label: 'Formula' }, { label: 'Ka' }, { label: 'pKa' }],
+  rows: [
+    ['Hydrofluoric acid', 'HF', '≈ 6.6 × 10⁻⁴', '≈ 3.18'],
+    ['Formic acid', 'HCOOH', '≈ 1.8 × 10⁻⁴', '≈ 3.75'],
+    ['Acetic acid', 'CH₃COOH', '≈ 1.8 × 10⁻⁵', '≈ 4.74'],
+    ['Carbonic acid (Ka1)', 'H₂CO₃', '≈ 4.3 × 10⁻⁷', '≈ 6.37'],
+    ['Hypochlorous acid', 'HOCl', '≈ 3.0 × 10⁻⁸', '≈ 7.52'],
+  ],
+  highlightIndex: 2,
+  footnote: 'HF has the largest Ka here, so among these it dissociates the most (though it is still a weak acid, not a strong one); hypochlorous acid dissociates the least.',
+};
+
+const realWorld = [
+  { emoji: '🩺', title: 'Predicting solution pH', body: 'Given Ka and the concentration of a weak acid being dissolved, chemists estimate the resulting pH before ever touching a pH meter — essential for preparing reagents and predicting reaction conditions.' },
+  { emoji: '⚗️', title: 'Buffer design', body: 'Choosing a weak acid/conjugate base pair for a buffer starts with picking a Ka (and therefore pKa) close to the target pH — see the Henderson-Hasselbalch calculator for the next step, computing the exact mixing ratio.' },
+  { emoji: '🧬', title: 'Biochemistry', body: 'Amino acid side chains, enzyme active sites, and drug molecules all have characteristic Ka/Kb values that determine their ionization state at physiological pH, which in turn controls solubility, binding, and reactivity.' },
+  { emoji: '🌊', title: 'Environmental water chemistry', body: 'Natural water systems involve weak acid/base equilibria (carbonic acid, phosphates, ammonia) whose Ka and Kb values govern buffering capacity, nutrient availability, and how pollutants partition in rivers, lakes, and oceans.' },
+];
+
+const misconceptions = [
+  { claim: '"Ka and Kb for a conjugate pair are independent of each other."', truth: 'They are directly linked: Ka × Kb = Kw = 1.0×10⁻¹⁴ at 25°C (equivalently pKa + pKb = 14). Knowing one of the pair automatically gives you the other — they are never independent for a true conjugate acid-base pair.' },
+  { claim: '"A stronger acid always has a stronger conjugate base."', truth: 'The opposite is true. Because Ka × Kb = Kw is fixed, a larger Ka (stronger acid) forces a smaller Kb (weaker conjugate base), and vice versa. A strong acid\'s conjugate base is typically extremely weak.' },
+  { claim: '"[H+] ≈ √(Ka × C0) always works."', truth: 'This shortcut assumes dissociation is small enough (usually under about 5%) that C0 barely changes at equilibrium. For a relatively large Ka or a very dilute C0, dissociation can exceed 5%, and you need the full quadratic equilibrium expression for an accurate [H+].' },
+  { claim: '"A small Ka means the acid does not react at all."', truth: 'A small Ka just means dissociation is limited — most of the acid stays as intact HA at equilibrium, with only a small fraction ionized. The acid still reacts and establishes a real (if lopsided) equilibrium; it is simply a weak acid, not an unreactive one.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 14, Acid-Base Equilibria (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/14-3-relative-strengths-of-acids-and-bases" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 16, Acid-Base Equilibria.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — Chapter 14, Acids and Bases.' },
+];
+const sourcesNote = 'Ka = [H⁺][A⁻]/[HA]; Kb = [BH⁺][OH⁻]/[B]; Ka × Kb = Kw = 1.0×10⁻¹⁴ at 25°C. The [H⁺] ≈ √(Ka × C₀) approximation assumes small dissociation (typically &lt;5%). Reference Ka values are standard approximations at 25°C. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Pick the mode', body: 'Estimate [H+] from Ka and C₀ (default), compute Ka from exact equilibrium concentrations, or convert Ka ⇄ Kb.' },
+  { title: 'Enter the values', body: 'Type Ka and C₀, or [H+]/[A-]/[HA], or Ka (or Kb) for the conversion mode.' },
+  { title: 'See it visually', body: 'The 3D diagrams show a weak acid mostly undissociated, and the fixed pKa/pKb seesaw for common acids.' },
+];
+
+const related = [
+  { href: '/tools/henderson-hasselbalch-calculator', emoji: '🧯', title: 'Henderson-Hasselbalch Calculator', desc: 'pH = pKa + log([A-]/[HA]) for buffers.' },
+  { href: '/tools/ph-calculator', emoji: '🧪', title: 'pH Calculator', desc: 'pH = −log[H⁺] — solve for any variable.' },
+  { href: '/tools/poh-calculator', emoji: '🔵', title: 'pOH Calculator', desc: 'pOH = −log[OH⁻]; pH + pOH = 14.' },
+  { href: '/tools/equilibrium-constant-calculator', emoji: '🔁', title: 'Equilibrium Constant (Keq) Calculator', desc: 'Kc = [C]^c[D]^d / [A]^a[B]^b.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="Ka and Kb measure how far a weak acid or base dissociates at equilibrium, and for a conjugate acid-base pair they are locked together by Ka × Kb = Kw — know one, and you know the other."
+  howIntro="For the common textbook case — a weak acid with a known Ka dissolved at initial concentration C₀ — the shortcut [H⁺] ≈ √(Ka × C₀) gives a fast, usually accurate estimate of [H⁺] and pH, valid as long as dissociation stays small (under about 5%). When you have exact equilibrium concentrations instead, Ka = [H⁺][A⁻]/[HA] gives Ka directly. And because Ka × Kb = Kw = 1.0×10⁻¹⁴ at 25°C for any conjugate pair, converting between Ka and Kb — or their negative logs pKa and pKb — is just one division and a log away."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where Ka and Kb actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button id="mode-approx" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Estimate [H+] from Ka</button>
+      <button id="mode-exact" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Ka from concentrations</button>
+      <button id="mode-convert" type="button" class="rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">Ka ⇄ Kb conversion</button>
+    </div>
+
+    <div id="approx-fields" class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Ka</span>
+        <input id="ka-approx" type="number" step="any" placeholder="e.g. 1.8e-5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Initial concentration C₀ (mol/L)</span>
+        <input id="c0-approx" type="number" step="any" placeholder="e.g. 0.10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <p class="mt-2 text-xs text-slate-400">Uses [H⁺] ≈ √(Ka × C₀), valid when dissociation is small (roughly &lt;5% of C₀). The calculator flags the estimate if the approximation looks shaky.</p>
+
+    <div id="exact-fields" class="hidden gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">[H⁺] (mol/L)</span>
+        <input id="h-exact" type="number" step="any" placeholder="e.g. 1.34e-3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">[A⁻] (mol/L)</span>
+        <input id="a-exact" type="number" step="any" placeholder="e.g. 1.34e-3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">[HA] (mol/L, at equilibrium)</span>
+        <input id="ha-exact" type="number" step="any" placeholder="e.g. 0.0987" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div id="convert-fields" class="hidden gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Ka (leave blank if converting from Kb)</span>
+        <input id="ka-conv" type="number" step="any" placeholder="e.g. 1.8e-5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Kb (leave blank if converting from Ka)</span>
+        <input id="kb-conv" type="number" step="any" placeholder="e.g. 5.6e-10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div id="lab-1" class="text-sm opacity-80">[H+] (mol/L)</div><div id="r-1" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-2" class="text-sm text-slate-500">pH</div><div id="r-2" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-3" class="text-sm text-slate-500">Ka</div><div id="r-3" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div id="lab-4" class="text-sm text-slate-500">pKa</div><div id="r-4" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="kakb-warn" class="mt-3 text-center text-xs text-amber-600"></p>
+    <p id="kakb-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: two static auto-rotating diagrams + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-dissociation" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. A weak acid stays mostly intact</h3>
+          <p class="mt-1 text-sm text-slate-600">A fixed, illustrative population: about 90% remains undissociated <span class="font-semibold text-slate-500">HA</span> (grey), with only ~10% split into <span class="font-semibold text-red-500">H⁺</span> (red) and <span class="font-semibold text-blue-500">A⁻</span> (blue) — a small Ka. A strong acid, by contrast, would show 100% split into ions.</p>
+        </div>
+        <div>
+          <div id="diag-scale" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. pKa and pKb seesaw — they always sum to 14</h3>
+          <p class="mt-1 text-sm text-slate-600">Fixed points for acetic acid (pKa ≈ 4.76) and ammonium (pKa ≈ 9.25), each paired with its conjugate base's pKb on the opposite side of the 14-unit scale — a bigger pKa always means a smaller pKb.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Ka/Kb graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Ka values for common weak acids (log scale)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ka"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Ka vs Kb seesaw for three conjugate pairs (Ka × Kb = Kw)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-seesaw"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+      const KW = 1.0e-14;
+
+      // ---- calculator ----
+      let mode = 'approx';
+      function setLabels() {
+        el('lab-1').textContent = '[H+] (mol/L)'; el('lab-2').textContent = 'pH';
+        el('lab-3').textContent = 'Ka'; el('lab-4').textContent = 'pKa';
+        if (mode === 'convert') { el('lab-1').textContent = 'Ka'; el('lab-2').textContent = 'Kb'; el('lab-3').textContent = 'pKa'; el('lab-4').textContent = 'pKb'; }
+        else if (mode === 'exact') { el('lab-3').textContent = 'Ka'; el('lab-4').textContent = 'pKa'; }
+      }
+      function switchMode(m) {
+        mode = m;
+        const active = 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white';
+        const inactive = 'rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-600';
+        el('mode-approx').className = m === 'approx' ? active : inactive;
+        el('mode-exact').className = m === 'exact' ? active : inactive;
+        el('mode-convert').className = m === 'convert' ? active : inactive;
+        el('approx-fields').className = m === 'approx' ? 'grid gap-4 sm:grid-cols-2' : 'hidden';
+        el('exact-fields').className = m === 'exact' ? 'grid gap-4 sm:grid-cols-3' : 'hidden gap-4 sm:grid-cols-3';
+        el('convert-fields').className = m === 'convert' ? 'grid gap-4 sm:grid-cols-2' : 'hidden gap-4 sm:grid-cols-2';
+        el('kakb-warn').textContent = ''; el('kakb-err').textContent = '';
+        setLabels();
+        ['r-1', 'r-2', 'r-3', 'r-4'].forEach((id) => (el(id).textContent = '—'));
+        update();
+      }
+      function update() {
+        el('kakb-err').textContent = ''; el('kakb-warn').textContent = '';
+        if (mode === 'approx') {
+          const ka = parseFloat(el('ka-approx').value);
+          const c0 = parseFloat(el('c0-approx').value);
+          if (isNaN(ka) || isNaN(c0)) { ['r-1', 'r-2', 'r-3', 'r-4'].forEach((id) => (el(id).textContent = '—')); return; }
+          if (ka <= 0 || c0 <= 0) { el('kakb-err').textContent = 'Ka and C₀ must both be greater than 0.'; return; }
+          const h = Math.sqrt(ka * c0);
+          const ph = -Math.log10(h);
+          const pctDiss = (h / c0) * 100;
+          el('r-1').textContent = fmt(h);
+          el('r-2').textContent = ph.toFixed(2);
+          el('r-3').textContent = fmt(ka);
+          el('r-4').textContent = (-Math.log10(ka)).toFixed(2);
+          if (pctDiss > 5) el('kakb-warn').textContent = `Estimated dissociation ≈ ${pctDiss.toFixed(1)}% — above the ~5% guideline, so this approximation may be inaccurate. Consider the full quadratic equilibrium expression.`;
+        } else if (mode === 'exact') {
+          const h = parseFloat(el('h-exact').value);
+          const a = parseFloat(el('a-exact').value);
+          const ha = parseFloat(el('ha-exact').value);
+          if (isNaN(h) || isNaN(a) || isNaN(ha)) { ['r-1', 'r-2', 'r-3', 'r-4'].forEach((id) => (el(id).textContent = '—')); return; }
+          if (h <= 0 || a <= 0 || ha <= 0) { el('kakb-err').textContent = '[H+], [A-], and [HA] must all be greater than 0.'; return; }
+          const ka = (h * a) / ha;
+          el('r-1').textContent = fmt(h);
+          el('r-2').textContent = (-Math.log10(h)).toFixed(2);
+          el('r-3').textContent = fmt(ka);
+          el('r-4').textContent = (-Math.log10(ka)).toFixed(2);
+        } else {
+          const kaRaw = el('ka-conv').value;
+          const kbRaw = el('kb-conv').value;
+          let ka = parseFloat(kaRaw), kb = parseFloat(kbRaw);
+          if (kaRaw !== '' && !isNaN(ka) && ka > 0) { kb = KW / ka; }
+          else if (kbRaw !== '' && !isNaN(kb) && kb > 0) { ka = KW / kb; }
+          else { ['r-1', 'r-2', 'r-3', 'r-4'].forEach((id) => (el(id).textContent = '—')); return; }
+          el('r-1').textContent = fmt(ka);
+          el('r-2').textContent = fmt(kb);
+          el('r-3').textContent = (-Math.log10(ka)).toFixed(2);
+          el('r-4').textContent = (-Math.log10(kb)).toFixed(2);
+        }
+      }
+      el('mode-approx').addEventListener('click', () => switchMode('approx'));
+      el('mode-exact').addEventListener('click', () => switchMode('exact'));
+      el('mode-convert').addEventListener('click', () => switchMode('convert'));
+      ['ka-approx', 'c0-approx', 'h-exact', 'a-exact', 'ha-exact', 'ka-conv', 'kb-conv'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- charts (fixed illustrative reference data) ----
+      const charts = {};
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.ka = new Chart(el('chart-ka'), {
+          type: 'bar',
+          data: {
+            labels: ['Hypochlorous\n(HOCl)', 'Acetic\n(CH3COOH)', 'Formic\n(HCOOH)', 'Hydrofluoric\n(HF)'],
+            datasets: [{ label: 'Ka', data: [3.0e-8, 1.8e-5, 1.8e-4, 6.6e-4], backgroundColor: ['#94a3b8', '#10b981', '#6366f1', '#f59e0b'] }],
+          },
+          options: Object.assign({}, base, {
+            scales: { y: { type: 'logarithmic', title: { display: true, text: 'Ka (log scale)' } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => 'Ka ≈ ' + ctx.parsed.y.toExponential(2) } } },
+          }),
+        });
+        const pairs = [
+          { ka: 1.0e-3, label: 'Ka ≈ 1.0×10⁻³' },
+          { ka: 1.8e-5, label: 'Ka ≈ 1.8×10⁻⁵ (acetic)' },
+          { ka: 5.6e-10, label: 'Ka ≈ 5.6×10⁻¹⁰' },
+        ];
+        charts.seesaw = new Chart(el('chart-seesaw'), {
+          type: 'bar',
+          data: {
+            labels: pairs.map((p) => p.label),
+            datasets: [
+              { label: 'Ka', data: pairs.map((p) => p.ka), backgroundColor: '#6366f1' },
+              { label: 'Kb', data: pairs.map((p) => KW / p.ka), backgroundColor: '#10b981' },
+            ],
+          },
+          options: Object.assign({}, base, {
+            scales: { y: { type: 'logarithmic', title: { display: true, text: 'Value (log scale)' } } },
+            plugins: { legend: { display: true } },
+          }),
+        });
+        charts.ready = true;
+      }
+
+      // ---- static diagram 1: weak acid mostly undissociated (fixed ~90/10 ratio) ----
+      function initDiagDissociation() {
+        const c = el('diag-dissociation'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const haMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 }); // undissociated HA, grey
+        const hMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });  // H+, red
+        const aMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 }); // A-, blue
+        const geo = new THREE.SphereGeometry(0.24, 14, 14);
+        const N_HA = 18; // ~90%
+        const N_ION = 2; // ~10% dissociated, shown as separate H+/A- pairs
+        for (let i = 0; i < N_HA; i++) {
+          const row = Math.floor(i / 5), col = i % 5;
+          const m = new THREE.Mesh(geo, haMat);
+          m.position.set((col - 2) * 0.75, (row - 1.5) * 0.75, 0);
+          s.scene.add(m);
+        }
+        for (let i = 0; i < N_ION; i++) {
+          const hIon = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), hMat);
+          hIon.position.set(-1.4 + i * 0.5, -2.3, 0.6);
+          s.scene.add(hIon);
+          const aIon = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), aMat);
+          aIon.position.set(0.6 + i * 0.5, -2.3, -0.6);
+          s.scene.add(aIon);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagDissociation = { resize: s.resize };
+      }
+
+      // ---- static diagram 2: pKa/pKb seesaw scale for common acids ----
+      function initDiagScale() {
+        const c = el('diag-scale'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const barGeo = new THREE.BoxGeometry(9, 0.15, 0.15);
+        const barMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1 });
+        const bar = new THREE.Mesh(barGeo, barMat);
+        s.scene.add(bar);
+        const dotGeo = new THREE.SphereGeometry(0.22, 14, 14);
+        // scale: 0..14 mapped to x = -4.5..4.5
+        function xFor(v) { return -4.5 + (v / 14) * 9; }
+        const points = [
+          { v: 4.76, color: 0x10b981, label: 'pKa acetic acid 4.76' },
+          { v: 14 - 4.76, color: 0xf59e0b, label: 'pKb acetate 9.24' },
+          { v: 9.25, color: 0x6366f1, label: 'pKa ammonium 9.25' },
+          { v: 14 - 9.25, color: 0xec4899, label: 'pKb ammonia 4.75' },
+        ];
+        points.forEach((p) => {
+          const m = new THREE.Mesh(dotGeo, new THREE.MeshStandardMaterial({ color: p.color }));
+          m.position.set(xFor(p.v), 0.4, 0);
+          s.scene.add(m);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagScale = { resize: s.resize };
+      }
+      let diagDissociation = null, diagScale = null;
+
+      function boot() {
+        try { el('ka-approx').value = '1.8e-5'; el('c0-approx').value = '0.10'; switchMode('approx'); } catch (e) { console.error('[ka-kb] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[ka-kb] charts failed', e); }
+        if (window.THREE) {
+          try { initDiagDissociation(); } catch (e) { console.error('[ka-kb] dissociation diagram failed', e); }
+          try { initDiagScale(); } catch (e) { console.error('[ka-kb] scale diagram failed', e); }
+        }
+        mountResize([diagDissociation, diagScale]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>

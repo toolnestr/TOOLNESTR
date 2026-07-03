@@ -1,0 +1,364 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Entropy Calculator';
+const description = 'Calculate reaction entropy ΔS_rxn from standard molar entropies with static 3D order/disorder diagrams and charts. Up to 2 reactants and 2 products, with worked examples.';
+const intro = 'Enter coefficients and standard molar entropies (S°) for up to two reactants and two products to compute ΔS_rxn, and see whether the reaction increases or decreases entropy.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is entropy?', a: 'Entropy (S) is a measure of how spread out energy and matter are among the possible microscopic arrangements (microstates) of a system. Loosely, it tracks disorder or randomness — but more precisely, higher entropy means there are more ways for a system\'s particles to be arranged while looking the same at the macroscopic level. It is measured in J/(mol·K).' },
+  { q: 'What does the second law of thermodynamics say about entropy?', a: 'The second law states that for any spontaneous process, the total entropy of the system plus its surroundings always increases (or stays the same for a perfectly reversible process). It never decreases. This is why heat flows from hot to cold and not the reverse, and why some reactions proceed in one direction but not spontaneously in the other.' },
+  { q: 'Why does entropy increase when a solid melts or a liquid boils?', a: 'Melting and boiling both give particles more freedom of motion and more possible arrangements. A solid has particles locked into a rigid, ordered lattice (low entropy). A liquid lets particles slide past each other (more entropy). A gas lets particles move almost independently through a huge volume with widely spaced, fast-moving molecules (much more entropy). So S°(solid) &lt; S°(liquid) &lt; S°(gas) is the standard ordering.' },
+  { q: 'How does ΔS relate to spontaneity via ΔG = ΔH − TΔS?', a: 'Gibbs free energy combines both enthalpy and entropy: ΔG = ΔH − TΔS. A reaction is spontaneous when ΔG &lt; 0. A positive ΔS (entropy increasing) makes the −TΔS term more negative, favoring spontaneity, especially at higher temperature. A negative ΔS works against spontaneity unless ΔH is negative enough (exothermic) to compensate. This is why some exothermic reactions with negative ΔS become non-spontaneous at high temperature, and some endothermic reactions with positive ΔS become spontaneous at high temperature.' },
+  { q: 'Does a negative ΔS_rxn mean the reaction cannot happen?', a: 'No. A negative ΔS_rxn only means the reaction, by itself, decreases entropy in the system. The reaction can still be spontaneous overall if it releases enough heat (sufficiently negative ΔH) to increase the entropy of the surroundings by more than the system loses — the total entropy change (system + surroundings) is what the second law actually requires to be positive.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Entropy Calculator',
+  description: 'Compute the reaction entropy change ΔS_rxn from standard molar entropies and stoichiometric coefficients.',
+  steps: [
+    { name: 'Enter reactants', text: 'Type the coefficient and S° for reactant 1, and optionally reactant 2.' },
+    { name: 'Enter products', text: 'Type the coefficient and S° for product 1, and optionally product 2.' },
+    { name: 'Read ΔS_rxn', text: 'The calculator computes ΔS_rxn live and tells you whether entropy increases or decreases.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'ΔS<sub>rxn</sub> = ΣS°(products) − ΣS°(reactants)', note: 'each S° weighted by its stoichiometric coefficient, in J/(mol·K)' },
+  { expr: 'ΔS &gt; 0 → entropy increases', note: 'ΔS &lt; 0 → entropy decreases' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — decomposition of N₂O₄', tone: 'slate',
+    given: 'N₂O₄(g) → 2 NO₂(g). S°: N₂O₄(g) = 304.3, NO₂(g) = 240.1 J/(mol·K).',
+    rows: [
+      { label: 'Products:', value: '2 × S°(NO₂) = 2 × 240.1 = 480.2 J/(mol·K)' },
+      { label: 'Reactants:', value: '1 × S°(N₂O₄) = 304.3 J/(mol·K)' },
+      { label: 'ΔS_rxn:', value: '480.2 − 304.3 = +175.9 J/(mol·K)', full: true },
+    ],
+    note: 'ΔS_rxn ≈ +175.9 J/(mol·K) — positive, because one mole of gas splits into two moles of gas, increasing the number of accessible microstates.',
+  },
+  {
+    title: 'Worked example 2 — condensation of water vapor', tone: 'amber',
+    given: 'H₂O(g) → H₂O(l). S°: H₂O(g) = 188.8, H₂O(l) = 69.9 J/(mol·K), both with coefficient 1.',
+    rows: [
+      { label: 'ΔS_rxn:', value: 'S°(H₂O, l) − S°(H₂O, g) = 69.9 − 188.8 = −118.9 J/(mol·K)' },
+    ],
+    note: 'ΔS_rxn = −118.9 J/(mol·K) < 0 — negative, because a gas (high entropy, widely spaced, fast-moving molecules) condenses into a liquid (much more ordered), decreasing entropy of the system.',
+  },
+];
+
+const comparison = {
+  heading: 'Standard molar entropies (S°) for common substances',
+  note: 'Reference values at 25°C, 1 atm, used in the worked examples above. Notice S°(solid) < S°(liquid) < S°(gas) for water, and how graphite (a looser layered structure) has higher entropy than the rigid diamond lattice of the same element, carbon.',
+  headers: [{ label: 'Substance' }, { label: 'S° (J/(mol·K))' }],
+  rows: [
+    ['H₂O(s), ice', '48'],
+    ['H₂O(l), liquid water', '70'],
+    ['H₂O(g), steam', '189'],
+    ['O₂(g)', '205'],
+    ['N₂(g)', '192'],
+    ['CO₂(g)', '214'],
+    ['C(graphite)', '5.7'],
+    ['C(diamond)', '2.4'],
+  ],
+  highlightIndex: 2,
+  footnote: 'Values are standard reference data (approximate, rounded) — always confirm against a current data table for precision work.',
+};
+
+const realWorld = [
+  { emoji: '🧭', title: 'Predicting spontaneity via Gibbs free energy', body: 'Combining ΔH and ΔS through ΔG = ΔH − TΔS lets chemists predict whether a reaction will be spontaneous at a given temperature, and whether raising or lowering temperature could flip the outcome — critical for designing industrial processes that must run efficiently at scale.' },
+  { emoji: '❄️', title: 'Refrigeration and heat engine limits', body: 'The second law of thermodynamics — entropy of system plus surroundings always increases — sets a hard theoretical ceiling on how efficient any refrigerator, heat pump, or heat engine can ever be, no matter how well it is engineered.' },
+  { emoji: '🔥', title: 'Why some exothermic reactions do not run', body: 'A reaction can release heat (ΔH < 0) yet still fail to be spontaneous at a given temperature if it also strongly decreases entropy (ΔS < 0) enough that TΔS outweighs ΔH — entropy is why enthalpy alone never tells the whole story.' },
+  { emoji: '🧬', title: 'Biology and local entropy decrease', body: 'Living cells build highly ordered structures — proteins, DNA, membranes — locally decreasing entropy. This does not violate the second law: cells pay for that local order by releasing heat and disordered waste, increasing the entropy of their surroundings by even more.' },
+];
+
+const misconceptions = [
+  { claim: '"Entropy always increases in every process, everywhere, all the time."', truth: 'Only the TOTAL entropy of a system plus its surroundings must increase for a spontaneous process (the second law). LOCAL entropy can and does decrease — water freezing into ice, a cell organizing molecules into proteins, or a reaction with negative ΔS_rxn. What is forbidden is the sum decreasing.' },
+  { claim: '"Entropy is just a fancy word for messiness."', truth: 'The disorder analogy is a useful first mental picture, but it is imprecise. Entropy more precisely counts the number of accessible microstates (energetically equivalent arrangements) consistent with a system\'s observable state — a subtly different and more rigorous idea than everyday "messiness."' },
+  { claim: '"A negative ΔS_rxn means the reaction is impossible."', truth: 'A negative ΔS_rxn only describes the system\'s own entropy change. The reaction can still be spontaneous overall if it is sufficiently exothermic (very negative ΔH) — the heat released raises the surroundings\' entropy by more than the system loses, so ΔG = ΔH − TΔS is still negative.' },
+  { claim: '"Solids always have lower entropy than any liquid or gas, without exception."', truth: 'The general trend S°(solid) < S°(liquid) < S°(gas) holds for the same substance across its phases, but it is not a universal ranking across different substances — a complex gas is not automatically compared meaningfully to an unrelated solid, and structural factors (like graphite vs diamond, both solids of carbon) also matter.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 16, Entropy and Free Energy (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/16-2-entropy" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 19, Chemical Thermodynamics.' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — entropy, standard molar entropies, and the second law of thermodynamics.' },
+];
+const sourcesNote = 'ΔS_rxn = Σ(coefficient × S°)products − Σ(coefficient × S°)reactants. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter reactants', body: 'Coefficient and S° for reactant 1; optionally reactant 2.' },
+  { title: 'Enter products', body: 'Coefficient and S° for product 1; optionally product 2.' },
+  { title: 'Read the result', body: 'ΔS_rxn solves live, with an entropy-increasing/decreasing label and the static order/disorder diagrams.' },
+];
+
+const related = [
+  { href: '/tools/enthalpy-calculator', emoji: '🌋', title: 'Enthalpy Calculator', desc: 'ΔH_rxn = ΣΔHf°products − ΣΔHf°reactants.' },
+  { href: '/tools/calorimetry-calculator', emoji: '🥽', title: 'Calorimetry Calculator', desc: 'q_water = mcΔT and q_reaction = −q_water.' },
+  { href: '/tools/equilibrium-constant-calculator', emoji: '🔁', title: 'Equilibrium Constant (Keq) Calculator', desc: 'Kc = [C]^c[D]^d / [A]^a[B]^b.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="reaction entropy is the same bookkeeping as enthalpy — add up the standard molar entropies of everything you end with, subtract the standard molar entropies of everything you started with."
+  howIntro="Each S° is weighted by its stoichiometric coefficient before summing. A positive ΔS_rxn means the products have more accessible microstates than the reactants — often because moles of gas increased, a solid became a liquid or gas, or a substance dissolved into solution. A negative ΔS_rxn means the products are more ordered — often because gas moles decreased or a gas condensed into a liquid or solid."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where reaction entropy actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-xs text-slate-500">Leave a species' S° blank to exclude it (useful for single-reactant or single-product reactions). All standard molar entropies are in J/(mol·K).</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-red-700">Reactants</h3>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. (reactant 1)</span>
+            <input id="r1-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">S° (J/(mol·K))</span>
+            <input id="r1-s" type="number" step="any" placeholder="J/(mol·K)" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. (reactant 2)</span>
+            <input id="r2-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">S° (J/(mol·K), optional)</span>
+            <input id="r2-s" type="number" step="any" placeholder="blank = absent" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-green-700">Products</h3>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. (product 1)</span>
+            <input id="p1-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">S° (J/(mol·K))</span>
+            <input id="p1-s" type="number" step="any" placeholder="J/(mol·K)" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">Coeff. (product 2)</span>
+            <input id="p2-coeff" type="number" step="1" min="1" value="1" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+          <label class="block"><span class="text-xs font-medium text-slate-700">S° (J/(mol·K), optional)</span>
+            <input id="p2-s" type="number" step="any" placeholder="blank = absent" class="mt-1 w-full rounded-xl border border-slate-300 p-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Reaction entropy ΔS_rxn</div><div id="r-ds" class="mt-1 text-2xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Classification</div><div id="r-class" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="ds-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: 2 static 3D diagrams + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-order" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Ordered vs disordered arrangements</h3>
+          <p class="mt-1 text-sm text-slate-600">On the left, particles sit in a tight, repeating grid — <span class="font-semibold text-sky-600">low entropy</span>, like a crystalline solid. On the right, the same number of particles are scattered at random, widely spaced — <span class="font-semibold text-amber-600">high entropy</span>, like a gas. Entropy counts how many such arrangements are possible.</p>
+        </div>
+        <div>
+          <div id="diag-phase" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Solid &lt; liquid &lt; gas</h3>
+          <p class="mt-1 text-sm text-slate-600">A rigid cube of tightly packed spheres (<span class="font-semibold text-sky-600">solid</span>) sits at the smallest entropy, a loosely packed cluster (<span class="font-semibold text-emerald-600">liquid</span>) in the middle, and widely scattered spheres (<span class="font-semibold text-amber-600">gas</span>) at the largest — the standard ordering S°(solid) &lt; S°(liquid) &lt; S°(gas).</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Entropy graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">S° of water across its three phases (J/(mol·K))</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-phases"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">ΔS_rxn for illustrative example reactions (J/(mol·K))</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-examples"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function update() {
+        el('ds-err').textContent = '';
+        el('r-ds').textContent = '—';
+        el('r-class').textContent = '—';
+        const r1c = parseFloat(el('r1-coeff').value), r1s = parseFloat(el('r1-s').value);
+        const r2c = parseFloat(el('r2-coeff').value), r2s = parseFloat(el('r2-s').value);
+        const p1c = parseFloat(el('p1-coeff').value), p1s = parseFloat(el('p1-s').value);
+        const p2c = parseFloat(el('p2-coeff').value), p2s = parseFloat(el('p2-s').value);
+        if (isNaN(r1s) || isNaN(p1s)) return;
+        if (!isNaN(r2s) && (isNaN(r2c) || r2c <= 0)) { el('ds-err').textContent = 'Reactant 2 coefficient must be a positive number.'; return; }
+        if (!isNaN(p2s) && (isNaN(p2c) || p2c <= 0)) { el('ds-err').textContent = 'Product 2 coefficient must be a positive number.'; return; }
+        if (isNaN(r1c) || r1c <= 0 || isNaN(p1c) || p1c <= 0) { el('ds-err').textContent = 'Coefficients must be positive numbers.'; return; }
+        let reactants = r1c * r1s;
+        if (!isNaN(r2s)) reactants += r2c * r2s;
+        let products = p1c * p1s;
+        if (!isNaN(p2s)) products += p2c * p2s;
+        const ds = products - reactants;
+        el('r-ds').textContent = fmt(ds) + ' J/(mol·K)';
+        if (ds > 0) el('r-class').textContent = 'Entropy increases (spontaneous-favoring)';
+        else if (ds < 0) el('r-class').textContent = 'Entropy decreases';
+        else el('r-class').textContent = 'No entropy change (ΔS = 0)';
+        try { if (charts.ready) updateExampleChart(ds); } catch (e) {}
+      }
+      ['r1-coeff', 'r1-s', 'r2-coeff', 'r2-s', 'p1-coeff', 'p1-s', 'p2-coeff', 'p2-s'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- charts ----
+      const charts = {};
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.phases = new Chart(el('chart-phases'), {
+          type: 'bar',
+          data: {
+            labels: ['Ice, H₂O(s)', 'Liquid water, H₂O(l)', 'Steam, H₂O(g)'],
+            datasets: [{ label: 'S° (J/(mol·K))', data: [48, 70, 189], backgroundColor: ['#38bdf8', '#10b981', '#f59e0b'] }],
+          },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'S° (J/(mol·K))' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.examples = new Chart(el('chart-examples'), {
+          type: 'bar',
+          data: {
+            labels: ['N₂O₄→2NO₂\n(gas moles ↑, illustrative)', 'Current reaction', 'H₂O(g)→H₂O(l)\n(gas→liquid, illustrative)'],
+            datasets: [{ label: 'ΔS (J/(mol·K))', data: [175.9, 0, -118.9], backgroundColor: ['#10b981', '#6366f1', '#ef4444'] }],
+          },
+          options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'ΔS (J/(mol·K))' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+      }
+      function updateExampleChart(ds) {
+        if (!charts.ready) return;
+        charts.examples.data.datasets[0].data = [175.9, +ds.toFixed(1), -118.9];
+        charts.examples.update();
+      }
+
+      // ---- diagram 1: ordered grid vs scattered particles (static analogy) ----
+      let diagOrder = null;
+      function initDiagOrder() {
+        const c = el('diag-order'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 16, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const orderedMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 });
+        const disorderedMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
+        const sphereGeo = new THREE.SphereGeometry(0.35, 16, 16);
+
+        // ordered grid, left side
+        const orderedGroup = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            const sph = new THREE.Mesh(sphereGeo, orderedMat);
+            sph.position.set(i * 1.1 - 1.1, 0, j * 1.1 - 1.1);
+            orderedGroup.add(sph);
+          }
+        }
+        orderedGroup.position.set(-4.5, 0, 0);
+        s.scene.add(orderedGroup);
+
+        // disordered scatter, right side (fixed pseudo-random layout, seeded manually)
+        const disorderedGroup = new THREE.Group();
+        const offsets = [
+          [-1.8, 0.2, -1.6], [-0.6, -0.3, 1.7], [1.3, 0.5, -0.4], [0.2, -0.1, 0.3],
+          [1.9, 0.1, 1.5], [-1.4, 0.3, 1.1], [0.7, -0.4, -1.8], [-0.2, 0.4, -0.3], [1.6, -0.2, 0.6],
+        ];
+        offsets.forEach((o) => {
+          const sph = new THREE.Mesh(sphereGeo, disorderedMat);
+          sph.position.set(o[0], o[1], o[2]);
+          disorderedGroup.add(sph);
+        });
+        disorderedGroup.position.set(4.5, 0, 0);
+        s.scene.add(disorderedGroup);
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagOrder = { resize: s.resize };
+      }
+
+      // ---- diagram 2: solid / liquid / gas static comparison ----
+      let diagPhase = null;
+      function initDiagPhase() {
+        const c = el('diag-phase'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 18, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const solidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 });
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.4 });
+        const gasMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
+        const sphereGeo = new THREE.SphereGeometry(0.3, 16, 16);
+
+        // solid: tightly packed 2x2x2 cube, far left
+        const solidGroup = new THREE.Group();
+        for (let i = 0; i < 2; i++) {
+          for (let j = 0; j < 2; j++) {
+            for (let k = 0; k < 2; k++) {
+              const sph = new THREE.Mesh(sphereGeo, solidMat);
+              sph.position.set(i * 0.7 - 0.35, j * 0.7 - 0.35, k * 0.7 - 0.35);
+              solidGroup.add(sph);
+            }
+          }
+        }
+        solidGroup.position.set(-5.5, 0, 0);
+        s.scene.add(solidGroup);
+
+        // liquid: loosely packed cluster with a container ring, middle
+        const liquidGroup = new THREE.Group();
+        const liquidOffsets = [
+          [-0.6, 0.3, 0], [0.5, -0.2, 0.4], [-0.2, 0.6, -0.5], [0.4, 0.1, -0.3],
+          [-0.5, -0.4, 0.5], [0.2, -0.6, 0.1],
+        ];
+        liquidOffsets.forEach((o) => {
+          const sph = new THREE.Mesh(sphereGeo, liquidMat);
+          sph.position.set(o[0], o[1], o[2]);
+          liquidGroup.add(sph);
+        });
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.06, 8, 24), new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.6 }));
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = -0.9;
+        liquidGroup.add(ring);
+        liquidGroup.position.set(0, 0, 0);
+        s.scene.add(liquidGroup);
+
+        // gas: widely scattered spheres, far right
+        const gasGroup = new THREE.Group();
+        const gasOffsets = [
+          [-1.6, 0.8, -1.4], [1.5, -0.6, 1.2], [0.3, 1.3, 0.2], [-0.8, -1.2, 0.9],
+          [1.7, 0.5, -0.8], [-1.9, -0.3, 1.1], [0.6, -1.4, -1.3],
+        ];
+        gasOffsets.forEach((o) => {
+          const sph = new THREE.Mesh(sphereGeo, gasMat);
+          sph.position.set(o[0], o[1], o[2]);
+          gasGroup.add(sph);
+        });
+        gasGroup.position.set(5.5, 0, 0);
+        s.scene.add(gasGroup);
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagPhase = { resize: s.resize };
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[entropy] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[entropy] charts failed', e); }
+        if (window.THREE) {
+          try { initDiagOrder(); } catch (e) { console.error('[entropy] order/disorder diagram failed', e); }
+          try { initDiagPhase(); } catch (e) { console.error('[entropy] phase diagram failed', e); }
+        }
+        mountResize([diagOrder, diagPhase]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
