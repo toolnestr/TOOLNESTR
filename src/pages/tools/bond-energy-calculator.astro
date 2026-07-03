@@ -1,0 +1,332 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Bond Energy Calculator';
+const description = 'Bond energy calculator with a live 3D bonds-broken vs bonds-formed diagram and charts. Estimate ΔH_rxn from average bond energies of up to 4 bonds broken and 4 bonds formed.';
+const intro = 'Estimate reaction enthalpy from average bond energies: ΔH_rxn ≈ Σ(bonds broken) − Σ(bonds formed). Static 3D diagrams and charts show why breaking bonds costs energy and forming bonds releases it.';
+const category = { id: 'chemistry', name: 'Chemistry', emoji: '🧪' };
+
+const faqs = [
+  { q: 'What is bond energy?', a: 'Bond energy (or bond dissociation energy) is the average energy required to break one mole of a particular type of bond in the gas phase, such as C-H or O=O. It is always a positive quantity — breaking a bond always requires energy input.' },
+  { q: 'How do you estimate ΔH_rxn from bond energies?', a: 'Sum the bond energies of all bonds broken in the reactants (energy required, positive contribution), then subtract the sum of bond energies of all bonds formed in the products (energy released): ΔH_rxn ≈ Σ(bonds broken) − Σ(bonds formed). If bonds formed release more energy than bonds broken require, ΔH is negative (exothermic).' },
+  { q: 'Why is the bond-energy method only approximate?', a: 'Bond energies are average values taken across many different molecules containing that bond type, not the exact energy in any one specific molecule — the true bond strength varies slightly depending on the rest of the molecule\'s structure. This is why the bond-energy estimate for methane combustion (about -802 kJ/mol) differs somewhat from the more precise value calculated from standard enthalpies of formation (-890.3 kJ/mol).' },
+  { q: 'Is breaking a bond exothermic or endothermic?', a: 'Breaking a bond is always endothermic — it always requires an energy input, because you are pulling two attracted atoms apart. Forming a bond is always exothermic — energy is always released as atoms settle into a lower-energy bonded state.' },
+  { q: 'How does bond energy relate to bond order and length?', a: 'Generally, higher bond order (single vs double vs triple) means a stronger, shorter bond and a higher bond energy. For example, C-C (single, ≈347 kJ/mol) < C=C (double, ≈614 kJ/mol), and N≡N (triple, ≈941 kJ/mol) is one of the strongest common bonds, which is part of why N₂ gas is so chemically unreactive.' },
+];
+
+const badge = { label: 'Chemistry', color: 'green' };
+const howto = {
+  name: 'How to use the Bond Energy Calculator',
+  description: 'Estimate ΔH_rxn from the bond energies of bonds broken in reactants and bonds formed in products.',
+  steps: [
+    { name: 'List bonds broken', text: 'Enter up to 4 bonds broken in the reactants, each with its count and average bond energy (kJ/mol).' },
+    { name: 'List bonds formed', text: 'Enter up to 4 bonds formed in the products, each with its count and average bond energy (kJ/mol).' },
+    { name: 'Read ΔH_rxn', text: 'The calculator sums both sides and reports the estimated reaction enthalpy live.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'ΔH<sub>rxn</sub> ≈ Σ(bond energies broken) − Σ(bond energies formed)', note: 'bonds broken cost energy (+); bonds formed release energy (−, subtracted)' },
+  { expr: 'ΔH &lt; 0 → exothermic', note: 'ΔH &gt; 0 → endothermic (approximate, average bond energies)' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — combustion of methane', tone: 'slate',
+    given: 'CH₄ + 2 O₂ → CO₂ + 2 H₂O. Bonds broken: 4×C-H (413 kJ/mol) + 2×O=O (498 kJ/mol). Bonds formed: 2×C=O (799 kJ/mol) + 4×O-H (463 kJ/mol).',
+    rows: [
+      { label: 'Bonds broken:', value: '4×413 + 2×498 = 1652 + 996 = 2648 kJ/mol' },
+      { label: 'Bonds formed:', value: '2×799 + 4×463 = 1598 + 1852 = 3450 kJ/mol' },
+      { label: 'ΔH_rxn:', value: '2648 − 3450 = −802 kJ/mol', full: true },
+    ],
+    note: 'ΔH_rxn ≈ −802 kJ/mol — strongly exothermic. This is close to, but not identical to, the more precise ΔHf°-based value of −890.3 kJ/mol (see the Enthalpy Calculator), because average bond energies are approximations, not exact values for this specific molecule.',
+  },
+  {
+    title: 'Worked example 2 — hydrogen combustion (2H₂ + O₂ → 2H₂O)', tone: 'amber',
+    given: 'Bonds broken: 2×H-H (436 kJ/mol) + 1×O=O (498 kJ/mol). Bonds formed: 4×O-H (463 kJ/mol).',
+    rows: [
+      { label: 'Bonds broken:', value: '2×436 + 1×498 = 872 + 498 = 1370 kJ/mol' },
+      { label: 'Bonds formed:', value: '4×463 = 1852 kJ/mol' },
+      { label: 'ΔH_rxn:', value: '1370 − 1852 = −482 kJ/mol', full: true },
+    ],
+    note: 'ΔH_rxn ≈ −482 kJ/mol, exothermic — consistent with hydrogen combustion being a strongly energy-releasing reaction (per mole of H₂O formed, roughly −241 kJ/mol, close to the gas-phase ΔHf° of water vapor).',
+  },
+];
+
+const comparison = {
+  heading: 'Common average bond energies',
+  note: 'Approximate average values in kJ/mol at 25°C — real bond strength varies slightly by molecule.',
+  headers: [{ label: 'Bond' }, { label: 'Average bond energy (kJ/mol)' }],
+  rows: [
+    ['C-H', '≈ 413'],
+    ['O-H', '≈ 463'],
+    ['C-C', '≈ 347'],
+    ['C=C', '≈ 614'],
+    ['C=O', '≈ 799'],
+    ['O=O', '≈ 498'],
+    ['H-H', '≈ 436'],
+    ['N≡N', '≈ 941'],
+  ],
+  highlightIndex: 4,
+  footnote: 'Higher bond order generally means a stronger, higher-energy bond — triple bonds (N≡N) are typically stronger than double bonds, which are stronger than single bonds.',
+};
+
+const realWorld = [
+  { emoji: '🔥', title: 'Estimating fuel combustion energy', body: 'Engineers use bond energies for a quick estimate of how much energy a fuel releases on combustion, without needing full tables of standard enthalpies of formation for every species involved — useful for rapid feasibility checks.' },
+  { emoji: '🧪', title: 'Predicting reaction feasibility', body: 'Comparing the total bond energy of reactants and products gives chemists a fast, rough sense of whether a proposed reaction is likely to be exothermic or endothermic before running detailed calculations or experiments.' },
+  { emoji: '🌡️', title: 'Explaining why some molecules are inert', body: 'The N≡N triple bond in nitrogen gas has an unusually high bond energy (≈941 kJ/mol), which is why N₂ is so chemically unreactive at ordinary conditions — breaking that bond costs far more energy than most reactions can supply.' },
+  { emoji: '🎓', title: 'Teaching reaction energetics', body: 'Bond energy calculations are a standard classroom bridge between structural chemistry (drawing bonds) and thermochemistry (predicting heat flow), helping students connect molecular structure to energy changes intuitively.' },
+];
+
+const misconceptions = [
+  { claim: '"Bond energies give the exact ΔH for any specific reaction."', truth: 'Bond energies are averages taken across many molecules containing that bond type — they give a useful estimate, not an exact value. The precise ΔH_rxn from tabulated ΔHf° values (see the Enthalpy Calculator) is more accurate for a specific, well-characterized reaction.' },
+  { claim: '"Forming a bond requires energy, just like breaking one."', truth: "It's the opposite — forming a bond always releases energy (exothermic), while breaking a bond always requires energy input (endothermic). This is why the bonds-formed sum is subtracted, not added, in the ΔH_rxn formula." },
+  { claim: '"A reaction with more bonds broken than formed is automatically exothermic."', truth: "What matters is total energy, not bond count. A reaction could break fewer, but much stronger, bonds than it forms — the number of bonds is not what decides the sign of ΔH; the total energy on each side is." },
+  { claim: '"Bond-energy ΔH and ΔHf°-based ΔH should always match exactly."', truth: "They are two different estimation methods and typically agree closely but not exactly — as in the methane example, where bond energies give ≈ −802 kJ/mol versus the more precise ΔHf°-based −890.3 kJ/mol. The discrepancy comes from bond energies being averaged over many compounds." },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Chemistry 2e</em></strong> — Chapter 7 &amp; Chapter 5, bond energies and thermochemistry (free, peer-reviewed). <a href="https://openstax.org/books/chemistry-2e/pages/7-5-strengths-of-ionic-and-covalent-bonds" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Brown, LeMay &amp; Bursten, <em>Chemistry: The Central Science</em></strong> — Chapter 8, Basic Concepts of Chemical Bonding (bond enthalpies).' },
+  { html: '<strong>Zumdahl &amp; Zumdahl, <em>Chemistry</em></strong> — bond energies and enthalpy calculations.' },
+];
+const sourcesNote = 'ΔH_rxn ≈ Σ(bond energies broken) − Σ(bond energies formed). Average bond energy values are standard reference approximations. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter bonds broken', body: 'List up to 4 bond types broken in the reactants, with count and average energy (kJ/mol).' },
+  { title: 'Enter bonds formed', body: 'List up to 4 bond types formed in the products, with count and average energy (kJ/mol).' },
+  { title: 'Read the estimate', body: 'ΔH_rxn solves live, with an exothermic/endothermic label and the 3D bond diagrams.' },
+];
+
+const related = [
+  { href: '/tools/enthalpy-calculator', emoji: '🌋', title: 'Enthalpy Calculator', desc: 'ΔH_rxn from standard enthalpies of formation.' },
+  { href: '/tools/chemical-equation-balancer', emoji: '🧮', title: 'Chemical Equation Balancer', desc: 'Balance equations up to 4 species instantly.' },
+  { href: '/tools/entropy-calculator', emoji: '🎲', title: 'Entropy Calculator', desc: 'ΔS_rxn from standard entropies.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="breaking bonds always costs energy and forming bonds always releases it — a reaction's overall enthalpy is just the balance between the two."
+  howIntro="Because breaking bonds is always endothermic and forming bonds is always exothermic, ΔH_rxn ≈ Σ(bonds broken) − Σ(bonds formed) directly compares how much energy input the reactants' bonds demand against how much energy the products' bonds give back. When the products' bonds release more than the reactants' bonds cost, ΔH is negative and the reaction is exothermic."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where bond energy estimates actually matter"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-xs text-slate-500">Leave a row's energy blank to exclude it. Common values: C-H≈413, O=O≈498, O-H≈463, C=O≈799, C-C≈347, C=C≈614, H-H≈436, N≡N≈941 kJ/mol.</p>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-red-700">Bonds broken (reactants)</h3>
+        <div class="mt-2 space-y-2">
+          <div class="grid grid-cols-3 gap-2">
+            <input id="b1-label" type="text" placeholder="Bond e.g. C-H" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b1-count" type="number" step="1" min="0" value="1" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b1-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="b2-label" type="text" placeholder="Bond e.g. O=O" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b2-count" type="number" step="1" min="0" value="1" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b2-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="b3-label" type="text" placeholder="Bond (optional)" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b3-count" type="number" step="1" min="0" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b3-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="b4-label" type="text" placeholder="Bond (optional)" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b4-count" type="number" step="1" min="0" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="b4-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 p-4">
+        <h3 class="text-sm font-bold text-green-700">Bonds formed (products)</h3>
+        <div class="mt-2 space-y-2">
+          <div class="grid grid-cols-3 gap-2">
+            <input id="f1-label" type="text" placeholder="Bond e.g. C=O" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f1-count" type="number" step="1" min="0" value="1" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f1-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="f2-label" type="text" placeholder="Bond e.g. O-H" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f2-count" type="number" step="1" min="0" value="1" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f2-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="f3-label" type="text" placeholder="Bond (optional)" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f3-count" type="number" step="1" min="0" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f3-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input id="f4-label" type="text" placeholder="Bond (optional)" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f4-count" type="number" step="1" min="0" placeholder="count" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+            <input id="f4-e" type="number" step="any" placeholder="kJ/mol" class="rounded-lg border border-slate-300 p-2 text-sm outline-none focus:border-indigo-400" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Bonds broken total</div><div id="r-broken" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Bonds formed total</div><div id="r-formed" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">ΔH_rxn (estimate)</div><div id="r-dh" class="mt-1 text-2xl font-bold">—</div></div>
+    </div>
+    <p id="be-class" class="mt-3 text-center text-sm font-semibold text-slate-700"></p>
+    <p id="be-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: two static 3D diagrams + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-broken" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Bonds broken need energy input</h3>
+          <p class="mt-1 text-sm text-slate-600">Atom pairs shown pulled apart, bond broken — this always costs energy, shown as separated spheres with no connecting bond.</p>
+        </div>
+        <div>
+          <div id="diag-formed" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Bonds formed release energy</h3>
+          <p class="mt-1 text-sm text-slate-600">Atom pairs shown joined by a bond — forming a bond always releases energy, the reverse of breaking one.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Bond energy graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Bonds broken vs bonds formed — methane combustion example</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-compare"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Common average bond energies (kJ/mol)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-table"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function rowTotal(prefix) {
+        let total = 0, any = false;
+        for (let i = 1; i <= 4; i++) {
+          const e = parseFloat(el(prefix + i + '-e').value);
+          const c = parseFloat(el(prefix + i + '-count').value);
+          if (!isNaN(e)) {
+            const cnt = isNaN(c) ? 1 : c;
+            total += cnt * e;
+            any = true;
+          }
+        }
+        return { total, any };
+      }
+      function update() {
+        el('be-err').textContent = '';
+        el('be-class').textContent = '';
+        el('r-broken').textContent = '—'; el('r-formed').textContent = '—'; el('r-dh').textContent = '—';
+        const broken = rowTotal('b');
+        const formed = rowTotal('f');
+        if (!broken.any || !formed.any) return;
+        el('r-broken').textContent = fmt(broken.total) + ' kJ/mol';
+        el('r-formed').textContent = fmt(formed.total) + ' kJ/mol';
+        const dh = broken.total - formed.total;
+        el('r-dh').textContent = fmt(dh) + ' kJ/mol';
+        el('be-class').textContent = dh < 0 ? 'Exothermic (releases heat)' : dh > 0 ? 'Endothermic (absorbs heat)' : 'Thermoneutral (ΔH ≈ 0)';
+      }
+      ['b1', 'b2', 'b3', 'b4', 'f1', 'f2', 'f3', 'f4'].forEach((p) => {
+        ['-count', '-e'].forEach((suf) => el(p + suf).addEventListener('input', update));
+      });
+
+      // ---- charts ----
+      const charts = {};
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.compare = new Chart(el('chart-compare'), {
+          type: 'bar',
+          data: { labels: ['Bonds broken', 'Bonds formed'], datasets: [{ label: 'Energy (kJ/mol)', data: [2648, 3450], backgroundColor: ['#ef4444', '#10b981'] }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Total energy (kJ/mol)' } } }, plugins: { legend: { display: false } } }),
+        });
+        const bondNames = ['C-H', 'O-H', 'C-C', 'C=C', 'C=O', 'O=O', 'H-H', 'N≡N'];
+        const bondVals = [413, 463, 347, 614, 799, 498, 436, 941];
+        charts.table = new Chart(el('chart-table'), {
+          type: 'bar',
+          data: { labels: bondNames, datasets: [{ label: 'Average bond energy (kJ/mol)', data: bondVals, backgroundColor: '#6366f1' }] },
+          options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'kJ/mol' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+      }
+
+      // ---- static diagram builders ----
+      function atomPair(THREE, connected) {
+        const g = new THREE.Group();
+        const mat1 = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
+        const mat2 = new THREE.MeshStandardMaterial({ color: 0xf59e0b });
+        const gap = connected ? 0.9 : 2.4;
+        const a1 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), mat1); a1.position.x = -gap / 2; g.add(a1);
+        const a2 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), mat2); a2.position.x = gap / 2; g.add(a2);
+        if (connected) {
+          const bondMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
+          const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, gap - 1.0, 12), bondMat);
+          bond.rotation.z = Math.PI / 2;
+          g.add(bond);
+        }
+        return g;
+      }
+      let diagBroken = null, diagFormed = null;
+      function initDiagBroken() {
+        const c = el('diag-broken'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const positions = [[-3, 1.2], [3, 1.2], [-3, -1.2], [3, -1.2]];
+        positions.forEach((p) => {
+          const grp = atomPair(THREE, false);
+          grp.position.set(p[0], p[1], 0);
+          grp.scale.set(0.6, 0.6, 0.6);
+          s.scene.add(grp);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBroken = { resize: s.resize };
+      }
+      function initDiagFormed() {
+        const c = el('diag-formed'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const positions = [[-3, 1.2], [3, 1.2], [-3, -1.2], [3, -1.2]];
+        positions.forEach((p) => {
+          const grp = atomPair(THREE, true);
+          grp.position.set(p[0], p[1], 0);
+          grp.scale.set(0.6, 0.6, 0.6);
+          s.scene.add(grp);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagFormed = { resize: s.resize };
+      }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[bond-energy] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[bond-energy] charts failed', e); }
+        if (window.THREE) {
+          try { initDiagBroken(); } catch (e) { console.error('[bond-energy] broken diagram failed', e); }
+          try { initDiagFormed(); } catch (e) { console.error('[bond-energy] formed diagram failed', e); }
+        }
+        mountResize([diagBroken, diagFormed]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
