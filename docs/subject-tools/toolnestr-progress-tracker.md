@@ -3,7 +3,32 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-03 (60/60 tools built, 30 Physics + 30 Chemistry — 3D viz rule updated)
+**Last updated:** 2026-07-03 (70/70 tools built, 35 Physics + 35 Chemistry)
+
+## Batch-4 — 10 tools complete (2026-07-03, commit `0460387`)
+
+Built via 2 parallel agents (5 tools each, per user's explicit "no more than 2 parallel agents"
+constraint this round), all directly on the 2-static-diagram viz pattern from the start (no
+slider-driven scene ever added).
+
+Physics: Capacitance, Electric Field, Wave Speed, Doppler Effect, Orbital Velocity.
+Chemistry: Dalton's Law, Gibbs Free Energy, Bond Energy, Nernst Equation, Arrhenius Equation.
+
+Post-build audit (code-only): 0 duplicate slugs across 527 tools, physics and chemistry both at
+exactly 35 tools each, all 10 files confirmed 0 sliders / 2 diagram containers / valid syntax via
+`new Function()`. Independently re-derived every formula outside the agents' own reports:
+capacitance (E=7.2mJ, Q=1.2mC for 100μF@12V), electric field (71,900 N/C at 0.5m from 2μC),
+wave speed (λ=0.7795m at 440Hz/343m/s), Doppler effect (767.09Hz approaching, 643.70Hz receding),
+orbital velocity (LEO≈7672.3 m/s at 400km altitude), Dalton's law (P_total=0.9997atm for
+simulated-air composition), Gibbs free energy (ΔG=−33.19 kJ/mol, spontaneous at 298K), bond energy
+(ΔH≈−802 kJ/mol for methane combustion via bond-energy approximation, close to but not identical
+to the ΔHf°-based −890.3 kJ/mol from enthalpy-calculator, as expected), Nernst equation
+(E_cell≈1.109V for a Daniell-cell-style example), Arrhenius equation (k≈0.713/s from A/Ea/T, and
+Ea≈175.71 kJ/mol from two rate-constant/temperature points). All matched.
+
+**Batch-1 + Batch-2 + Batch-3 + Batch-4 combined: 70 flagship tools (35 Physics + 35 Chemistry) on
+the shared template, all built with the corrected 2-static-diagram viz pattern.** Pushed to
+origin/main — Cloudflare Pages auto-deploy triggered.
 
 ## 3D visualization rule change (2026-07-03, commit `64d6f65` + follow-ups)
 
