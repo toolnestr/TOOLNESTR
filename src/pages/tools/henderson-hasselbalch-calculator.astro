@@ -92,7 +92,7 @@ const sourcesNote = 'pH = pKa + log₁₀([A⁻]/[HA]); pKa = −log₁₀(Ka). 
 const howToUse = [
   { title: 'Pick the mode', body: '"Find pH" solves pH from pKa and the ratio; "Find ratio" solves the ratio needed for a target pH.' },
   { title: 'Enter the values', body: 'Type pKa and the ratio (or [A⁻] and [HA] separately), or pKa and your target pH.' },
-  { title: 'See it in the beaker', body: 'Use the sliders to watch the HA and A⁻ particle counts shift as the ratio changes.' },
+  { title: 'See it visually', body: 'The 3D diagrams show a 1:1 HA/A⁻ mix at pKa and three fixed points on the pH-vs-ratio line.' },
 ];
 
 const related = [
@@ -144,24 +144,22 @@ const related = [
     <p id="hh-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <!-- ============ VIZ: two static auto-rotating diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D buffer beaker</h2>
-      <p class="mt-1 text-sm text-slate-500">Set pKa and the [A⁻]/[HA] ratio; the beaker shows the weak acid (HA, amber) and conjugate base (A⁻, teal) as particle clusters whose relative counts track the ratio, and the pH readout updates live. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">pKa <span id="out-bpka" class="font-mono text-green-600">4.76</span></span>
-          <input id="b-pka" type="range" min="0" max="14" step="0.01" value="4.76" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[A⁻]/[HA] ratio <span id="out-bratio" class="font-mono text-green-600">1.00</span></span>
-          <input id="b-ratio" type="range" min="-2" max="2" step="0.02" value="0" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-beaker" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Equal HA and A⁻ at the pKa point</h3>
+          <p class="mt-1 text-sm text-slate-600">A fixed 1:1 mix of <span class="font-semibold text-amber-500">HA</span> (amber) and <span class="font-semibold text-teal-600">A⁻</span> (teal) — the ratio where pH = pKa exactly and buffering is strongest.</p>
+        </div>
+        <div>
+          <div id="diag-line" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Every tenfold ratio shifts pH by one unit</h3>
+          <p class="mt-1 text-sm text-slate-600">Three fixed points on the pH-vs-log(ratio) line — 1:10, 1:1, and 10:1 — spaced one pH unit apart, always the same straight-line slope of 1.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">pH = <span id="out-bph" class="font-mono font-bold">4.76</span></div>
-      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -226,25 +224,9 @@ const related = [
       el('mode-ratio').addEventListener('click', () => switchMode('ratio'));
       ['pka1', 'a-conc', 'ha-conc', 'pka2', 'target-ph'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts (fixed illustrative state, pKa=4.76) ----
       const charts = {};
-      let beaker = null;
-      function bState() {
-        const pka = parseFloat(el('b-pka').value);
-        const logRatio = parseFloat(el('b-ratio').value);
-        const ratio = Math.pow(10, logRatio);
-        const ph = pka + logRatio;
-        return { pka, ratio, ph };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bpka').textContent = s.pka.toFixed(2);
-        el('out-bratio').textContent = fmt(s.ratio);
-        el('out-bph').textContent = s.ph.toFixed(2);
-        try { if (beaker) beaker.update(s); } catch (e) {}
-      }
-      el('b-pka').addEventListener('input', onB);
-      el('b-ratio').addEventListener('input', onB);
+      const FIXED_PKA = 4.76;
 
       function initCharts() {
         if (!window.Chart) return;
@@ -267,16 +249,9 @@ const related = [
           }),
         });
         charts.ready = true;
-        updateLineChart(bState());
-      }
-      function updateLineChart(s) {
-        if (!charts.ready) return;
-        const labels = [], data = [];
-        for (let lr = -2; lr <= 2.001; lr += 0.2) { labels.push(lr.toFixed(1)); data.push(+(s.pka + lr).toFixed(3)); }
-        charts.line.data.labels = labels; charts.line.data.datasets[0].data = data; charts.line.update();
       }
 
-      // ---- interactive beaker ----
+      // ---- static diagram 1: fixed 1:1 HA/A- beaker ----
       function glassBeaker(THREE) {
         const g = new THREE.Group();
         const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
@@ -284,57 +259,67 @@ const related = [
         const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
         return g;
       }
-      function initBeaker() {
-        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+      function initDiagBeaker() {
+        const c = el('diag-beaker'); if (!c) throw new Error('no container');
         const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
         s.scene.add(glassBeaker(THREE));
         const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4, roughness: 0.3 });
-        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, 4.6, 40), liquidMat);
-        liquid.position.y = -2.4 + 4.6 / 2; s.scene.add(liquid);
         const hLiq = 4.6;
-        const MAX_P = 140;
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hLiq, 40), liquidMat);
+        liquid.position.y = -2.4 + hLiq / 2; s.scene.add(liquid);
         const geo = new THREE.SphereGeometry(0.11, 10, 10);
         const haMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b }); // HA, amber
         const aMat = new THREE.MeshStandardMaterial({ color: 0x14b8a6 }); // A-, teal
-        const particles = [];
-        for (let i = 0; i < MAX_P; i++) {
-          const p = new THREE.Mesh(geo, i < MAX_P / 2 ? haMat : aMat);
-          p.visible = false; s.scene.add(p); particles.push(p);
+        const N_EACH = 30; // 1:1 ratio, fixed
+        for (let i = 0; i < N_EACH; i++) {
+          const r = Math.sqrt(Math.random()) * 1.9, ang = Math.random() * Math.PI * 2;
+          const p = new THREE.Mesh(geo, haMat);
+          p.position.set(Math.cos(ang) * r, -2.4 + Math.random() * hLiq, Math.sin(ang) * r);
+          s.scene.add(p);
         }
-        function update(state) {
-          // Fraction of A- among (HA + A-): frac = ratio / (1 + ratio)
-          const frac = state.ratio / (1 + state.ratio);
-          const nA = Math.max(0, Math.min(MAX_P, Math.round(frac * MAX_P)));
-          const nHA = MAX_P - nA;
-          let idx = 0;
-          for (let i = 0; i < nHA; i++, idx++) {
-            const p = particles[idx]; p.material = haMat;
-            const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2;
-            p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r);
-            p.visible = true;
-          }
-          for (let i = 0; i < nA; i++, idx++) {
-            const p = particles[idx]; p.material = aMat;
-            const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2;
-            p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r);
-            p.visible = true;
-          }
-          for (; idx < MAX_P; idx++) particles[idx].visible = false;
+        for (let i = 0; i < N_EACH; i++) {
+          const r = Math.sqrt(Math.random()) * 1.9, ang = Math.random() * Math.PI * 2;
+          const p = new THREE.Mesh(geo, aMat);
+          p.position.set(Math.cos(ang) * r, -2.4 + Math.random() * hLiq, Math.sin(ang) * r);
+          s.scene.add(p);
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        beaker = { update, resize: s.resize };
-        update(bState());
+        diagBeaker = { resize: s.resize };
       }
+
+      // ---- static diagram 2: fixed points on the pH-vs-log(ratio) line ----
+      function initDiagLine() {
+        const c = el('diag-line'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 0.5, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(6, 6, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        const line = new THREE.Line(
+          new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-2, FIXED_PKA - 2 - 4.5, 0), new THREE.Vector3(2, FIXED_PKA + 2 - 4.5, 0)]),
+          new THREE.LineBasicMaterial({ color: 0x4f46e5 })
+        );
+        s.scene.add(line);
+        const dotGeo = new THREE.SphereGeometry(0.15, 12, 12);
+        const colors = [0xf59e0b, 0x10b981, 0x6366f1];
+        [-1, 0, 1].forEach((lr, i) => {
+          const mat = new THREE.MeshStandardMaterial({ color: colors[i] });
+          const m = new THREE.Mesh(dotGeo, mat);
+          m.position.set(lr, FIXED_PKA + lr - 4.5, 0);
+          s.scene.add(m);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagLine = { resize: s.resize };
+      }
+      let diagBeaker = null, diagLine = null;
 
       function boot() {
         try { switchMode('ph'); } catch (e) { console.error('[henderson-hasselbalch] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[henderson-hasselbalch] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[henderson-hasselbalch] charts failed', e); }
         if (window.THREE) {
-          try { initBeaker(); } catch (e) { console.error('[henderson-hasselbalch] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
-        } else { el('beaker3d-fallback').classList.remove('hidden'); }
-        mountResize([beaker]);
+          try { initDiagBeaker(); } catch (e) { console.error('[henderson-hasselbalch] beaker diagram failed', e); }
+          try { initDiagLine(); } catch (e) { console.error('[henderson-hasselbalch] line diagram failed', e); }
+        }
+        mountResize([diagBeaker, diagLine]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

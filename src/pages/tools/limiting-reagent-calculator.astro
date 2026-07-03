@@ -165,14 +165,19 @@ const related = [
   <!-- ============ VIZ: 3D piles + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D reactant piles</h2>
-      <p class="mt-1 text-sm text-slate-500">Each pile is sized by moles of that reactant. Drag the slider to change moles of A and watch which pile empties (limiting) first. Drag to orbit.</p>
-      <label class="mt-3 block">
-        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Moles A (live) <span id="out-amol" class="font-mono text-green-600">2.00 mol</span></span>
-        <input id="b-amol" type="range" min="0.1" max="10" step="0.1" value="2" class="mt-2 w-full accent-green-600" />
-      </label>
-      <div id="lr3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
-      <p id="lr3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-piles" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The smaller pile runs out first</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-red-500">red</span> pile is the limiting reagent — it is used up completely, stopping the reaction, while the <span class="font-semibold text-emerald-600">green</span> pile still has reactant left over as excess.</p>
+        </div>
+        <div>
+          <div id="diag-excess-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Excess shrinks as ratios get closer</h3>
+          <p class="mt-1 text-sm text-slate-600">Each bar shows leftover excess reagent at a different starting mole ratio. The closer the two reactants' ratios are, the less is left over once the reaction stops.</p>
+        </div>
+      </div>
     </section>
 
     <section class="mt-10 no-print">
@@ -244,23 +249,6 @@ const related = [
       el('mode-mass').addEventListener('click', () => switchMode('mass'));
       ['a-mol', 'a-mass', 'a-molar', 'a-coeff', 'b-mol', 'b-mass', 'b-molar', 'b-coeff'].forEach((id) => el(id).addEventListener('input', updateCalc));
 
-      // ---- 3D + charts state (independent live slider, mirrors mol A) ----
-      function bState() {
-        const aMol = parseFloat(el('b-amol').value);
-        const bMol = parseFloat(el('b-mol') && !el('b-mol-fields').className.includes('hidden') ? el('b-mol').value : NaN);
-        const coeffA = parseFloat(el('a-coeff').value) || 1;
-        const coeffB = parseFloat(el('b-coeff').value) || 1;
-        const fixedB = isNaN(bMol) ? 3 : bMol;
-        return { aMol, bMol: fixedB, coeffA, coeffB };
-      }
-      let scene3d = null;
-      function onSlider() {
-        const s = bState();
-        el('out-amol').textContent = s.aMol.toFixed(2) + ' mol';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-      }
-      el('b-amol').addEventListener('input', onSlider);
-
       // ---- charts ----
       const charts = {};
       function initCharts() {
@@ -300,54 +288,56 @@ const related = [
         charts.excess.data.labels = L; charts.excess.data.datasets[0].data = D; charts.excess.update();
       }
 
-      // ---- 3D piles ----
-      function initScene() {
-        const c = el('lr3d'); if (!c) throw new Error('no lr3d container');
+      // ---- standalone diagram: two static reactant piles, one limiting ----
+      function initDiagPiles() {
+        const c = el('diag-piles'); if (!c) throw new Error('no container');
         const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        const matA = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        const matB = new THREE.MeshStandardMaterial({ color: 0x10b981 });
-        const matLimit = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        const MAX_P = 60;
+        const matA = new THREE.MeshStandardMaterial({ color: 0xef4444 }); // limiting: red
+        const matB = new THREE.MeshStandardMaterial({ color: 0x10b981 }); // excess: green
         const geo = new THREE.SphereGeometry(0.35, 12, 12);
-        const pilesA = [], pilesB = [];
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matA); p.visible = false; s.scene.add(p); pilesA.push(p); }
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matB); p.visible = false; s.scene.add(p); pilesB.push(p); }
-
-        function layout(pile, count, cx, mat, isLimiting) {
-          const perRow = 6;
-          for (let i = 0; i < pile.length; i++) {
-            const p = pile[i];
-            if (i < count) {
-              const row = Math.floor(i / perRow), col = i % perRow;
-              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
-              p.material = isLimiting ? matLimit : mat;
-              p.visible = true;
-            } else p.visible = false;
+        function pile(count, cx, mat) {
+          const perRow = 4;
+          for (let i = 0; i < count; i++) {
+            const p = new THREE.Mesh(geo, mat);
+            const row = Math.floor(i / perRow), col = i % perRow;
+            p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
+            s.scene.add(p);
           }
         }
-        function update(state) {
-          const ratioA = state.aMol / state.coeffA, ratioB = state.bMol / state.coeffB;
-          const aLimiting = ratioA <= ratioB;
-          const nA = Math.max(1, Math.min(MAX_P, Math.round(state.aMol * 4)));
-          const nB = Math.max(1, Math.min(MAX_P, Math.round(state.bMol * 4)));
-          layout(pilesA, nA, -3.2, matA, aLimiting);
-          layout(pilesB, nB, 3.2, matB, !aLimiting);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        pile(6, -3.2, matA);   // limiting reagent: smaller pile
+        pile(16, 3.2, matB);   // excess reagent: larger pile
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        return { resize: s.resize };
       }
+
+      // ---- standalone diagram: excess-remaining bars at different starting ratios ----
+      function initDiagExcessBars() {
+        const c = el('diag-excess-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(3, 2, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7); grid.position.set(3, 0, 3); s.scene.add(grid);
+        const heights = [3.5, 2.2, 1.0, 0.3]; // excess shrinks as ratios converge
+        heights.forEach((h, i) => {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, Math.max(0.1, h), 0.8), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+          mesh.position.set(i * 1.6, Math.max(0.1, h) / 2, 0);
+          s.scene.add(mesh);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+
+      let diagPiles = null, diagExcessBars = null;
 
       function boot() {
         try { switchMode('mol'); } catch (e) { console.error('[limiting-reagent] calc init failed', e); }
         try { el('a-mol').value = '2'; el('b-mol').value = '3'; el('a-coeff').value = '1'; el('b-coeff').value = '3'; updateCalc(); } catch (e) {}
-        try { onSlider(); } catch (e) { console.error('[limiting-reagent] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[limiting-reagent] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[limiting-reagent] scene failed', e); el('lr3d-fallback').classList.remove('hidden'); }
-        } else { el('lr3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { diagPiles = initDiagPiles(); } catch (e) { console.error('[limiting-reagent] piles diagram failed', e); }
+          try { diagExcessBars = initDiagExcessBars(); } catch (e) { console.error('[limiting-reagent] excess bars diagram failed', e); }
+        }
+        mountResize([diagPiles, diagExcessBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

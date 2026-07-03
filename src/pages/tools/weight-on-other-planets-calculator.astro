@@ -163,20 +163,23 @@ const related = [
     </div>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D scene + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D scale</h2>
-      <p class="mt-1 text-sm text-slate-500">Pick a planet — the figure standing on the scale compresses the platform more or less as your weight changes, and the readout tracks W = mg live. Drag to orbit (touch works too).</p>
-      <div class="mt-3">
-        <label class="block">
-          <span class="text-sm font-medium text-slate-700">Planet</span>
-          <select id="b-body" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"></select>
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-arrows" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Same mass, different pull</h3>
+          <p class="mt-1 text-sm text-slate-600">Three identical spheres (same mass), each with a weight arrow scaled to a different world's gravity: the Moon (short, grey), Earth (medium, blue) and Jupiter (long, red). The sphere never changes — only the pull does.</p>
+        </div>
+        <div>
+          <div id="diag-gravity-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Surface gravity across worlds</h3>
+          <p class="mt-1 text-sm text-slate-600">Bar heights compare surface gravity g for the Moon, Earth and Jupiter — the direct driver of how much any given mass weighs on each body.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700">Weight of <span id="out-bm">70 kg</span> = <span id="out-bw" class="font-mono font-bold">—</span> (g = <span id="out-bg" class="font-mono">—</span>)</div>
-      <div id="scene3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D diagrams unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -196,7 +199,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const BODIES = [
         { name: 'Mercury', g: 3.70, color: '#94a3b8' },
         { name: 'Venus', g: 8.87, color: '#f59e0b' },
@@ -269,29 +272,9 @@ const related = [
       el('sb-body').addEventListener('change', syncSbG);
       ['sb-m', 'sb-g', 'sb-w'].forEach((id) => el(id).addEventListener('input', solveSb));
 
-      // ---- 3D scale + charts ----
-      BODIES.forEach((b) => {
-        const opt = document.createElement('option');
-        opt.value = b.name; opt.textContent = b.name;
-        el('b-body').appendChild(opt);
-      });
-      el('b-body').value = 'Earth';
+      // ---- charts ----
       const charts = {};
-      let scale3d = null;
       const REF_MASS = 70;
-      function bState() {
-        const name = el('b-body').value;
-        const g = bodyG(name);
-        return { name, g, w: REF_MASS * g };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bm').textContent = REF_MASS + ' kg';
-        el('out-bg').textContent = s.g.toFixed(2) + ' m/s²';
-        el('out-bw').textContent = fmt(s.w) + ' N';
-        try { if (scale3d) scale3d.update(s); } catch (e) {}
-      }
-      el('b-body').addEventListener('change', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -309,63 +292,61 @@ const related = [
         charts.ready = true;
       }
 
-      // ---- interactive 3D scale scene ----
-      function humanFigure(THREE) {
-        const g = new THREE.Group();
-        const skin = new THREE.MeshStandardMaterial({ color: 0xf5c99b, roughness: 0.7 });
-        const shirt = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.6 });
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), skin); head.position.y = 1.55; g.add(head);
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.4), shirt); torso.position.y = 0.75; g.add(torso);
-        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), skin); legL.position.set(-0.18, -0.2, 0); g.add(legL);
-        const legR = legL.clone(); legR.position.x = 0.18; g.add(legR);
-        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.85, 0.2), shirt); armL.position.set(-0.5, 0.75, 0); g.add(armL);
-        const armR = armL.clone(); armR.position.x = 0.5; g.add(armR);
-        return g;
-      }
-      function initScale3d() {
-        const c = el('scene3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 8, new THREE.Vector3(0, 0.5, 0), OPTS);
-        const platformMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
-        const platform = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.25, 32), platformMat);
-        platform.position.y = -0.7; s.scene.add(platform);
-        const springMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
-        const springs = [];
-        const springPositions = [[-0.9, 0], [0.9, 0], [0, -0.9], [0, 0.9]];
-        springPositions.forEach((p) => {
-          const spring = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 10), springMat);
-          spring.position.set(p[0], -1.05, p[1]); s.scene.add(spring); springs.push(spring);
+      // ---- standalone 3D diagrams (auto-rotating, static geometry) ----
+      let diagArrows = null, diagGravityBars = null;
+
+      function initDiagArrows() {
+        const c = el('diag-arrows'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(3, 1, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7));
+        const sample = [
+          { name: 'Moon', g: 1.62, color: 0x94a3b8 },
+          { name: 'Earth', g: 9.81, color: 0x2563eb },
+          { name: 'Jupiter', g: 24.79, color: 0xef4444 },
+        ];
+        const maxG = Math.max.apply(null, sample.map((b) => b.g));
+        sample.forEach((b, i) => {
+          const x = i * 4 - 4;
+          const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+          sphere.position.set(x, 2.5, 0); s.scene.add(sphere);
+          const len = 0.6 + (b.g / maxG) * 2.8;
+          s.scene.add(arrow(new THREE.Vector3(x, 2.5, 0), new THREE.Vector3(x, 2.5 - len, 0), b.color));
         });
-        const figure = humanFigure(THREE);
-        s.scene.add(figure);
-        const MAX_G = 24.79;
-        function update(state) {
-          const frac = Math.max(0, Math.min(1, state.g / MAX_G));
-          const compression = 0.5 - frac * 0.32; // taller spring = less compressed
-          const platformY = -0.7 - (0.5 - compression) * 0.6;
-          springs.forEach((sp) => {
-            sp.scale.y = compression / 0.5;
-            sp.position.y = -1.05 + (0.5 - compression) / 2;
-          });
-          platform.position.y = platformY;
-          const figScale = 0.75 + frac * 0.6;
-          figure.scale.setScalar(figScale);
-          figure.position.y = platformY + 0.25 * figScale + 0.72;
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scale3d = { update, resize: s.resize };
-        update(bState());
+        diagArrows = { resize: s.resize };
+      }
+
+      function initDiagGravityBars() {
+        const c = el('diag-gravity-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(5, 3, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 0); s.scene.add(grid);
+        const sample = [
+          { name: 'Moon', g: 1.62, color: 0x94a3b8 },
+          { name: 'Earth', g: 9.81, color: 0x2563eb },
+          { name: 'Jupiter', g: 24.79, color: 0xef4444 },
+        ];
+        const maxG = Math.max.apply(null, sample.map((b) => b.g));
+        sample.forEach((b, i) => {
+          const h = Math.max(0.5, (b.g / maxG) * 8);
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshStandardMaterial({ color: b.color }));
+          bar.position.set(i * 3, h / 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagGravityBars = { resize: s.resize };
       }
 
       function boot() {
         try { renderTable(); } catch (e) { console.error('[weight-planets] table init failed', e); }
         try { syncSbG(); } catch (e) { console.error('[weight-planets] solver init failed', e); }
-        try { onB(); } catch (e) { console.error('[weight-planets] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[weight-planets] charts failed', e); }
         if (window.THREE) {
-          try { initScale3d(); } catch (e) { console.error('[weight-planets] scene failed', e); el('scene3d-fallback').classList.remove('hidden'); }
+          try { initDiagArrows(); } catch (e) { console.error('[weight-planets] diagArrows failed', e); }
+          try { initDiagGravityBars(); } catch (e) { console.error('[weight-planets] diagGravityBars failed', e); }
         } else { el('scene3d-fallback').classList.remove('hidden'); }
-        mountResize([scale3d]);
+        mountResize([diagArrows, diagGravityBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

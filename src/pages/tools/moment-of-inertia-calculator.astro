@@ -138,24 +138,22 @@ const related = [
     <p id="moi-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D spinning shape + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D spinning shape</h2>
-      <p class="mt-1 text-sm text-slate-500">The selected shape spins about its axis — a larger I spins more slowly for the same applied effort. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass <span id="out-bm" class="font-mono text-indigo-600">8.00 kg</span></span>
-          <input id="b-m" type="range" min="0.5" max="20" step="0.1" value="8" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Radius / length <span id="out-br" class="font-mono text-indigo-600">0.25 m</span></span>
-          <input id="b-r" type="range" min="0.1" max="1" step="0.01" value="0.25" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-shapes" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Mass distribution matters, not just mass</h3>
+          <p class="mt-1 text-sm text-slate-600">Same mass and radius, two shapes: the <span class="font-semibold text-indigo-600">solid disk</span> (I = ½mr²) keeps mass close to the axis, while the <span class="font-semibold text-red-500">hoop</span> (I = mr²) puts it all at the rim — twice the moment of inertia.</p>
+        </div>
+        <div>
+          <div id="diag-curve" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. I grows with the square of radius</h3>
+          <p class="mt-1 text-sm text-slate-600">A curve of I vs radius at fixed mass — doubling the radius quadruples I, because the r² term dominates the linear mass term.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Moment of inertia I = <span id="out-bi" class="font-mono font-bold">0.250 kg·m²</span></div>
-      <div id="shape3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="shape3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -208,26 +206,12 @@ const related = [
       el('mass').addEventListener('input', update);
       el('size').addEventListener('input', update);
 
-      // ---- 3D + charts shared state ----
+      // ---- charts shared state ----
       const charts = {};
-      let shapeScene = null;
       function bState() {
         const shapeKey = el('shape').value;
-        const m = parseFloat(el('b-m').value), r = parseFloat(el('b-r').value);
-        const I = computeI(shapeKey, m, r);
-        return { shapeKey, m, r, I };
+        return { shapeKey, m: 8, r: 0.25 };
       }
-      function onB() {
-        const s = bState();
-        el('out-bm').textContent = s.m.toFixed(2) + ' kg';
-        el('out-br').textContent = s.r.toFixed(2) + ' m';
-        el('out-bi').textContent = fmt(s.I) + ' kg·m²';
-        try { if (shapeScene) shapeScene.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-m').addEventListener('input', onB);
-      el('b-r').addEventListener('input', onB);
-      el('shape').addEventListener('change', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -298,41 +282,50 @@ const related = [
           }
         }
       }
-      function initShape() {
-        const c = el('shape3d'); if (!c) throw new Error('no container');
+      // ---- Diagram 1: solid disk vs hoop side-by-side, same mass/radius, labeled I values ----
+      let diagShapes = null;
+      function initDiagShapes() {
+        const c = el('diag-shapes'); if (!c) throw new Error('no container');
         const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(10, 10, 0xcbd5e1, 0xe2e8f0));
-        const spinGroup = new THREE.Group();
-        s.scene.add(spinGroup);
-        let mesh = null, spinSpeed = 0.02;
-
-        function rebuild(state) {
-          if (mesh) { spinGroup.remove(mesh); }
-          mesh = buildMesh(THREE, state.shapeKey, state.r);
-          spinGroup.add(mesh);
-          // Slower visual spin for larger I (rough normaliser).
-          const maxI = 20 * 1 * 1; // rough m_max * r_max^2
-          spinSpeed = reduceMotion ? 0 : Math.max(0.004, 0.06 - (state.I / maxI) * 0.05);
-        }
-        function update(state) { rebuild(state); }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) { spinGroup.rotation.y += spinSpeed; s.spin(0.0006); }
-          s.renderer.render(s.scene, s.camera);
-        }
+        s.scene.add(new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7));
+        const disk = buildMesh(THREE, 'disk', 0.4);
+        disk.position.x = -1.6;
+        s.scene.add(disk);
+        const hoop = buildMesh(THREE, 'hoop', 0.4);
+        hoop.position.x = 1.6;
+        s.scene.add(hoop);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        shapeScene = { update, resize: s.resize };
-        update(bState());
+        diagShapes = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: I vs radius curve (fixed mass) ----
+      let diagCurve = null;
+      function initDiagCurve() {
+        const c = el('diag-curve'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(4, 2, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(4, 0, 0); s.scene.add(grid);
+        const m = 8;
+        const pts = [];
+        for (let r = 0.05; r <= 1.001; r += 0.05) {
+          const I = computeI('disk', m, r);
+          pts.push(new THREE.Vector3(r * 8, I * 0.5, 0));
+        }
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4f46e5 }));
+        s.scene.add(line);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagCurve = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[moment-of-inertia] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[moment-of-inertia] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[moment-of-inertia] charts failed', e); }
         if (window.THREE) {
-          try { initShape(); } catch (e) { console.error('[moment-of-inertia] 3D failed', e); el('shape3d-fallback').classList.remove('hidden'); }
-        } else { el('shape3d-fallback').classList.remove('hidden'); }
-        mountResize([shapeScene]);
+          try { initDiagShapes(); } catch (e) { console.error('[moment-of-inertia] shapes diagram failed', e); }
+          try { initDiagCurve(); } catch (e) { console.error('[moment-of-inertia] curve diagram failed', e); }
+        }
+        mountResize([diagShapes, diagCurve]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

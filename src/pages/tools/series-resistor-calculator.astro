@@ -143,28 +143,23 @@ const related = [
     <p id="sr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D resistor chain + charts + script ============ -->
+  <!-- ============ VIZ: two static 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D resistor chain</h2>
-      <p class="mt-1 text-sm text-slate-500">Drag the sliders to change three resistors wired end-to-end in series. Each block's length scales with its resistance, and R_total updates live. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₁ <span id="out-s1" class="font-mono text-indigo-600">100 Ω</span></span>
-          <input id="s-r1" type="range" min="10" max="500" step="5" value="100" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₂ <span id="out-s2" class="font-mono text-indigo-600">220 Ω</span></span>
-          <input id="s-r2" type="range" min="10" max="500" step="5" value="220" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₃ <span id="out-s3" class="font-mono text-indigo-600">330 Ω</span></span>
-          <input id="s-r3" type="range" min="10" max="500" step="5" value="330" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">Two ideas that make series circuits click</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-chain" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Resistors chained end-to-end</h3>
+          <p class="mt-1 text-sm text-slate-600">Three resistor blocks wired in a single loop. The bars above each block show a fixed example voltage-drop split — the larger the resistor, the taller its bar, since a bigger resistance always claims a bigger share of the supply voltage.</p>
+        </div>
+        <div>
+          <div id="diag-growth" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. R_total grows in a straight line</h3>
+          <p class="mt-1 text-sm text-slate-600">Each line traces R_total as more equal-sized resistors are added — the more resistors in the chain, the higher the line climbs, always linearly, and a bigger per-resistor value produces a steeper line.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">R_total = <span id="out-sn" class="font-mono font-bold">650 Ω</span></div>
-      <div id="chain3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="chain3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="diag-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -219,25 +214,9 @@ const related = [
       }
       ['r1', 'r2', 'r3', 'r4', 'vsup'].forEach((id) => el(id).addEventListener('input', calcUpdate));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let chain = null;
-      function sState() {
-        const r1 = parseFloat(el('s-r1').value), r2 = parseFloat(el('s-r2').value), r3 = parseFloat(el('s-r3').value);
-        return { r1, r2, r3, rTotal: r1 + r2 + r3 };
-      }
-      function onS() {
-        const s = sState();
-        el('out-s1').textContent = s.r1.toFixed(0) + ' Ω';
-        el('out-s2').textContent = s.r2.toFixed(0) + ' Ω';
-        el('out-s3').textContent = s.r3.toFixed(0) + ' Ω';
-        el('out-sn').textContent = fmt(s.rTotal) + ' Ω';
-        try { if (chain) chain.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('s-r1').addEventListener('input', onS);
-      el('s-r2').addEventListener('input', onS);
-      el('s-r3').addEventListener('input', onS);
+      const FIXED = { r1: 100, r2: 220, r3: 330, rTotal: 650 };
 
       function initCharts() {
         if (!window.Chart) return;
@@ -253,7 +232,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: {}, y: { title: { display: true, text: 'Voltage (V)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(sState());
+        updateCharts(FIXED);
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -266,7 +245,7 @@ const related = [
         charts.vd.data.datasets[0].data = drops; charts.vd.update();
       }
 
-      // ---- interactive resistor chain ----
+      // ---- static resistor block builder (shared by diagram A) ----
       function resistorBlock(THREE, len, colorHex) {
         const g = new THREE.Group();
         const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
@@ -281,43 +260,79 @@ const related = [
         g.userData.len = len;
         return g;
       }
-      function initChain() {
-        const c = el('chain3d'); if (!c) throw new Error('no chain3d container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), RES_OPTS);
-        let group = new THREE.Group();
-        s.scene.add(group);
+
+      let diagChain = null, diagGrowth = null;
+
+      // ---- Diagram A: static resistor chain with fixed voltage-drop bars ----
+      function initDiagChain() {
+        const c = el('diag-chain'); if (!c) throw new Error('no diag-chain container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 1, 0), RES_OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
         const colors = [0x6366f1, 0x10b981, 0xf59e0b];
-        function rebuild(state) {
-          s.scene.remove(group);
-          group.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
-          group = new THREE.Group();
-          const rs = [state.r1, state.r2, state.r3];
-          const lens = rs.map((r) => 1.2 + (r / 500) * 2.4);
-          let x = -(lens.reduce((a, b) => a + b, 0) + 1.8 * 2) / 2;
-          lens.forEach((len, i) => {
-            const blk = resistorBlock(THREE, len, colors[i]);
-            x += 0.9;
-            blk.position.x = x + len / 2;
-            group.add(blk);
-            x += len + 0.9;
-          });
-          s.scene.add(group);
-        }
-        function update(state) { rebuild(state); }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        const rs = [FIXED.r1, FIXED.r2, FIXED.r3];
+        const lens = rs.map((r) => 1.2 + (r / 500) * 2.4);
+        const drops = rs.map((r) => 9 * r / FIXED.rTotal); // fixed 9V reference, matches chart
+
+        let x = -(lens.reduce((a, b) => a + b, 0) + 1.8 * 2) / 2;
+        lens.forEach((len, i) => {
+          x += 0.9;
+          const blk = resistorBlock(THREE, len, colors[i]);
+          blk.position.set(x + len / 2, 0.6, 0);
+          s.scene.add(blk);
+
+          // static voltage-drop bar above each block
+          const barH = 0.6 + drops[i] * 0.5;
+          const bar = new THREE.Mesh(
+            new THREE.BoxGeometry(len * 0.5, barH, 0.5),
+            new THREE.MeshStandardMaterial({ color: colors[i], roughness: 0.4 })
+          );
+          bar.position.set(x + len / 2, 1.6 + barH / 2, 0);
+          s.scene.add(bar);
+
+          x += len + 0.9;
+        });
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        chain = { update, resize: s.resize };
-        update(sState());
+        diagChain = { resize: s.resize };
+      }
+
+      // ---- Diagram B: family of R_total growth lines as resistors are added ----
+      function initDiagGrowth() {
+        const c = el('diag-growth'); if (!c) throw new Error('no diag-growth container');
+        const s = makeScene(c, 12, new THREE.Vector3(3, 2, 0), RES_OPTS);
+        const grid = new THREE.GridHelper(12, 12, 0xe2e8f0, 0xeef2f7); grid.position.set(3, 0, 0); s.scene.add(grid);
+
+        const perResistor = [50, 100, 150]; // ohms per identical resistor, a few series
+        const colors = [0x94a3b8, 0x6366f1, 0xf59e0b];
+        const n = 5; // number of resistors 1..5
+        const maxTotal = Math.max.apply(null, perResistor) * n;
+        const scaleX = 6 / n;
+        const scaleY = 8 / maxTotal;
+
+        perResistor.forEach((r, i) => {
+          const pts = [];
+          for (let k = 1; k <= n; k++) pts.push(new THREE.Vector3(k * scaleX, k * r * scaleY, 0));
+          const line = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(pts),
+            new THREE.LineBasicMaterial({ color: colors[i] })
+          );
+          s.scene.add(line);
+        });
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagGrowth = { resize: s.resize };
       }
 
       function boot() {
         try { calcUpdate(); } catch (e) { console.error('[series-resistor] calc init failed', e); }
-        try { onS(); } catch (e) { console.error('[series-resistor] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[series-resistor] charts failed', e); }
         if (window.THREE) {
-          try { initChain(); } catch (e) { console.error('[series-resistor] chain failed', e); el('chain3d-fallback').classList.remove('hidden'); }
-        } else { el('chain3d-fallback').classList.remove('hidden'); }
-        mountResize([chain]);
+          try { initDiagChain(); } catch (e) { console.error('[series-resistor] chain diagram failed', e); el('diag-fallback').classList.remove('hidden'); }
+          try { initDiagGrowth(); } catch (e) { console.error('[series-resistor] growth diagram failed', e); el('diag-fallback').classList.remove('hidden'); }
+        } else { el('diag-fallback').classList.remove('hidden'); }
+        mountResize([diagChain, diagGrowth]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

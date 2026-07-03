@@ -144,17 +144,19 @@ const related = [
   <!-- ============ VIZ: one interactive 3D balloon + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D balloon</h2>
-      <p class="mt-1 text-sm text-slate-500">Drag the temperature slider to heat or cool the gas. Watch the balloon expand and shift from blue (cold) to red (hot) — and the live volume readout respond instantly. Drag the scene to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-1">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Temperature <span id="out-bt" class="font-mono text-green-600">293.15 K (20.00°C)</span></span>
-          <input id="b-t" type="range" min="200" max="500" step="1" value="293.15" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-balloon" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Hotter gas takes up more room</h3>
+          <p class="mt-1 text-sm text-slate-600">A cold, small, <span class="font-semibold text-sky-500">blue</span> balloon next to a hot, large, <span class="font-semibold text-rose-500">red</span> one — the same gas at two different absolute temperatures, expanding at constant pressure.</p>
+        </div>
+        <div>
+          <div id="diag-vt-lines" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Every line points to absolute zero</h3>
+          <p class="mt-1 text-sm text-slate-600">Straight V-vs-T lines for different gas samples all extrapolate back to the same point: V = 0 at 0 K. That shared intercept is exactly how absolute zero was discovered.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Volume V = <span id="out-bv" class="font-mono font-bold">2.00 L</span> (V₁/T₁ = 0.006822 L/K fixed)</div>
-      <div id="balloon3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="balloon3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -220,19 +222,10 @@ const related = [
       }
       ['V1', 'T1', 'V2', 'T2', 'T1u', 'T2u'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
-      const K_RATIO = 2.00 / 293.15; // fixed V1/T1 = 2.00 L / 293.15 K for the live balloon demo
+      // ---- charts ----
+      const K_RATIO = 2.00 / 293.15; // fixed V1/T1 = 2.00 L / 293.15 K for chart reference
       const charts = {};
-      let balloon = null;
-      function bState() { const t = parseFloat(el('b-t').value); return { t, v: t > 0 ? K_RATIO * t : 0 }; }
-      function onB() {
-        const s = bState();
-        el('out-bt').textContent = s.t.toFixed(2) + ' K (' + (s.t - 273.15).toFixed(2) + '°C)';
-        el('out-bv').textContent = fmt(s.v) + ' L';
-        try { if (balloon) balloon.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-t').addEventListener('input', onB);
+      function bState() { return { t: 293.15, v: 2.00 }; }
 
       function initCharts() {
         if (!window.Chart) return;
@@ -258,48 +251,54 @@ const related = [
         charts.vtconst.data.labels = L; charts.vtconst.data.datasets[0].data = C; charts.vtconst.update();
       }
 
-      // ---- interactive balloon ----
-      function tempColor(t) {
-        // 200K -> blue, 500K -> red, linear interpolation
-        const frac = Math.max(0, Math.min(1, (t - 200) / 300));
-        const cold = { r: 0x38, g: 0xbd, b: 0xf8 }; // sky-400
-        const hot = { r: 0xf4, g: 0x3f, b: 0x5e }; // rose-500
-        const r = Math.round(cold.r + (hot.r - cold.r) * frac);
-        const g = Math.round(cold.g + (hot.g - cold.g) * frac);
-        const b = Math.round(cold.b + (hot.b - cold.b) * frac);
-        return (r << 16) | (g << 8) | b;
-      }
-      function initBalloon() {
-        const c = el('balloon3d'); if (!c) throw new Error('no balloon');
+      // ---- standalone diagram: balloon at two static temperatures ----
+      function initDiagBalloon() {
+        const c = el('diag-balloon'); if (!c) throw new Error('no container');
         const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
-        const knotMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 });
-        const knot = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 16), knotMat);
-        let balloonMesh = null;
-        function update(state) {
-          const frac = Math.max(0.15, Math.min(1, state.v / 4));
-          const radius = 1.2 + frac * 1.6;
-          if (balloonMesh) { s.scene.remove(balloonMesh); balloonMesh.geometry.dispose(); balloonMesh.material.dispose(); }
-          const mat = new THREE.MeshStandardMaterial({ color: tempColor(state.t), roughness: 0.35, metalness: 0.05 });
-          balloonMesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 40, 32), mat);
-          balloonMesh.position.y = radius - 1.5;
-          s.scene.add(balloonMesh);
-          knot.position.y = balloonMesh.position.y - radius - 0.2;
-          s.scene.add(knot);
+        function balloonAt(x, radius, color) {
+          const grp = new THREE.Group(); grp.position.x = x;
+          const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.05 });
+          const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 28), mat);
+          mesh.position.y = radius - 1.2; grp.add(mesh);
+          const knot = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.5, 16), new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 }));
+          knot.position.y = mesh.position.y - radius - 0.2; grp.add(knot);
+          return grp;
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        s.scene.add(balloonAt(-3, 1.1, 0x38bdf8));  // cold, small, blue
+        s.scene.add(balloonAt(3, 2.0, 0xf43f5e));   // hot, large, red
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        balloon = { update, resize: s.resize };
-        update(bState());
+        return { resize: s.resize };
       }
+
+      // ---- standalone diagram: family of V-vs-T lines through absolute zero ----
+      function initDiagVTLines() {
+        const c = el('diag-vt-lines'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(5, 3, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(12, 12, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 6); s.scene.add(grid);
+        const slopes = [0.006822, 0.012, 0.018]; // different V/T ratios (different gas samples)
+        slopes.forEach((m) => {
+          const pts = [];
+          for (let t = 0; t <= 500; t += 25) pts.push(new THREE.Vector3(t / 50, Math.min(10, m * t * 10), 0));
+          const col = m === 0.006822 ? 0x6366f1 : 0x94a3b8;
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: m !== 0.006822, opacity: m === 0.006822 ? 1 : 0.6 }));
+          s.scene.add(line);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+
+      let diagBalloon = null, diagVT = null;
 
       function boot() {
         try { update(); } catch (e) { console.error('[charles] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[charles] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[charles] charts failed', e); }
         if (window.THREE) {
-          try { initBalloon(); } catch (e) { console.error('[charles] balloon failed', e); el('balloon3d-fallback').classList.remove('hidden'); }
-        } else { el('balloon3d-fallback').classList.remove('hidden'); }
-        mountResize([balloon]);
+          try { diagBalloon = initDiagBalloon(); } catch (e) { console.error('[charles] balloon diagram failed', e); }
+          try { diagVT = initDiagVTLines(); } catch (e) { console.error('[charles] V-T lines diagram failed', e); }
+        }
+        mountResize([diagBalloon, diagVT]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

@@ -146,24 +146,22 @@ const related = [
     <p id="keq-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: 3D sphere groups + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D reactants vs products</h2>
-      <p class="mt-1 text-sm text-slate-500">Each group's size illustrates the relative equilibrium concentration on that side (illustrative, not a literal particle count). As Kc grows, the product group swells and the reactant group shrinks. Drag to orbit.</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Reactant concentration <span id="out-vreact" class="font-mono text-green-600">0.50 M</span></span>
-          <input id="v-react" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Product concentration <span id="out-vprod" class="font-mono text-green-600">0.50 M</span></span>
-          <input id="v-prod" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-piles" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. A big Kc means a big product pile</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-emerald-600">left pair</span> shows a products-favored reaction (Kc &gt;&gt; 1): a small reactant pile, a large product pile. The <span class="font-semibold text-indigo-600">right pair</span> shows the opposite (Kc &lt;&lt; 1): mostly reactants, very little product.</p>
+        </div>
+        <div>
+          <div id="diag-kcbar" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Kc spans many orders of magnitude</h3>
+          <p class="mt-1 text-sm text-slate-600">Three illustrative reactions side by side: a strongly reactant-favored one (Kc ≈ 0.01), a balanced one (Kc ≈ 1), and a strongly product-favored one (Kc ≈ 100) — bar height is shown on a compressed scale just to make all three visible together.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Live Kc (1:1) = <span id="out-vkc" class="font-mono font-bold">1.00</span></div>
-      <div id="keq3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
-      <p id="keq3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -225,28 +223,12 @@ const related = [
         if (kc > 10) interp = 'Products favored';
         else if (kc < 0.1) interp = 'Reactants favored';
         el('r-interp').textContent = interp;
-        updateCharts();
+        try { if (charts.ready) { updateSideChart({ react: den, prod: num }); updateKcChart(); } } catch (e) {}
       }
       ['a-coeff', 'a-conc', 'b-coeff', 'b-conc', 'c-coeff', 'c-conc', 'd-coeff', 'd-conc'].forEach((id) => el(id).addEventListener('input', updateCalc));
 
-      // ---- 3D + charts state (independent live sliders, simple 1:1 illustration) ----
-      function vState() {
-        const react = parseFloat(el('v-react').value);
-        const prod = parseFloat(el('v-prod').value);
-        return { react, prod, kc: react > 0 ? prod / react : 0 };
-      }
-      let scene3d = null;
+      // ---- charts ----
       const charts = {};
-      function onSlider() {
-        const s = vState();
-        el('out-vreact').textContent = s.react.toFixed(2) + ' M';
-        el('out-vprod').textContent = s.prod.toFixed(2) + ' M';
-        el('out-vkc').textContent = fmt(s.kc);
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) updateSideChart(s); } catch (e) {}
-      }
-      el('v-react').addEventListener('input', onSlider);
-      el('v-prod').addEventListener('input', onSlider);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -262,7 +244,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: '[C] (mol/L)' } }, y: { title: { display: true, text: 'Kc' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateSideChart(vState());
+        updateSideChart({ react: 0.5, prod: 0.5 });
         updateKcChart();
       }
       function updateSideChart(s) {
@@ -285,49 +267,65 @@ const related = [
         charts.kc.data.labels = L; charts.kc.data.datasets[0].data = Dd; charts.kc.update();
       }
 
-      // ---- 3D sphere groups ----
-      function initScene() {
-        const c = el('keq3d'); if (!c) throw new Error('no keq3d container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        const matReact = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        const matProd = new THREE.MeshStandardMaterial({ color: 0x10b981 });
-        const MAX_P = 60;
-        const geo = new THREE.SphereGeometry(0.35, 12, 12);
-        const pilesR = [], pilesP = [];
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matReact); p.visible = false; s.scene.add(p); pilesR.push(p); }
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matProd); p.visible = false; s.scene.add(p); pilesP.push(p); }
+      // ---- standalone 3D diagrams (static geometry, auto-rotating only) ----
+      let diagPiles = null, diagKcBar = null;
 
-        function layout(pile, count, cx) {
-          const perRow = 6;
-          for (let i = 0; i < pile.length; i++) {
-            const p = pile[i];
-            if (i < count) {
-              const row = Math.floor(i / perRow), col = i % perRow;
-              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
-              p.visible = true;
-            } else p.visible = false;
-          }
+      function sphereLayout(group, count, cx, color, MAX_P) {
+        const geo = new THREE.SphereGeometry(0.3, 12, 12);
+        const mat = new THREE.MeshStandardMaterial({ color });
+        const perRow = 5;
+        for (let i = 0; i < Math.min(count, MAX_P); i++) {
+          const row = Math.floor(i / perRow), col = i % perRow;
+          const p = new THREE.Mesh(geo, mat);
+          p.position.set(cx + (col - (perRow - 1) / 2) * 0.72, row * 0.72 - 2, 0);
+          group.add(p);
         }
-        function update(state) {
-          const nR = Math.max(1, Math.min(MAX_P, Math.round(state.react * 40)));
-          const nP = Math.max(1, Math.min(MAX_P, Math.round(state.prod * 40)));
-          layout(pilesR, nR, -3.2);
-          layout(pilesP, nP, 3.2);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+      }
+
+      // ---- diagram 1: two static sphere-pile snapshots (products-favored vs reactants-favored) ----
+      function initDiagPiles() {
+        const c = el('diag-piles'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 16, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const g1 = new THREE.Group(); g1.position.x = -4.2; s.scene.add(g1);
+        sphereLayout(g1, 3, -0.6, 0x6366f1, 30);   // small reactant pile
+        sphereLayout(g1, 20, 0.6, 0x10b981, 30);   // large product pile (Kc >> 1)
+        const g2 = new THREE.Group(); g2.position.x = 4.2; s.scene.add(g2);
+        sphereLayout(g2, 20, -0.6, 0x6366f1, 30);  // large reactant pile (Kc << 1)
+        sphereLayout(g2, 3, 0.6, 0x10b981, 30);    // small product pile
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0025); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(vState());
+        diagPiles = { resize: s.resize };
+      }
+
+      // ---- diagram 2: static bar comparison of Kc across illustrative example reactions ----
+      function initDiagKcBar() {
+        const c = el('diag-kcbar'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(0, 1, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        // compressed (log-like) illustrative heights so all three bars stay visible together
+        const examples = [
+          { x: -2.6, h: 0.6, color: 0x94a3b8, label: 'Kc ≈ 0.01' },
+          { x: 0, h: 2.2, color: 0x6366f1, label: 'Kc ≈ 1' },
+          { x: 2.6, h: 4.2, color: 0x10b981, label: 'Kc ≈ 100' },
+        ];
+        examples.forEach((ex) => {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.3, ex.h, 1.3), new THREE.MeshStandardMaterial({ color: ex.color }));
+          bar.position.set(ex.x, ex.h / 2 - 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagKcBar = { resize: s.resize };
       }
 
       function boot() {
         try { el('a-conc').value = '0.50'; el('b-conc').value = ''; el('c-conc').value = '0.50'; el('d-conc').value = ''; updateCalc(); } catch (e) { console.error('[equilibrium-constant] calc init failed', e); }
-        try { onSlider(); } catch (e) { console.error('[equilibrium-constant] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[equilibrium-constant] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[equilibrium-constant] scene failed', e); el('keq3d-fallback').classList.remove('hidden'); }
-        } else { el('keq3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagPiles(); } catch (e) { console.error('[equilibrium-constant] piles diagram failed', e); }
+          try { initDiagKcBar(); } catch (e) { console.error('[equilibrium-constant] kc bar diagram failed', e); }
+        }
+        mountResize([diagPiles, diagKcBar]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

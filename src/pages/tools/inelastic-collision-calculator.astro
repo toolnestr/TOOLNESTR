@@ -133,24 +133,22 @@ const related = [
     <p id="ic-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D collision + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D inelastic collision</h2>
-      <p class="mt-1 text-sm text-slate-500">Sphere size reflects relative mass. Drag the sliders to change mass 1 and initial velocity 1; the spheres approach, collide and merge into one combined body moving at v'. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass 1 <span id="out-bm1" class="font-mono text-indigo-600">2.0 kg</span></span>
-          <input id="b-m1" type="range" min="0.5" max="10" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Initial velocity 1 <span id="out-bu1" class="font-mono text-indigo-600">5.0 m/s</span></span>
-          <input id="b-u1" type="range" min="0.5" max="10" step="0.1" value="5" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-merge" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The objects merge into one</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">blue</span> and <span class="font-semibold text-red-500">red</span> spheres collide and stick together, becoming the single <span class="font-semibold text-emerald-500">green</span> combined body moving at v' — unlike an elastic collision, they never separate again.</p>
+        </div>
+        <div>
+          <div id="diag-kelost" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Kinetic energy is lost, not conserved</h3>
+          <p class="mt-1 text-sm text-slate-600">Two stacked blocks compare total kinetic energy before and after. The <span class="font-semibold text-red-500">shorter after-block</span> shows energy that vanished into heat, sound and deformation — momentum still balances, but KE does not.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Combined v' = <span id="out-bvp" class="font-mono font-bold">—</span> &nbsp;|&nbsp; KE lost = <span id="out-bkel" class="font-mono font-bold">—</span></div>
-      <div id="collision3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="collision3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -196,27 +194,13 @@ const related = [
       }
       ['m1', 'm2', 'u1', 'u2'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let scene3d = null;
       function bState() {
-        const m1 = parseFloat(el('b-m1').value), m2 = 2;
-        const u1 = parseFloat(el('b-u1').value), u2 = 0;
+        const m1 = 2, m2 = 2, u1 = 5, u2 = 0;
         const r = solveInelastic(m1, m2, u1, u2);
         return { m1, m2, u1, u2, v: r.v, keBefore: r.keBefore, keAfter: r.keAfter, keLost: r.keLost };
       }
-      function onB() {
-        const s = bState();
-        el('out-bm1').textContent = s.m1.toFixed(1) + ' kg';
-        el('out-bu1').textContent = s.u1.toFixed(1) + ' m/s';
-        el('out-bvp').textContent = fmt(s.v) + ' m/s';
-        el('out-bkel').textContent = fmt(s.keLost) + ' J';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-m1').addEventListener('input', onB);
-      el('b-u1').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -248,73 +232,56 @@ const related = [
         charts.kel.data.labels = L; charts.kel.data.datasets[0].data = D; charts.kel.update();
       }
 
-      // ---- interactive 3D collision ----
-      function initScene3d() {
-        const c = el('collision3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0.5, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0));
-        const mat1 = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        const mat2 = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        const matCombined = new THREE.MeshStandardMaterial({ color: 0x10b981 });
-        let sph1 = null, sph2 = null, merged = null;
-        let t = 0, cur = bState();
+      // ================= THREE.js STANDALONE DIAGRAMS =================
+      let diagMerge = null, diagKelost = null;
+
+      // ---- Diagram 1: static before/after — two spheres merge into one (auto-rotating) ----
+      function initDiagMerge() {
+        const c = el('diag-merge'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 11, new THREE.Vector3(0, 0.5, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7));
+        const st = bState();
         function radius(m) { return Math.max(0.4, Math.cbrt(m) * 0.6); }
-        function build() {
-          if (sph1) { s.scene.remove(sph1); sph1.geometry.dispose(); }
-          if (sph2) { s.scene.remove(sph2); sph2.geometry.dispose(); }
-          if (merged) { s.scene.remove(merged); merged.geometry.dispose(); merged = null; }
-          sph1 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m1), 24, 24), mat1);
-          sph2 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m2), 24, 24), mat2);
-          s.scene.add(sph1); s.scene.add(sph2);
-        }
-        function update(state) { cur = state; build(); t = 0; }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) {
-            t += 0.012;
-            const ph = t % 3;
-            const r1 = radius(cur.m1), r2 = radius(cur.m2);
-            const contact = r1 + r2;
-            const startX1 = -8, startX2 = 6;
-            const collideX = startX2 - contact;
-            if (ph < 1.4) {
-              const frac = ph / 1.4;
-              if (sph1 && sph2) {
-                sph1.visible = true; sph2.visible = true; if (merged) merged.visible = false;
-                sph1.position.set(startX1 + frac * (collideX - startX1), r1, 0);
-                sph2.position.set(startX2, r2, 0);
-              }
-            } else {
-              // merged phase: build combined sphere once, move together at v'
-              if (sph1) sph1.visible = false;
-              if (sph2) sph2.visible = false;
-              const rMerged = Math.max(0.5, Math.cbrt(cur.m1 + cur.m2) * 0.6);
-              if (!merged) {
-                merged = new THREE.Mesh(new THREE.SphereGeometry(rMerged, 24, 24), matCombined);
-                s.scene.add(merged);
-              }
-              merged.visible = true;
-              const frac = (ph - 1.4) / 1.6;
-              const dir = cur.v >= 0 ? 1 : -1;
-              merged.position.set(collideX + dir * frac * Math.min(9, Math.abs(cur.v) * 0.9), rMerged, 0);
-            }
-            s.spin(0.0012);
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
+        const r1 = radius(st.m1), r2 = radius(st.m2);
+        const sph1 = new THREE.Mesh(new THREE.SphereGeometry(r1, 24, 24), new THREE.MeshStandardMaterial({ color: 0x6366f1, transparent: true, opacity: 0.55 }));
+        sph1.position.set(-3, r1, 0); s.scene.add(sph1);
+        const sph2 = new THREE.Mesh(new THREE.SphereGeometry(r2, 24, 24), new THREE.MeshStandardMaterial({ color: 0xef4444, transparent: true, opacity: 0.55 }));
+        sph2.position.set(-1, r2, 0); s.scene.add(sph2);
+        const rMerged = radius(st.m1 + st.m2);
+        const merged = new THREE.Mesh(new THREE.SphereGeometry(rMerged, 24, 24), new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+        merged.position.set(3, rMerged, 0); s.scene.add(merged);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        diagMerge = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: KE before vs after stacked blocks (auto-rotating) ----
+      function initDiagKelost() {
+        const c = el('diag-kelost'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 1, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7));
+        const st = bState();
+        const maxKE = Math.max(st.keBefore, st.keAfter, 0.001);
+        const before = { h: Math.max(0.2, (st.keBefore / maxKE) * 3.2), x: -1.6, color: 0x94a3b8 };
+        const after = { h: Math.max(0.2, (st.keAfter / maxKE) * 3.2), x: 1.6, color: 0xef4444 };
+        [before, after].forEach((b) => {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, b.h, 1.2), new THREE.MeshStandardMaterial({ color: b.color }));
+          mesh.position.set(b.x, b.h / 2, 0);
+          s.scene.add(mesh);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagKelost = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[inelastic-collision] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[inelastic-collision] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[inelastic-collision] charts failed', e); }
         if (window.THREE) {
-          try { initScene3d(); } catch (e) { console.error('[inelastic-collision] 3D failed', e); el('collision3d-fallback').classList.remove('hidden'); }
-        } else { el('collision3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagMerge(); } catch (e) { console.error('[inelastic-collision] diagram 1 failed', e); }
+          try { initDiagKelost(); } catch (e) { console.error('[inelastic-collision] diagram 2 failed', e); }
+        }
+        mountResize([diagMerge, diagKelost]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

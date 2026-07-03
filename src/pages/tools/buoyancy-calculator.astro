@@ -151,21 +151,19 @@ const related = [
   <!-- ============ VIZ: one interactive 3D scene + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D floating/sinking object</h2>
-      <p class="mt-1 text-sm text-slate-500">Drag the sliders for object density and fluid density — the cube settles at the correct submerged depth, or rests on the bottom if it sinks. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Object density <span id="out-bro" class="font-mono text-blue-600">917 kg/m³</span></span>
-          <input id="b-rho-obj" type="range" min="50" max="9000" step="10" value="917" class="mt-2 w-full accent-blue-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Fluid density <span id="out-brf" class="font-mono text-blue-600">1000 kg/m³</span></span>
-          <input id="b-rho-fluid" type="range" min="1" max="1500" step="5" value="1000" class="mt-2 w-full accent-blue-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-buoy-vectors" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Floating vs sinking</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-orange-500">orange</span> block floats mostly above the translucent water line, while the <span class="font-semibold text-red-600">red</span> block is denser and rests fully submerged on the bottom.</p>
+        </div>
+        <div>
+          <div id="diag-buoy-family" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Submerged fraction depends on density ratio</h3>
+          <p class="mt-1 text-sm text-slate-600">Four blocks of different density (like cork, wood, ice and steel) crossing the same water line — the denser the block, the more of it sits below the surface.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700">Status: <span id="out-bstatus" class="font-mono font-bold">—</span></div>
-      <div id="scene3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -225,24 +223,8 @@ const related = [
         update();
       }));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let scene3d = null;
-      function bState() {
-        const rhoObj = parseFloat(el('b-rho-obj').value), rhoFluid = parseFloat(el('b-rho-fluid').value);
-        const ratio = rhoObj / rhoFluid;
-        const frac = Math.min(1, ratio);
-        return { rhoObj, rhoFluid, ratio, frac, floats: ratio < 1 };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bro').textContent = s.rhoObj.toFixed(0) + ' kg/m³';
-        el('out-brf').textContent = s.rhoFluid.toFixed(0) + ' kg/m³';
-        el('out-bstatus').textContent = s.floats ? ('Floats — ' + (s.frac * 100).toFixed(1) + '% submerged') : 'Sinks — fully submerged';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-      }
-      el('b-rho-obj').addEventListener('input', onB);
-      el('b-rho-fluid').addEventListener('input', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -265,48 +247,54 @@ const related = [
         charts.ready = true;
       }
 
-      // ---- interactive 3D scene ----
-      function initScene3d() {
-        const c = el('scene3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), OPTS);
-        const containerMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.2, roughness: 0.1, side: THREE.DoubleSide });
-        const container = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 5, 40, 1, true), containerMat);
-        s.scene.add(container);
-        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40), containerMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; s.scene.add(bottom);
-        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
-        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 4.4, 40), liquidMat);
-        liquid.position.y = -2.5 + 2.2; s.scene.add(liquid);
-        const cubeSize = 1.4;
-        const cubeMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        const cube = new THREE.Mesh(new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize), cubeMat);
-        s.scene.add(cube);
-        const liquidTopY = -2.5 + 4.4; // top of liquid column
-        const bottomY = -2.5;
-        function update(state) {
-          if (state.floats) {
-            // Cube's submerged depth from the liquid surface = frac * cubeSize.
-            // Bottom of cube sits at (surface - sunkDepth); center = bottom + cubeSize/2.
-            const sunkDepth = state.frac * cubeSize;
-            cube.position.y = (liquidTopY - sunkDepth) + cubeSize / 2;
-          } else {
-            cube.position.y = bottomY + cubeSize / 2;
-          }
-          cubeMat.color.set(state.floats ? 0xf97316 : 0xdc2626);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+      // ---- Diagram A: float vs sink, with a water-line plane ----
+      let diagV = null, diagF = null;
+      function waterPlane(s, y, w) {
+        const mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, w), mat);
+        plane.rotation.x = -Math.PI / 2; plane.position.y = y;
+        s.scene.add(plane);
+      }
+      function initDiagVectors() {
+        const c = el('diag-buoy-vectors'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(2, 1.2, 0), OPTS);
+        waterPlane(s, 0, 8);
+        const floatCube = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+        floatCube.position.set(-1.6, 0.35, 0); s.scene.add(floatCube); // mostly above water line
+        const sinkCube = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+        sinkCube.position.set(1.6, -1.2, 0); s.scene.add(sinkCube); // fully submerged, resting low
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        diagV = { resize: s.resize };
+      }
+
+      // ---- Diagram B: family of density ratios crossing the water line ----
+      function initDiagFamily() {
+        const c = el('diag-buoy-family'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 11, new THREE.Vector3(3, 1.5, 0), OPTS);
+        waterPlane(s, 0, 12);
+        const fracs = [0.24, 0.5, 0.917, 1.0]; // cork, wood, ice, steel(sinks)
+        const colors = [0x22c55e, 0x0ea5e9, 0x60a5fa, 0xdc2626];
+        const h = 1.6;
+        fracs.forEach((f, i) => {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1, h, 1), new THREE.MeshStandardMaterial({ color: colors[i] }));
+          const submergedTop = h / 2 - f * h;
+          bar.position.set(i * 1.8, submergedTop, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagF = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[buoyancy] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[buoyancy] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[buoyancy] charts failed', e); }
         if (window.THREE) {
-          try { initScene3d(); } catch (e) { console.error('[buoyancy] scene failed', e); el('scene3d-fallback').classList.remove('hidden'); }
-        } else { el('scene3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagVectors(); } catch (e) { console.error('[buoyancy] vector diagram failed', e); }
+          try { initDiagFamily(); } catch (e) { console.error('[buoyancy] family diagram failed', e); }
+        }
+        mountResize([diagV, diagF]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

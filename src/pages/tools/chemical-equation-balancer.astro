@@ -130,10 +130,19 @@ const related = [
   <!-- ============ VIZ: 3D spheres + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D species view</h2>
-      <p class="mt-1 text-sm text-slate-500">Each cluster represents one species, sized by its balanced coefficient. Reactants on the left, products on the right. Drag to orbit.</p>
-      <div id="eqn3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
-      <p id="eqn3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-atoms" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Same atoms, just rearranged</h3>
+          <p class="mt-1 text-sm text-slate-600">Unbalanced 1 H₂ + 1 O₂ → 1 H₂O (left) has leftover oxygen; balanced 2 H₂ + 1 O₂ → 2 H₂O (right) uses every atom on both sides — the same colored spheres, just regrouped in the correct ratio.</p>
+        </div>
+        <div>
+          <div id="diag-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Matching bar heights mean balanced</h3>
+          <p class="mt-1 text-sm text-slate-600">Each pair of bars is the atom count of one element on the reactant side vs the product side. When every pair lines up exactly, the equation is balanced.</p>
+        </div>
+      </div>
     </section>
 
     <section class="mt-10 no-print">
@@ -253,7 +262,6 @@ const related = [
           const res = tryBalance(raw);
           lastResult = res;
           el('r-balanced').textContent = fmtEq(res);
-          renderScene(res);
           updateCharts(res);
         } catch (e) {
           lastResult = null;
@@ -305,51 +313,75 @@ const related = [
         charts.coeffs.update();
       }
 
-      // ---- 3D species view ----
-      let sceneObj = null;
-      const speciesColors = [0x6366f1, 0x10b981, 0xf59e0b, 0xef4444];
-      function initScene() {
-        const c = el('eqn3d'); if (!c) throw new Error('no eqn3d container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
-        frame();
-        sceneObj = { s, group: null, resize: s.resize };
-      }
-      function renderScene(res) {
-        if (!sceneObj || !window.THREE) return;
-        const { s } = sceneObj;
-        if (sceneObj.group) { s.scene.remove(sceneObj.group); sceneObj.group = null; }
-        const group = new THREE.Group();
-        const n = res.nR + res.nP;
-        const spacing = 5.5;
-        const startX = -((n - 1) * spacing) / 2;
-        const allCoeffs = res.coeffs;
-        for (let idx = 0; idx < n; idx++) {
-          const cnt = Math.max(1, Math.min(12, allCoeffs[idx]));
-          const cluster = new THREE.Group();
-          const mat = new THREE.MeshStandardMaterial({ color: speciesColors[idx % speciesColors.length] });
-          const perRow = Math.ceil(Math.sqrt(cnt));
-          for (let k = 0; k < cnt; k++) {
-            const sph = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), mat);
-            const row = Math.floor(k / perRow), col = k % perRow;
-            sph.position.set((col - (perRow - 1) / 2) * 1.3, row * 1.3 - 1, 0);
-            cluster.add(sph);
-          }
-          cluster.position.x = startX + idx * spacing;
-          group.add(cluster);
+      // ---- standalone diagram: unbalanced vs balanced sphere clusters (2H2 + O2 -> 2H2O) ----
+      function initDiagAtoms() {
+        const c = el('diag-atoms'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 16, new THREE.Vector3(6, 3, 0), SCENE_OPTS);
+        const hMat = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
+        const oMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        function sphere(mat, r) { return new THREE.Mesh(new THREE.SphereGeometry(r, 14, 14), mat); }
+        function water(x, y) {
+          const g = new THREE.Group(); g.position.set(x, y, 0);
+          const o = sphere(oMat, 0.34); g.add(o);
+          const h1 = sphere(hMat, 0.2); h1.position.set(0.4, 0.3, 0); g.add(h1);
+          const h2 = sphere(hMat, 0.2); h2.position.set(-0.4, 0.3, 0); g.add(h2);
+          return g;
         }
-        s.scene.add(group);
-        sceneObj.group = group;
+        function oxygenMolecule(x, y) {
+          const g = new THREE.Group(); g.position.set(x, y, 0);
+          const o1 = sphere(oMat, 0.34); o1.position.x = -0.35; g.add(o1);
+          const o2 = sphere(oMat, 0.34); o2.position.x = 0.35; g.add(o2);
+          return g;
+        }
+        // left: unbalanced 1 H2 + 1 O2 -> 1 H2O (leftover O2 atom floating, unused)
+        const leftGrp = new THREE.Group(); leftGrp.position.x = 0;
+        leftGrp.add(water(0, 1.5));
+        leftGrp.add(oxygenMolecule(0, -1.5));
+        s.scene.add(leftGrp);
+        // right: balanced 2 H2 + 1 O2 -> 2 H2O
+        const rightGrp = new THREE.Group(); rightGrp.position.x = 6;
+        rightGrp.add(water(-0.8, 1.5));
+        rightGrp.add(water(0.8, 1.5));
+        rightGrp.add(oxygenMolecule(0, -1.5));
+        s.scene.add(rightGrp);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
       }
+
+      // ---- standalone diagram: atom-count bars, reactant side vs product side ----
+      function initDiagBars() {
+        const c = el('diag-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(3, 2, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7); grid.position.set(3, 0, 3); s.scene.add(grid);
+        // balanced 2H2 + O2 -> 2H2O: H=4 both sides, O=2 both sides
+        const bars = [
+          { x: 0, h: 4, color: 0x6366f1, label: 'H (reactants)' },
+          { x: 1.2, h: 4, color: 0x818cf8, label: 'H (products)' },
+          { x: 3.5, h: 2, color: 0xef4444, label: 'O (reactants)' },
+          { x: 4.7, h: 2, color: 0xf87171, label: 'O (products)' },
+        ];
+        bars.forEach((b) => {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, b.h, 0.8), new THREE.MeshStandardMaterial({ color: b.color }));
+          mesh.position.set(b.x, b.h / 2, 0);
+          s.scene.add(mesh);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+
+      let diagAtoms = null, diagBars = null;
 
       function boot() {
         try { initCharts(); } catch (e) { console.error('[balancer] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[balancer] scene failed', e); el('eqn3d-fallback').classList.remove('hidden'); }
-        } else { el('eqn3d-fallback').classList.remove('hidden'); }
+          try { diagAtoms = initDiagAtoms(); } catch (e) { console.error('[balancer] atoms diagram failed', e); }
+          try { diagBars = initDiagBars(); } catch (e) { console.error('[balancer] bars diagram failed', e); }
+        }
         el('eq-input').value = 'CH4 + O2 -> CO2 + H2O';
         updateCalc();
-        mountResize([sceneObj]);
+        mountResize([diagAtoms, diagBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

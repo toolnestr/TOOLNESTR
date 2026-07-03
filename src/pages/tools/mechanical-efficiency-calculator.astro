@@ -140,24 +140,23 @@ const related = [
     <p id="me-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D machine + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D energy split</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the input work and the efficiency; the scene splits input energy into a useful-output block and a wasted-heat block. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Input work <span id="out-bin" class="font-mono text-blue-600">100.0 J</span></span>
-          <input id="b-in" type="range" min="10" max="500" step="1" value="100" class="mt-2 w-full accent-blue-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Efficiency <span id="out-beta" class="font-mono text-blue-600">80%</span></span>
-          <input id="b-eta" type="range" min="1" max="99" step="1" value="80" class="mt-2 w-full accent-blue-600" />
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-split" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Input energy splits into two paths</h3>
+          <p class="mt-1 text-sm text-slate-600">All input energy (left box) goes somewhere: most becomes <span class="font-semibold text-emerald-600">useful output</span> (larger box), the rest is <span class="font-semibold text-red-500">wasted as heat</span> (smaller box) — at 80% efficiency, an 80/20 split.</p>
+        </div>
+        <div>
+          <div id="diag-machine-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Efficiency across machine types</h3>
+          <p class="mt-1 text-sm text-slate-600">Bar heights compare typical efficiency for an electric motor (~90%), a pulley system (~80%) and a combustion engine (~35%) — more moving parts and heat losses mean lower efficiency.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700">Useful output = <span id="out-bout" class="font-mono font-bold">80.0 J</span> · Wasted as heat = <span id="out-bloss" class="font-mono font-bold">20.0 J</span></div>
-      <div id="machine3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="machine3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="machine3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D diagrams unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -177,7 +176,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const SCENE_OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
 
       // ---- calculator ----
@@ -223,25 +222,9 @@ const related = [
       el('mode-p').addEventListener('click', () => switchMode('p'));
       ['eta-w', 'wout', 'win', 'eta-p', 'pout', 'pin'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let machine = null;
-      function bState() {
-        const inp = parseFloat(el('b-in').value), eta = parseFloat(el('b-eta').value);
-        const out = inp * (eta / 100), loss = inp - out;
-        return { inp, eta, out, loss };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bin').textContent = s.inp.toFixed(1) + ' J';
-        el('out-beta').textContent = s.eta.toFixed(0) + '%';
-        el('out-bout').textContent = s.out.toFixed(1) + ' J';
-        el('out-bloss').textContent = s.loss.toFixed(1) + ' J';
-        try { if (machine) machine.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-in').addEventListener('input', onB);
-      el('b-eta').addEventListener('input', onB);
+      const DEMO = { inp: 100, eta: 80, out: 80, loss: 20 };
 
       function initCharts() {
         if (!window.Chart) return;
@@ -260,7 +243,7 @@ const related = [
           options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { stacked: true, title: { display: true, text: 'Energy (J)' } }, y: { stacked: true } }, plugins: { legend: { position: 'bottom' } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts(DEMO);
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -272,46 +255,62 @@ const related = [
         charts.split.update();
       }
 
-      // ---- interactive machine scene ----
-      function initMachine() {
-        const c = el('machine3d'); if (!c) throw new Error('no machine3d');
+      // ---- standalone 3D diagrams (auto-rotating, static geometry) ----
+      let diagSplit = null, diagMachineBars = null;
+
+      function initDiagSplit() {
+        const c = el('diag-split'); if (!c) throw new Error('no container');
         const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
 
-        const baseMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 });
-        const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.6, 3), baseMat);
-        base.position.y = -2.6; s.scene.add(base);
-
+        const inMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
         const outMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.35 });
-        const lossMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35, transparent: true, opacity: 0.85 });
-        let outBar = null, lossBar = null;
+        const lossMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 });
 
-        function update(state) {
-          const scale = 4.6 / 500;
-          const outH = Math.max(0.05, state.out * scale);
-          const lossH = Math.max(0.05, state.loss * scale);
-          if (outBar) { s.scene.remove(outBar); outBar.geometry.dispose(); }
-          if (lossBar) { s.scene.remove(lossBar); lossBar.geometry.dispose(); }
-          outBar = new THREE.Mesh(new THREE.BoxGeometry(1.6, outH, 1.6), outMat);
-          outBar.position.set(-1.3, -2.3 + outH / 2, 0);
-          s.scene.add(outBar);
-          lossBar = new THREE.Mesh(new THREE.BoxGeometry(1.6, lossH, 1.6), lossMat);
-          lossBar.position.set(1.3, -2.3 + lossH / 2, 0);
-          s.scene.add(lossBar);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        const inBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.6, 1.4), inMat);
+        inBox.position.set(-3.5, -1.3 + 1.3, 0); s.scene.add(inBox);
+
+        const outBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 1.4), outMat);
+        outBox.position.set(1.5, -1.3 + 1.1, 0); s.scene.add(outBox);
+
+        const lossBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 1.4), lossMat);
+        lossBox.position.set(4.5, -1.3 + 0.3, 0); s.scene.add(lossBox);
+
+        s.scene.add(arrow(new THREE.Vector3(-2.8, 0, 0), new THREE.Vector3(0.8, 0, 0), 0x94a3b8));
+        s.scene.add(arrow(new THREE.Vector3(-2.8, -0.8, 0), new THREE.Vector3(3.8, -0.9, 0), 0x94a3b8));
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        machine = { update, resize: s.resize };
-        update(bState());
+        diagSplit = { resize: s.resize };
+      }
+
+      function initDiagMachineBars() {
+        const c = el('diag-machine-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(5, 3, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 0); s.scene.add(grid);
+        const machines = [
+          { name: 'Electric motor', eta: 90, color: 0x10b981 },
+          { name: 'Pulley system', eta: 80, color: 0x2563eb },
+          { name: 'Combustion engine', eta: 35, color: 0xef4444 },
+        ];
+        machines.forEach((mA, i) => {
+          const h = Math.max(0.5, (mA.eta / 100) * 8);
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshStandardMaterial({ color: mA.color }));
+          bar.position.set(i * 3, h / 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagMachineBars = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('w'); } catch (e) { console.error('[mech-eff] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[mech-eff] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[mech-eff] charts failed', e); }
         if (window.THREE) {
-          try { initMachine(); } catch (e) { console.error('[mech-eff] machine failed', e); el('machine3d-fallback').classList.remove('hidden'); }
+          try { initDiagSplit(); } catch (e) { console.error('[mech-eff] diagSplit failed', e); }
+          try { initDiagMachineBars(); } catch (e) { console.error('[mech-eff] diagMachineBars failed', e); }
         } else { el('machine3d-fallback').classList.remove('hidden'); }
-        mountResize([machine]);
+        mountResize([diagSplit, diagMachineBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

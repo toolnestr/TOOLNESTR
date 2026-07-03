@@ -134,24 +134,22 @@ const related = [
     <p id="py-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <!-- ============ VIZ: standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D yield beaker</h2>
-      <p class="mt-1 text-sm text-slate-500">The dashed outline marks the theoretical yield level; the filled liquid tracks the actual yield. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Theoretical yield <span id="out-btheo" class="font-mono text-green-600">10.00</span></span>
-          <input id="b-theo" type="range" min="1" max="20" step="0.1" value="10" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Actual yield <span id="out-bactual" class="font-mono text-green-600">8.00</span></span>
-          <input id="b-actual" type="range" min="0" max="20" step="0.1" value="8" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-beakers" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Actual fill always sits at or below theoretical</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-slate-500">dashed outline</span> marks the theoretical maximum. The <span class="font-semibold text-sky-500">solid blue liquid</span> in the right-hand beaker is a typical actual yield — always lower, never higher, for a correctly measured pure product.</p>
+        </div>
+        <div>
+          <div id="diag-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Percent yield spans a wide practical range</h3>
+          <p class="mt-1 text-sm text-slate-600">Three illustrative scenarios — a <span class="font-semibold text-red-500">poor</span> yield, an <span class="font-semibold text-amber-500">average</span> yield, and an <span class="font-semibold text-emerald-500">excellent</span> yield — shown as bar heights out of the same theoretical maximum.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">% Yield = <span id="out-bpct" class="font-mono font-bold">80.0%</span></div>
-      <div id="yield3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="yield3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -217,24 +215,8 @@ const related = [
       el('mode-theo').addEventListener('click', () => switchMode('theo'));
       ['f-pct', 'f-actual', 'f-theo'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let beaker = null;
-      function bState() {
-        const theo = parseFloat(el('b-theo').value), actual = parseFloat(el('b-actual').value);
-        return { theo, actual: Math.min(actual, theo * 1.5), pct: theo > 0 ? (actual / theo) * 100 : 0 };
-      }
-      function onB() {
-        const s = bState();
-        el('out-btheo').textContent = s.theo.toFixed(2);
-        el('out-bactual').textContent = parseFloat(el('b-actual').value).toFixed(2);
-        el('out-bpct').textContent = fmt(s.pct) + '%';
-        try { if (beaker) beaker.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-theo').addEventListener('input', onB);
-      el('b-actual').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -252,74 +234,97 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Actual yield' } }, y: { title: { display: true, text: '% yield' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts();
       }
-      function updateCharts(s) {
+      function updateCharts() {
         if (!charts.ready) return;
-        charts.bar.data.datasets[0].data = [parseFloat(el('b-actual').value)];
-        charts.bar.data.datasets[1].data = [s.theo];
+        const theo = 10, actual = 8;
+        charts.bar.data.datasets[0].data = [actual];
+        charts.bar.data.datasets[1].data = [theo];
         charts.bar.update();
 
         const L = [], D = [];
-        const maxA = s.theo * 1.5;
+        const maxA = theo * 1.5;
         for (let a = 0; a <= maxA + 0.001; a += Math.max(0.1, maxA / 40)) {
-          L.push(a.toFixed(1)); D.push(+((a / s.theo) * 100).toFixed(2));
+          L.push(a.toFixed(1)); D.push(+((a / theo) * 100).toFixed(2));
         }
         charts.line.data.labels = L; charts.line.data.datasets[0].data = D; charts.line.update();
       }
 
-      // ---- interactive beaker: dashed theoretical outline + filled actual liquid ----
-      function glassBeaker(THREE) {
+      // ---- standalone 3D diagrams (static, auto-rotating) ----
+      function glassBeaker(radius) {
         const g = new THREE.Group();
         const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
-        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
-        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(radius, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
         return g;
       }
-      function initBeaker() {
-        const c = el('yield3d'); if (!c) throw new Error('no yield3d container');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        s.scene.add(glassBeaker(THREE));
-        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, roughness: 0.3 });
-        const outlineMat = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.18, gapSize: 0.12 });
-        let liquid = null, outline = null;
-        function heightFor(v, theoMax) {
-          const frac = Math.max(0.02, Math.min(1, v / (theoMax * 1.5)));
-          return frac * 4.6;
-        }
-        function update(state) {
-          const theoMax = Math.max(1, state.theo);
-          const hActual = heightFor(state.actual, theoMax);
-          const hTheo = heightFor(state.theo, theoMax);
-          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); }
-          liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hActual, 40), liquidMat);
-          liquid.position.y = -2.4 + hActual / 2; s.scene.add(liquid);
-
-          if (outline) { s.scene.remove(outline); outline.geometry.dispose(); }
-          const yTheo = -2.4 + hTheo;
-          const pts = [];
-          const segs = 64;
-          for (let i = 0; i <= segs; i++) { const a = (i / segs) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * 2.15, yTheo, Math.sin(a) * 2.15)); }
-          const outlineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-          outline = new THREE.LineLoop(outlineGeo, outlineMat);
-          outline.computeLineDistances();
-          s.scene.add(outline);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
-        frame();
-        beaker = { update, resize: s.resize };
-        update(bState());
+      function dashedOutline(radius, yTheo) {
+        const pts = [];
+        const segs = 64;
+        for (let i = 0; i <= segs; i++) { const a = (i / segs) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * (radius - 0.05), yTheo, Math.sin(a) * (radius - 0.05))); }
+        const outline = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.18, gapSize: 0.12 }));
+        outline.computeLineDistances();
+        return outline;
       }
+
+      // ---- diagram 1: two beakers, theoretical (dashed) vs actual (solid, lower) ----
+      function initDiagBeakers() {
+        const c = el('diag-beakers'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const radius = 1.8;
+        // left: theoretical fill (dashed outline at full height, faint liquid)
+        const left = new THREE.Group(); left.position.x = -3.2;
+        left.add(glassBeaker(radius));
+        const theoLiquid = new THREE.Mesh(new THREE.CylinderGeometry(radius - 0.1, radius - 0.1, 4.6, 40), new THREE.MeshStandardMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.35 }));
+        theoLiquid.position.y = -2.4 + 4.6 / 2; left.add(theoLiquid);
+        left.add(dashedOutline(radius, -2.4 + 4.6));
+        s.scene.add(left);
+        // right: actual fill (solid, lower) with theoretical dashed line for comparison
+        const right = new THREE.Group(); right.position.x = 3.2;
+        right.add(glassBeaker(radius));
+        const hActual = 4.6 * 0.8; // actual = 8, theo = 10
+        const actualLiquid = new THREE.Mesh(new THREE.CylinderGeometry(radius - 0.1, radius - 0.1, hActual, 40), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, roughness: 0.3 }));
+        actualLiquid.position.y = -2.4 + hActual / 2; right.add(actualLiquid);
+        right.add(dashedOutline(radius, -2.4 + 4.6));
+        s.scene.add(right);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBeakers = { resize: s.resize };
+      }
+
+      // ---- diagram 2: bar family of illustrative %yield scenarios ----
+      function initDiagBars() {
+        const c = el('diag-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 1.2, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        const scenarios = [
+          { label: 'poor', pct: 35, color: 0xef4444 },
+          { label: 'average', pct: 70, color: 0xf59e0b },
+          { label: 'excellent', pct: 95, color: 0x10b981 },
+        ];
+        const spacing = 2.4, startX = -spacing;
+        scenarios.forEach((sc, i) => {
+          const h = (sc.pct / 100) * 4.5;
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshStandardMaterial({ color: sc.color }));
+          bar.position.set(startX + i * spacing, -2.25 + h / 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBars = { resize: s.resize };
+      }
+      let diagBeakers = null, diagBars = null;
 
       function boot() {
         try { switchMode('pct'); } catch (e) { console.error('[percent-yield] calc init failed', e); }
         try { el('f-actual').value = '8'; el('f-theo').value = '10'; update(); } catch (e) {}
-        try { onB(); } catch (e) { console.error('[percent-yield] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[percent-yield] charts failed', e); }
         if (window.THREE) {
-          try { initBeaker(); } catch (e) { console.error('[percent-yield] beaker failed', e); el('yield3d-fallback').classList.remove('hidden'); }
-        } else { el('yield3d-fallback').classList.remove('hidden'); }
-        mountResize([beaker]);
+          try { initDiagBeakers(); } catch (e) { console.error('[percent-yield] beakers diagram failed', e); }
+          try { initDiagBars(); } catch (e) { console.error('[percent-yield] bars diagram failed', e); }
+        }
+        mountResize([diagBeakers, diagBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

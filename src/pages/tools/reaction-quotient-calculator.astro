@@ -157,25 +157,19 @@ const related = [
   <!-- ============ VIZ: 3D sphere groups + arrow + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D reactants vs products, with predicted shift</h2>
-      <p class="mt-1 text-sm text-slate-500">Each group's size illustrates the relative current concentration on that side (illustrative, not a literal particle count). The arrow shows the predicted direction the reaction will shift based on comparing Q to Kc. Drag to orbit.</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Reactant concentration <span id="out-vreact" class="font-mono text-green-600">0.50 M</span></span>
-          <input id="v-react" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Product concentration <span id="out-vprod" class="font-mono text-green-600">0.50 M</span></span>
-          <input id="v-prod" type="range" min="0.05" max="2" step="0.05" value="0.5" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-piles" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Q vs Kc predicts a direction, not a destination</h3>
+          <p class="mt-1 text-sm text-slate-600">Left snapshot: <span class="font-semibold text-indigo-600">Q &lt; Kc</span>, not enough product yet — the arrow points toward products (forward). Right snapshot: <span class="font-semibold text-emerald-600">Q &gt; Kc</span>, too much product already — the arrow points back toward reactants (reverse).</p>
+        </div>
+        <div>
+          <div id="diag-axis" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Comparing Q and Kc is just "which marker is bigger"</h3>
+          <p class="mt-1 text-sm text-slate-600">Both markers sit on the same number line. Whichever one is farther right is larger — that single comparison is all that decides whether the reaction runs forward or reverse.</p>
+        </div>
       </div>
-      <label class="mt-3 block max-w-xs">
-        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Known Kc (1:1) <span id="out-vkc" class="font-mono text-amber-600">1.00</span></span>
-        <input id="v-kc" type="range" min="0.05" max="5" step="0.05" value="1" class="mt-2 w-full accent-amber-500" />
-      </label>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Live Q (1:1) = <span id="out-vq" class="font-mono font-bold">1.00</span> — <span id="out-vverdict" class="font-semibold">at equilibrium</span></div>
-      <div id="q3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
-      <p id="q3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -246,41 +240,15 @@ const related = [
         else { cmp = 'Q > Kc'; dir = 'Reverse (→ reactants)'; }
         el('r-cmp').textContent = cmp;
         el('r-dir').textContent = dir;
-        updateCharts();
+        updateCharts(num, den, q, kc);
       }
       ['a-coeff', 'a-conc', 'b-coeff', 'b-conc', 'c-coeff', 'c-conc', 'd-coeff', 'd-conc', 'kc-known'].forEach((id) => el(id).addEventListener('input', updateCalc));
 
-      // ---- 3D + charts state (independent live sliders, simple 1:1 illustration) ----
-      function vState() {
-        const react = parseFloat(el('v-react').value);
-        const prod = parseFloat(el('v-prod').value);
-        const kc = parseFloat(el('v-kc').value);
-        const q = react > 0 ? prod / react : 0;
-        const tol = 0.02;
-        let verdict = 'at equilibrium', dirSign = 0;
-        if (kc > 0) {
-          const ratio = q / kc;
-          if (Math.abs(ratio - 1) <= tol) { verdict = 'at equilibrium'; dirSign = 0; }
-          else if (q < kc) { verdict = 'forward (→ products)'; dirSign = 1; }
-          else { verdict = 'reverse (→ reactants)'; dirSign = -1; }
-        }
-        return { react, prod, kc, q, verdict, dirSign };
-      }
-      let scene3d = null;
       const charts = {};
-      function onSlider() {
-        const s = vState();
-        el('out-vreact').textContent = s.react.toFixed(2) + ' M';
-        el('out-vprod').textContent = s.prod.toFixed(2) + ' M';
-        el('out-vkc').textContent = fmt(s.kc);
-        el('out-vq').textContent = fmt(s.q);
-        el('out-vverdict').textContent = s.verdict;
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) { updateSideChart(s); updateQKcChart(s); } } catch (e) {}
+      function updateCharts(num, den, q, kc) {
+        try { updateSideChart(den, num); } catch (e) {}
+        try { updateQKcChart(q, kc); } catch (e) {}
       }
-      el('v-react').addEventListener('input', onSlider);
-      el('v-prod').addEventListener('input', onSlider);
-      el('v-kc').addEventListener('input', onSlider);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -296,77 +264,77 @@ const related = [
           options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Value' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateSideChart(vState());
-        updateQKcChart(vState());
+        updateSideChart(0.20, 0.50);
+        updateQKcChart(1250, 0.500);
       }
-      function updateSideChart(s) {
+      function updateSideChart(den, num) {
         if (!charts.ready) return;
-        charts.sides.data.datasets[0].data = [s.react, s.prod];
+        charts.sides.data.datasets[0].data = [den, num];
         charts.sides.update();
       }
-      function updateQKcChart(s) {
+      function updateQKcChart(q, kc) {
         if (!charts.ready) return;
-        charts.qkc.data.datasets[0].data = [s.q, s.kc];
+        charts.qkc.data.datasets[0].data = [q, kc];
         charts.qkc.update();
       }
 
-      // ---- 3D sphere groups + direction arrow ----
-      function initScene() {
-        const c = el('q3d'); if (!c) throw new Error('no q3d container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+      // ---- diagram: two static sphere-pile snapshots (Q<Kc forward vs Q>Kc reverse), side by side ----
+      let diagPiles = null;
+      function initDiagPiles() {
+        const c = el('diag-piles'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 16, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
         const matReact = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
         const matProd = new THREE.MeshStandardMaterial({ color: 0x10b981 });
-        const MAX_P = 60;
-        const geo = new THREE.SphereGeometry(0.35, 12, 12);
-        const pilesR = [], pilesP = [];
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matReact); p.visible = false; s.scene.add(p); pilesR.push(p); }
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matProd); p.visible = false; s.scene.add(p); pilesP.push(p); }
-
-        // Direction arrow (cone + shaft) between the two piles
-        const arrowGroup = new THREE.Group();
-        const shaftGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.6, 10);
-        const headGeo = new THREE.ConeGeometry(0.22, 0.5, 12);
-        const arrowMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b });
-        const shaft = new THREE.Mesh(shaftGeo, arrowMat);
-        const head = new THREE.Mesh(headGeo, arrowMat);
-        shaft.rotation.z = Math.PI / 2;
-        head.rotation.z = -Math.PI / 2;
-        arrowGroup.add(shaft, head);
-        arrowGroup.position.set(0, 2.2, 0);
-        arrowGroup.visible = false;
-        s.scene.add(arrowGroup);
-
-        function layout(pile, count, cx) {
-          const perRow = 6;
-          for (let i = 0; i < pile.length; i++) {
-            const p = pile[i];
-            if (i < count) {
-              const row = Math.floor(i / perRow), col = i % perRow;
-              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
-              p.visible = true;
-            } else p.visible = false;
+        const geo = new THREE.SphereGeometry(0.3, 12, 12);
+        function layout(count, mat, cx, cz) {
+          const perRow = 3;
+          for (let i = 0; i < count; i++) {
+            const p = new THREE.Mesh(geo, mat);
+            const row = Math.floor(i / perRow), col = i % perRow;
+            p.position.set(cx + (col - (perRow - 1) / 2) * 0.7, row * 0.7 - 1.2, cz);
+            s.scene.add(p);
           }
         }
-        function update(state) {
-          const nR = Math.max(1, Math.min(MAX_P, Math.round(state.react * 40)));
-          const nP = Math.max(1, Math.min(MAX_P, Math.round(state.prod * 40)));
-          layout(pilesR, nR, -3.2);
-          layout(pilesP, nP, 3.2);
-          if (state.dirSign === 0) {
-            arrowGroup.visible = false;
-          } else {
-            arrowGroup.visible = true;
-            // dirSign = 1 -> forward (reactants -> products, point right/+x)
-            // dirSign = -1 -> reverse (products -> reactants, point left/-x)
-            head.position.x = state.dirSign > 0 ? 0.8 : -0.8;
-            shaft.position.x = 0;
-            arrowGroup.rotation.y = state.dirSign > 0 ? 0 : Math.PI;
-          }
+        function arrowAt(cz, dirSign) {
+          const grp = new THREE.Group();
+          const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+          const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.4, 12), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+          shaft.rotation.z = Math.PI / 2; head.rotation.z = -Math.PI / 2;
+          head.position.x = 0.6;
+          grp.add(shaft, head);
+          grp.position.set(0, 1.9, cz);
+          grp.rotation.y = dirSign > 0 ? 0 : Math.PI;
+          s.scene.add(grp);
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        // Left snapshot (z = -3.5): Q < Kc, few products, heading forward (arrow points right, toward products)
+        layout(3, matReact, -1.1, -3.5);
+        layout(2, matProd, 1.1, -3.5);
+        arrowAt(-3.5, 1);
+        // Right snapshot (z = 3.5): Q > Kc, many products, heading reverse (arrow points left, toward reactants)
+        layout(2, matReact, -1.1, 3.5);
+        layout(8, matProd, 1.1, 3.5);
+        arrowAt(3.5, -1);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(vState());
+        diagPiles = { resize: s.resize };
+      }
+
+      // ---- diagram: Q vs Kc marker comparison on a simple axis ----
+      let diagAxis = null;
+      function initDiagAxis() {
+        const c = el('diag-axis'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+        const axisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-4, 0, 0), new THREE.Vector3(4, 0, 0)]), new THREE.LineBasicMaterial({ color: 0x94a3b8 }));
+        s.scene.add(axisLine);
+        const kcMarker = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+        kcMarker.position.set(-1.2, 0, 0);
+        s.scene.add(kcMarker);
+        const qMarker = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+        qMarker.position.set(2.6, 0, 0);
+        s.scene.add(qMarker);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagAxis = { resize: s.resize };
       }
 
       function boot() {
@@ -376,12 +344,12 @@ const related = [
           el('kc-known').value = '0.500';
           updateCalc();
         } catch (e) { console.error('[reaction-quotient] calc init failed', e); }
-        try { onSlider(); } catch (e) { console.error('[reaction-quotient] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[reaction-quotient] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[reaction-quotient] scene failed', e); el('q3d-fallback').classList.remove('hidden'); }
-        } else { el('q3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagPiles(); } catch (e) { console.error('[reaction-quotient] pile diagram failed', e); }
+          try { initDiagAxis(); } catch (e) { console.error('[reaction-quotient] axis diagram failed', e); }
+        }
+        mountResize([diagPiles, diagAxis]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

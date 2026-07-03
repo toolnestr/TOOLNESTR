@@ -136,28 +136,22 @@ const related = [
     <p id="pr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D circuit + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D parallel circuit</h2>
-      <p class="mt-1 text-sm text-slate-500">Drag the sliders to change up to three resistors wired between two common rails. R_total updates live and always stays below the smallest resistor. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₁ <span id="out-r1" class="font-mono text-indigo-600">100 Ω</span></span>
-          <input id="s-r1" type="range" min="10" max="1000" step="5" value="100" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₂ <span id="out-r2" class="font-mono text-indigo-600">200 Ω</span></span>
-          <input id="s-r2" type="range" min="10" max="1000" step="5" value="200" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">R₃ <span id="out-r3" class="font-mono text-indigo-600">300 Ω</span></span>
-          <input id="s-r3" type="range" min="10" max="1000" step="5" value="300" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-circuit" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Parallel branches share two rails</h3>
+          <p class="mt-1 text-sm text-slate-600">Each resistor connects the same top and bottom rail, so every branch sees the same voltage. Adding a branch just adds another path — it never removes one.</p>
+        </div>
+        <div>
+          <div id="diag-rtotal" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. R_total always beats the smallest resistor</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">short indigo bar</span> is R_total for three parallel resistors; the taller grey bars are the individual resistors. R_total is always shorter than every one of them.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">R<sub>total</sub> = <span id="out-rt" class="font-mono font-bold">—</span> &nbsp;(always less than the smallest resistor, <span id="out-rmin" class="font-mono">—</span>)</div>
-      <div id="circuit3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="circuit3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -231,26 +225,8 @@ const related = [
       }
       ['r1', 'r2', 'r3', 'r4', 'vs'].forEach((id) => el(id).addEventListener('input', updateCalc));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let circuit = null;
-      function sState() {
-        const r1 = parseFloat(el('s-r1').value), r2 = parseFloat(el('s-r2').value), r3 = parseFloat(el('s-r3').value);
-        const rt = 1 / parInvSum([r1, r2, r3]);
-        return { r1, r2, r3, rt, rmin: Math.min(r1, r2, r3) };
-      }
-      function onS() {
-        const s = sState();
-        el('out-r1').textContent = s.r1.toFixed(0) + ' Ω';
-        el('out-r2').textContent = s.r2.toFixed(0) + ' Ω';
-        el('out-r3').textContent = s.r3.toFixed(0) + ' Ω';
-        el('out-rt').textContent = fmt(s.rt) + ' Ω';
-        el('out-rmin').textContent = fmt(s.rmin) + ' Ω';
-        try { if (circuit) circuit.update(s); } catch (e) {}
-        try { if (charts.ready) updateBarChart(s); } catch (e) {}
-      }
-      ['s-r1', 's-r2', 's-r3'].forEach((id) => el(id).addEventListener('input', onS));
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -273,6 +249,9 @@ const related = [
         charts.ready = true;
         updateBarChart(sState());
       }
+      function sState() {
+        return { r1: 100, r2: 200, r3: 300 };
+      }
       function updateBarChart(s) {
         if (!charts.ready) return;
         const V = 12; // fixed illustrative supply voltage for the current-divider chart
@@ -281,56 +260,64 @@ const related = [
         charts.ib.update();
       }
 
-      // ---- interactive 3D parallel circuit ----
-      function railsAndBranches(THREE) {
-        const g = new THREE.Group();
+      // ================= THREE.js STANDALONE DIAGRAMS =================
+      let diagCircuit = null, diagRtotal = null;
+
+      // ---- Diagram 1: parallel resistor blocks between two rails (auto-rotating) ----
+      function initDiagCircuit() {
+        const c = el('diag-circuit'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
         const railMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 });
         const railGeo = new THREE.CylinderGeometry(0.08, 0.08, 6, 16);
-        const railTop = new THREE.Mesh(railGeo, railMat); railTop.rotation.z = Math.PI / 2; railTop.position.y = 2; g.add(railTop);
-        const railBot = new THREE.Mesh(railGeo, railMat); railBot.rotation.z = Math.PI / 2; railBot.position.y = -2; g.add(railBot);
-        return g;
-      }
-      function initCircuit() {
-        const c = el('circuit3d'); if (!c) throw new Error('no circuit3d');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        s.scene.add(railsAndBranches(THREE));
+        const railTop = new THREE.Mesh(railGeo, railMat); railTop.rotation.z = Math.PI / 2; railTop.position.y = 2; s.scene.add(railTop);
+        const railBot = new THREE.Mesh(railGeo, railMat); railBot.rotation.z = Math.PI / 2; railBot.position.y = -2; s.scene.add(railBot);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 });
         const wireMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.4, roughness: 0.4 });
-        const xs = [-2, 0, 2];
-        const resistors = xs.map((x) => {
-          const grp = new THREE.Group();
+        [-2, 0, 2].forEach((x) => {
           const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.6, 20), bodyMat);
-          grp.add(body);
+          body.position.x = x; s.scene.add(body);
           const wireGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 10);
-          const wTop = new THREE.Mesh(wireGeo, wireMat); wTop.position.y = 1.4; grp.add(wTop);
-          const wBot = new THREE.Mesh(wireGeo, wireMat); wBot.position.y = -1.4; grp.add(wBot);
-          grp.position.x = x;
-          s.scene.add(grp);
-          return { grp, body };
+          const wTop = new THREE.Mesh(wireGeo, wireMat); wTop.position.set(x, 1.4, 0); s.scene.add(wTop);
+          const wBot = new THREE.Mesh(wireGeo, wireMat); wBot.position.set(x, -1.4, 0); s.scene.add(wBot);
         });
-        function update(state) {
-          const rs = [state.r1, state.r2, state.r3];
-          resistors.forEach((r, i) => {
-            const rv = rs[i];
-            // Thicker body = lower resistance (more conductive), scaled visually.
-            const scale = Math.max(0.5, Math.min(1.6, 220 / rv));
-            r.body.scale.set(scale, 1, scale);
-          });
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        circuit = { update, resize: s.resize };
-        update(sState());
+        diagCircuit = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: R_total bar always shorter than every branch (auto-rotating) ----
+      function initDiagRtotal() {
+        const c = el('diag-rtotal'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 1, 0), SCENE_OPTS);
+        const g = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); s.scene.add(g);
+        const st = sState();
+        const rt = 1 / parInvSum([st.r1, st.r2, st.r3]);
+        const bars = [
+          { label: 'R1', v: st.r1, color: 0x94a3b8 },
+          { label: 'R2', v: st.r2, color: 0x94a3b8 },
+          { label: 'R3', v: st.r3, color: 0x94a3b8 },
+          { label: 'Rt', v: rt, color: 0x4f46e5 },
+        ];
+        const maxV = Math.max.apply(null, bars.map((b) => b.v));
+        bars.forEach((b, i) => {
+          const h = Math.max(0.2, (b.v / maxV) * 3.2);
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, 0.8), new THREE.MeshStandardMaterial({ color: b.color }));
+          mesh.position.set(-3 + i * 2, h / 2, 0);
+          s.scene.add(mesh);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagRtotal = { resize: s.resize };
       }
 
       function boot() {
         try { updateCalc(); } catch (e) { console.error('[parallel-resistor] calc init failed', e); }
-        try { onS(); } catch (e) { console.error('[parallel-resistor] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[parallel-resistor] charts failed', e); }
         if (window.THREE) {
-          try { initCircuit(); } catch (e) { console.error('[parallel-resistor] circuit failed', e); el('circuit3d-fallback').classList.remove('hidden'); }
-        } else { el('circuit3d-fallback').classList.remove('hidden'); }
-        mountResize([circuit]);
+          try { initDiagCircuit(); } catch (e) { console.error('[parallel-resistor] diagram 1 failed', e); }
+          try { initDiagRtotal(); } catch (e) { console.error('[parallel-resistor] diagram 2 failed', e); }
+        }
+        mountResize([diagCircuit, diagRtotal]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

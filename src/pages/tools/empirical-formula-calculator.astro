@@ -147,13 +147,22 @@ const related = [
     <p id="ef-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D atom cluster + charts + script ============ -->
+  <!-- ============ VIZ: two static auto-rotating diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D atom cluster</h2>
-      <p class="mt-1 text-sm text-slate-500">Spheres represent the atoms in the empirical formula, sized and coloured by element, scaled to the mole-ratio subscripts. Illustrative only, not to scale or a real molecular structure. Drag to orbit (touch works too).</p>
-      <div id="cluster3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="cluster3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-cluster" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The classic CH₂O cluster</h3>
+          <p class="mt-1 text-sm text-slate-600">One <span class="font-semibold text-slate-600">carbon</span>, two <span class="font-semibold text-sky-500">hydrogens</span>, one <span class="font-semibold text-red-500">oxygen</span> — the same ratio shared by formaldehyde, acetic acid, and glucose. Illustrative only, not a real molecular structure.</p>
+        </div>
+        <div>
+          <div id="diag-masspct" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Mass % ≠ mole %</h3>
+          <p class="mt-1 text-sm text-slate-600">For CH₂O, carbon is 40.0% of the mass but only 25% of the moles — heavier atoms dominate mass percent while contributing fewer particles.</p>
+        </div>
+      </div>
     </section>
 
     <section class="mt-10 no-print">
@@ -223,7 +232,6 @@ const related = [
       // ---- calculator ----
       let lastResult = null;
       const charts = {};
-      let cluster = null;
 
       function readRows() {
         const rows = Array.from(document.querySelectorAll('.ef-row'));
@@ -268,49 +276,55 @@ const related = [
       }
       document.querySelectorAll('.ef-sym, .ef-pct').forEach((inp) => inp.addEventListener('input', update));
 
-      // ---- 3D atom cluster ----
-      const MAX_ATOMS = 40;
-      function initCluster() {
-        const c = el('cluster3d'); if (!c) throw new Error('no cluster container');
+      // ---- static diagram 1: fixed CH2O atom cluster ----
+      function initDiagCluster() {
+        const c = el('diag-cluster'); if (!c) throw new Error('no container');
         const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-        const geo = new THREE.SphereGeometry(1, 16, 16);
-        const spheres = [];
-        for (let i = 0; i < MAX_ATOMS; i++) {
-          const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
+        const CH2O = ['C', 'H', 'H', 'O'];
+        const n = CH2O.length;
+        CH2O.forEach((sym, i) => {
+          const geo = new THREE.SphereGeometry(radiusFor(sym), 16, 16);
+          const mat = new THREE.MeshStandardMaterial({ color: colorFor(sym), roughness: 0.4 });
           const sph = new THREE.Mesh(geo, mat);
-          sph.visible = false;
+          const R = 1.1 + Math.cbrt(n) * 0.55;
+          const gAngle = Math.PI * (3 - Math.sqrt(5));
+          const yFrac = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
+          const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
+          const theta = gAngle * i;
+          sph.position.set(Math.cos(theta) * rad * R, yFrac * R, Math.sin(theta) * rad * R);
           s.scene.add(sph);
-          spheres.push(sph);
-        }
-        function layout(result) {
-          const list = [];
-          if (result) {
-            result.entries.forEach((r) => { for (let k = 0; k < r.subscript; k++) list.push(r.sym); });
-          }
-          const shown = list.slice(0, MAX_ATOMS);
-          const n = shown.length;
-          for (let i = 0; i < MAX_ATOMS; i++) {
-            const sph = spheres[i];
-            if (i < n) {
-              const sym = shown[i];
-              sph.visible = true;
-              sph.material.color.setHex(colorFor(sym));
-              sph.scale.setScalar(radiusFor(sym));
-              const R = 1.1 + Math.cbrt(n) * 0.55;
-              const gAngle = Math.PI * (3 - Math.sqrt(5));
-              const yFrac = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
-              const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
-              const theta = gAngle * i;
-              sph.position.set(Math.cos(theta) * rad * R, yFrac * R, Math.sin(theta) * rad * R);
-            } else {
-              sph.visible = false;
-            }
-          }
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0018); s.renderer.render(s.scene, s.camera); }
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        cluster = { layout, resize: s.resize };
+        diagCluster = { resize: s.resize };
       }
+
+      // ---- static diagram 2: fixed mass% vs mole% bars for CH2O ----
+      function initDiagMassPct() {
+        const c = el('diag-masspct'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(2, 1.5, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); grid.position.set(2, 0, 0); s.scene.add(grid);
+        // CH2O: C=12.011 (40.0% mass, 25% mole), H2=2.016 (6.7% mass, 50% mole), O=16.00 (53.3% mass, 25% mole)
+        const bars = [
+          { label: 'C mass%', x: 0, h: 4.0, color: 0x94a3b8 },
+          { label: 'C mole%', x: 1, h: 2.5, color: 0x10b981 },
+          { label: 'H mass%', x: 2.5, h: 0.67, color: 0x94a3b8 },
+          { label: 'H mole%', x: 3.5, h: 5.0, color: 0x10b981 },
+          { label: 'O mass%', x: 5, h: 5.33, color: 0x94a3b8 },
+          { label: 'O mole%', x: 6, h: 2.5, color: 0x10b981 },
+        ];
+        bars.forEach((b) => {
+          const geo = new THREE.BoxGeometry(0.7, b.h, 0.7);
+          const mat = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.4 });
+          const box = new THREE.Mesh(geo, mat);
+          box.position.set(b.x, b.h / 2 - 1.5, 0);
+          s.scene.add(box);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagMassPct = { resize: s.resize };
+      }
+      let diagCluster = null, diagMassPct = null;
 
       // ---- charts ----
       function initCharts() {
@@ -351,7 +365,6 @@ const related = [
       }
 
       function refreshViz() {
-        try { if (cluster) cluster.layout(lastResult); } catch (e) {}
         try { updateCharts(); } catch (e) {}
       }
 
@@ -359,9 +372,10 @@ const related = [
         try { update(); } catch (e) { console.error('[empirical-formula] calc init failed', e); }
         try { initCharts(); } catch (e) { console.error('[empirical-formula] charts failed', e); }
         if (window.THREE) {
-          try { initCluster(); refreshViz(); } catch (e) { console.error('[empirical-formula] cluster failed', e); el('cluster3d-fallback').classList.remove('hidden'); }
-        } else { el('cluster3d-fallback').classList.remove('hidden'); }
-        mountResize([cluster]);
+          try { initDiagCluster(); } catch (e) { console.error('[empirical-formula] cluster diagram failed', e); }
+          try { initDiagMassPct(); } catch (e) { console.error('[empirical-formula] mass-pct diagram failed', e); }
+        }
+        mountResize([diagCluster, diagMassPct]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

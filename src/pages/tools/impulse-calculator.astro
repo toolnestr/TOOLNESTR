@@ -141,31 +141,22 @@ const related = [
     <p id="imp-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D strike + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D strike</h2>
-      <p class="mt-1 text-sm text-slate-500">A puck at rest is struck by a constant force for a set duration. The red arrow shows the force; the green arrow shows the velocity it gains. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Force <span id="out-bf" class="font-mono text-indigo-600">400 N</span></span>
-          <input id="b-f" type="range" min="20" max="1000" step="10" value="400" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Time Δt <span id="out-bt" class="font-mono text-indigo-600">0.015 s</span></span>
-          <input id="b-t" type="range" min="0.005" max="0.3" step="0.005" value="0.015" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-area" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Impulse is the area under F–t</h3>
+          <p class="mt-1 text-sm text-slate-600">The stacked bars trace out a force-vs-time rectangle. Their combined volume is exactly J = FΔt — impulse is literally the area (here, volume) swept out while the force acts.</p>
+        </div>
+        <div>
+          <div id="diag-strike" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. A struck object gains velocity</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-red-500">red arrow</span> shows the force hitting the puck; the <span class="font-semibold text-emerald-500">green arrow</span> shows the velocity change (Δv) it produces — the impulse–momentum theorem, drawn as two vectors.</p>
+        </div>
       </div>
-      <div class="mt-3 grid gap-4 sm:grid-cols-1">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Puck mass <span id="out-bm" class="font-mono text-indigo-600">0.17 kg</span></span>
-          <input id="b-m" type="range" min="0.05" max="2" step="0.01" value="0.17" class="mt-2 w-full accent-indigo-600" />
-        </label>
-      </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Impulse J = <span id="out-bj" class="font-mono font-bold">6.00 N·s</span> · Δv = <span id="out-bdv" class="font-mono font-bold">35.3 m/s</span></div>
-      <div id="strike3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="strike3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
-      <button id="b-strike" type="button" class="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Replay strike</button>
     </section>
 
     <section class="mt-10 no-print">
@@ -185,7 +176,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
 
       // ---- calculator ----
@@ -233,28 +224,13 @@ const related = [
       el('mode-mv').addEventListener('click', () => { switchMode('mv'); update(); });
       ['J', 'F', 'dt', 'J2', 'mm', 'dv'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts shared state ----
+      // ---- charts shared state ----
       const charts = {};
-      let puck = null;
       function bState() {
-        const F = parseFloat(el('b-f').value), t = parseFloat(el('b-t').value), m = parseFloat(el('b-m').value);
+        const F = 400, t = 0.015, m = 0.17;
         const J = F * t, dv = m > 0 ? J / m : 0;
         return { F, t, m, J, dv };
       }
-      function onB() {
-        const s = bState();
-        el('out-bf').textContent = s.F.toFixed(0) + ' N';
-        el('out-bt').textContent = s.t.toFixed(3) + ' s';
-        el('out-bm').textContent = s.m.toFixed(2) + ' kg';
-        el('out-bj').textContent = fmt(s.J) + ' N·s';
-        el('out-bdv').textContent = fmt(s.dv) + ' m/s';
-        try { if (puck) puck.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-f').addEventListener('input', onB);
-      el('b-t').addEventListener('input', onB);
-      el('b-m').addEventListener('input', onB);
-      el('b-strike').addEventListener('click', () => { try { if (puck) puck.strike(); } catch (e) {} });
 
       // ---- charts ----
       function initCharts() {
@@ -287,63 +263,49 @@ const related = [
         charts.jt.data.labels = L2; charts.jt.data.datasets[0].data = D2; charts.jt.update();
       }
 
-      // ---- 3D strike scene ----
-      function initStrike() {
-        const c = el('strike3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0.4, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(18, 18, 0xcbd5e1, 0xe2e8f0));
-        const puckMat = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.35, 32), puckMat);
-        disc.position.set(-4, 0.2, 0);
-        s.scene.add(disc);
-        let forceArrow = null, velArrow = null;
-        let animT = 0, animating = false, animState = null;
-        function rebuildArrows(state) {
-          if (forceArrow) { s.scene.remove(forceArrow); forceArrow = null; }
-          if (velArrow) { s.scene.remove(velArrow); velArrow = null; }
-          const fLen = Math.min(4, 0.6 + state.F / 300);
-          forceArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(disc.position.x - fLen - 0.9, 0.2, 0), fLen, 0xef4444, Math.min(0.6, fLen * 0.3), 0.35);
-          s.scene.add(forceArrow);
-          const vLen = Math.min(5, state.dv * 0.12);
-          if (vLen > 0.05) {
-            velArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(disc.position.x + 0.9, 0.9, 0), vLen, 0x10b981, Math.min(0.6, vLen * 0.25), 0.3);
-            s.scene.add(velArrow);
-          }
+      // ================= THREE.js STANDALONE DIAGRAMS =================
+      let diagArea = null, diagStrike = null;
+
+      // ---- Diagram 1: force-vs-time "area under curve" as stacked bars (auto-rotating) ----
+      function initDiagArea() {
+        const c = el('diag-area'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 0.6, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7));
+        const n = 6;
+        const barMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+        for (let i = 0; i < n; i++) {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.4, 0.5), barMat);
+          bar.position.set(-2.5 + i * 1, 0.7, 0);
+          s.scene.add(bar);
         }
-        function update(state) {
-          animState = state;
-          if (!animating) { disc.position.x = -4; rebuildArrows(state); }
-        }
-        function strike() {
-          if (!animState) return;
-          animating = true; animT = 0; disc.position.x = -4;
-        }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion && animating && animState) {
-            animT += 0.02;
-            const speed = Math.min(6, animState.dv * 0.2);
-            disc.position.x += speed * 0.05;
-            rebuildArrows(animState);
-            if (disc.position.x > 6 || animT > 4) { animating = false; disc.position.x = -4; rebuildArrows(animState); }
-          } else if (!reduceMotion) {
-            s.spin(0.0012);
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        puck = { update, strike, resize: s.resize };
-        update(bState());
+        diagArea = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: struck puck — force arrow + velocity-change arrow (auto-rotating) ----
+      function initDiagStrike() {
+        const c = el('diag-strike'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 11, new THREE.Vector3(0, 0.4, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7));
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.35, 32), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+        disc.position.set(0, 0.2, 0);
+        s.scene.add(disc);
+        s.scene.add(arrow(new THREE.Vector3(-3.2, 0.2, 0), new THREE.Vector3(-0.9, 0.2, 0), 0xef4444));
+        s.scene.add(arrow(new THREE.Vector3(0.9, 0.9, 0), new THREE.Vector3(3.4, 0.9, 0), 0x10b981));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagStrike = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('ft'); update(); } catch (e) { console.error('[impulse] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[impulse] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[impulse] charts failed', e); }
         if (window.THREE) {
-          try { initStrike(); } catch (e) { console.error('[impulse] 3D failed', e); el('strike3d-fallback').classList.remove('hidden'); }
-        } else { el('strike3d-fallback').classList.remove('hidden'); }
-        mountResize([puck]);
+          try { initDiagArea(); } catch (e) { console.error('[impulse] diagram 1 failed', e); }
+          try { initDiagStrike(); } catch (e) { console.error('[impulse] diagram 2 failed', e); }
+        }
+        mountResize([diagArea, diagStrike]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

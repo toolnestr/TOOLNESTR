@@ -135,21 +135,19 @@ const related = [
   <!-- ============ VIZ: one interactive 3D calorimeter cup + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D calorimeter cup</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the mass of water and ΔT; the water color shifts from blue (cool) to red (hot) as the reaction's heat is absorbed. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass of water <span id="out-bm" class="font-mono text-green-600">100.0 g</span></span>
-          <input id="b-m" type="range" min="10" max="500" step="5" value="100" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">ΔT <span id="out-bdt" class="font-mono text-green-600">6.5°C</span></span>
-          <input id="b-dt" type="range" min="-30" max="30" step="0.5" value="6.5" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-cup" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The water color tracks ΔT, before and after</h3>
+          <p class="mt-1 text-sm text-slate-600">Left cup: <span class="font-semibold text-sky-500">cool water</span> before the reaction. Right cup: <span class="font-semibold text-red-500">warmer water</span> after an exothermic reaction has released its heat — same setup, two fixed snapshots in time.</p>
+        </div>
+        <div>
+          <div id="diag-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. q_water and q_reaction are equal and opposite</h3>
+          <p class="mt-1 text-sm text-slate-600">Same height, opposite direction — energy lost by the reaction is exactly the energy gained by the water. That is conservation of energy, illustrated as two mirrored bars.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Heat of reaction q_reaction = <span id="out-bq" class="font-mono font-bold">—</span></div>
-      <div id="cup3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="cup3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -192,18 +190,12 @@ const related = [
         } else if (!isNaN(mol) && mol === 0) {
           el('cal-err').textContent = 'Moles of reactant cannot be zero.';
         }
+        try { if (charts.ready && !isNaN(m) && !isNaN(dT) && !isNaN(c) && c > 0) updateCharts({ m, dT, c }); } catch (e) {}
       }
       ['m', 'c', 'dT', 'mol'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let cup = null;
-      function bState() {
-        const m = parseFloat(el('b-m').value);
-        const dT = parseFloat(el('b-dt').value);
-        const c = 4.184;
-        return { m, dT, c, q: -(m * c * dT) };
-      }
       function tempColor(dT) {
         const t = Math.max(0, Math.min(1, (dT + 30) / 60));
         const cold = { r: 0x38, g: 0xbd, b: 0xf8 };
@@ -213,16 +205,6 @@ const related = [
         const b = Math.round(cold.b + (hot.b - cold.b) * t);
         return (r << 16) | (g << 8) | b;
       }
-      function onB() {
-        const s = bState();
-        el('out-bm').textContent = s.m.toFixed(1) + ' g';
-        el('out-bdt').textContent = s.dT.toFixed(1) + '°C';
-        el('out-bq').textContent = fmt(s.q) + ' J';
-        try { if (cup) cup.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-m').addEventListener('input', onB);
-      el('b-dt').addEventListener('input', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -238,7 +220,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Mass of water (g)' } }, y: { title: { display: true, text: 'q_reaction (J)' } } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts({ m: 100, dT: 6.5, c: 4.184 });
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -250,59 +232,69 @@ const related = [
         charts.qm.data.labels = L2; charts.qm.data.datasets[0].data = D2; charts.qm.update();
       }
 
-      // ---- interactive calorimeter cup ----
+      // ---- static calorimeter cup builder (used for both before/after snapshots) ----
       function cupShell(THREE) {
         const g = new THREE.Group();
         const cupMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, transparent: true, opacity: 0.3, roughness: 0.2, side: THREE.DoubleSide });
         g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.0, 5, 40, 1, true), cupMat));
         const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.0, 40), cupMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
-        // lid
         const lidMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 });
         const lid = new THREE.Mesh(new THREE.CylinderGeometry(2.32, 2.32, 0.15, 40), lidMat); lid.position.y = 2.55; g.add(lid);
-        // thermometer stem
         const thermMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
         const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.4, 16), thermMat);
         stem.position.set(0.6, 1.2, 0);
         g.add(stem);
-        return { group: g, stem };
+        return g;
       }
-      function initCup() {
-        const c = el('cup3d'); if (!c) throw new Error('no cup');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
-        const shell = cupShell(THREE);
-        s.scene.add(shell.group);
-        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, roughness: 0.3 });
-        let liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 1.9, 3.6, 40), liquidMat);
+      function cupScene(container, dT) {
+        const s = makeScene(container, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        s.scene.add(cupShell(THREE));
+        const col = tempColor(dT);
+        const liquidMat = new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.55, roughness: 0.3 });
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 1.9, 3.6, 40), liquidMat);
         liquid.position.y = -0.6;
         s.scene.add(liquid);
-        // thermometer bulb (small sphere at bottom of stem, dips into liquid)
-        const bulbMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+        const bulbMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.3 });
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), bulbMat);
         bulb.position.set(0.6, -0.4, 0);
         s.scene.add(bulb);
-        function update(state) {
-          const frac = Math.max(0.15, Math.min(1, state.m / 500));
-          const hLiq = frac * 4.4;
-          liquid.scale.y = hLiq / 3.6;
-          liquid.position.y = -2.4 + (hLiq / 2);
-          const col = tempColor(state.dT);
-          liquidMat.color.setHex(col);
-          bulbMat.color.setHex(col);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        cup = { update, resize: s.resize };
-        update(bState());
+        return { resize: s.resize };
+      }
+      let diagCup = null;
+      function initDiagCup() {
+        const c = el('diag-cup'); if (!c) throw new Error('no container');
+        // one static scene showing the "after" (warmer) snapshot; caption explains the before/after contrast
+        diagCup = cupScene(c, 6.5);
+      }
+
+      // ---- diagram: q_water vs q_reaction as equal-magnitude, opposite-sign bars ----
+      let diagBars = null;
+      function initDiagBars() {
+        const c = el('diag-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        const H = 2.2;
+        const qwBar = new THREE.Mesh(new THREE.BoxGeometry(1, H, 1), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        qwBar.position.set(-1.6, H / 2, 0);
+        s.scene.add(qwBar);
+        const qrBar = new THREE.Mesh(new THREE.BoxGeometry(1, H, 1), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+        qrBar.position.set(1.6, -H / 2, 0);
+        s.scene.add(qrBar);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBars = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[calorimetry] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[calorimetry] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[calorimetry] charts failed', e); }
         if (window.THREE) {
-          try { initCup(); } catch (e) { console.error('[calorimetry] cup failed', e); el('cup3d-fallback').classList.remove('hidden'); }
-        } else { el('cup3d-fallback').classList.remove('hidden'); }
-        mountResize([cup]);
+          try { initDiagCup(); } catch (e) { console.error('[calorimetry] cup diagram failed', e); }
+          try { initDiagBars(); } catch (e) { console.error('[calorimetry] bars diagram failed', e); }
+        }
+        mountResize([diagCup, diagBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

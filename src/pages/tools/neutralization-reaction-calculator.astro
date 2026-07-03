@@ -147,24 +147,22 @@ const related = [
     <p id="neu-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D mixing beaker + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D neutralization</h2>
-      <p class="mt-1 text-sm text-slate-500">Pour amounts of acid and base into the same beaker. The mixture color tracks whether H⁺ or OH⁻ ends up in excess. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Acid amount (mol H⁺) <span id="out-bh" class="font-mono text-red-600">0.010 mol</span></span>
-          <input id="b-h" type="range" min="0" max="0.02" step="0.0005" value="0.010" class="mt-2 w-full accent-red-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Base amount (mol OH⁻) <span id="out-boh" class="font-mono text-blue-600">0.0075 mol</span></span>
-          <input id="b-oh" type="range" min="0" max="0.02" step="0.0005" value="0.0075" class="mt-2 w-full accent-blue-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-mix" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Acid and base streams merge into one mixture</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-red-500">red</span> acid stream and <span class="font-semibold text-blue-500">blue</span> base stream pour into the same beaker. In this snapshot there is slightly more H⁺ than OH⁻, so the mixed liquid settles on the reddish side — leftover acid, not a 50/50 blend.</p>
+        </div>
+        <div>
+          <div id="diag-molebar" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Whichever bar is taller is left over</h3>
+          <p class="mt-1 text-sm text-slate-600">For 0.050 L of 0.20 M HCl mixed with 0.030 L of 0.25 M NaOH: mol H⁺ = 0.010, mol OH⁻ = 0.0075. The taller <span class="font-semibold text-red-500">H⁺</span> bar means 0.0025 mol of acid remains once all the OH⁻ has reacted away.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Excess = <span id="out-bex" class="font-mono font-bold">0.0025 mol H⁺ (acidic)</span></div>
-      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -212,28 +210,8 @@ const related = [
       }
       ['Ma', 'Va', 'na', 'Mb', 'Vb', 'nb'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let beaker = null;
-      function bState() {
-        const h = parseFloat(el('b-h').value), oh = parseFloat(el('b-oh').value);
-        const diff = h - oh;
-        return { h, oh, diff };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bh').textContent = s.h.toFixed(4) + ' mol';
-        el('out-boh').textContent = s.oh.toFixed(4) + ' mol';
-        const tol = Math.max(s.h, s.oh) * 1e-6 || 1e-9;
-        if (Math.abs(s.diff) <= tol) el('out-bex').textContent = 'exact neutralization';
-        else if (s.diff > 0) el('out-bex').textContent = fmt(s.diff) + ' mol H⁺ (acidic)';
-        else el('out-bex').textContent = fmt(-s.diff) + ' mol OH⁻ (basic)';
-        try { if (beaker) beaker.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-h').addEventListener('input', onB);
-      el('b-oh').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -248,13 +226,13 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Acid volume (L)' } }, y: { title: { display: true, text: 'Excess H⁺ (mol)' } } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts({ h: 0.010, oh: 0.0075 });
       }
       function updateCharts(s) {
         if (!charts.ready) return;
         charts.bar.data.datasets[0].data = [s.h, s.oh]; charts.bar.update();
-        // Crossover: sweep acid volume 0..0.1 L at a fixed acid molarity (derived from current mol H+ / a reference 0.05L),
-        // holding moles OH- fixed at current base amount, n=1 assumed for the sweep illustration.
+        // Crossover: sweep acid volume 0..0.1 L at a fixed acid molarity,
+        // holding moles OH- fixed at the reference base amount, n=1 assumed for the sweep illustration.
         const Ma = 0.20; // reference molarity used purely to sweep volume for the illustrative crossover curve
         const L = [], D = [];
         for (let v = 0; v <= 0.1 + 1e-9; v += 0.005) {
@@ -265,74 +243,66 @@ const related = [
         charts.crossover.data.labels = L; charts.crossover.data.datasets[0].data = D; charts.crossover.update();
       }
 
-      // ---- interactive beaker ----
-      function glassBeaker(THREE) {
+      // ---- standalone 3D diagrams (static geometry, auto-rotating only) ----
+      let diagMix = null, diagBar = null;
+
+      function glassBeaker(THREE, radius) {
         const g = new THREE.Group();
         const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
-        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
-        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
+        g.add(new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 5, 40, 1, true), glassMat));
+        const bottom = new THREE.Mesh(new THREE.CircleGeometry(radius, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
         return g;
       }
-      function mixColor(diff, scale) {
-        // diff > 0 => excess H+ => reddish; diff < 0 => excess OH- => blue-ish; diff ~ 0 => neutral/violet-clear.
-        const t = Math.max(-1, Math.min(1, diff / scale));
-        const acidic = { r: 0xef, g: 0x44, b: 0x44 };
-        const basic = { r: 0x38, g: 0x6b, b: 0xf4 };
-        const neutral = { r: 0xa7, g: 0x8b, b: 0xfa };
-        let c1, c2, f;
-        if (t >= 0) { c1 = neutral; c2 = acidic; f = t; } else { c1 = neutral; c2 = basic; f = -t; }
-        const r = Math.round(c1.r + (c2.r - c1.r) * f);
-        const g = Math.round(c1.g + (c2.g - c1.g) * f);
-        const b = Math.round(c1.b + (c2.b - c1.b) * f);
-        return (r << 16) | (g << 8) | b;
-      }
-      function initBeaker() {
-        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
+
+      // ---- diagram 1: two streams merging into a mixture (static snapshot, excess H+) ----
+      function initDiagMix() {
+        const c = el('diag-mix'); if (!c) throw new Error('no container');
         const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
-        s.scene.add(glassBeaker(THREE));
-        let liquid = null;
-        const hLiq = 4.2;
-        const MAX_P = 140;
-        const acidGeo = new THREE.SphereGeometry(0.1, 10, 10);
+        s.scene.add(glassBeaker(THREE, 2.0));
+        // mixed liquid, slightly reddish (excess H+ snapshot: 0.010 mol H+ vs 0.0075 mol OH-)
+        const liquidMat = new THREE.MeshStandardMaterial({ color: 0xef8b8b, transparent: true, opacity: 0.5, roughness: 0.3 });
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 3.2, 40), liquidMat);
+        liquid.position.y = -2.4 + 3.2 / 2; s.scene.add(liquid);
+        // acid stream (red) pouring from upper-left
         const acidMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+        const acidStream = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 12), acidMat);
+        acidStream.position.set(-1.1, 1.6, 0); acidStream.rotation.z = 0.15; s.scene.add(acidStream);
+        // base stream (blue) pouring from upper-right
         const baseMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
-        const acidP = [], baseP = [];
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(acidGeo, acidMat); p.visible = false; s.scene.add(p); acidP.push(p); }
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(acidGeo, baseMat); p.visible = false; s.scene.add(p); baseP.push(p); }
-        function update(state) {
-          const scale = Math.max(0.001, Math.max(state.h, state.oh));
-          const color = mixColor(state.diff, scale);
-          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); liquid.material.dispose(); }
-          const liquidMat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5, roughness: 0.3 });
-          liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, hLiq, 40), liquidMat);
-          liquid.position.y = -2.4 + hLiq / 2; s.scene.add(liquid);
-          const nAcid = Math.max(0, Math.min(MAX_P, Math.round((state.h / 0.02) * MAX_P)));
-          const nBase = Math.max(0, Math.min(MAX_P, Math.round((state.oh / 0.02) * MAX_P)));
-          for (let i = 0; i < MAX_P; i++) {
-            const p = acidP[i];
-            if (i < nAcid) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
-            else p.visible = false;
-          }
-          for (let i = 0; i < MAX_P; i++) {
-            const p = baseP[i];
-            if (i < nBase) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * hLiq, Math.sin(a) * r); p.visible = true; }
-            else p.visible = false;
-          }
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        const baseStream = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.4, 12), baseMat);
+        baseStream.position.set(1.1, 1.6, 0); baseStream.rotation.z = -0.15; s.scene.add(baseStream);
+        // a few static particles suspended in the mixture: more red than blue (excess H+)
+        const pGeo = new THREE.SphereGeometry(0.11, 10, 10);
+        for (let i = 0; i < 10; i++) { const p = new THREE.Mesh(pGeo, acidMat); const r = Math.sqrt(Math.random()) * 1.7, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * 3.2, Math.sin(a) * r); s.scene.add(p); }
+        for (let i = 0; i < 7; i++) { const p = new THREE.Mesh(pGeo, baseMat); const r = Math.sqrt(Math.random()) * 1.7, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * 3.2, Math.sin(a) * r); s.scene.add(p); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        beaker = { update, resize: s.resize };
-        update(bState());
+        diagMix = { resize: s.resize };
+      }
+
+      // ---- diagram 2: static bar comparison of mol H+ vs mol OH- for one fixed example ----
+      function initDiagMoleBar() {
+        const c = el('diag-molebar'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 1, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        const molH = 0.010, molOH = 0.0075, scale = 250; // visual scale factor
+        const hBar = new THREE.Mesh(new THREE.BoxGeometry(1.2, molH * scale, 1.2), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        hBar.position.set(-1.6, (molH * scale) / 2 - 2, 0); s.scene.add(hBar);
+        const ohBar = new THREE.Mesh(new THREE.BoxGeometry(1.2, molOH * scale, 1.2), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
+        ohBar.position.set(1.6, (molOH * scale) / 2 - 2, 0); s.scene.add(ohBar);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBar = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[neutralization] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[neutralization] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[neutralization] charts failed', e); }
         if (window.THREE) {
-          try { initBeaker(); } catch (e) { console.error('[neutralization] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
-        } else { el('beaker3d-fallback').classList.remove('hidden'); }
-        mountResize([beaker]);
+          try { initDiagMix(); } catch (e) { console.error('[neutralization] mix diagram failed', e); }
+          try { initDiagMoleBar(); } catch (e) { console.error('[neutralization] mole bar diagram failed', e); }
+        }
+        mountResize([diagMix, diagBar]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

@@ -149,28 +149,22 @@ const related = [
     <p id="aa-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D spinning wheel + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D spin-up</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the initial and final angular velocity and the time to reach it; the wheel visibly speeds up or slows down at the resulting angular acceleration. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Initial ω <span id="out-bwi" class="font-mono text-indigo-600">0.0 rad/s</span></span>
-          <input id="b-wi" type="range" min="-20" max="20" step="0.5" value="0" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Final ω <span id="out-bwf" class="font-mono text-indigo-600">15.0 rad/s</span></span>
-          <input id="b-wf" type="range" min="-20" max="20" step="0.5" value="15" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Time Δt <span id="out-bdt" class="font-mono text-indigo-600">3.0 s</span></span>
-          <input id="b-dt" type="range" min="0.5" max="10" step="0.1" value="3" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-wheel" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Angular velocity itself changes</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-emerald-500">short green</span> arrow marks a slow initial spin; the <span class="font-semibold text-red-500">longer red</span> arrow marks a faster final spin. Angular acceleration is how quickly the wheel goes from one to the other.</p>
+        </div>
+        <div>
+          <div id="diag-ramps" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Bigger α means a steeper ramp</h3>
+          <p class="mt-1 text-sm text-slate-600">Three ω-vs-t lines starting from rest at different constant α. The steeper the line, the faster the spin rate climbs — slope is literally the angular acceleration.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">α = Δω/Δt = <span id="out-balpha" class="font-mono font-bold">5.00 rad/s²</span></div>
-      <div id="wheel3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="wheel3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -190,7 +184,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.1, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
 
       // ---- calculator ----
@@ -248,25 +242,9 @@ const related = [
       el('mode-at').addEventListener('click', () => switchMode('at'));
       ['alpha', 'wi', 'wf', 'dt', 'alpha2', 'at', 'rad'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts shared state ----
       const charts = {};
-      let wheel = null;
-      function bState() {
-        const wi = parseFloat(el('b-wi').value), wf = parseFloat(el('b-wf').value), dt = parseFloat(el('b-dt').value);
-        return { wi, wf, dt, alpha: dt > 0 ? (wf - wi) / dt : 0 };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bwi').textContent = s.wi.toFixed(1) + ' rad/s';
-        el('out-bwf').textContent = s.wf.toFixed(1) + ' rad/s';
-        el('out-bdt').textContent = s.dt.toFixed(1) + ' s';
-        el('out-balpha').textContent = fmt(s.alpha) + ' rad/s²';
-        try { if (wheel) wheel.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-wi').addEventListener('input', onB);
-      el('b-wf').addEventListener('input', onB);
-      el('b-dt').addEventListener('input', onB);
+      const B = { wi: 0, wf: 15, dt: 3, alpha: 5 };
 
       function initCharts() {
         if (!window.Chart) return;
@@ -282,7 +260,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Δt (s)' } }, y: { title: { display: true, text: 'α (rad/s²)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts(B);
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -301,7 +279,7 @@ const related = [
         charts.adt.data.labels = L2; charts.adt.data.datasets[0].data = D2; charts.adt.update();
       }
 
-      // ---- interactive spinning wheel ----
+      // ---- wheel mesh helper (reused for the static diagram) ----
       function wheelMesh(THREE) {
         const g = new THREE.Group();
         const rimMat = new THREE.MeshStandardMaterial({ color: 0x6366f1, metalness: 0.3, roughness: 0.5 });
@@ -319,49 +297,52 @@ const related = [
           spoke.rotation.z = a + Math.PI / 2;
           g.add(spoke);
         }
-        // marker dot on rim to show rotation visually
-        const marker = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-        marker.position.set(2.4, 0, 0.2);
-        g.add(marker);
         return g;
       }
-      function initWheel() {
-        const c = el('wheel3d'); if (!c) throw new Error('no wheel container');
+
+      // ---- Diagram 1: wheel with ω arrows at two moments (before/after) ----
+      let diagWheel = null;
+      function initDiagWheel() {
+        const c = el('diag-wheel'); if (!c) throw new Error('no container');
         const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), OPTS);
         const g = wheelMesh(THREE);
         s.scene.add(g);
-        let st = { wi: 0, wf: 15, dt: 3, alpha: 5, t: 0, ang: 0 };
-        function update(state) {
-          st.wi = state.wi; st.wf = state.wf; st.dt = state.dt; st.alpha = state.alpha;
-          st.t = 0; // restart the spin-up demo whenever sliders change
-        }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) {
-            s.spin(0.0012);
-            const dtStep = 0.016;
-            st.t += dtStep;
-            const tClamped = st.t % (st.dt + 1.0); // loop: run for dt, pause briefly, restart
-            const tEff = Math.min(tClamped, st.dt);
-            const w = st.wi + st.alpha * tEff;
-            st.ang += w * dtStep;
-            g.rotation.z = st.ang;
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
+        // "before" arrow — short, at 12 o'clock
+        s.scene.add(arrow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1.1, 0), 0x10b981));
+        // "after" arrow — long, tilted to show a larger spin rate
+        s.scene.add(arrow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(1.6, 1.9, 0), 0xef4444));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        wheel = { update, resize: s.resize };
-        update(bState());
+        diagWheel = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: family of ω-vs-t ramp lines at different alpha ----
+      let diagRamps = null;
+      function initDiagRamps() {
+        const c = el('diag-ramps'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(4, 2, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(4, 0, 0); s.scene.add(grid);
+        const alphas = [2, 5, 9];
+        alphas.forEach((a) => {
+          const pts = [];
+          for (let t = 0; t <= 8; t += 0.5) { pts.push(new THREE.Vector3(t, Math.min(8, a * t * 0.3), 0)); }
+          const col = a === 5 ? 0x4f46e5 : 0x94a3b8;
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: a !== 5, opacity: a === 5 ? 1 : 0.7 }));
+          s.scene.add(line);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagRamps = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('dw'); } catch (e) { console.error('[angular-accel] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[angular-accel] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[angular-accel] charts failed', e); }
         if (window.THREE) {
-          try { initWheel(); } catch (e) { console.error('[angular-accel] wheel failed', e); el('wheel3d-fallback').classList.remove('hidden'); }
-        } else { el('wheel3d-fallback').classList.remove('hidden'); }
-        mountResize([wheel]);
+          try { initDiagWheel(); } catch (e) { console.error('[angular-accel] wheel diagram failed', e); }
+          try { initDiagRamps(); } catch (e) { console.error('[angular-accel] ramps diagram failed', e); }
+        }
+        mountResize([diagWheel, diagRamps]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

@@ -131,24 +131,22 @@ const related = [
     <p id="av-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D track + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D track</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the final position and the time; the marker sits at x_f, and the arrow shows the direction and size of v_avg. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Final position x<sub>f</sub> <span id="out-bxf" class="font-mono text-indigo-600">10.0 m</span></span>
-          <input id="b-xf" type="range" min="-20" max="20" step="0.5" value="10" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Time Δt <span id="out-bdt" class="font-mono text-indigo-600">2.0 s</span></span>
-          <input id="b-dt" type="range" min="0.5" max="10" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-secant" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Average velocity is a secant slope</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">wavy curve</span> is a real position-vs-time path; the <span class="font-semibold text-red-500">straight red line</span> connecting start and end is the secant whose slope is v_avg — the actual path in between never matters.</p>
+        </div>
+        <div>
+          <div id="diag-paths" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Velocity vs speed — path matters for one, not the other</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-sky-500">straight blue path</span> and the <span class="font-semibold text-amber-500">curved amber path</span> both start and end at the same points — same displacement, same v_avg — but the curved path covers far more distance, so its average speed is much higher.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Average velocity v<sub>avg</sub> = <span id="out-bv" class="font-mono font-bold">5.00 m/s</span></div>
-      <div id="track3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="track3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -168,7 +166,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup, arrow } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
 
       // ---- calculator ----
@@ -195,24 +193,13 @@ const related = [
       }
       ['dx', 'dt', 'vavg'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts shared state ----
       const charts = {};
-      let track = null;
-      const XI = -10; // fixed start position (scene units = metres)
+      const XI = -10; // fixed start position
       function bState() {
-        const xf = parseFloat(el('b-xf').value), dt = parseFloat(el('b-dt').value);
-        return { xi: XI, xf, dt, v: dt > 0 ? (xf - XI) / dt : 0 };
+        const xf = 10, dt = 2;
+        return { xi: XI, xf, dt, v: (xf - XI) / dt };
       }
-      function onB() {
-        const s = bState();
-        el('out-bxf').textContent = s.xf.toFixed(1) + ' m';
-        el('out-bdt').textContent = s.dt.toFixed(1) + ' s';
-        el('out-bv').textContent = fmt(s.v) + ' m/s';
-        try { if (track) track.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-xf').addEventListener('input', onB);
-      el('b-dt').addEventListener('input', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -241,43 +228,56 @@ const related = [
         charts.vdt.data.labels = L; charts.vdt.data.datasets[0].data = D; charts.vdt.update();
       }
 
-      // ---- interactive track ----
-      function initTrack() {
-        const c = el('track3d'); if (!c) throw new Error('no track');
-        const s = makeScene(c, 22, new THREE.Vector3(0, 0, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(40, 20, 0xcbd5e1, 0xe2e8f0));
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(40, 0.15, 0.6), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
-        s.scene.add(rail);
-        const startMarker = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.2, 12), new THREE.MeshStandardMaterial({ color: 0x64748b }));
-        startMarker.position.set(XI, 0.6, 0); s.scene.add(startMarker);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 24, 24), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
-        s.scene.add(ball);
-        let arrowHelper = null;
-        function update(state) {
-          ball.position.set(state.xf, 0.6, 0);
-          if (arrowHelper) { s.scene.remove(arrowHelper); }
-          const dir = state.xf - state.xi;
-          if (Math.abs(dir) > 1e-6) {
-            const from = new THREE.Vector3(state.xi, 1.6, 0);
-            const to = new THREE.Vector3(state.xf, 1.6, 0);
-            arrowHelper = arrow(from, to, 0xef4444);
-            s.scene.add(arrowHelper);
-          }
+      // ---- Diagram 1: position-vs-time curve with a secant line ----
+      let diagSecant = null;
+      function initDiagSecant() {
+        const c = el('diag-secant'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(4, 2, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(4, 0, 0); s.scene.add(grid);
+        const curvePts = [];
+        for (let t = 0; t <= 8; t += 0.25) {
+          const y = 0.5 * t + Math.sin(t * 1.3) * 1.2 + 1.5;
+          curvePts.push(new THREE.Vector3(t, y, 0));
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curvePts), new THREE.LineBasicMaterial({ color: 0x6366f1 })));
+        const secant = [curvePts[0], curvePts[curvePts.length - 1]];
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(secant), new THREE.LineBasicMaterial({ color: 0xef4444 })));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        track = { update, resize: s.resize };
-        update(bState());
+        diagSecant = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: straight path vs curved path, same displacement ----
+      let diagPaths = null;
+      function initDiagPaths() {
+        const c = el('diag-paths'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(2.5, 0.5, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(14, 14, 0xe2e8f0, 0xeef2f7));
+        const start = new THREE.Vector3(-3, 0, 0), end = new THREE.Vector3(5, 0, 0);
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), new THREE.LineBasicMaterial({ color: 0x0ea5e9 })));
+        const curvedPts = [];
+        for (let i = 0; i <= 40; i++) {
+          const t = i / 40;
+          const x = start.x + (end.x - start.x) * t;
+          const y = Math.sin(t * Math.PI) * 2.2;
+          curvedPts.push(new THREE.Vector3(x, y, 0));
+        }
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curvedPts), new THREE.LineBasicMaterial({ color: 0xf59e0b })));
+        const markerMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+        [start, end].forEach((p) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 12), markerMat); m.position.copy(p); s.scene.add(m); });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0032); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagPaths = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[average-velocity] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[average-velocity] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[average-velocity] charts failed', e); }
         if (window.THREE) {
-          try { initTrack(); } catch (e) { console.error('[average-velocity] track failed', e); el('track3d-fallback').classList.remove('hidden'); }
-        } else { el('track3d-fallback').classList.remove('hidden'); }
-        mountResize([track]);
+          try { initDiagSecant(); } catch (e) { console.error('[average-velocity] secant diagram failed', e); }
+          try { initDiagPaths(); } catch (e) { console.error('[average-velocity] paths diagram failed', e); }
+        }
+        mountResize([diagSecant, diagPaths]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

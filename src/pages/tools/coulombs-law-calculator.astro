@@ -3,7 +3,7 @@ import SubjectToolPage from '../../components/SubjectToolPage.astro';
 
 const title = "Coulomb's Law Calculator";
 const description = "Coulomb's law calculator with a live 3D pair of charges and charts. Solve F = k|q1q2|/r² for force, either charge, or separation distance, with worked examples.";
-const intro = "Solve F = k|q₁q₂|/r² for the electrostatic force between two point charges, or rearrange it to find a charge or the separation distance. A live 3D scene shows two charged spheres and the force arrow between them, and charts show the inverse-square distance dependence.";
+const intro = "Solve F = k|q₁q₂|/r² for the electrostatic force between two point charges, or rearrange it to find a charge or the separation distance. Two 3D diagrams show how force falls off with distance and how like/opposite charges repel or attract, and charts show the inverse-square distance dependence.";
 const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
 
 const faqs = [
@@ -94,7 +94,7 @@ const sourcesNote = "F = k|q₁q₂|/r² with k ≈ 8.9875×10⁹ N·m²/C², as
 const howToUse = [
   { title: 'Choose the unknown', body: 'The calculator solves for force, charge 1, charge 2, or distance from the other three.' },
   { title: 'Enter charges in coulombs', body: 'Use scientific notation for lab-scale charges, e.g. 2e-6 for 2 μC.' },
-  { title: 'Watch the charge pair', body: 'Use the sliders to see the force arrow grow, shrink, and flip direction in 3D.' },
+  { title: 'See the force visually', body: 'The 3D diagrams show how force shrinks with distance and how like/opposite charges repel or attract.' },
 ];
 
 const related = [
@@ -143,28 +143,22 @@ const related = [
     <p id="cl-err" class="mt-1 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D charge pair + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D charge pair</h2>
-      <p class="mt-1 text-sm text-slate-500">Two charged spheres sit a distance r apart — red for positive, blue for negative. The arrow shows the force direction and its length/colour scale with the force magnitude. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Charge 1 (q1) <span id="out-bq1" class="font-mono text-indigo-600">2.0 μC</span></span>
-          <input id="b-q1" type="range" min="-10" max="10" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Charge 2 (q2) <span id="out-bq2" class="font-mono text-indigo-600">-3.0 μC</span></span>
-          <input id="b-q2" type="range" min="-10" max="10" step="0.1" value="-3" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Distance r <span id="out-br" class="font-mono text-indigo-600">0.50 m</span></span>
-          <input id="b-r" type="range" min="0.1" max="2" step="0.02" value="0.5" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas Coulomb's law shows visually</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-falloff" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Force falls off as 1/r²</h3>
+          <p class="mt-1 text-sm text-slate-600">Two charge pairs at different separations. The <span class="font-semibold text-amber-500">closer pair</span> has a much bigger force arrow than the <span class="font-semibold text-slate-500">farther pair</span> — doubling the distance cuts the force to a quarter.</p>
+        </div>
+        <div>
+          <div id="diag-charge" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Like charges repel, opposite charges attract</h3>
+          <p class="mt-1 text-sm text-slate-600">On the left, two <span class="font-semibold text-red-500">positive</span> charges push apart. On the right, a <span class="font-semibold text-red-500">positive</span> and a <span class="font-semibold text-blue-500">negative</span> charge pull toward each other.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Force F = <span id="out-bf" class="font-mono font-bold">0.216 N</span> <span id="out-bdir" class="font-semibold"></span></div>
-      <div id="charges3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="charges3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -184,7 +178,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
       const K = 8.9875e9;
 
@@ -269,29 +263,9 @@ const related = [
       el('mode-r').addEventListener('click', () => switchSolve('r'));
       ['f', 'q1', 'q2', 'r'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts shared state ----
+      // ---- charts shared state (fixed reference values for the graphs) ----
       const charts = {};
-      let scene3 = null;
-      function bState() {
-        const q1u = parseFloat(el('b-q1').value), q2u = parseFloat(el('b-q2').value), r = parseFloat(el('b-r').value);
-        const q1 = q1u * 1e-6, q2 = q2u * 1e-6;
-        const F = r > 0 ? K * Math.abs(q1 * q2) / (r * r) : 0;
-        const repulsive = q1 * q2 > 0;
-        return { q1u, q2u, q1, q2, r, F, repulsive };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bq1').textContent = s.q1u.toFixed(1) + ' μC';
-        el('out-bq2').textContent = s.q2u.toFixed(1) + ' μC';
-        el('out-br').textContent = s.r.toFixed(2) + ' m';
-        el('out-bf').textContent = fmt(s.F) + ' N';
-        el('out-bdir').textContent = (s.q1u === 0 || s.q2u === 0) ? '' : (s.repulsive ? '(repulsive)' : '(attractive)');
-        try { if (scene3) scene3.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-q1').addEventListener('input', onB);
-      el('b-q2').addEventListener('input', onB);
-      el('b-r').addEventListener('input', onB);
+      const CHART_STATE = { q1: 2e-6, q2: -3e-6, r: 0.5 };
 
       function initCharts() {
         if (!window.Chart) return;
@@ -307,7 +281,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: '|q1 × q2| (μC²)' } }, y: { title: { display: true, text: 'Force F (N)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts(CHART_STATE);
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -325,61 +299,83 @@ const related = [
         charts.q.data.labels = L2; charts.q.data.datasets[0].data = D2; charts.q.update();
       }
 
-      // ---- 3D charge-pair scene ----
-      function initScene() {
-        const c = el('charges3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(12, 12, 0xcbd5e1, 0xe2e8f0));
+      // ---- Diagram A: force falloff with distance (1/r^2), static + auto-spin ----
+      let diagFalloff = null;
+      function initDiagFalloff() {
+        const c = el('diag-falloff'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 0, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(14, 14, 0xcbd5e1, 0xe2e8f0));
+
+        const posMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+
+        // Close pair (large force) at the front, offset in z
+        const closeHalf = 0.9, closeZ = -1.6;
+        const c1a = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), posMat);
+        const c1b = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), posMat);
+        c1a.position.set(-closeHalf, 0, closeZ);
+        c1b.position.set(closeHalf, 0, closeZ);
+        s.scene.add(c1a, c1b);
+        s.scene.add(arrow(c1a.position, new THREE.Vector3(-closeHalf - 1.4, 0, closeZ), 0xf59e0b));
+        s.scene.add(arrow(c1b.position, new THREE.Vector3(closeHalf + 1.4, 0, closeZ), 0xf59e0b));
+
+        // Far pair (small force) toward the back, offset in z
+        const farHalf = 2.6, farZ = 1.6;
+        const c2a = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), posMat);
+        const c2b = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 16), posMat);
+        c2a.position.set(-farHalf, 0, farZ);
+        c2b.position.set(farHalf, 0, farZ);
+        s.scene.add(c2a, c2b);
+        s.scene.add(arrow(c2a.position, new THREE.Vector3(-farHalf - 0.35, 0, farZ), 0x94a3b8));
+        s.scene.add(arrow(c2b.position, new THREE.Vector3(farHalf + 0.35, 0, farZ), 0x94a3b8));
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagFalloff = { resize: s.resize };
+      }
+
+      // ---- Diagram B: like charges repel, opposite charges attract ----
+      let diagCharge = null;
+      function initDiagCharge() {
+        const c = el('diag-charge'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 10, new THREE.Vector3(0, 0, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(14, 14, 0xcbd5e1, 0xe2e8f0));
 
         const posMat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
         const negMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
-        const sphere1 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 18), posMat);
-        const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 18), negMat);
-        s.scene.add(sphere1, sphere2);
-        let arrow1 = null, arrow2 = null;
 
-        function update(state) {
-          const half = Math.min(3.2, Math.max(0.4, state.r * 1.6));
-          sphere1.position.set(-half, 0, 0);
-          sphere2.position.set(half, 0, 0);
-          sphere1.material = state.q1u >= 0 ? posMat : negMat;
-          sphere2.material = state.q2u >= 0 ? posMat : negMat;
-          const scale1 = 0.2 + Math.min(0.4, Math.abs(state.q1u) / 25);
-          const scale2 = 0.2 + Math.min(0.4, Math.abs(state.q2u) / 25);
-          sphere1.scale.setScalar(0.5 + scale1);
-          sphere2.scale.setScalar(0.5 + scale2);
+        // Left pair: both positive (repulsive) — offset in z toward the front
+        const leftHalf = 1.0, leftX = -3, leftZ = -1.5;
+        const l1 = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 16), posMat);
+        const l2 = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 16), posMat);
+        l1.position.set(leftX - leftHalf, 0, leftZ);
+        l2.position.set(leftX + leftHalf, 0, leftZ);
+        s.scene.add(l1, l2);
+        s.scene.add(arrow(l1.position, new THREE.Vector3(leftX - leftHalf - 1.3, 0, leftZ), 0xf59e0b));
+        s.scene.add(arrow(l2.position, new THREE.Vector3(leftX + leftHalf + 1.3, 0, leftZ), 0xf59e0b));
 
-          if (arrow1) { s.scene.remove(arrow1); arrow1 = null; }
-          if (arrow2) { s.scene.remove(arrow2); arrow2 = null; }
-          if (state.q1u !== 0 && state.q2u !== 0) {
-            const len = Math.min(1.6, 0.2 + state.F * 1.5);
-            const color = state.repulsive ? 0xf59e0b : 0x22c55e;
-            const dirOut = new THREE.Vector3(1, 0, 0);
-            const dirIn = new THREE.Vector3(-1, 0, 0);
-            if (state.repulsive) {
-              arrow1 = new THREE.ArrowHelper(dirIn, sphere1.position, len, color, len * 0.3, 0.18);
-              arrow2 = new THREE.ArrowHelper(dirOut, sphere2.position, len, color, len * 0.3, 0.18);
-            } else {
-              arrow1 = new THREE.ArrowHelper(dirOut, sphere1.position, len, color, len * 0.3, 0.18);
-              arrow2 = new THREE.ArrowHelper(dirIn, sphere2.position, len, color, len * 0.3, 0.18);
-            }
-            s.scene.add(arrow1, arrow2);
-          }
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0012); s.renderer.render(s.scene, s.camera); }
+        // Right pair: positive + negative (attractive) — offset in z toward the back
+        const rightHalf = 1.0, rightX = 3, rightZ = 1.5;
+        const r1 = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 16), posMat);
+        const r2 = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 16), negMat);
+        r1.position.set(rightX - rightHalf, 0, rightZ);
+        r2.position.set(rightX + rightHalf, 0, rightZ);
+        s.scene.add(r1, r2);
+        s.scene.add(arrow(r1.position, new THREE.Vector3(rightX - rightHalf + 1.3, 0, rightZ), 0x22c55e));
+        s.scene.add(arrow(r2.position, new THREE.Vector3(rightX + rightHalf - 1.3, 0, rightZ), 0x22c55e));
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3 = { update, resize: s.resize };
-        update(bState());
+        diagCharge = { resize: s.resize };
       }
 
       function boot() {
         try { switchSolve('f'); update(); } catch (e) { console.error('[coulombs-law] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[coulombs-law] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[coulombs-law] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[coulombs-law] 3D failed', e); el('charges3d-fallback').classList.remove('hidden'); }
-        } else { el('charges3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3]);
+          try { initDiagFalloff(); } catch (e) { console.error('[coulombs-law] falloff diagram failed', e); }
+          try { initDiagCharge(); } catch (e) { console.error('[coulombs-law] charge diagram failed', e); }
+        }
+        mountResize([diagFalloff, diagCharge]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

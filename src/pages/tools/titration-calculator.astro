@@ -142,24 +142,22 @@ const related = [
     <p id="tc-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D burette/flask + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D burette &amp; flask</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the equivalence volume and drag the titrant-added slider; the flask colour stays clear until close to the equivalence volume, then shifts to pink — simulating a phenolphthalein endpoint. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Equivalence volume <span id="out-beq" class="font-mono text-green-600">20.0 mL</span></span>
-          <input id="b-eqv" type="range" min="1" max="50" step="0.5" value="20" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Titrant added <span id="out-bv" class="font-mono text-green-600">0.0 mL</span></span>
-          <input id="b-vadd" type="range" min="0" max="50" step="0.2" value="0" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-burette" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The flask stays clear, then flips colour fast</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-sky-500">left flask</span> shows the solution before the equivalence point — clear. The <span class="font-semibold text-pink-500">right flask</span> shows the same setup right at the endpoint — a phenolphthalein indicator turns pink almost the instant enough titrant has been added.</p>
+        </div>
+        <div>
+          <div id="diag-curve" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. The titration curve is a steep S-shape, not a straight line</h3>
+          <p class="mt-1 text-sm text-slate-600">pH barely moves for most of the titration, then jumps sharply right at the equivalence volume, then flattens out again. That steep middle section is exactly where a good indicator needs to change colour.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">State: <span id="out-bstate" class="font-mono font-bold">before equivalence — clear</span></div>
-      <div id="titration3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="titration3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -220,29 +218,8 @@ const related = [
       }
       ['n-acid', 'n-base', 'm-acid', 'v-acid', 'm-base', 'v-base'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let rig = null;
-      function bState() {
-        const eqV = parseFloat(el('b-eqv').value);
-        const vAdd = parseFloat(el('b-vadd').value);
-        // Simplified sigmoid-like "pH" centred at eqV for colour/curve purposes only.
-        const k = 0.6;
-        const ph = 7 + 6 * Math.tanh(k * (vAdd - eqV));
-        const nearEnd = Math.abs(vAdd - eqV) <= Math.max(0.5, eqV * 0.03);
-        const pastEnd = vAdd >= eqV;
-        return { eqV, vAdd, ph, nearEnd, pastEnd };
-      }
-      function onB() {
-        const s = bState();
-        el('out-beq').textContent = s.eqV.toFixed(1) + ' mL';
-        el('out-bv').textContent = s.vAdd.toFixed(1) + ' mL';
-        el('out-bstate').textContent = s.pastEnd ? 'past equivalence — pink' : (s.nearEnd ? 'near equivalence — turning pink' : 'before equivalence — clear');
-        try { if (rig) rig.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-eqv').addEventListener('input', onB);
-      el('b-vadd').addEventListener('input', onB);
 
       function curveData(eqV) {
         const labels = [], data = [];
@@ -270,7 +247,7 @@ const related = [
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
-        const eqV0 = parseFloat(el('b-eqv').value);
+        const eqV0 = 20; // reference equivalence volume (mL) used purely to draw the illustrative curves
         const c = curveData(eqV0);
         charts.curve = new Chart(el('chart-curve'), {
           type: 'line',
@@ -288,96 +265,77 @@ const related = [
         });
         charts.ready = true;
       }
-      function updateCharts(s) {
-        if (!charts.ready) return;
-        const c = curveData(s.eqV);
-        charts.curve.data.labels = c.labels; charts.curve.data.datasets[0].data = c.data; charts.curve.update();
-        const m = molesData(s.eqV);
-        charts.moles.data.labels = m.labels;
-        charts.moles.data.datasets[0].data = m.acidMoles;
-        charts.moles.data.datasets[1].data = m.baseMoles;
-        charts.moles.update();
-      }
 
-      // ---- interactive 3D burette + flask ----
-      function flaskColor(state) {
-        // Clear (light blue-white) before equivalence, shifting to pink after.
-        const clear = { r: 0xe0, g: 0xf2, b: 0xfe };
-        const pink = { r: 0xf4, g: 0x72, b: 0xb6 };
-        const span = Math.max(0.5, state.eqV * 0.06);
-        const t = Math.max(0, Math.min(1, (state.vAdd - (state.eqV - span)) / (span * 2)));
-        const r = Math.round(clear.r + (pink.r - clear.r) * t);
-        const g = Math.round(clear.g + (pink.g - clear.g) * t);
-        const b = Math.round(clear.b + (pink.b - clear.b) * t);
-        return (r << 16) | (g << 8) | b;
-      }
-      function buildRig(THREE) {
+      // ---- standalone 3D diagrams (static geometry, auto-rotating only) ----
+      let diagBurette = null, diagCurve = null;
+
+      function buildFlaskRig(THREE, liquidColorHex, x) {
         const g = new THREE.Group();
+        g.position.x = x;
         const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.22, roughness: 0.1, side: THREE.DoubleSide });
         // Burette: a tall thin cylinder up top.
-        const burette = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 5, 24, 1, true), glassMat);
-        burette.position.y = 4.2;
+        const burette = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 3.6, 24, 1, true), glassMat);
+        burette.position.y = 3.2;
         g.add(burette);
-        // Flask: cone-ish body approximated with a cylinder base + sphere neck for simplicity.
-        const flaskBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 2.1, 2.6, 32, 1, true), glassMat);
-        flaskBody.position.y = -1.6;
+        // Flask: cone-ish body approximated with a cylinder base + neck.
+        const flaskBody = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.8, 2.2, 32, 1, true), glassMat);
+        flaskBody.position.y = -1.2;
         g.add(flaskBody);
-        const flaskBottom = new THREE.Mesh(new THREE.CircleGeometry(2.1, 32), glassMat);
-        flaskBottom.rotation.x = -Math.PI / 2; flaskBottom.position.y = -2.9;
+        const flaskBottom = new THREE.Mesh(new THREE.CircleGeometry(1.8, 32), glassMat);
+        flaskBottom.rotation.x = -Math.PI / 2; flaskBottom.position.y = -2.3;
         g.add(flaskBottom);
-        const flaskNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.4, 24, 1, true), glassMat);
-        flaskNeck.position.y = -0.1;
+        const flaskNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.1, 24, 1, true), glassMat);
+        flaskNeck.position.y = -0.05;
         g.add(flaskNeck);
+        // static liquid at a fixed level, colour reflecting the state (clear vs pink)
+        const liquidMat = new THREE.MeshStandardMaterial({ color: liquidColorHex, transparent: true, opacity: 0.55, roughness: 0.3 });
+        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.65, 1.3, 32), liquidMat);
+        liquid.position.y = -2.0;
+        g.add(liquid);
         return g;
       }
-      function initRig() {
-        const c = el('titration3d'); if (!c) throw new Error('no titration3d');
-        const s = makeScene(c, 14, new THREE.Vector3(0, -0.5, 0), MOL_OPTS);
-        s.scene.add(buildRig(THREE));
-        let liquid = null;
-        let drop = null;
-        const dropMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 });
-        drop = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), dropMat);
-        drop.position.set(0, 1.6, 0);
-        drop.visible = false;
-        // keep a scene ref for animating drop position over time
-        let dropT = 0;
-        function update(state) {
-          const color = flaskColor(state);
-          if (liquid) { s.scene.remove(liquid); liquid.geometry.dispose(); liquid.material.dispose(); }
-          const liquidMat = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.55, roughness: 0.3 });
-          const frac = Math.max(0.06, Math.min(1, 0.3 + (state.vAdd / (state.eqV * 2)) * 0.6));
-          const hLiq = frac * 2.2;
-          liquid = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, hLiq, 32), liquidMat);
-          liquid.position.y = -2.85 + hLiq / 2;
-          s.scene.add(liquid);
-        }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) {
-            s.spin(0.0012);
-            dropT += 0.03;
-            const cyc = dropT % 1;
-            if (!drop.parent) s.scene.add(drop);
-            drop.visible = true;
-            drop.position.y = 1.6 - cyc * 3.2;
-            drop.material.opacity = 0.85 * (1 - cyc * 0.3);
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
+
+      // ---- diagram 1: burette/flask at two static states (before / at endpoint) ----
+      function initDiagBurette() {
+        const c = el('diag-burette'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 13, new THREE.Vector3(0, -0.3, 0), MOL_OPTS);
+        s.scene.add(buildFlaskRig(THREE, 0xe0f2fe, -2.4)); // before equivalence — clear
+        s.scene.add(buildFlaskRig(THREE, 0xf472b6, 2.4));  // at endpoint — pink
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        rig = { update, resize: s.resize };
-        update(bState());
+        diagBurette = { resize: s.resize };
+      }
+
+      // ---- diagram 2: stylised S-shaped titration curve as a static 3D line ----
+      function initDiagCurve() {
+        const c = el('diag-curve'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(4, 2, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(5, 0, 0); s.scene.add(grid);
+        const eqV = 20, maxV = eqV * 2, k = 0.6;
+        const pts = [];
+        for (let v = 0; v <= maxV + 1e-9; v += maxV / 40) {
+          const ph = 7 + 6 * Math.tanh(k * (v - eqV));
+          pts.push(new THREE.Vector3((v / maxV) * 10, (ph / 14) * 8, 0));
+        }
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x10b981 }));
+        s.scene.add(line);
+        // marker at the equivalence point (steep midpoint)
+        const mid = pts[Math.floor(pts.length / 2)];
+        const marker = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+        marker.position.copy(mid); s.scene.add(marker);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagCurve = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[titration] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[titration] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[titration] charts failed', e); }
         if (window.THREE) {
-          try { initRig(); } catch (e) { console.error('[titration] rig failed', e); el('titration3d-fallback').classList.remove('hidden'); }
-        } else { el('titration3d-fallback').classList.remove('hidden'); }
-        mountResize([rig]);
+          try { initDiagBurette(); } catch (e) { console.error('[titration] burette diagram failed', e); }
+          try { initDiagCurve(); } catch (e) { console.error('[titration] curve diagram failed', e); }
+        }
+        mountResize([diagBurette, diagCurve]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

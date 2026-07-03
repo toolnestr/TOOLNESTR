@@ -133,24 +133,23 @@ const related = [
     <p id="ev-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D scene + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D launch</h2>
-      <p class="mt-1 text-sm text-slate-500">Drag the sliders for mass and radius — the launch arrow compares your object’s speed against the escape-velocity threshold for the chosen body. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass (× Earth) <span id="out-bm" class="font-mono text-blue-600">1.00×</span></span>
-          <input id="b-mass" type="range" min="0.01" max="10" step="0.01" value="1" class="mt-2 w-full accent-blue-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Radius (× Earth) <span id="out-br" class="font-mono text-blue-600">1.00×</span></span>
-          <input id="b-radius" type="range" min="0.1" max="5" step="0.01" value="1" class="mt-2 w-full accent-blue-600" />
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-launch" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Three launch speeds, three fates</h3>
+          <p class="mt-1 text-sm text-slate-600">A short, <span class="font-semibold text-slate-500">grey</span> launch falls back down. A medium, <span class="font-semibold text-amber-500">amber</span> launch settles into orbit. Only the long, <span class="font-semibold text-emerald-500">emerald</span> launch — at or above escape velocity — leaves for good.</p>
+        </div>
+        <div>
+          <div id="diag-bodies" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Escape velocity by body</h3>
+          <p class="mt-1 text-sm text-slate-600">Bar heights compare escape velocity for the Moon, Earth and Jupiter. Mass and radius both matter — Jupiter's huge mass gives it a far higher escape velocity despite being much less dense than Earth.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700">Escape velocity v<sub>esc</sub> = <span id="out-bv" class="font-mono font-bold">—</span></div>
-      <div id="scene3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <p id="scene3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D diagrams unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -199,21 +198,6 @@ const related = [
 
       // ---- 3D + charts ----
       const charts = {};
-      let scene3d = null;
-      function bState() {
-        const mMult = parseFloat(el('b-mass').value), rMult = parseFloat(el('b-radius').value);
-        const M = EARTH_M * mMult, r = EARTH_R * rMult;
-        return { mMult, rMult, M, r, v: vesc(M, r) };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bm').textContent = s.mMult.toFixed(2) + '×';
-        el('out-br').textContent = s.rMult.toFixed(2) + '×';
-        el('out-bv').textContent = fmt(s.v / 1000) + ' km/s';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-      }
-      el('b-mass').addEventListener('input', onB);
-      el('b-radius').addEventListener('input', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -239,41 +223,61 @@ const related = [
         charts.ready = true;
       }
 
-      // ---- interactive 3D scene ----
-      function initScene3d() {
-        const c = el('scene3d'); if (!c) throw new Error('no container');
+      // ---- standalone 3D diagrams (auto-rotating, static geometry) ----
+      let diagLaunch = null, diagBodies = null;
+
+      function initDiagLaunch() {
+        const c = el('diag-launch'); if (!c) throw new Error('no container');
         const s = makeScene(c, 13, new THREE.Vector3(0, 1, 0), OPTS);
         const planet = new THREE.Mesh(new THREE.SphereGeometry(2, 32, 32), new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.6 }));
         planet.position.y = -1; s.scene.add(planet);
-        const rocket = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.9, 12), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
-        rocket.position.set(0, 1.3, 0); s.scene.add(rocket);
-        let launchArrow = null;
-        function update(state) {
-          const planetScale = Math.max(0.6, Math.min(2.2, Math.cbrt(state.rMult)));
-          planet.scale.setScalar(planetScale);
-          rocket.position.y = -1 + planetScale * 2 + 0.5;
-          if (launchArrow) { s.scene.remove(launchArrow); launchArrow = null; }
-          const REF_V = 20000; // m/s reference for arrow scaling
-          const len = 1 + Math.min(1, state.v / REF_V) * 5;
-          const base = rocket.position.clone();
-          const color = state.v > vesc(EARTH_M, EARTH_R) ? 0xef4444 : 0x2563eb;
-          launchArrow = arrow(base, new THREE.Vector3(base.x, base.y + len, base.z), color);
-          s.scene.add(launchArrow);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+
+        const launches = [
+          { angle: -0.5, len: 1.5, color: 0x94a3b8 },
+          { angle: 0, len: 3.5, color: 0xf59e0b },
+          { angle: 0.5, len: 6, color: 0x10b981 },
+        ];
+        launches.forEach((L) => {
+          const base = new THREE.Vector3(Math.sin(L.angle) * 2, -1 + Math.cos(L.angle) * 2 + 0.1, 0);
+          const dir = base.clone().normalize();
+          const tip = base.clone().add(dir.multiplyScalar(L.len));
+          s.scene.add(arrow(base, tip, L.color));
+        });
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        diagLaunch = { resize: s.resize };
+      }
+
+      function initDiagBodies() {
+        const c = el('diag-bodies'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(5, 3, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(6, 0, 0); s.scene.add(grid);
+        const bodies = [
+          { name: 'Moon', v: 2.38, color: 0x94a3b8 },
+          { name: 'Earth', v: 11.19, color: 0x2563eb },
+          { name: 'Jupiter', v: 60.20, color: 0xef4444 },
+        ];
+        const maxV = Math.max.apply(null, bodies.map((b) => b.v));
+        bodies.forEach((b, i) => {
+          const h = Math.max(0.5, (b.v / maxV) * 8);
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshStandardMaterial({ color: b.color }));
+          bar.position.set(i * 3, h / 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBodies = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[escape-velocity] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[escape-velocity] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[escape-velocity] charts failed', e); }
         if (window.THREE) {
-          try { initScene3d(); } catch (e) { console.error('[escape-velocity] scene failed', e); el('scene3d-fallback').classList.remove('hidden'); }
+          try { initDiagLaunch(); } catch (e) { console.error('[escape-velocity] diagLaunch failed', e); }
+          try { initDiagBodies(); } catch (e) { console.error('[escape-velocity] diagBodies failed', e); }
         } else { el('scene3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+        mountResize([diagLaunch, diagBodies]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

@@ -2,8 +2,8 @@
 import SubjectToolPage from '../../components/SubjectToolPage.astro';
 
 const title = 'Electric Power Calculator';
-const description = 'Electric power calculator with a live glowing-bulb 3D scene and charts. Solve P = V×I, convert watts to kWh, and calculate electricity cost.';
-const intro = 'Solve electric power with P = V × I (or I²R, V²/R), then convert that power to energy over time and estimate what it costs to run. A live 3D bulb glows brighter as power rises.';
+const description = 'Electric power calculator with 3D bulb and appliance diagrams and charts. Solve P = V×I, convert watts to kWh, and calculate electricity cost.';
+const intro = 'Solve electric power with P = V × I (or I²R, V²/R), then convert that power to energy over time and estimate what it costs to run.';
 const category = { id: 'physics', name: 'Physics', emoji: '⚛️' };
 
 const faqs = [
@@ -21,7 +21,7 @@ const howto = {
   steps: [
     { name: 'Pick a mode', text: 'Choose "Power" (P = V × I) or "Energy cost" (kWh and price).' },
     { name: 'Enter the values', text: 'In Power mode type any two of V, I, P. In Energy cost mode enter power, time, and price per kWh.' },
-    { name: 'Read the result', text: 'The missing value solves instantly, and the 3D bulb brightness tracks the power.' },
+    { name: 'Read the result', text: 'The missing value solves instantly, and the diagrams and charts below help visualize the power scale.' },
   ],
 };
 
@@ -94,7 +94,7 @@ const sourcesNote = 'Power = voltage × current (P = VI); energy = power × time
 const howToUse = [
   { title: 'Pick the mode', body: '“Power” solves P = V×I for any missing value; “Energy cost” converts watts and run-time into kWh and dollars.' },
   { title: 'Enter your values', body: 'Fill in the known fields — the calculator solves the rest live as you type.' },
-  { title: 'Watch the bulb', body: 'Use the sliders to see the 3D bulb glow brighter as V, I, and power increase.' },
+  { title: 'Compare visually', body: 'The 3D diagrams show a dim vs. bright bulb and a bar comparison of typical appliance power draw.' },
 ];
 
 const related = [
@@ -145,24 +145,22 @@ const related = [
     <p id="pw-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D bulb + charts + script ============ -->
+  <!-- ============ VIZ: two static 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D power bulb</h2>
-      <p class="mt-1 text-sm text-slate-500">Set voltage and current with the sliders; the bulb glows brighter and the meter needle swings further as power rises. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Voltage <span id="out-bv" class="font-mono text-blue-600">120.0 V</span></span>
-          <input id="b-v" type="range" min="0" max="240" step="1" value="120" class="mt-2 w-full accent-blue-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Current <span id="out-bi" class="font-mono text-blue-600">5.00 A</span></span>
-          <input id="b-i" type="range" min="0" max="15" step="0.1" value="5" class="mt-2 w-full accent-blue-600" />
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">Power, visualized</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-bulb" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">Low power vs. high power bulb</h3>
+          <p class="mt-1 text-sm text-slate-600">A dim 40 W bulb (left) next to a bright 100 W bulb (right) — more watts means more light energy radiated per second.</p>
+        </div>
+        <div>
+          <div id="diag-appliances" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">Typical appliance power draw</h3>
+          <p class="mt-1 text-sm text-slate-600">Bar heights compare a few common devices — heat-producing appliances like kettles draw far more power than electronics.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-blue-50 p-3 text-center text-sm text-blue-700">Power P = <span id="out-bp" class="font-mono font-bold">600.0 W</span></div>
-      <div id="bulb3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:340px;"></div>
-      <p id="bulb3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -226,21 +224,8 @@ const related = [
       el('mode-ec').addEventListener('click', () => switchMode('ec'));
       ['V', 'I', 'P', 'ecP', 'ecT', 'ecR'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let bulb = null;
-      function bState() { const v = parseFloat(el('b-v').value), i = parseFloat(el('b-i').value); return { v, i, p: v * i }; }
-      function onB() {
-        const s = bState();
-        el('out-bv').textContent = s.v.toFixed(1) + ' V';
-        el('out-bi').textContent = s.i.toFixed(2) + ' A';
-        el('out-bp').textContent = fmt(s.p) + ' W';
-        try { if (bulb) bulb.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-v').addEventListener('input', onB);
-      el('b-i').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -258,63 +243,99 @@ const related = [
           options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Power (W)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts();
       }
-      function updateCharts(s) {
+      function updateCharts() {
         if (!charts.ready) return;
+        const FIXED_I = 5;
         const L = [], D = [];
-        for (let vv = 0; vv <= 240.001; vv += 10) { L.push(vv.toFixed(0)); D.push(+(s.i * vv).toFixed(2)); }
+        for (let vv = 0; vv <= 240.001; vv += 10) { L.push(vv.toFixed(0)); D.push(+(FIXED_I * vv).toFixed(2)); }
         charts.pv.data.labels = L; charts.pv.data.datasets[0].data = D; charts.pv.update();
       }
 
-      // ---- interactive glowing bulb ----
-      const MAX_P = 3600; // 240V * 15A
-      function initBulb() {
-        const c = el('bulb3d'); if (!c) throw new Error('no bulb');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+      // ---- static diagram: dim bulb vs bright bulb ----
+      let diagBulb = null;
+      function initDiagBulb() {
+        const c = el('diag-bulb'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
 
-        const baseMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5, metalness: 0.4 });
-        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 1.4, 24), baseMat);
-        base.position.y = -3.2; s.scene.add(base);
+        function makeBulb(x, radius, glassColor, glassOpacity, emissiveIntensity, glowScale, glowOpacity) {
+          const group = new THREE.Group();
+          const baseMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.4 });
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius * 0.42, radius * 0.5, 20), baseMat);
+          base.position.y = -radius * 1.15; group.add(base);
 
-        const glassMat = new THREE.MeshStandardMaterial({ color: 0xfff7d6, transparent: true, opacity: 0.55, roughness: 0.15, emissive: 0x000000, emissiveIntensity: 0 });
-        const glass = new THREE.Mesh(new THREE.SphereGeometry(2.4, 32, 32), glassMat);
-        glass.position.y = -0.4; s.scene.add(glass);
+          const glassMat = new THREE.MeshStandardMaterial({ color: glassColor, transparent: true, opacity: glassOpacity, roughness: 0.15, emissive: glassColor, emissiveIntensity });
+          const glass = new THREE.Mesh(new THREE.SphereGeometry(radius, 24, 24), glassMat);
+          group.add(glass);
 
-        const filamentMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.3 });
-        const filament = new THREE.Mesh(new THREE.TorusKnotGeometry(0.7, 0.12, 64, 8, 2, 3), filamentMat);
-        filament.position.y = -0.4; s.scene.add(filament);
-
-        const glowLight = new THREE.PointLight(0xffdd88, 0.5, 12);
-        glowLight.position.set(0, -0.4, 0); s.scene.add(glowLight);
-
-        function update(state) {
-          const frac = Math.max(0, Math.min(1, state.p / MAX_P));
-          glassMat.emissive.setHex(0xffcc55);
-          glassMat.emissiveIntensity = frac * 1.6;
-          filamentMat.emissiveIntensity = 0.3 + frac * 2.2;
-          glowLight.intensity = 0.3 + frac * 3.5;
-          const scale = 1 + frac * 0.12;
-          filament.scale.setScalar(scale);
+          if (glowScale > 1) {
+            const glowMat = new THREE.MeshBasicMaterial({ color: glassColor, transparent: true, opacity: glowOpacity });
+            const glow = new THREE.Mesh(new THREE.SphereGeometry(radius * glowScale, 24, 24), glowMat);
+            group.add(glow);
+          }
+          group.position.x = x;
+          return group;
         }
+
+        const dim = makeBulb(-2.2, 1, 0xd97706, 0.55, 0.35, 1, 0);
+        const bright = makeBulb(2.2, 1.5, 0xfff7d6, 0.6, 1.3, 1.35, 0.18);
+        s.scene.add(dim); s.scene.add(bright);
+
+        const dimLight = new THREE.PointLight(0xffdd88, 0.4, 8); dimLight.position.set(-2.2, 0, 1); s.scene.add(dimLight);
+        const brightLight = new THREE.PointLight(0xffdd88, 1.4, 10); brightLight.position.set(2.2, 0, 1); s.scene.add(brightLight);
+
         function frame() {
           requestAnimationFrame(frame);
-          if (!reduceMotion) { filament.rotation.y += 0.01; s.spin(0.0012); }
+          if (!reduceMotion) s.spin(0.003);
           s.renderer.render(s.scene, s.camera);
         }
         frame();
-        bulb = { update, resize: s.resize };
-        update(bState());
+        diagBulb = { resize: s.resize };
+      }
+
+      // ---- static diagram: appliance power comparison bars ----
+      let diagAppliances = null;
+      function initDiagAppliances() {
+        const c = el('diag-appliances'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
+
+        const grid = new THREE.GridHelper(8, 8, 0xcbd5e1, 0xe2e8f0);
+        grid.position.y = -1.6; s.scene.add(grid);
+
+        const items = [
+          { label: 'LED', height: 0.3, color: 0x38bdf8 },
+          { label: 'Laptop', height: 1.0, color: 0x60a5fa },
+          { label: 'Fridge', height: 1.6, color: 0x818cf8 },
+          { label: 'Microwave', height: 3.0, color: 0xf59e0b },
+          { label: 'Kettle', height: 4.0, color: 0xef4444 },
+        ];
+        const spacing = 1.5;
+        const startX = -((items.length - 1) * spacing) / 2;
+        items.forEach((item, i) => {
+          const mat = new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.5, metalness: 0.2 });
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(0.8, item.height, 0.8), mat);
+          bar.position.set(startX + i * spacing, -1.6 + item.height / 2, 0);
+          s.scene.add(bar);
+        });
+
+        function frame() {
+          requestAnimationFrame(frame);
+          if (!reduceMotion) s.spin(0.003);
+          s.renderer.render(s.scene, s.camera);
+        }
+        frame();
+        diagAppliances = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('pw'); } catch (e) { console.error('[electric-power] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[electric-power] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[electric-power] charts failed', e); }
         if (window.THREE) {
-          try { initBulb(); } catch (e) { console.error('[electric-power] bulb failed', e); el('bulb3d-fallback').classList.remove('hidden'); }
-        } else { el('bulb3d-fallback').classList.remove('hidden'); }
-        mountResize([bulb]);
+          try { initDiagBulb(); } catch (e) { console.error('[electric-power] bulb diagram failed', e); }
+          try { initDiagAppliances(); } catch (e) { console.error('[electric-power] appliances diagram failed', e); }
+        }
+        mountResize([diagBulb, diagAppliances]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

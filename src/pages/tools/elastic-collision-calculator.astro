@@ -133,24 +133,22 @@ const related = [
     <p id="ec-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D collision + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D elastic collision</h2>
-      <p class="mt-1 text-sm text-slate-500">Sphere size reflects relative mass. Drag the sliders to change mass 1 and initial velocity 1; the spheres approach, collide and rebound using the elastic-collision formulas. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Mass 1 <span id="out-bm1" class="font-mono text-indigo-600">2.0 kg</span></span>
-          <input id="b-m1" type="range" min="0.5" max="10" step="0.1" value="2" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Initial velocity 1 <span id="out-bu1" class="font-mono text-indigo-600">5.0 m/s</span></span>
-          <input id="b-u1" type="range" min="0.5" max="10" step="0.1" value="5" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-collision" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Elastic collisions bounce apart</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">blue</span> and <span class="font-semibold text-red-500">red</span> spheres approach, collide, then separate again — the <span class="font-semibold text-emerald-500">green arrows</span> show each object keeps its own velocity after impact, just changed.</p>
+        </div>
+        <div>
+          <div id="diag-conserve" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Momentum and kinetic energy both match</h3>
+          <p class="mt-1 text-sm text-slate-600">Two pairs of bars: total momentum before and after (left pair) and total kinetic energy before and after (right pair). In an elastic collision, each pair comes out equal.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">v1' = <span id="out-bv1p" class="font-mono font-bold">—</span> &nbsp;|&nbsp; v2' = <span id="out-bv2p" class="font-mono font-bold">—</span></div>
-      <div id="collision3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="collision3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -170,7 +168,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
 
       function solveElastic(m1, m2, u1, u2) {
@@ -199,27 +197,13 @@ const related = [
       }
       ['m1', 'm2', 'u1', 'u2'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let scene3d = null;
       function bState() {
-        const m1 = parseFloat(el('b-m1').value), m2 = 2;
-        const u1 = parseFloat(el('b-u1').value), u2 = 0;
+        const m1 = 3, m2 = 5, u1 = 4, u2 = -2;
         const { v1, v2 } = solveElastic(m1, m2, u1, u2);
         return { m1, m2, u1, u2, v1, v2 };
       }
-      function onB() {
-        const s = bState();
-        el('out-bm1').textContent = s.m1.toFixed(1) + ' kg';
-        el('out-bu1').textContent = s.u1.toFixed(1) + ' m/s';
-        el('out-bv1p').textContent = fmt(s.v1) + ' m/s';
-        el('out-bv2p').textContent = fmt(s.v2) + ' m/s';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-m1').addEventListener('input', onB);
-      el('b-u1').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -250,63 +234,65 @@ const related = [
         charts.ke.update();
       }
 
-      // ---- interactive 3D collision ----
-      function initScene3d() {
-        const c = el('collision3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0.5, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0));
-        const mat1 = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        const mat2 = new THREE.MeshStandardMaterial({ color: 0xef4444 });
-        let sph1 = null, sph2 = null;
-        let t = 0, cur = bState();
-        function radius(m) { return Math.max(0.4, Math.cbrt(m) * 0.6); }
-        function build() {
-          if (sph1) { s.scene.remove(sph1); sph1.geometry.dispose(); }
-          if (sph2) { s.scene.remove(sph2); sph2.geometry.dispose(); }
-          sph1 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m1), 24, 24), mat1);
-          sph2 = new THREE.Mesh(new THREE.SphereGeometry(radius(cur.m2), 24, 24), mat2);
-          s.scene.add(sph1); s.scene.add(sph2);
-        }
-        function update(state) { cur = state; build(); t = 0; }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion && sph1 && sph2) {
-            t += 0.012;
-            const ph = t % 3;
-            const r1 = radius(cur.m1), r2 = radius(cur.m2);
-            const contact = r1 + r2;
-            const startX1 = -8, startX2 = 6;
-            if (ph < 1.4) {
-              // approach phase (u2 assumed 0, resting at startX2)
-              const frac = ph / 1.4;
-              sph1.position.x = startX1 + frac * (startX2 - contact - startX1);
-              sph2.position.x = startX2;
-            } else {
-              // rebound phase using computed v1', v2'
-              const frac = (ph - 1.4) / 1.6;
-              const collideX1 = startX2 - contact;
-              const dir1 = cur.v1 >= 0 ? 1 : -1, dir2 = cur.v2 >= 0 ? 1 : -1;
-              sph1.position.x = collideX1 + dir1 * frac * Math.min(9, Math.abs(cur.v1) * 0.9);
-              sph2.position.x = startX2 + dir2 * frac * Math.min(9, Math.abs(cur.v2) * 0.9);
-            }
-            sph1.position.y = r1; sph2.position.y = r2;
-            s.spin(0.0012);
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
+      // ================= THREE.js STANDALONE DIAGRAMS =================
+      let diagCollision = null, diagConserve = null;
+
+      // ---- Diagram 1: static before/after snapshot of an elastic collision (auto-rotating) ----
+      function initDiagCollision() {
+        const c = el('diag-collision'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 11, new THREE.Vector3(0, 0.5, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7));
+        const st = bState();
+        const r1 = Math.max(0.4, Math.cbrt(st.m1) * 0.6), r2 = Math.max(0.4, Math.cbrt(st.m2) * 0.6);
+        const sph1 = new THREE.Mesh(new THREE.SphereGeometry(r1, 24, 24), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+        sph1.position.set(-3, r1, 0); s.scene.add(sph1);
+        const sph2 = new THREE.Mesh(new THREE.SphereGeometry(r2, 24, 24), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        sph2.position.set(3, r2, 0); s.scene.add(sph2);
+        // velocity arrows after collision (green), scaled for display
+        const scale = 0.35;
+        s.scene.add(arrow(sph1.position, new THREE.Vector3(sph1.position.x + st.v1 * scale, sph1.position.y, sph1.position.z), 0x10b981));
+        s.scene.add(arrow(sph2.position, new THREE.Vector3(sph2.position.x + st.v2 * scale, sph2.position.y, sph2.position.z), 0x10b981));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        diagCollision = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: momentum & KE conservation bars (auto-rotating) ----
+      function initDiagConserve() {
+        const c = el('diag-conserve'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 1, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(8, 8, 0xe2e8f0, 0xeef2f7));
+        const st = bState();
+        const pBefore = Math.abs(st.m1 * st.u1 + st.m2 * st.u2);
+        const pAfter = Math.abs(st.m1 * st.v1 + st.m2 * st.v2);
+        const keBefore = 0.5 * st.m1 * st.u1 * st.u1 + 0.5 * st.m2 * st.u2 * st.u2;
+        const keAfter = 0.5 * st.m1 * st.v1 * st.v1 + 0.5 * st.m2 * st.v2 * st.v2;
+        const maxP = Math.max(pBefore, pAfter, 0.001), maxKE = Math.max(keBefore, keAfter, 0.001);
+        const bars = [
+          { v: pBefore / maxP, x: -3, color: 0x94a3b8 },
+          { v: pAfter / maxP, x: -1.4, color: 0x6366f1 },
+          { v: keBefore / maxKE, x: 1.4, color: 0x94a3b8 },
+          { v: keAfter / maxKE, x: 3, color: 0xef4444 },
+        ];
+        bars.forEach((b) => {
+          const h = Math.max(0.2, b.v * 3.2);
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, h, 0.9), new THREE.MeshStandardMaterial({ color: b.color }));
+          mesh.position.set(b.x, h / 2, 0);
+          s.scene.add(mesh);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagConserve = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[elastic-collision] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[elastic-collision] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[elastic-collision] charts failed', e); }
         if (window.THREE) {
-          try { initScene3d(); } catch (e) { console.error('[elastic-collision] 3D failed', e); el('collision3d-fallback').classList.remove('hidden'); }
-        } else { el('collision3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagCollision(); } catch (e) { console.error('[elastic-collision] diagram 1 failed', e); }
+          try { initDiagConserve(); } catch (e) { console.error('[elastic-collision] diagram 2 failed', e); }
+        }
+        mountResize([diagCollision, diagConserve]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

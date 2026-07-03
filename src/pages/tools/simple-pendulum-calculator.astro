@@ -147,21 +147,19 @@ const related = [
   <!-- ============ VIZ: one interactive 3D swinging pendulum + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D swinging pendulum</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the length and gravity; the bob swings at the resulting period — a shorter period means a visibly faster swing. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Length L <span id="out-bl" class="font-mono text-indigo-600">1.00 m</span></span>
-          <input id="b-l" type="range" min="0.2" max="3" step="0.05" value="1" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Gravity g <span id="out-bg" class="font-mono text-indigo-600">9.81 m/s²</span></span>
-          <input id="b-g" type="range" min="0.5" max="25" step="0.05" value="9.81" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-pendulum-vectors" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The bob swings through an arc</h3>
+          <p class="mt-1 text-sm text-slate-600">The same pendulum shown at its two extreme swing positions, tracing the arc between them. It speeds up toward the bottom and slows to a stop at each extreme — mass never enters the period.</p>
+        </div>
+        <div>
+          <div id="diag-pendulum-family" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Longer string, longer period</h3>
+          <p class="mt-1 text-sm text-slate-600">Three pendulums of different length hanging side by side. Only the length (and gravity) changes the period — a longer string always swings slower back and forth.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Period T = 2π√(L/g) = <span id="out-bt" class="font-mono font-bold">2.01 s</span></div>
-      <div id="pend3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="pend3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -181,7 +179,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup, arrow } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.1, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
       const TAU = Math.PI * 2;
 
@@ -233,20 +231,9 @@ const related = [
       ['T', 'L', 'g'].forEach((id) => el(id).addEventListener('input', update));
       document.querySelectorAll('.g-preset').forEach((btn) => btn.addEventListener('click', () => { el('g').value = btn.getAttribute('data-g'); update(); }));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let pend = null;
-      function bState() { const L = parseFloat(el('b-l').value), g = parseFloat(el('b-g').value); return { L, g, T: period(L, g) }; }
-      function onB() {
-        const s = bState();
-        el('out-bl').textContent = s.L.toFixed(2) + ' m';
-        el('out-bg').textContent = s.g.toFixed(2) + ' m/s²';
-        el('out-bt').textContent = fmt(s.T) + ' s';
-        try { if (pend) pend.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-l').addEventListener('input', onB);
-      el('b-g').addEventListener('input', onB);
+      function bState() { return { L: 1, g: 9.81, T: period(1, 9.81) }; }
 
       function initCharts() {
         if (!window.Chart) return;
@@ -275,60 +262,61 @@ const related = [
         charts.tg.data.labels = L2; charts.tg.data.datasets[0].data = D2; charts.tg.update();
       }
 
-      // ---- interactive swinging pendulum ----
-      function pendulumMesh(THREE) {
+      function pendulumMesh(THREE, len, bobColor) {
         const g = new THREE.Group();
-        const pivot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-        pivot.position.set(0, 3, 0);
-        g.add(pivot);
-        const stringMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
-        const stringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 8), stringMat);
-        g.add(stringMesh);
-        const bobMat = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.2, roughness: 0.4 });
-        const bob = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), bobMat);
-        g.add(bob);
-        return { g, stringMesh, bob, pivotY: 3 };
+        const pivot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+        pivot.position.set(0, 0, 0); g.add(pivot);
+        const stringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+        stringMesh.position.set(0, -len / 2, 0); g.add(stringMesh);
+        const bob = new THREE.Mesh(new THREE.SphereGeometry(0.26, 24, 24), new THREE.MeshStandardMaterial({ color: bobColor, metalness: 0.2, roughness: 0.4 }));
+        bob.position.set(0, -len, 0); g.add(bob);
+        return g;
       }
-      function initPendulum() {
-        const c = el('pend3d'); if (!c) throw new Error('no pendulum container');
-        const s = makeScene(c, 9, new THREE.Vector3(0, 1, 0), OPTS);
-        const pm = pendulumMesh(THREE);
-        s.scene.add(pm.g);
-        let st = { L: 1, g: 9.81, T: period(1, 9.81), t: 0 };
-        const AMP = 0.45; // radians, small-angle swing for visual clarity
-        function layout() {
-          const scale = Math.max(0.6, Math.min(2.2, st.L));
-          const len = scale * 2.2;
-          pm.stringMesh.scale.y = len;
-          pm.stringMesh.position.y = pm.pivotY - len / 2;
-          pm.bob.position.y = pm.pivotY - len;
+
+      // ---- Diagram A: pendulum at its two swing extremes with a static arc ----
+      let diagV = null, diagF = null;
+      function initDiagVectors() {
+        const c = el('diag-pendulum-vectors'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 6, new THREE.Vector3(0, -0.5, 0), OPTS);
+        const len = 2.4, amp = 0.5;
+        const left = pendulumMesh(THREE, len, 0x0ea5e9); left.position.set(0, 2, 0); left.rotation.z = amp; s.scene.add(left);
+        const right = pendulumMesh(THREE, len, 0xef4444); right.position.set(0, 2, 0); right.rotation.z = -amp; s.scene.add(right);
+        // static arc between the two extremes
+        const arcPts = [];
+        for (let i = 0; i <= 20; i++) {
+          const th = -amp + (2 * amp) * (i / 20);
+          arcPts.push(new THREE.Vector3(Math.sin(th) * len, 2 - Math.cos(th) * len, 0));
         }
-        function update(state) { st.L = state.L; st.g = state.g; st.T = state.T; layout(); }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) {
-            const dt = 0.016;
-            st.t += dt;
-            const w = st.T > 0 ? TAU / st.T : 0;
-            const theta = AMP * Math.sin(w * st.t);
-            pm.g.rotation.z = theta;
-          }
-          s.renderer.render(s.scene, s.camera);
-        }
-        layout();
+        s.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcPts), new THREE.LineBasicMaterial({ color: 0x94a3b8 })));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
         frame();
-        pend = { update, resize: s.resize };
-        update(bState());
+        diagV = { resize: s.resize };
+      }
+
+      // ---- Diagram B: family of pendulums with different lengths ----
+      function initDiagFamily() {
+        const c = el('diag-pendulum-family'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(2, -0.5, 0), OPTS);
+        const lens = [1.0, 1.8, 2.6];
+        const colors = [0x0ea5e9, 0x6366f1, 0xef4444];
+        lens.forEach((len, i) => {
+          const p = pendulumMesh(THREE, len, colors[i]);
+          p.position.set(i * 2, 2.8, 0);
+          s.scene.add(p);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagF = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('T'); } catch (e) { console.error('[pendulum] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[pendulum] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[pendulum] charts failed', e); }
         if (window.THREE) {
-          try { initPendulum(); } catch (e) { console.error('[pendulum] scene failed', e); el('pend3d-fallback').classList.remove('hidden'); }
-        } else { el('pend3d-fallback').classList.remove('hidden'); }
-        mountResize([pend]);
+          try { initDiagVectors(); } catch (e) { console.error('[pendulum] vector diagram failed', e); }
+          try { initDiagFamily(); } catch (e) { console.error('[pendulum] family diagram failed', e); }
+        }
+        mountResize([diagV, diagF]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

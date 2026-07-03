@@ -153,21 +153,19 @@ const related = [
   <!-- ============ VIZ: 3D energy-level platforms + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D energy levels</h2>
-      <p class="mt-1 text-sm text-slate-500">Reactants sit on one platform, products on the other, at heights set by their ΔHf°. A drop from reactants to products means an exothermic reaction; a rise means endothermic. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-2">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Reactants ΔHf° <span id="out-vreact" class="font-mono text-green-600">−75.0 kJ/mol</span></span>
-          <input id="v-react" type="range" min="-400" max="100" step="1" value="-75" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Products ΔHf° <span id="out-vprod" class="font-mono text-green-600">−965.1 kJ/mol</span></span>
-          <input id="v-prod" type="range" min="-1200" max="100" step="1" value="-965" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-exo" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Exothermic: products end up lower</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-red-500">reactant platform</span> sits higher than the <span class="font-semibold text-emerald-600">product platform</span>. The drop in enthalpy is released as heat — ΔH is negative.</p>
+        </div>
+        <div>
+          <div id="diag-endo" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Endothermic: products end up higher</h3>
+          <p class="mt-1 text-sm text-slate-600">Here the <span class="font-semibold text-emerald-600">product platform</span> sits above the <span class="font-semibold text-red-500">reactant platform</span> — the reaction must absorb heat from its surroundings to climb that rise. ΔH is positive.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Live ΔH_rxn = <span id="out-vdh" class="font-mono font-bold">−890.0 kJ</span> · <span id="out-vlabel" class="font-semibold">Exothermic</span></div>
-      <div id="enthalpy3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="enthalpy3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -212,27 +210,12 @@ const related = [
         if (dh < 0) el('r-class').textContent = 'Exothermic (releases heat)';
         else if (dh > 0) el('r-class').textContent = 'Endothermic (absorbs heat)';
         else el('r-class').textContent = 'Thermoneutral (ΔH = 0)';
+        try { if (charts.ready) updateCharts({ react: reactants, prod: products, dh }); } catch (e) {}
       }
       ['r1-coeff', 'r1-dhf', 'r2-coeff', 'r2-dhf', 'p1-coeff', 'p1-dhf', 'p2-coeff', 'p2-dhf'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let scene3d = null;
-      function vState() {
-        const react = parseFloat(el('v-react').value), prod = parseFloat(el('v-prod').value);
-        return { react, prod, dh: prod - react };
-      }
-      function onV() {
-        const s = vState();
-        el('out-vreact').textContent = s.react.toFixed(1) + ' kJ/mol';
-        el('out-vprod').textContent = s.prod.toFixed(1) + ' kJ/mol';
-        el('out-vdh').textContent = fmt(s.dh) + ' kJ';
-        el('out-vlabel').textContent = s.dh < 0 ? 'Exothermic' : (s.dh > 0 ? 'Endothermic' : 'Thermoneutral');
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('v-react').addEventListener('input', onV);
-      el('v-prod').addEventListener('input', onV);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -254,7 +237,7 @@ const related = [
           options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'ΔH (kJ/mol)' } } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(vState());
+        updateCharts({ react: -74.8, prod: -965.1, dh: -890.3 });
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -264,54 +247,51 @@ const related = [
         charts.examples.update();
       }
 
-      // ---- interactive energy-level scene ----
-      function initScene() {
-        const c = el('enthalpy3d'); if (!c) throw new Error('no enthalpy3d');
-        const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
-
+      // ---- energy-level platform builder (static, for both diagrams) ----
+      function energyLevelScene(container, yReact, yProd) {
+        const s = makeScene(container, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
         const reactMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
         const prodMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.4 });
         const connectMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.6, transparent: true, opacity: 0.6 });
-        let reactPlat = null, prodPlat = null, connector = null;
 
-        function scaleH(v) { return v / 60; } // kJ/mol -> scene units, roughly ±20 units for ±1200 kJ/mol range
+        const reactPlat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 3), reactMat);
+        reactPlat.position.set(-3, yReact, 0);
+        s.scene.add(reactPlat);
 
-        function update(state) {
-          const yReact = scaleH(state.react);
-          const yProd = scaleH(state.prod);
-          if (reactPlat) { s.scene.remove(reactPlat); reactPlat.geometry.dispose(); }
-          if (prodPlat) { s.scene.remove(prodPlat); prodPlat.geometry.dispose(); }
-          if (connector) { s.scene.remove(connector); connector.geometry.dispose(); }
+        const prodPlat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 3), prodMat);
+        prodPlat.position.set(3, yProd, 0);
+        s.scene.add(prodPlat);
 
-          reactPlat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 3), reactMat);
-          reactPlat.position.set(-3, yReact, 0);
-          s.scene.add(reactPlat);
+        const dy = yProd - yReact;
+        const len = Math.sqrt(36 + dy * dy);
+        const connector = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, len, 12), connectMat);
+        connector.position.set(0, (yReact + yProd) / 2, 0);
+        connector.rotation.z = Math.atan2(dy, 6) + Math.PI / 2;
+        s.scene.add(connector);
 
-          prodPlat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 3), prodMat);
-          prodPlat.position.set(3, yProd, 0);
-          s.scene.add(prodPlat);
-
-          const dy = yProd - yReact;
-          const len = Math.sqrt(36 + dy * dy);
-          connector = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, len, 12), connectMat);
-          connector.position.set(0, (yReact + yProd) / 2, 0);
-          connector.rotation.z = Math.atan2(dy, 6) + Math.PI / 2;
-          s.scene.add(connector);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(vState());
+        return { resize: s.resize };
+      }
+
+      let diagExo = null, diagEndo = null;
+      function initDiagExo() {
+        const c = el('diag-exo'); if (!c) throw new Error('no container');
+        diagExo = energyLevelScene(c, 3, -2.5); // reactants higher, products lower — exothermic
+      }
+      function initDiagEndo() {
+        const c = el('diag-endo'); if (!c) throw new Error('no container');
+        diagEndo = energyLevelScene(c, -2.5, 3); // reactants lower, products higher — endothermic
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[enthalpy] calc init failed', e); }
-        try { onV(); } catch (e) { console.error('[enthalpy] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[enthalpy] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[enthalpy] scene failed', e); el('enthalpy3d-fallback').classList.remove('hidden'); }
-        } else { el('enthalpy3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagExo(); } catch (e) { console.error('[enthalpy] exothermic diagram failed', e); }
+          try { initDiagEndo(); } catch (e) { console.error('[enthalpy] endothermic diagram failed', e); }
+        }
+        mountResize([diagExo, diagEndo]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

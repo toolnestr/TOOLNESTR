@@ -139,28 +139,22 @@ const related = [
     <p id="tq-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D lever + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D lever arm</h2>
-      <p class="mt-1 text-sm text-slate-500">A rigid arm of length r pivots at the centre. The red arrow is the applied force at angle θ to the arm; the arm rotates faster as torque grows. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Lever arm r <span id="out-br" class="font-mono text-indigo-600">0.30 m</span></span>
-          <input id="b-r" type="range" min="0.05" max="1" step="0.01" value="0.3" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Force F <span id="out-bf" class="font-mono text-indigo-600">150 N</span></span>
-          <input id="b-f" type="range" min="5" max="500" step="5" value="150" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Angle θ <span id="out-btheta" class="font-mono text-indigo-600">90°</span></span>
-          <input id="b-theta" type="range" min="0" max="180" step="1" value="90" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-lever" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Torque needs a lever arm, force, and angle</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">indigo</span> arm of length r pivots at the centre. The <span class="font-semibold text-red-500">red</span> force arrow is applied at angle θ to the arm — only its perpendicular component actually twists the arm.</p>
+        </div>
+        <div>
+          <div id="diag-sine" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Torque follows a sine curve</h3>
+          <p class="mt-1 text-sm text-slate-600">Three lever arms (short, medium, long) traced as τ vs θ — every curve peaks at 90° and hits zero at 0° and 180°, because torque scales with sinθ.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">Torque τ = <span id="out-btau" class="font-mono font-bold">45.0 N·m</span></div>
-      <div id="lever3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="lever3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -180,7 +174,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
       const D2R = Math.PI / 180;
 
@@ -255,26 +249,9 @@ const related = [
       el('mode-theta').addEventListener('click', () => switchSolve('theta'));
       ['tau', 'r', 'f', 'theta'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts shared state ----
+      // ---- charts shared state ----
       const charts = {};
-      let lever = null;
-      function bState() {
-        const r = parseFloat(el('b-r').value), F = parseFloat(el('b-f').value), theta = parseFloat(el('b-theta').value);
-        const tau = r * F * Math.sin(theta * D2R);
-        return { r, F, theta, tau };
-      }
-      function onB() {
-        const s = bState();
-        el('out-br').textContent = s.r.toFixed(2) + ' m';
-        el('out-bf').textContent = s.F.toFixed(0) + ' N';
-        el('out-btheta').textContent = s.theta.toFixed(0) + '°';
-        el('out-btau').textContent = fmt(s.tau) + ' N·m';
-        try { if (lever) lever.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-r').addEventListener('input', onB);
-      el('b-f').addEventListener('input', onB);
-      el('b-theta').addEventListener('input', onB);
+      const B = { r: 0.3, F: 150, theta: 90 };
 
       function initCharts() {
         if (!window.Chart) return;
@@ -290,7 +267,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Lever arm r (m)' } }, y: { title: { display: true, text: 'Torque (N·m)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts(B);
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -303,62 +280,60 @@ const related = [
         charts.r.data.labels = L2; charts.r.data.datasets[0].data = D2; charts.r.update();
       }
 
-      // ---- 3D lever scene ----
-      function initLever() {
-        const c = el('lever3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 10, new THREE.Vector3(0, 0.5, 0), OPTS);
-        s.scene.add(new THREE.GridHelper(14, 14, 0xcbd5e1, 0xe2e8f0));
-        const pivot = new THREE.Group();
-        s.scene.add(pivot);
-        const pivotMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
-        const pivotMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.6, 20), pivotMat);
-        pivotMesh.rotation.x = Math.PI / 2; pivot.add(pivotMesh);
-
-        const armGroup = new THREE.Group();
-        pivot.add(armGroup);
-        const armMat = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
-        let arm = null, forceArrow = null, torqueRing = null;
-        let angVel = 0, angPos = 0;
-
-        function rebuild(state) {
-          if (arm) { armGroup.remove(arm); arm.geometry.dispose(); }
-          const len = Math.max(0.3, state.r * 6);
-          arm = new THREE.Mesh(new THREE.BoxGeometry(len, 0.22, 0.22), armMat);
-          arm.position.x = len / 2;
-          armGroup.add(arm);
-
-          if (forceArrow) { armGroup.remove(forceArrow); forceArrow = null; }
-          const fLen = Math.min(3, 0.4 + state.F / 150);
-          const rad = state.theta * D2R;
-          const dir = new THREE.Vector3(Math.cos(rad), Math.sin(rad), 0).normalize();
-          const tip = new THREE.Vector3(len, 0, 0);
-          const origin = tip.clone().sub(dir.clone().multiplyScalar(fLen));
-          forceArrow = new THREE.ArrowHelper(dir, origin, fLen, 0xef4444, Math.min(0.5, fLen * 0.3), 0.28);
-          armGroup.add(forceArrow);
-        }
-        function update(state) {
-          rebuild(state);
-          const maxTau = Math.max(1, 1 * 500); // rough normaliser (r_max=1 * F_max=500)
-          angVel = reduceMotion ? 0 : Math.sign(state.tau || 1) * Math.min(0.05, Math.abs(state.tau) / maxTau * 4);
-        }
-        function frame() {
-          requestAnimationFrame(frame);
-          if (!reduceMotion) { angPos += angVel; armGroup.rotation.z = angPos; s.spin(0.0008); }
-          s.renderer.render(s.scene, s.camera);
-        }
+      // ---- Diagram 1: lever arm, force vector at angle theta, static snapshot (auto-rotating) ----
+      let diagLever = null;
+      function initDiagLever() {
+        const c = el('diag-lever'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(1.5, 0.6, 0), OPTS);
+        s.scene.add(new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7));
+        const pivot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 20), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+        pivot.rotation.x = Math.PI / 2; s.scene.add(pivot);
+        const len = 3.2;
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+        arm.position.x = len / 2; s.scene.add(arm);
+        const theta = 60 * D2R;
+        const tip = new THREE.Vector3(len, 0, 0);
+        const fLen = 1.8;
+        const dir = new THREE.Vector3(Math.cos(theta), Math.sin(theta), 0);
+        const origin = tip.clone().sub(dir.clone().multiplyScalar(fLen));
+        s.scene.add(arrow(origin, tip, 0xef4444));
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        lever = { update, resize: s.resize };
-        update(bState());
+        diagLever = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: family of torque-vs-angle sine curves at different r ----
+      let diagSine = null;
+      function initDiagSine() {
+        const c = el('diag-sine'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 12, new THREE.Vector3(4, 2, 0), OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(4, 0, 0); s.scene.add(grid);
+        const F = 150;
+        const radii = [0.15, 0.3, 0.5];
+        radii.forEach((r) => {
+          const pts = [];
+          for (let th = 0; th <= 180; th += 6) {
+            const x = (th / 180) * 8;
+            const y = r * F * Math.sin(th * D2R) * 0.03;
+            pts.push(new THREE.Vector3(x, y, 0));
+          }
+          const col = r === 0.3 ? 0x4f46e5 : 0x94a3b8;
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: r !== 0.3, opacity: r === 0.3 ? 1 : 0.7 }));
+          s.scene.add(line);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagSine = { resize: s.resize };
       }
 
       function boot() {
         try { switchSolve('tau'); update(); } catch (e) { console.error('[torque] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[torque] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[torque] charts failed', e); }
         if (window.THREE) {
-          try { initLever(); } catch (e) { console.error('[torque] 3D failed', e); el('lever3d-fallback').classList.remove('hidden'); }
-        } else { el('lever3d-fallback').classList.remove('hidden'); }
-        mountResize([lever]);
+          try { initDiagLever(); } catch (e) { console.error('[torque] lever diagram failed', e); }
+          try { initDiagSine(); } catch (e) { console.error('[torque] sine diagram failed', e); }
+        }
+        mountResize([diagLever, diagSine]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

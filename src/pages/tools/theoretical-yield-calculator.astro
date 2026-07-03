@@ -142,17 +142,22 @@ const related = [
     <p id="ty-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: 3D reactant-to-product piles + charts + script ============ -->
+  <!-- ============ VIZ: standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D reactant → product</h2>
-      <p class="mt-1 text-sm text-slate-500">The left pile (reactant) is sized by moles; the right pile (product) is sized by moles of product after applying the mole ratio. Drag the slider to change reactant mass and watch the product pile respond. Drag to orbit.</p>
-      <label class="mt-3 block">
-        <span class="flex items-center justify-between text-sm font-medium text-slate-700">Reactant mass (live) <span id="out-rmass" class="font-mono text-green-600">10.0 g</span></span>
-        <input id="b-rmass" type="range" min="1" max="50" step="0.5" value="10" class="mt-2 w-full accent-green-600" />
-      </label>
-      <div id="ty3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:320px;"></div>
-      <p id="ty3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-piles" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. The mole ratio can shrink or match the pile</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-indigo-600">left pile</span> (reactant, in moles) converts into the <span class="font-semibold text-emerald-600">right pile</span> (product, in moles) using the mole ratio from the balanced equation — here NH₃:H₂ = 2:3, so the product pile ends up smaller.</p>
+        </div>
+        <div>
+          <div id="diag-bars" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Theoretical yield scales linearly with mass</h3>
+          <p class="mt-1 text-sm text-slate-600">Three reactant masses, same mole ratio and molar masses — doubling the starting mass simply doubles the theoretical yield.</p>
+        </div>
+      </div>
     </section>
 
     <section class="mt-10 no-print">
@@ -196,26 +201,6 @@ const related = [
       }
       ['r-mass', 'r-molar', 'r-coeff', 'p-coeff', 'p-molar'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts state ----
-      function bState() {
-        const rmass = parseFloat(el('b-rmass').value);
-        const molar = parseFloat(el('r-molar').value) || 26.98;
-        const rCoeff = parseFloat(el('r-coeff').value) || 1;
-        const pCoeff = parseFloat(el('p-coeff').value) || 1;
-        const pMolar = parseFloat(el('p-molar').value) || 1;
-        const molReactant = rmass / molar;
-        const molProduct = molReactant * (pCoeff / rCoeff);
-        return { rmass, molReactant, molProduct, pMolar, theoYield: molProduct * pMolar };
-      }
-      let scene3d = null;
-      function onSlider() {
-        const s = bState();
-        el('out-rmass').textContent = s.rmass.toFixed(1) + ' g';
-        try { if (scene3d) scene3d.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(); } catch (e) {}
-      }
-      el('b-rmass').addEventListener('input', onSlider);
-
       // ---- charts ----
       const charts = {};
       function initCharts() {
@@ -256,49 +241,64 @@ const related = [
         charts.yieldmm.data.labels = L2; charts.yieldmm.data.datasets[0].data = D2; charts.yieldmm.update();
       }
 
-      // ---- 3D reactant -> product piles ----
-      function initScene() {
-        const c = el('ty3d'); if (!c) throw new Error('no ty3d container');
+      // ---- standalone 3D diagrams (static, auto-rotating) ----
+      function pileLayout(pile, count, cx) {
+        const perRow = 6;
+        for (let i = 0; i < pile.length; i++) {
+          const p = pile[i];
+          if (i < count) {
+            const row = Math.floor(i / perRow), col = i % perRow;
+            p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
+            p.visible = true;
+          } else p.visible = false;
+        }
+      }
+
+      // ---- diagram 1: reactant pile -> product pile (static, mole-ratio 2:3 example) ----
+      function initDiagPiles() {
+        const c = el('diag-piles'); if (!c) throw new Error('no container');
         const s = makeScene(c, 14, new THREE.Vector3(0, 0, 0), SCENE_OPTS);
         const matR = new THREE.MeshStandardMaterial({ color: 0x6366f1 });
         const matP = new THREE.MeshStandardMaterial({ color: 0x10b981 });
-        const MAX_P = 60;
+        const MAX_P = 24;
         const geo = new THREE.SphereGeometry(0.35, 12, 12);
         const pilesR = [], pilesP = [];
         for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matR); p.visible = false; s.scene.add(p); pilesR.push(p); }
         for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(geo, matP); p.visible = false; s.scene.add(p); pilesP.push(p); }
-
-        function layout(pile, count, cx) {
-          const perRow = 6;
-          for (let i = 0; i < pile.length; i++) {
-            const p = pile[i];
-            if (i < count) {
-              const row = Math.floor(i / perRow), col = i % perRow;
-              p.position.set(cx + (col - (perRow - 1) / 2) * 0.85, row * 0.85 - 2, 0);
-              p.visible = true;
-            } else p.visible = false;
-          }
-        }
-        function update(state) {
-          const nR = Math.max(1, Math.min(MAX_P, Math.round(state.molReactant * 6)));
-          const nP = Math.max(1, Math.min(MAX_P, Math.round(state.molProduct * 6)));
-          layout(pilesR, nR, -3.2);
-          layout(pilesP, nP, 3.2);
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0014); s.renderer.render(s.scene, s.camera); }
+        pileLayout(pilesR, 18, -3.2);           // reactant: 18 units
+        pileLayout(pilesP, 12, 3.2);            // product: 18 * (2/3) = 12 units
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3d = { update, resize: s.resize };
-        update(bState());
+        diagPiles = { resize: s.resize };
       }
+
+      // ---- diagram 2: theoretical-yield bars for three illustrative reactant masses ----
+      function initDiagBars() {
+        const c = el('diag-bars'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(0, 1.2, 0), SCENE_OPTS);
+        const grid = new THREE.GridHelper(10, 10, 0xe2e8f0, 0xeef2f7); s.scene.add(grid);
+        const masses = [10, 20, 30]; // g, illustrative
+        const spacing = 2.4, startX = -spacing;
+        masses.forEach((m, i) => {
+          const h = (m / 30) * 4.5;
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, h, 1.2), new THREE.MeshStandardMaterial({ color: 0x6366f1 }));
+          bar.position.set(startX + i * spacing, -2.25 + h / 2, 0);
+          s.scene.add(bar);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagBars = { resize: s.resize };
+      }
+      let diagPiles = null, diagBars = null;
 
       function boot() {
         try { update(); } catch (e) { console.error('[theoretical-yield] calc init failed', e); }
-        try { onSlider(); } catch (e) { console.error('[theoretical-yield] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[theoretical-yield] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[theoretical-yield] scene failed', e); el('ty3d-fallback').classList.remove('hidden'); }
-        } else { el('ty3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3d]);
+          try { initDiagPiles(); } catch (e) { console.error('[theoretical-yield] piles diagram failed', e); }
+          try { initDiagBars(); } catch (e) { console.error('[theoretical-yield] bars diagram failed', e); }
+        }
+        mountResize([diagPiles, diagBars]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

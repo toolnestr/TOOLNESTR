@@ -150,28 +150,23 @@ const related = [
     <p id="sl-err" class="mt-1 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D bending ray + charts + script ============ -->
+  <!-- ============ VIZ: two static 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D refraction</h2>
-      <p class="mt-1 text-sm text-slate-500">A light ray travels through medium 1, hits a flat interface (shown as a plane), and bends into medium 2. The dashed line is the normal. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">n1 <span id="out-bn1" class="font-mono text-indigo-600">1.00</span></span>
-          <input id="b-n1" type="range" min="1" max="2.5" step="0.01" value="1.00" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">n2 <span id="out-bn2" class="font-mono text-indigo-600">1.33</span></span>
-          <input id="b-n2" type="range" min="1" max="2.5" step="0.01" value="1.33" class="mt-2 w-full accent-indigo-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">θ1 <span id="out-bt1" class="font-mono text-indigo-600">30.0°</span></span>
-          <input id="b-t1" type="range" min="0" max="89" step="0.5" value="30" class="mt-2 w-full accent-indigo-600" />
-        </label>
+      <h2 class="text-lg font-bold text-slate-900">3D refraction diagrams</h2>
+      <p class="mt-1 text-sm text-slate-500">Two static, auto-rotating scenes: how the bend angle changes with the angle of incidence, and what happens beyond the critical angle.</p>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-refraction" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Bend angle grows with incidence angle</h3>
+          <p class="mt-1 text-sm text-slate-600">Two incident/refracted ray pairs at air→water (n1=1.00, n2=1.33): a shallow 20° hit (<span class="font-semibold text-slate-500">gray</span>) bends only a little, while a steeper 50° hit (<span class="font-semibold text-indigo-600">indigo</span>) bends much more. Both stay on the same side of the dashed normal.</p>
+        </div>
+        <div>
+          <div id="diag-tir" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Total internal reflection</h3>
+          <p class="mt-1 text-sm text-slate-600">Light inside glass (n1=1.50) hitting a glass→air boundary at 60° — beyond the ≈41.8° critical angle. No ray escapes into the air; instead it fully reflects back into the glass (<span class="font-semibold text-red-500">red</span>) at the same angle from the normal.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-indigo-50 p-3 text-center text-sm text-indigo-700">θ2 = <span id="out-bt2" class="font-mono font-bold">22.08°</span> <span id="out-btir" class="font-semibold text-red-600"></span></div>
-      <div id="refraction3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="refraction3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -192,7 +187,7 @@ const related = [
     <script is:inline>
     (function () {
       'use strict';
-      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const { el, reduceMotion, fmtSig: fmt, makeScene, arrow, mountResize, chartSetup } = window.STK;
       const OPTS = { ambient: 0.85, dirLight: 0.55, azim: 0.9, pol: 1.15, polMin: 0.25, polMax: Math.PI / 2 + 0.15 };
       const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 
@@ -282,29 +277,8 @@ const related = [
       document.querySelectorAll('[data-preset-n1]').forEach((b) => b.addEventListener('click', () => { el('n1').value = b.getAttribute('data-preset-n1'); update(); }));
       document.querySelectorAll('[data-preset-n2]').forEach((b) => b.addEventListener('click', () => { el('n2').value = b.getAttribute('data-preset-n2'); update(); }));
 
-      // ---- 3D + charts shared state ----
+      // ---- charts shared state ----
       const charts = {};
-      let scene3 = null;
-      function bState() {
-        const n1 = parseFloat(el('b-n1').value), n2 = parseFloat(el('b-n2').value), t1 = parseFloat(el('b-t1').value);
-        const s2 = (n1 * Math.sin(t1 * D2R)) / n2;
-        const tir = s2 > 1;
-        const t2 = tir ? null : Math.asin(s2) * R2D;
-        return { n1, n2, t1, t2, tir };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bn1').textContent = s.n1.toFixed(2);
-        el('out-bn2').textContent = s.n2.toFixed(2);
-        el('out-bt1').textContent = s.t1.toFixed(1) + '°';
-        el('out-bt2').textContent = s.tir ? '—' : fmt(s.t2) + '°';
-        el('out-btir').textContent = s.tir ? '(total internal reflection)' : '';
-        try { if (scene3) scene3.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-n1').addEventListener('input', onB);
-      el('b-n2').addEventListener('input', onB);
-      el('b-t1').addEventListener('input', onB);
 
       function initCharts() {
         if (!window.Chart) return;
@@ -329,70 +303,76 @@ const related = [
       }
       function updateCharts(s) { /* charts show fixed reference curves; nothing dynamic to update */ }
 
-      // ---- 3D bending-ray scene ----
-      function initScene() {
-        const c = el('refraction3d'); if (!c) throw new Error('no container');
-        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), OPTS);
-
+      // ---- static diagram helpers ----
+      function addInterface(s) {
         const planeMat = new THREE.MeshStandardMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
         const plane = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), planeMat);
         plane.rotation.x = -Math.PI / 2;
         s.scene.add(plane);
+        s.scene.add(new THREE.GridHelper(8, 8, 0xcbd5e1, 0xe2e8f0));
 
         const normalGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -3, 0), new THREE.Vector3(0, 3, 0)]);
         const normalMat = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.15, gapSize: 0.1 });
         const normalLine = new THREE.Line(normalGeo, normalMat);
         normalLine.computeLineDistances();
         s.scene.add(normalLine);
+      }
 
-        let incidentLine = null, refractedLine = null, reflectedLine = null;
-        const incidentMat = new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 });
-        const refractedMat = new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2 });
-        const reflectedMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 });
+      // ---- Diagram 1: refraction at two incidence angles ----
+      let diagRefraction = null;
+      function initDiagRefraction() {
+        const c = el('diag-refraction'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), OPTS);
+        addInterface(s);
 
-        function mkLine(p1, p2, mat) {
-          const g = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-          return new THREE.Line(g, mat);
-        }
-
-        function update(state) {
-          if (incidentLine) { s.scene.remove(incidentLine); incidentLine = null; }
-          if (refractedLine) { s.scene.remove(refractedLine); refractedLine = null; }
-          if (reflectedLine) { s.scene.remove(reflectedLine); reflectedLine = null; }
-
-          const R = 3.2;
-          const t1r = state.t1 * D2R;
-          // Incident ray comes from above, in medium 1 (y > 0), travelling down toward origin.
+        const R = 3.2;
+        function addPair(t1deg, n1, n2, color) {
+          const t1r = t1deg * D2R;
           const inStart = new THREE.Vector3(-Math.sin(t1r) * R, Math.cos(t1r) * R, 0);
-          incidentLine = mkLine(inStart, new THREE.Vector3(0, 0, 0), incidentMat);
-          s.scene.add(incidentLine);
-
-          if (state.tir) {
-            // Reflect back into medium 1 at the same angle.
-            const reflEnd = new THREE.Vector3(Math.sin(t1r) * R, Math.cos(t1r) * R, 0);
-            reflectedLine = mkLine(new THREE.Vector3(0, 0, 0), reflEnd, reflectedMat);
-            s.scene.add(reflectedLine);
-          } else {
-            const t2r = state.t2 * D2R;
+          s.scene.add(arrow(inStart, new THREE.Vector3(0, 0, 0), color));
+          const s2 = (n1 * Math.sin(t1r)) / n2;
+          if (s2 <= 1) {
+            const t2r = Math.asin(s2);
             const outEnd = new THREE.Vector3(Math.sin(t2r) * R, -Math.cos(t2r) * R, 0);
-            refractedLine = mkLine(new THREE.Vector3(0, 0, 0), outEnd, refractedMat);
-            s.scene.add(refractedLine);
+            s.scene.add(arrow(new THREE.Vector3(0, 0, 0), outEnd, color));
           }
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0012); s.renderer.render(s.scene, s.camera); }
+        addPair(20, 1.00, 1.33, 0x94a3b8);
+        addPair(50, 1.00, 1.33, 0x6366f1);
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
         frame();
-        scene3 = { update, resize: s.resize };
-        update(bState());
+        diagRefraction = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: total internal reflection ----
+      let diagTIR = null;
+      function initDiagTIR() {
+        const c = el('diag-tir'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 9, new THREE.Vector3(0, 0, 0), OPTS);
+        addInterface(s);
+
+        const R = 3.2;
+        const t1deg = 60; // beyond the ~41.8° critical angle for glass (1.50) -> air (1.00)
+        const t1r = t1deg * D2R;
+        const inStart = new THREE.Vector3(-Math.sin(t1r) * R, Math.cos(t1r) * R, 0);
+        s.scene.add(arrow(inStart, new THREE.Vector3(0, 0, 0), 0xef4444));
+        const reflEnd = new THREE.Vector3(Math.sin(t1r) * R, Math.cos(t1r) * R, 0);
+        s.scene.add(arrow(new THREE.Vector3(0, 0, 0), reflEnd, 0xef4444));
+
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagTIR = { resize: s.resize };
       }
 
       function boot() {
         try { switchSolve('t2'); update(); } catch (e) { console.error('[snells-law] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[snells-law] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[snells-law] charts failed', e); }
         if (window.THREE) {
-          try { initScene(); } catch (e) { console.error('[snells-law] 3D failed', e); el('refraction3d-fallback').classList.remove('hidden'); }
-        } else { el('refraction3d-fallback').classList.remove('hidden'); }
-        mountResize([scene3]);
+          try { initDiagRefraction(); } catch (e) { console.error('[snells-law] refraction diagram failed', e); }
+          try { initDiagTIR(); } catch (e) { console.error('[snells-law] TIR diagram failed', e); }
+        }
+        mountResize([diagRefraction, diagTIR]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

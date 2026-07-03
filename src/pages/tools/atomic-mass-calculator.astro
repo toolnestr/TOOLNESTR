@@ -128,14 +128,22 @@ const related = [
     <p id="mass-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D atom cluster + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D atom cluster</h2>
-      <p class="mt-1 text-sm text-slate-500">Spheres represent the atoms in your formula, sized and coloured by element. Display is capped at 40 atoms for performance — it is illustrative, not to scale or a real molecular structure. Drag to orbit (touch works too).</p>
-      <div id="cluster3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="cluster3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
-      <p id="cluster3d-cap" class="mt-2 hidden text-center text-xs text-slate-400"></p>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-cluster" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. A molecule is a cluster of atoms</h3>
+          <p class="mt-1 text-sm text-slate-600">A water-style cluster of spheres, sized and coloured by element. It is illustrative only — not to scale and not a real molecular structure — but it shows why molar mass is a property of the whole group, not one atom.</p>
+        </div>
+        <div>
+          <div id="diag-sum" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Molar mass is just a sum of parts</h3>
+          <p class="mt-1 text-sm text-slate-600">Each stacked block represents one element's mass contribution (count × atomic mass) for H₂O. Stack them up and the total height is the molar mass — addition, nothing more.</p>
+        </div>
+      </div>
     </section>
 
     <section class="mt-10 no-print">
@@ -219,7 +227,6 @@ const related = [
       // ---- calculator state shared with viz ----
       let lastResult = null; // { counts, total, atomCount, elemCount }
       const charts = {};
-      let cluster = null;
 
       function update() {
         const f = el('formula').value.trim();
@@ -253,59 +260,6 @@ const related = [
         refreshViz();
       }
       el('formula').addEventListener('input', update);
-
-      // ---- 3D atom cluster ----
-      const MAX_ATOMS = 40;
-      function initCluster() {
-        const c = el('cluster3d'); if (!c) throw new Error('no cluster container');
-        const s = makeScene(c, 8, new window.THREE.Vector3(0, 0, 0), MOL_OPTS);
-        const THREE = window.THREE;
-        const geo = new THREE.SphereGeometry(1, 16, 16);
-        const spheres = [];
-        for (let i = 0; i < MAX_ATOMS; i++) {
-          const mat = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4 });
-          const sph = new THREE.Mesh(geo, mat);
-          sph.visible = false;
-          s.scene.add(sph);
-          spheres.push(sph);
-        }
-        function layout(counts) {
-          // flatten counts into an ordered list of symbols, capped at MAX_ATOMS
-          const list = [];
-          if (counts) {
-            for (const sym in counts) {
-              for (let k = 0; k < counts[sym]; k++) list.push(sym);
-            }
-          }
-          const shown = list.slice(0, MAX_ATOMS);
-          const capped = list.length > MAX_ATOMS;
-          el('cluster3d-cap').classList.toggle('hidden', !capped);
-          if (capped) el('cluster3d-cap').textContent = `Showing ${MAX_ATOMS} of ${list.length} atoms (capped for performance).`;
-
-          const n = shown.length;
-          for (let i = 0; i < MAX_ATOMS; i++) {
-            const sph = spheres[i];
-            if (i < n) {
-              const sym = shown[i];
-              sph.visible = true;
-              sph.material.color.setHex(colorFor(sym));
-              sph.scale.setScalar(radiusFor(sym));
-              // simple spherical packing: golden-angle distribution on a sphere shell, with radius scaled by n
-              const R = 1.1 + Math.cbrt(n) * 0.55;
-              const gAngle = Math.PI * (3 - Math.sqrt(5));
-              const yFrac = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
-              const rad = Math.sqrt(Math.max(0, 1 - yFrac * yFrac));
-              const theta = gAngle * i;
-              sph.position.set(Math.cos(theta) * rad * R, yFrac * R, Math.sin(theta) * rad * R);
-            } else {
-              sph.visible = false;
-            }
-          }
-        }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0018); s.renderer.render(s.scene, s.camera); }
-        frame();
-        cluster = { layout, resize: s.resize };
-      }
 
       // ---- charts ----
       const COMPARE_COMPOUNDS = [
@@ -364,17 +318,59 @@ const related = [
       }
 
       function refreshViz() {
-        try { if (cluster) cluster.layout(lastResult ? lastResult.counts : null); } catch (e) {}
         try { updateCharts(); } catch (e) {}
+      }
+
+      // ================= THREE.js STANDALONE DIAGRAMS =================
+      let diagCluster = null, diagSum = null;
+
+      // ---- Diagram 1: static water-molecule-style atom cluster (auto-rotating) ----
+      function initDiagCluster() {
+        const c = el('diag-cluster'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const oxygen = new THREE.Mesh(new THREE.SphereGeometry(radiusFor('O'), 20, 20), new THREE.MeshStandardMaterial({ color: colorFor('O'), roughness: 0.4 }));
+        oxygen.position.set(0, 0, 0); s.scene.add(oxygen);
+        const hRadius = radiusFor('H');
+        const angle = 104.5 * Math.PI / 180;
+        const bond = 1.4;
+        const h1 = new THREE.Mesh(new THREE.SphereGeometry(hRadius, 20, 20), new THREE.MeshStandardMaterial({ color: colorFor('H'), roughness: 0.4 }));
+        h1.position.set(bond * Math.sin(angle / 2), bond * Math.cos(angle / 2), 0); s.scene.add(h1);
+        const h2 = new THREE.Mesh(new THREE.SphereGeometry(hRadius, 20, 20), new THREE.MeshStandardMaterial({ color: colorFor('H'), roughness: 0.4 }));
+        h2.position.set(-bond * Math.sin(angle / 2), bond * Math.cos(angle / 2), 0); s.scene.add(h2);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0035); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagCluster = { resize: s.resize };
+      }
+
+      // ---- Diagram 2: stacked blocks = sum of element mass contributions for H2O (auto-rotating) ----
+      function initDiagSum() {
+        const c = el('diag-sum'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 8, new THREE.Vector3(0, 1.5, 0), MOL_OPTS);
+        const parts = [
+          { label: 'H', mass: atomicMasses.H * 2, color: 0xf1f5f9 },
+          { label: 'O', mass: atomicMasses.O, color: 0xef4444 },
+        ];
+        let y = 0;
+        parts.forEach((p) => {
+          const h = Math.max(0.3, p.mass * 0.14);
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.6, h, 1.6), new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.4 }));
+          mesh.position.set(0, y + h / 2, 0);
+          s.scene.add(mesh);
+          y += h;
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagSum = { resize: s.resize };
       }
 
       function boot() {
         try { update(); } catch (e) { console.error('[molar-mass] calc init failed', e); }
         try { initCharts(); } catch (e) { console.error('[molar-mass] charts failed', e); }
         if (window.THREE) {
-          try { initCluster(); refreshViz(); } catch (e) { console.error('[molar-mass] cluster failed', e); el('cluster3d-fallback').classList.remove('hidden'); }
-        } else { el('cluster3d-fallback').classList.remove('hidden'); }
-        mountResize([cluster]);
+          try { initDiagCluster(); } catch (e) { console.error('[molar-mass] diagram 1 failed', e); }
+          try { initDiagSum(); } catch (e) { console.error('[molar-mass] diagram 2 failed', e); }
+        }
+        mountResize([diagCluster, diagSum]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();

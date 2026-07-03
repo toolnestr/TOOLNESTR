@@ -140,28 +140,22 @@ const related = [
     <p id="rr-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
   </div>
 
-  <!-- ============ VIZ: one interactive 3D beaker + charts + script ============ -->
+  <!-- ============ VIZ: two standalone 3D diagrams + charts + script ============ -->
   <div slot="viz">
     <section class="mt-8 no-print">
-      <h2 class="text-lg font-bold text-slate-900">Live 3D concentration change</h2>
-      <p class="mt-1 text-sm text-slate-500">Set the initial concentration, final concentration and elapsed time; the beaker’s particle density shows the concentration falling (reactant) or rising (product), and the rate updates live. Drag to orbit (touch works too).</p>
-      <div class="mt-3 grid gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[X]<sub>initial</sub> <span id="out-bci" class="font-mono text-green-600">0.50 M</span></span>
-          <input id="b-ci" type="range" min="0" max="2" step="0.01" value="0.5" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">[X]<sub>final</sub> <span id="out-bcf" class="font-mono text-green-600">0.35 M</span></span>
-          <input id="b-cf" type="range" min="0" max="2" step="0.01" value="0.35" class="mt-2 w-full accent-green-600" />
-        </label>
-        <label class="block">
-          <span class="flex items-center justify-between text-sm font-medium text-slate-700">Δt <span id="out-bdt" class="font-mono text-green-600">100 s</span></span>
-          <input id="b-dt" type="range" min="1" max="500" step="1" value="100" class="mt-2 w-full accent-green-600" />
-        </label>
+      <h2 class="text-xl font-bold text-slate-900">Two ideas that trip students up</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-density" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Reactant particles thin out over time</h3>
+          <p class="mt-1 text-sm text-slate-600">The <span class="font-semibold text-rose-500">left cluster</span> shows a dense group of reactant particles early in the reaction. The <span class="font-semibold text-rose-300">right cluster</span> shows the same reactant much later — fewer particles remain because they have been consumed.</p>
+        </div>
+        <div>
+          <div id="diag-decay" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Faster reactions decay more steeply</h3>
+          <p class="mt-1 text-sm text-slate-600">Three illustrative concentration-vs-time curves at different rates: the <span class="font-semibold text-amber-500">steep orange curve</span> falls fastest, the <span class="font-semibold text-emerald-600">green curve</span> is moderate, and the <span class="font-semibold text-slate-500">shallow grey curve</span> is slowest — same starting concentration, very different rate.</p>
+        </div>
       </div>
-      <div class="mt-2 rounded-xl bg-green-50 p-3 text-center text-sm text-green-700">Raw rate |Δ[X]/Δt| = <span id="out-brate" class="font-mono font-bold">—</span></div>
-      <div id="beaker3d" class="mt-3 w-full rounded-xl border border-slate-200 bg-gradient-to-b from-sky-50 to-white" style="height:340px;"></div>
-      <p id="beaker3d-fallback" class="mt-2 hidden text-center text-xs text-slate-400">3D view unavailable in this browser — the calculator, charts and content below still work.</p>
     </section>
 
     <section class="mt-10 no-print">
@@ -216,26 +210,8 @@ const related = [
       el('mode-prod').addEventListener('click', () => switchMode('product'));
       ['ci', 'cf', 'dt', 'coef'].forEach((id) => el(id).addEventListener('input', update));
 
-      // ---- 3D + charts ----
+      // ---- charts ----
       const charts = {};
-      let beaker = null;
-      function bState() {
-        const ci = parseFloat(el('b-ci').value), cf = parseFloat(el('b-cf').value), dt = parseFloat(el('b-dt').value);
-        return { ci, cf, dt, rate: dt > 0 ? Math.abs(cf - ci) / dt : 0 };
-      }
-      function onB() {
-        const s = bState();
-        el('out-bci').textContent = s.ci.toFixed(2) + ' M';
-        el('out-bcf').textContent = s.cf.toFixed(2) + ' M';
-        el('out-bdt').textContent = s.dt.toFixed(0) + ' s';
-        el('out-brate').textContent = fmt(s.rate) + ' M/s';
-        try { if (beaker) beaker.update(s); } catch (e) {}
-        try { if (charts.ready) updateCharts(s); } catch (e) {}
-      }
-      el('b-ci').addEventListener('input', onB);
-      el('b-cf').addEventListener('input', onB);
-      el('b-dt').addEventListener('input', onB);
-
       function initCharts() {
         if (!window.Chart) return;
         const base = chartSetup();
@@ -250,7 +226,7 @@ const related = [
           options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Δt (s)' } }, y: { title: { display: true, text: 'Rate (M/s)' }, beginAtZero: true } }, plugins: { legend: { display: false } } }),
         });
         charts.ready = true;
-        updateCharts(bState());
+        updateCharts({ ci: 0.5, cf: 0.35, dt: 100 });
       }
       function updateCharts(s) {
         if (!charts.ready) return;
@@ -274,49 +250,64 @@ const related = [
         charts.rdt.data.labels = L2; charts.rdt.data.datasets[0].data = D2; charts.rdt.update();
       }
 
-      // ---- interactive beaker ----
-      function glassBeaker(THREE) {
-        const g = new THREE.Group();
-        const glassMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, transparent: true, opacity: 0.25, roughness: 0.1, side: THREE.DoubleSide });
-        g.add(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 5, 40, 1, true), glassMat));
-        const bottom = new THREE.Mesh(new THREE.CircleGeometry(2.2, 40), glassMat); bottom.rotation.x = -Math.PI / 2; bottom.position.y = -2.5; g.add(bottom);
-        return g;
-      }
-      function initBeaker() {
-        const c = el('beaker3d'); if (!c) throw new Error('no beaker');
-        const s = makeScene(c, 12, new THREE.Vector3(0, 0, 0), MOL_OPTS);
-        s.scene.add(glassBeaker(THREE));
-        const liquidMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, roughness: 0.3 });
-        const liquid = new THREE.Mesh(new THREE.CylinderGeometry(2.08, 2.08, 4.6, 40), liquidMat);
-        liquid.position.y = -2.4 + 4.6 / 2; s.scene.add(liquid);
-        const MAX_P = 140;
-        const particleGeo = new THREE.SphereGeometry(0.11, 10, 10);
-        const particleMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e });
-        const particles = [];
-        for (let i = 0; i < MAX_P; i++) { const p = new THREE.Mesh(particleGeo, particleMat); p.visible = false; s.scene.add(p); particles.push(p); }
-        function update(state) {
-          const cShow = species === 'reactant' ? state.ci : state.cf;
-          const nShow = Math.max(0, Math.min(MAX_P, Math.round(cShow * 60)));
-          for (let i = 0; i < MAX_P; i++) {
-            const p = particles[i];
-            if (i < nShow) { const r = Math.sqrt(Math.random()) * 1.9, a = Math.random() * Math.PI * 2; p.position.set(Math.cos(a) * r, -2.4 + Math.random() * 4.6, Math.sin(a) * r); p.visible = true; }
-            else p.visible = false;
+      // ---- standalone 3D diagrams (static geometry, auto-rotating only) ----
+      let diagDensity = null, diagDecay = null;
+
+      // ---- diagram 1: two static particle clusters — dense (earlier) vs sparse (later) ----
+      function initDiagDensity() {
+        const c = el('diag-density'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 15, new THREE.Vector3(0, 0, 0), MOL_OPTS);
+        const geo = new THREE.SphereGeometry(0.16, 10, 10);
+        function cluster(cx, count, color, radius) {
+          const mat = new THREE.MeshStandardMaterial({ color });
+          for (let i = 0; i < count; i++) {
+            const r = Math.sqrt(Math.random()) * radius, a = Math.random() * Math.PI * 2, y = (Math.random() - 0.5) * radius * 1.6;
+            const p = new THREE.Mesh(geo, mat);
+            p.position.set(cx + Math.cos(a) * r, y, Math.sin(a) * r);
+            s.scene.add(p);
           }
         }
-        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0016); s.renderer.render(s.scene, s.camera); }
+        cluster(-3.2, 55, 0xf43f5e, 2.0);  // earlier time: dense
+        cluster(3.2, 16, 0xfda4af, 2.0);   // later time: sparse (reactant depleted)
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.0025); s.renderer.render(s.scene, s.camera); }
         frame();
-        beaker = { update, resize: s.resize };
-        update(bState());
+        diagDensity = { resize: s.resize };
+      }
+
+      // ---- diagram 2: family of concentration-vs-time decay curves at different rates ----
+      function initDiagDecay() {
+        const c = el('diag-decay'); if (!c) throw new Error('no container');
+        const s = makeScene(c, 14, new THREE.Vector3(4, 2, 0), MOL_OPTS);
+        const grid = new THREE.GridHelper(16, 16, 0xe2e8f0, 0xeef2f7); grid.position.set(5, 0, 0); s.scene.add(grid);
+        const ci = 1.0, N = 30;
+        const curves = [
+          { k: 0.05, color: 0x94a3b8 },  // slow
+          { k: 0.15, color: 0x10b981 },  // moderate
+          { k: 0.35, color: 0xf59e0b },  // fast
+        ];
+        curves.forEach((curve) => {
+          const pts = [];
+          for (let i = 0; i <= N; i++) {
+            const t = i * (10 / N);
+            const conc = ci * Math.exp(-curve.k * t * 3);
+            pts.push(new THREE.Vector3(t, conc * 7, 0));
+          }
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: curve.color }));
+          s.scene.add(line);
+        });
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        diagDecay = { resize: s.resize };
       }
 
       function boot() {
         try { switchMode('reactant'); } catch (e) { console.error('[reaction-rate] calc init failed', e); }
-        try { onB(); } catch (e) { console.error('[reaction-rate] slider init failed', e); }
         try { initCharts(); } catch (e) { console.error('[reaction-rate] charts failed', e); }
         if (window.THREE) {
-          try { initBeaker(); } catch (e) { console.error('[reaction-rate] beaker failed', e); el('beaker3d-fallback').classList.remove('hidden'); }
-        } else { el('beaker3d-fallback').classList.remove('hidden'); }
-        mountResize([beaker]);
+          try { initDiagDensity(); } catch (e) { console.error('[reaction-rate] density diagram failed', e); }
+          try { initDiagDecay(); } catch (e) { console.error('[reaction-rate] decay diagram failed', e); }
+        }
+        mountResize([diagDensity, diagDecay]);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
       else boot();
