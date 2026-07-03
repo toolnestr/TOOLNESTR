@@ -3,7 +3,26 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-02 (Batch-1 + Batch-2 + Batch-3 all complete — 55/55 tools built, 28 Physics + 27 Chemistry)
+**Last updated:** 2026-07-03 (60/60 tools built, 30 Physics + 30 Chemistry — 3D viz rule updated)
+
+## 3D visualization rule change (2026-07-03, commit `64d6f65` + follow-ups)
+
+**RULE CHANGE — supersedes the 2026-07-02 "one interactive 3D scene" depth policy.** The single
+input/slider-driven interactive Three.js scene used on every SubjectToolPage tool (Normality onward)
+was reported broken/not rendering by the site owner. It has been removed from all 45 affected tools
+and replaced with **two simple, non-interactive, auto-rotating standalone 3D diagrams** — the same
+pattern the original 10 Batch-1 flagships (Projectile Motion, Molarity, etc.) already use successfully.
+Each diagram: its own `makeScene()` call, static illustrative geometry (arrows, spheres, lines, bars —
+no sliders, no live-updating inputs), `s.spin()` auto-rotation in a plain `requestAnimationFrame` loop,
+wrapped in its own try/catch inside `boot()`. The 2 Chart.js charts on every tool are unaffected by this
+change. This is now documented directly in `src/components/SubjectToolPage.astro`'s header comment —
+**all new tools must be built with 2 static diagrams from the start, never a slider-driven 3D scene.**
+
+The Batch-1 flagships were explicitly left untouched during this fix (confirmed via exact-path git diff).
+The 45 affected tools were fixed via 12 parallel agents across several rounds; 3 files (Mole Ratio,
+Empirical Formula, Henderson-Hasselbalch) were finished by hand after their agents hit a session usage
+limit mid-task. Audited: all 45 files pass structural checks (calculator slot, viz slot, exactly 2 diagram
+containers, 2 chart canvases) and syntax validation (Node `new Function()`).
 
 ## Batch-3 extension — 5 more tools, 10→15 (2026-07-02, commit `cb59c25`)
 
