@@ -23,7 +23,8 @@ const faqs = [
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script is:inline src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script is:inline src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script is:inline src="https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.js"></script>
 
   <style is:inline>
     :root {
@@ -98,21 +99,25 @@ const faqs = [
     .sa-score-main .num { font-size: clamp(2.2rem, 7vw, 3.2rem); font-weight: 700; color: var(--primary); line-height: 1; }
     .sa-score-main .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
     .sa-score-main .grade { font-size: 0.85rem; font-weight: 600; margin-top: 2px; }
-    .sa-score-breakdown { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; flex: 1; width: 100%; }
+    .sa-score-breakdown { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; flex: 1; width: 100%; }
     @media (min-width: 480px) { .sa-score-breakdown { grid-template-columns: repeat(4, 1fr); } }
-    .sa-score-item { text-align: center; padding: 10px 6px; border-radius: 8px; background: var(--bg-light); }
+    .sa-score-item { text-align: left; padding: 12px 14px; border-radius: 10px; background: var(--bg-light); }
     .dark .sa-score-item { background: #0f172a; }
+    .sa-score-item .top-row { display: flex; align-items: baseline; justify-content: space-between; }
     .sa-score-item .val { font-size: clamp(1rem, 3vw, 1.3rem); font-weight: 700; }
-    .sa-score-item .lbl { font-size: clamp(0.6rem, 1.5vw, 0.7rem); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 1px; }
+    .sa-score-item .lbl { font-size: clamp(0.62rem, 1.5vw, 0.72rem); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sa-score-item .bar-track { margin-top: 6px; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .sa-score-item .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
 
     /* ── Tabs ── */
-    .sa-tabs { display: flex; gap: 2px; background: var(--bg-light); border-radius: 10px; padding: 3px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .sa-tabs { display: flex; gap: 4px; background: var(--bg-light); border-radius: 12px; padding: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; position: sticky; top: 0; z-index: 5; }
     .sa-tabs::-webkit-scrollbar { display: none; }
-    .sa-tab { padding: 7px 12px; border: none; background: transparent; border-radius: 8px; font-weight: 500; font-size: clamp(0.75rem, 2vw, 0.85rem); cursor: pointer; color: var(--text-muted); white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
-    @media (min-width: 480px) { .sa-tab { padding: 8px 16px; } }
-    .sa-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .sa-tab { padding: 8px 14px; border: none; background: transparent; border-radius: 9px; font-weight: 600; font-size: clamp(0.75rem, 2vw, 0.85rem); cursor: pointer; color: var(--text-muted); white-space: nowrap; transition: all 0.15s; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; }
+    @media (min-width: 480px) { .sa-tab { padding: 9px 18px; } }
+    .sa-tab.active { background: var(--gradient); color: #fff; box-shadow: 0 2px 8px rgba(99,102,241,0.35); }
     .sa-tab-body { display: none; }
-    .sa-tab-body.active { display: block; }
+    .sa-tab-body.active { display: block; animation: sa-fade-in 0.2s ease; }
+    @keyframes sa-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     /* ── Stat grid ── */
     .sa-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -135,15 +140,25 @@ const faqs = [
     .dark .sa-tag-blue { background: #312e81; color: #a5b4fc; }
 
     /* ── Recommendations ── */
-    .sa-rec { margin-bottom: 10px; border-left: 4px solid var(--error); padding: 12px 14px; background: var(--bg-light); border-radius: 0 10px 10px 0; }
-    .dark .sa-rec { background: #0f172a; }
+    .sa-rec { position: relative; margin-bottom: 14px; border-left: 5px solid var(--error); padding: 16px 16px 16px 18px; background: var(--card-bg); border: 1px solid var(--border); border-left: 5px solid var(--error); border-radius: 0 12px 12px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.15s; }
+    .sa-rec:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
     .sa-rec.high { border-left-color: var(--warning); }
     .sa-rec.medium { border-left-color: var(--info); }
     .sa-rec.low { border-left-color: var(--text-muted); }
-    .sa-rec h4 { margin: 0 0 4px; font-size: clamp(0.85rem, 2.2vw, 1rem); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .sa-rec h4 { margin: 0 0 10px; font-size: clamp(0.88rem, 2.2vw, 1.02rem); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .sa-rec .why-how { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0; }
+    @media (min-width: 640px) { .sa-rec .why-how { grid-template-columns: 1fr 1fr; } }
+    .sa-rec .why-how-block { background: var(--bg-light); border-radius: 8px; padding: 10px 12px; }
+    .dark .sa-rec .why-how-block { background: #0f172a; }
+    .sa-rec .why-how-block .block-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+    .sa-rec .why-how-block.why .block-label { color: var(--error); }
+    .sa-rec .why-how-block.how .block-label { color: var(--success); }
     .sa-rec p { margin: 2px 0; font-size: clamp(0.78rem, 1.8vw, 0.88rem); color: var(--text-muted); line-height: 1.5; }
-    .sa-rec pre { background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 8px; font-size: clamp(0.68rem, 1.5vw, 0.78rem); overflow-x: auto; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
-    .sa-rec .meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: clamp(0.68rem, 1.5vw, 0.78rem); color: var(--text-muted); margin-top: 6px; }
+    .sa-rec .code-wrap { position: relative; margin: 8px 0; }
+    .sa-rec pre { background: #1e293b; color: #e2e8f0; padding: 10px 40px 10px 10px; border-radius: 8px; font-size: clamp(0.68rem, 1.5vw, 0.78rem); overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .sa-rec .copy-code-btn { position: absolute; top: 8px; right: 8px; padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #cbd5e1; font-size: 0.68rem; cursor: pointer; }
+    .sa-rec .copy-code-btn:hover { background: rgba(255,255,255,0.2); }
+    .sa-rec .meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: clamp(0.68rem, 1.5vw, 0.78rem); color: var(--text-muted); margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
 
     /* ── Keyword bars ── */
     .sa-kw { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
@@ -185,9 +200,24 @@ const faqs = [
     .sa-section-title { font-size: clamp(0.85rem, 2.2vw, 1rem); font-weight: 600; color: var(--text-main); margin: 0 0 10px; }
     .sa-text-muted { color: var(--text-muted); }
 
-    /* ── Executive Summary ── */
-    .sa-exec { display: flex; flex-direction: column; gap: 10px; }
-    .sa-exec-verdict { font-size: clamp(0.95rem, 2.4vw, 1.1rem); font-weight: 600; line-height: 1.5; }
+    /* ── Report header bar ── */
+    .sa-report-head { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+    .sa-report-url { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .sa-report-url .fav { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; background: var(--gradient); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
+    .sa-report-url .u-main { min-width: 0; }
+    .sa-report-url .u-link { font-weight: 700; font-size: 0.98rem; color: var(--text-main); word-break: break-all; line-height: 1.25; }
+    .sa-report-url .u-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    .sa-report-meta { margin-left: auto; display: flex; gap: 20px; flex-wrap: wrap; }
+    .sa-report-meta .m { text-align: center; }
+    .sa-report-meta .m .mv { font-weight: 700; font-size: 1.05rem; color: var(--text-main); }
+    .sa-report-meta .m .ml { font-size: 0.64rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+
+    /* ── Overview (gauge + verdict) ── */
+    .sa-overview { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: center; }
+    @media (min-width: 720px) { .sa-overview { grid-template-columns: auto 1fr; gap: 28px; } }
+    .sa-exec { display: flex; flex-direction: column; gap: 12px; }
+    .sa-exec-badge { align-self: flex-start; padding: 5px 14px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+    .sa-exec-verdict { font-size: clamp(0.98rem, 2.4vw, 1.18rem); font-weight: 600; line-height: 1.55; color: var(--text-main); }
     .sa-exec-counts { display: flex; flex-wrap: wrap; gap: 8px; }
     .sa-exec-count { padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
     .sa-exec-count.critical { background: #fee2e2; color: #991b1b; }
@@ -200,13 +230,63 @@ const faqs = [
     .dark .sa-exec-count.low { background: #1e293b; color: #94a3b8; }
 
     /* ── Radial score gauge ── */
-    .sa-gauge-wrap { position: relative; width: clamp(110px, 22vw, 140px); height: clamp(110px, 22vw, 140px); flex-shrink: 0; }
+    .sa-gauge-wrap { position: relative; width: clamp(140px, 34vw, 170px); height: clamp(140px, 34vw, 170px); flex-shrink: 0; margin: 0 auto; }
     .sa-gauge-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .sa-gauge-track { fill: none; stroke: var(--border); stroke-width: 10; }
-    .sa-gauge-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+    .sa-gauge-track { fill: none; stroke: var(--border); stroke-width: 9; }
+    .sa-gauge-fill { fill: none; stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 0.8s cubic-bezier(0.22,1,0.36,1); }
     .sa-gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .sa-gauge-center .num { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; line-height: 1; }
-    .sa-gauge-center .lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .sa-gauge-center .num { font-size: clamp(2.2rem, 7vw, 3rem); font-weight: 800; line-height: 1; }
+    .sa-gauge-center .den { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+    .sa-gauge-center .lbl { font-size: 0.66rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; font-weight: 600; }
+
+    /* ── Category ring cards ── */
+    .sa-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media (min-width: 640px) { .sa-cat-grid { grid-template-columns: repeat(4, 1fr); } }
+    .sa-cat-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 14px; padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 9px; text-align: center; }
+    .dark .sa-cat-card { background: #0f172a; }
+    .sa-ring { position: relative; width: 74px; height: 74px; }
+    .sa-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .sa-ring .rt { fill: none; stroke: var(--border); stroke-width: 7; }
+    .sa-ring .rf { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 0.7s cubic-bezier(0.22,1,0.36,1); }
+    .sa-ring .rc { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.15rem; }
+    .sa-cat-card .cn { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
+    .sa-cat-card .cs { font-size: 0.64rem; font-weight: 700; padding: 2px 9px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Priority action plan ── */
+    .sa-priority-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .sa-stack-bar { display: flex; height: 12px; border-radius: 7px; overflow: hidden; background: var(--border); }
+    .sa-stack-bar span { display: block; height: 100%; }
+    .sa-priority-list { display: flex; flex-direction: column; gap: 8px; }
+    .sa-priority-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 11px; background: var(--bg-light); border-left: 4px solid var(--error); cursor: pointer; transition: transform 0.12s; }
+    .dark .sa-priority-item { background: #0f172a; }
+    .sa-priority-item:hover { transform: translateX(2px); }
+    .sa-priority-item.high { border-left-color: var(--warning); }
+    .sa-priority-item .rank { width: 26px; height: 26px; border-radius: 8px; background: var(--error); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.82rem; flex-shrink: 0; }
+    .sa-priority-item.high .rank { background: var(--warning); }
+    .sa-priority-item .pt { flex: 1; min-width: 0; }
+    .sa-priority-item .pt .ptt { font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+    .sa-priority-item .pt .pts { font-size: 0.74rem; color: var(--text-muted); margin-top: 1px; }
+    .sa-priority-item .parrow { color: var(--text-muted); font-size: 0.85rem; }
+
+    /* ── Checklist ── */
+    .sa-checks { display: flex; flex-direction: column; }
+    .sa-check { display: flex; align-items: center; gap: 13px; padding: 12px 12px; border-radius: 10px; border-bottom: 1px solid var(--border); }
+    .sa-check:last-child { border-bottom: none; }
+    .sa-check .ci { width: 27px; height: 27px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.74rem; flex-shrink: 0; color: #fff; }
+    .sa-check .ci.pass { background: var(--success); }
+    .sa-check .ci.warn { background: var(--warning); }
+    .sa-check .ci.fail { background: var(--error); }
+    .sa-check .cbody { flex: 1; min-width: 0; }
+    .sa-check .cname { font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+    .sa-check .cdetail { font-size: 0.76rem; color: var(--text-muted); margin-top: 2px; line-height: 1.45; }
+    .sa-check .cval { text-align: right; flex-shrink: 0; padding-left: 8px; }
+    .sa-check .cval .vv { font-weight: 700; font-size: 0.92rem; white-space: nowrap; }
+    .sa-check .cval .vt { font-size: 0.66rem; color: var(--text-muted); white-space: nowrap; }
+
+    /* Category group header inside tab */
+    .sa-group-head { display: flex; align-items: center; gap: 9px; font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 18px 0 6px; }
+    .sa-group-head:first-child { margin-top: 4px; }
+    .sa-group-head .gh-count { margin-left: auto; font-size: 0.72rem; text-transform: none; letter-spacing: 0; }
 
     /* ── PDF button ── */
     .sa-pdf-btn { padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; transition: background 0.2s; }
@@ -246,37 +326,68 @@ const faqs = [
 
   <div id="dashboardContainer" class="sa-hidden">
     <div class="sa-container">
-      <div class="sa-card" id="execSummaryCard">
-        <div class="sa-exec">
-          <div class="sa-exec-verdict" id="execVerdict"></div>
-          <div class="sa-exec-counts" id="execCounts"></div>
+      <!-- Report header: audited URL + meta stats -->
+      <div class="sa-card" id="reportHeadCard">
+        <div class="sa-report-head">
+          <div class="sa-report-url">
+            <div class="fav" id="reportFav"><i class="fas fa-globe"></i></div>
+            <div class="u-main">
+              <div class="u-link" id="reportUrl"></div>
+              <div class="u-sub" id="reportDate"></div>
+            </div>
+          </div>
+          <div class="sa-report-meta" id="reportMeta"></div>
         </div>
       </div>
 
+      <!-- Overview: overall gauge + verdict -->
       <div class="sa-card" id="scoreCard">
-        <div class="sa-score-row">
+        <div class="sa-overview">
           <div class="sa-gauge-wrap">
             <svg viewBox="0 0 120 120">
-              <circle class="sa-gauge-track" cx="60" cy="60" r="50"></circle>
-              <circle class="sa-gauge-fill" id="gaugeFill" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"></circle>
+              <circle class="sa-gauge-track" cx="60" cy="60" r="52"></circle>
+              <circle class="sa-gauge-fill" id="gaugeFill" cx="60" cy="60" r="52" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
             </svg>
             <div class="sa-gauge-center">
               <div class="num" id="overallScoreNum">0</div>
+              <div class="den">out of 100</div>
               <div class="lbl" id="overallGradeLabel">Grade</div>
             </div>
           </div>
-          <div class="sa-score-breakdown" id="subScores"></div>
+          <div class="sa-exec">
+            <span class="sa-exec-badge" id="execBadge"></span>
+            <div class="sa-exec-verdict" id="execVerdict"></div>
+            <div class="sa-exec-counts" id="execCounts"></div>
+          </div>
         </div>
       </div>
 
+      <!-- Category score rings -->
+      <div class="sa-card">
+        <div class="sa-section-title">Score Breakdown</div>
+        <div class="sa-cat-grid" id="catGrid"></div>
+      </div>
+
+      <!-- Priority action plan -->
+      <div class="sa-card sa-hidden" id="priorityCard">
+        <div class="sa-priority-head">
+          <div class="sa-section-title" style="margin:0;">🎯 Priority Action Plan</div>
+          <div style="min-width:180px;flex:1;max-width:280px;">
+            <div class="sa-stack-bar" id="priorityStack"></div>
+          </div>
+        </div>
+        <div class="sa-priority-list" id="priorityList"></div>
+      </div>
+
+      <!-- Detailed audit -->
       <div class="sa-card">
         <div class="sa-tabs" id="tabHeaders">
-          <button class="sa-tab active" data-tab="content">Content</button>
-          <button class="sa-tab" data-tab="technical">Technical</button>
-          <button class="sa-tab" data-tab="performance">Performance</button>
-          <button class="sa-tab" data-tab="media">Media &amp; Links</button>
-          <button class="sa-tab" data-tab="keywords">Social &amp; Keywords</button>
-          <button class="sa-tab" data-tab="recommendations">Recommendations</button>
+          <button class="sa-tab active" data-tab="content"><i class="fas fa-file-lines"></i> Content</button>
+          <button class="sa-tab" data-tab="technical"><i class="fas fa-gears"></i> Technical</button>
+          <button class="sa-tab" data-tab="performance"><i class="fas fa-gauge-high"></i> Performance</button>
+          <button class="sa-tab" data-tab="media"><i class="fas fa-photo-film"></i> Media &amp; Links</button>
+          <button class="sa-tab" data-tab="keywords"><i class="fas fa-hashtag"></i> Social &amp; Keywords</button>
+          <button class="sa-tab" data-tab="recommendations"><i class="fas fa-list-check"></i> Recommendations</button>
         </div>
         <div id="tabContentContainer" class="sa-mt"></div>
       </div>
@@ -906,71 +1017,138 @@ const faqs = [
           .catch(function (err) { app.hideLoading(); app.showError('Failed to analyze URL: ' + err.message); });
       },
 
+      scoreColor: function (sc) {
+        return sc >= 80 ? '#10b981' : sc >= 60 ? '#f59e0b' : sc >= 40 ? '#f97316' : '#ef4444';
+      },
+
       renderDashboard: function (d) {
         document.getElementById('dashboardContainer').classList.remove('sa-hidden');
-        document.getElementById('overallScoreNum').textContent = d.scores.overall;
-        var grade = this.getGrade(d.scores.overall);
-        var gc = d.scores.overall >= 80 ? 'var(--success)' : d.scores.overall >= 60 ? 'var(--warning)' : 'var(--error)';
-        document.getElementById('overallScoreNum').style.color = gc;
-        document.getElementById('overallGradeLabel').innerHTML = 'Grade <span style="color:' + gc + ';">' + grade + '</span>';
 
-        var circumference = 314.16;
-        var offset = circumference - (Math.max(0, Math.min(100, d.scores.overall)) / 100) * circumference;
+        // ── Report header ──
+        var host = '';
+        try { host = new URL(d.url).hostname; } catch (e) { host = d.url || ''; }
+        document.getElementById('reportUrl').textContent = d.url || '';
+        document.getElementById('reportDate').textContent = 'Audited ' + new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+        var c = d.content || {}, t = d.technical || {}, p = d.performance || {}, im = d.images || {}, l = d.links || {};
+        var metaItems = [
+          { v: (c.wordCount != null ? c.wordCount.toLocaleString() : '—'), l: 'Words' },
+          { v: (im.total != null ? im.total : '—'), l: 'Images' },
+          { v: ((l.internal || 0) + (l.external || 0)), l: 'Links' },
+          { v: (t.schema && t.schema.typesFound ? t.schema.typesFound.length : 0), l: 'Schemas' },
+          { v: (c.readability && c.readability.gradeLevel ? c.readability.gradeLevel.replace(' Grade', '') : '—'), l: 'Reading' },
+        ];
+        document.getElementById('reportMeta').innerHTML = metaItems.map(function (m) {
+          return '<div class="m"><div class="mv">' + m.v + '</div><div class="ml">' + m.l + '</div></div>';
+        }).join('');
+
+        // ── Overall gauge ──
+        var overall = d.scores.overall;
+        var grade = this.getGrade(overall);
+        var gc = this.scoreColor(overall);
+        document.getElementById('overallScoreNum').textContent = overall;
+        document.getElementById('overallScoreNum').style.color = gc;
+        document.getElementById('overallGradeLabel').innerHTML = 'Grade <span style="color:' + gc + ';font-weight:800;">' + grade + '</span>';
+        var circ = 326.73;
         var gaugeFill = document.getElementById('gaugeFill');
         gaugeFill.style.stroke = gc;
-        gaugeFill.style.strokeDashoffset = offset;
+        gaugeFill.style.strokeDashoffset = circ - (Math.max(0, Math.min(100, overall)) / 100) * circ;
 
+        // ── Verdict badge + text ──
         var recs = d.recommendations || {};
-        var counts = {
-          critical: (recs.critical || []).length,
-          high: (recs.high || []).length,
-          medium: (recs.medium || []).length,
-          low: (recs.low || []).length,
-        };
+        var counts = { critical: (recs.critical || []).length, high: (recs.high || []).length, medium: (recs.medium || []).length, low: (recs.low || []).length };
         var totalIssues = counts.critical + counts.high + counts.medium + counts.low;
-        var verdict;
-        if (d.scores.overall >= 90) verdict = 'Excellent — this page is well-optimized across the board.';
-        else if (d.scores.overall >= 75) verdict = 'Good — a few moderate issues remain, but nothing critical.';
-        else if (d.scores.overall >= 55) verdict = 'Average — meaningful improvements are available.';
-        else if (d.scores.overall >= 35) verdict = 'Poor — significant SEO issues are limiting this page\'s visibility.';
-        else verdict = 'Critical — major optimization work is required before this page can compete in search.';
-        if (counts.critical > 0) {
-          verdict += ' Start with the ' + counts.critical + ' critical issue' + (counts.critical > 1 ? 's' : '') + ' below — ' + (totalIssues) + ' total issue' + (totalIssues !== 1 ? 's' : '') + ' were found.';
-        } else if (totalIssues > 0) {
-          verdict += ' ' + totalIssues + ' non-critical issue' + (totalIssues !== 1 ? 's' : '') + ' found.';
-        } else {
-          verdict += ' No issues were found.';
-        }
+        var band, bandColor, verdict;
+        if (overall >= 90) { band = 'Excellent'; bandColor = '#10b981'; verdict = 'This page is well-optimized across content, technical, performance and accessibility signals.'; }
+        else if (overall >= 75) { band = 'Good'; bandColor = '#22c55e'; verdict = 'Solid optimization with a few moderate issues remaining — nothing critical.'; }
+        else if (overall >= 55) { band = 'Needs Work'; bandColor = '#f59e0b'; verdict = 'Meaningful improvements are available across several areas.'; }
+        else if (overall >= 35) { band = 'Poor'; bandColor = '#f97316'; verdict = 'Significant SEO issues are limiting this page\'s search visibility.'; }
+        else { band = 'Critical'; bandColor = '#ef4444'; verdict = 'Major optimization work is required before this page can compete in search.'; }
+        if (counts.critical > 0) verdict += ' Fix the ' + counts.critical + ' critical issue' + (counts.critical > 1 ? 's' : '') + ' first — ' + totalIssues + ' total issue' + (totalIssues !== 1 ? 's' : '') + ' found.';
+        else if (totalIssues > 0) verdict += ' ' + totalIssues + ' non-critical issue' + (totalIssues !== 1 ? 's' : '') + ' found.';
+        else verdict += ' No issues were detected.';
+
+        var badge = document.getElementById('execBadge');
+        badge.textContent = band;
+        badge.style.background = bandColor + '22';
+        badge.style.color = bandColor;
         document.getElementById('execVerdict').textContent = verdict;
 
-        var execCounts = document.getElementById('execCounts');
         var countLabels = [
-          { key: 'critical', label: 'Critical', icon: 'fa-exclamation-triangle' },
-          { key: 'high', label: 'High', icon: 'fa-exclamation-circle' },
-          { key: 'medium', label: 'Medium', icon: 'fa-info-circle' },
-          { key: 'low', label: 'Low', icon: 'fa-check-circle' },
+          { key: 'critical', label: 'Critical', icon: 'fa-circle-exclamation' },
+          { key: 'high', label: 'High', icon: 'fa-triangle-exclamation' },
+          { key: 'medium', label: 'Medium', icon: 'fa-circle-info' },
+          { key: 'low', label: 'Low', icon: 'fa-circle-check' },
         ];
-        execCounts.innerHTML = countLabels.map(function (c) {
-          return '<span class="sa-exec-count ' + c.key + '"><i class="fas ' + c.icon + '"></i> ' + counts[c.key] + ' ' + c.label + '</span>';
+        document.getElementById('execCounts').innerHTML = countLabels.map(function (cl) {
+          return '<span class="sa-exec-count ' + cl.key + '"><i class="fas ' + cl.icon + '"></i> ' + counts[cl.key] + ' ' + cl.label + '</span>';
         }).join('');
 
         document.getElementById('pdfBtn').classList.remove('sa-hidden');
 
-        var subs = document.getElementById('subScores');
-        subs.innerHTML = '';
+        // ── Category ring cards ──
         var cats = [
-          { key: 'content', label: 'Content', color: '#6366f1' },
-          { key: 'technical', label: 'Technical', color: '#10b981' },
-          { key: 'performance', label: 'Performance', color: '#f59e0b' },
-          { key: 'accessibility', label: 'Accessibility', color: '#3b82f6' },
+          { key: 'content', label: 'Content', weight: '35%' },
+          { key: 'technical', label: 'Technical', weight: '25%' },
+          { key: 'performance', label: 'Performance', weight: '20%' },
+          { key: 'accessibility', label: 'Accessibility', weight: '20%' },
         ];
-        cats.forEach(function (cat) {
-          var sc = d.scores[cat.key];
-          var el = document.createElement('div');
-          el.className = 'sa-score-item';
-          el.innerHTML = '<div class="val" style="color:' + cat.color + '">' + sc + '</div><div class="lbl">' + cat.label + '</div>';
-          subs.appendChild(el);
-        });
+        var ringCirc = 163.36; // r=26
+        var self = this;
+        document.getElementById('catGrid').innerHTML = cats.map(function (cat) {
+          var sc = d.scores[cat.key] || 0;
+          var col = self.scoreColor(sc);
+          var off = ringCirc - (Math.max(0, Math.min(100, sc)) / 100) * ringCirc;
+          var status = sc >= 80 ? 'Good' : sc >= 60 ? 'Fair' : sc >= 40 ? 'Weak' : 'Poor';
+          return '<div class="sa-cat-card">' +
+            '<div class="sa-ring"><svg viewBox="0 0 60 60"><circle class="rt" cx="30" cy="30" r="26"></circle>' +
+            '<circle class="rf" cx="30" cy="30" r="26" stroke="' + col + '" stroke-dasharray="' + ringCirc + '" stroke-dashoffset="' + off + '"></circle></svg>' +
+            '<div class="rc" style="color:' + col + '">' + sc + '</div></div>' +
+            '<div class="cn">' + cat.label + '</div>' +
+            '<div class="cs" style="background:' + col + '22;color:' + col + '">' + status + ' · ' + cat.weight + '</div>' +
+            '</div>';
+        }).join('');
+
+        // ── Priority action plan (top issues) ──
+        this.renderPriorityPlan(d);
+      },
+
+      renderPriorityPlan: function (d) {
+        var recs = d.recommendations || {};
+        var counts = { critical: (recs.critical || []).length, high: (recs.high || []).length, medium: (recs.medium || []).length, low: (recs.low || []).length };
+        var total = counts.critical + counts.high + counts.medium + counts.low;
+        var card = document.getElementById('priorityCard');
+        if (total === 0) { card.classList.add('sa-hidden'); return; }
+        card.classList.remove('sa-hidden');
+
+        // stacked bar
+        var segColors = { critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#94a3b8' };
+        var stack = ['critical', 'high', 'medium', 'low'].map(function (k) {
+          var pct = (counts[k] / total) * 100;
+          return pct > 0 ? '<span style="width:' + pct + '%;background:' + segColors[k] + '" title="' + counts[k] + ' ' + k + '"></span>' : '';
+        }).join('');
+        document.getElementById('priorityStack').innerHTML = stack;
+
+        // top 5 issues by severity
+        var ordered = [].concat(recs.critical || [], recs.high || [], recs.medium || []).slice(0, 5);
+        var sevOf = function (rec) {
+          if ((recs.critical || []).indexOf(rec) !== -1) return 'critical';
+          if ((recs.high || []).indexOf(rec) !== -1) return 'high';
+          return 'medium';
+        };
+        document.getElementById('priorityList').innerHTML = ordered.map(function (rec, i) {
+          var sev = sevOf(rec);
+          return '<div class="sa-priority-item ' + (sev === 'critical' ? '' : 'high') + '" onclick="app.gotoRecommendations()">' +
+            '<div class="rank">' + (i + 1) + '</div>' +
+            '<div class="pt"><div class="ptt">' + app.escapeHtml(rec.issue) + '</div>' +
+            '<div class="pts">' + app.escapeHtml((rec.solution || '').slice(0, 90)) + ((rec.solution || '').length > 90 ? '…' : '') + '</div></div>' +
+            '<div class="parrow"><i class="fas fa-arrow-right"></i></div></div>';
+        }).join('');
+      },
+
+      gotoRecommendations: function () {
+        var btn = document.querySelector('#tabHeaders .sa-tab[data-tab="recommendations"]');
+        if (btn) { btn.click(); btn.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       },
 
       renderTabs: function (d) {
@@ -1005,27 +1183,78 @@ const faqs = [
         });
       },
 
+      // ── Check row builder: renders one audit line with status + value + benchmark ──
+      checkRow: function (status, name, detail, value, target) {
+        var icon = status === 'pass' ? 'fa-check' : status === 'warn' ? 'fa-exclamation' : 'fa-xmark';
+        var h = '<div class="sa-check">';
+        h += '<div class="ci ' + status + '"><i class="fas ' + icon + '"></i></div>';
+        h += '<div class="cbody"><div class="cname">' + name + '</div>';
+        if (detail) h += '<div class="cdetail">' + detail + '</div>';
+        h += '</div>';
+        if (value != null || target != null) {
+          h += '<div class="cval">';
+          if (value != null) h += '<div class="vv">' + value + '</div>';
+          if (target != null) h += '<div class="vt">Target: ' + target + '</div>';
+          h += '</div>';
+        }
+        h += '</div>';
+        return h;
+      },
+
+      groupHead: function (label, checks) {
+        var pass = checks.filter(function (s) { return s === 'pass'; }).length;
+        return '<div class="sa-group-head">' + label + '<span class="gh-count">' + pass + '/' + checks.length + ' passed</span></div>';
+      },
+
       renderContentTab: function (d) {
-        var c = d.content;
-        var h = '<div class="sa-stat-grid">';
-        h += '<div class="sa-stat"><div class="n">' + c.wordCount.toLocaleString() + '</div><div class="l">Words</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + c.textRatio + '%</div><div class="l">Text Ratio</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + (c.readability && c.readability.fleschKincaid) + '</div><div class="l">Flesch-Kincaid</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + (c.readability && c.readability.gunningFog) + '</div><div class="l">Gunning Fog</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + (c.eeat && c.eeat.score) + '</div><div class="l">E-E-A-T</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + (c.snippets && c.snippets.score) + '</div><div class="l">Snippets</div></div>';
-        h += '</div>';
-        var hd = c.headings || {};
-        h += '<div class="sa-flex sa-mt">';
-        h += '<span class="sa-tag ' + (hd.h1 === 1 ? 'sa-tag-green' : 'sa-tag-red') + '">H1: ' + hd.h1 + '</span>';
-        h += '<span class="sa-tag ' + (hd.h2 > 0 ? 'sa-tag-green' : 'sa-tag-amber') + '">H2: ' + hd.h2 + '</span>';
-        h += '<span class="sa-tag sa-tag-blue">H3: ' + hd.h3 + '</span>';
-        h += '<span class="sa-tag ' + (hd.hierarchyValid ? 'sa-tag-green' : 'sa-tag-red') + '">Hierarchy: ' + (hd.hierarchyValid ? 'OK' : 'Bad') + '</span>';
-        h += '<span class="sa-tag ' + (c.isThin ? 'sa-tag-red' : 'sa-tag-green') + '">' + (c.isThin ? 'Thin' : 'Content OK') + '</span>';
-        h += '<span class="sa-tag sa-tag-blue">Reading: ' + (c.readability && c.readability.gradeLevel) + '</span>';
-        h += '</div>';
+        var c = d.content || {}, r = c.readability || {}, ee = c.eeat || {}, sn = c.snippets || {}, hd = c.headings || {};
+        var rows = [], st = [];
+        function push(s, name, detail, val, tgt) { st.push(s); rows.push(app.checkRow(s, name, detail, val, tgt)); }
+
+        // Title
+        if (c.title) {
+          var tl = c.title.length;
+          if (!c.title.text) push('fail', 'Title Tag', 'No &lt;title&gt; tag was found — the single strongest on-page ranking element.', 'Missing', '30–60 chars');
+          else if (tl < 30 || tl > 60) push('warn', 'Title Tag Length', (tl > 60 ? 'Too long — Google truncates titles past ~60 characters.' : 'Too short — you are under-using valuable SERP space.'), tl + ' chars', '30–60 chars');
+          else push('pass', 'Title Tag Length', 'Well within the ideal display range.', tl + ' chars', '30–60 chars');
+        }
+        // Meta description
+        if (c.metaDescription) {
+          var ml = c.metaDescription.length;
+          if (!c.metaDescription.text) push('fail', 'Meta Description', 'Missing — Google will auto-generate a less compelling snippet.', 'Missing', '50–160 chars');
+          else if (ml < 50 || ml > 160) push('warn', 'Meta Description Length', (ml > 160 ? 'Likely truncated in search results.' : 'Too short to be persuasive.'), ml + ' chars', '50–160 chars');
+          else push('pass', 'Meta Description Length', 'Ideal length for full display in SERPs.', ml + ' chars', '50–160 chars');
+        }
+        // Word count
+        if (typeof c.wordCount === 'number') {
+          if (c.wordCount < 300) push('fail', 'Content Depth', 'Thin content — pages under 300 words rarely rank competitively.', c.wordCount.toLocaleString() + ' words', '600+ words');
+          else if (c.wordCount < 600) push('warn', 'Content Depth', 'Acceptable, but more depth would help you compete.', c.wordCount.toLocaleString() + ' words', '600+ words');
+          else push('pass', 'Content Depth', 'Comprehensive length that supports topical authority.', c.wordCount.toLocaleString() + ' words', '600+ words');
+        }
+        // Text ratio
+        if (typeof c.textRatio === 'number') {
+          push(c.textRatio >= 15 ? 'pass' : 'warn', 'Text-to-HTML Ratio', 'Higher ratios signal substantive content over markup.', c.textRatio + '%', '15%+');
+        }
+        // H1
+        push(hd.h1 === 1 ? 'pass' : 'fail', 'Single H1 Heading', hd.h1 === 0 ? 'No H1 found — search engines cannot identify the main topic.' : hd.h1 > 1 ? 'Multiple H1s dilute topical focus.' : 'Exactly one H1, as recommended.', String(hd.h1 || 0), '1');
+        // H2 usage
+        push(hd.h2 > 0 ? 'pass' : 'warn', 'Subheading Structure', hd.h2 > 0 ? 'Content is broken into scannable sections.' : 'Add H2 subheadings to structure your content.', 'H2: ' + (hd.h2 || 0) + ' · H3: ' + (hd.h3 || 0), '2+ H2');
+        // Readability
+        if (typeof r.fleschKincaid === 'number') {
+          var fk = r.fleschKincaid;
+          push(fk >= 60 ? 'pass' : fk >= 30 ? 'warn' : 'fail', 'Readability (Flesch-Kincaid)', (r.gradeLevel || '') + ' reading level. 60–70 suits a general audience.', String(fk), '60–70');
+        }
+        if (typeof r.gunningFog === 'number') push(r.gunningFog <= 12 ? 'pass' : 'warn', 'Gunning Fog Index', 'Estimated years of education needed to read the text.', String(r.gunningFog), '7–12');
+        // E-E-A-T
+        if (typeof ee.score === 'number') push(ee.score >= 50 ? 'pass' : ee.score >= 30 ? 'warn' : 'fail', 'E-E-A-T Signals', 'Author, dates, citations and credibility markers Google rewards.', ee.score + '/100', '50+');
+        // Snippet readiness
+        if (typeof sn.score === 'number') push(sn.score >= 40 ? 'pass' : 'warn', 'Featured Snippet Readiness', 'Lists, Q&amp;A patterns and definitions that win position zero.', sn.score + '/100', '40+');
+        // Freshness
+        if (typeof c.freshness === 'number') push(c.freshness >= 30 ? 'pass' : 'warn', 'Content Freshness', 'Recent dates and modification signals that indicate up-to-date content.', c.freshness + '/100', '30+');
+
+        var h = this.groupHead('On-Page Content Checks', st) + '<div class="sa-checks">' + rows.join('') + '</div>';
         if (c.entities && c.entities.length > 0) {
-          h += '<div class="sa-mt"><div class="sa-section-title">Entities</div>';
+          h += '<div class="sa-group-head">Detected Entities &amp; Topics</div><div style="padding:4px 2px;">';
           c.entities.forEach(function (e) { h += '<span class="sa-entity">' + app.escapeHtml(e) + '</span>'; });
           h += '</div>';
         }
@@ -1033,108 +1262,115 @@ const faqs = [
       },
 
       renderTechnicalTab: function (d) {
-        var t = d.technical;
-        var h = '<div class="sa-stat-grid">';
-        h += '<div class="sa-stat"><div class="n">' + (t.schema.typesFound ? t.schema.typesFound.length : 0) + '</div><div class="l">Schema Types</div></div>';
-        h += '<div class="sa-stat"><div class="n" style="color:' + (t.schema.isValid ? 'var(--success)' : 'var(--error)') + '">' + (t.schema.isValid ? 'Valid' : 'Issues') + '</div><div class="l">Schema</div></div>';
-        h += '<div class="sa-stat"><div class="n" style="color:' + (t.canonical.isValid ? 'var(--success)' : 'var(--error)') + '">' + (t.canonical.isValid ? 'OK' : 'Issue') + '</div><div class="l">Canonical</div></div>';
-        h += '</div>';
-        h += '<div class="sa-flex sa-mt">';
-        var sec = t.securityHeaders;
-        h += '<span class="sa-tag ' + (sec.hsts ? 'sa-tag-green' : 'sa-tag-red') + '">HSTS</span>';
-        h += '<span class="sa-tag ' + (sec.xFrame ? 'sa-tag-green' : 'sa-tag-red') + '">X-Frame</span>';
-        h += '<span class="sa-tag ' + (sec.csp ? 'sa-tag-green' : 'sa-tag-red') + '">CSP</span>';
-        h += '</div>';
-        if (t.schema.typesFound && t.schema.typesFound.length > 0) {
-          h += '<div class="sa-mt"><span class="sa-text-muted">' + t.schema.typesFound.join(', ') + '</span></div>';
-        }
-        if (t.schema.errors && t.schema.errors.length > 0) {
-          t.schema.errors.forEach(function (e) { h += '<div class="sa-mt" style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(e) + '</div>'; });
-        }
-        h += '<div class="sa-mt"><span class="sa-text-muted">Canonical: ' + app.escapeHtml(t.canonical.url) + '</span></div>';
+        var t = d.technical || {}, sec = t.securityHeaders || {}, sch = t.schema || {}, can = t.canonical || {};
+        var rows = [], st = [];
+        function push(s, name, detail, val, tgt) { st.push(s); rows.push(app.checkRow(s, name, detail, val, tgt)); }
 
-        var c = d.content || {};
-        if (c.title || c.metaDescription || t.indexability || t.brokenLinks) {
-          h += '<div class="sa-section-title sa-mt">On-Page Fundamentals</div>';
-          h += '<div class="sa-flex">';
-          if (t.indexability) {
-            h += '<span class="sa-tag ' + (t.indexability.indexable ? 'sa-tag-green' : 'sa-tag-red') + '">' + (t.indexability.indexable ? 'Indexable' : 'Blocked from Indexing') + '</span>';
-          }
-          if (c.title) {
-            var titleOk = c.title.length >= 30 && c.title.length <= 60;
-            h += '<span class="sa-tag ' + (c.title.text ? (titleOk ? 'sa-tag-green' : 'sa-tag-amber') : 'sa-tag-red') + '">Title: ' + (c.title.text ? c.title.length + ' chars' : 'Missing') + '</span>';
-          }
-          if (c.metaDescription) {
-            var mdOk = c.metaDescription.length >= 50 && c.metaDescription.length <= 160;
-            h += '<span class="sa-tag ' + (c.metaDescription.text ? (mdOk ? 'sa-tag-green' : 'sa-tag-amber') : 'sa-tag-red') + '">Meta Description: ' + (c.metaDescription.text ? c.metaDescription.length + ' chars' : 'Missing') + '</span>';
-          }
-          if (typeof c.freshness === 'number') {
-            h += '<span class="sa-tag sa-tag-blue">Freshness: ' + c.freshness + '/100</span>';
-          }
+        // Indexability first — most important
+        if (t.indexability) {
+          push(t.indexability.indexable ? 'pass' : 'fail', 'Search Engine Indexability',
+            t.indexability.indexable ? 'This page can be crawled and indexed by search engines.' : (t.indexability.reasons || []).join('; '),
+            t.indexability.indexable ? 'Indexable' : 'Blocked', null);
+        }
+        // Canonical
+        push(can.isValid ? 'pass' : (can.url ? 'warn' : 'fail'), 'Canonical URL',
+          can.isValid ? 'Self-referencing canonical is correctly set.' : (can.url ? 'Canonical points elsewhere: ' + app.escapeHtml(can.url) : 'No canonical tag — risks duplicate-content dilution.'),
+          can.isValid ? 'Valid' : (can.url ? 'Mismatch' : 'Missing'), null);
+        // Schema present + valid
+        var nSchema = sch.typesFound ? sch.typesFound.length : 0;
+        push(nSchema > 0 ? 'pass' : 'fail', 'Structured Data (Schema)',
+          nSchema > 0 ? 'Found: ' + sch.typesFound.join(', ') : 'No schema markup — you miss out on rich results in search.',
+          nSchema + ' type' + (nSchema !== 1 ? 's' : ''), '1+');
+        if (nSchema > 0) push(sch.isValid ? 'pass' : 'warn', 'Schema Validity', sch.isValid ? 'No JSON-LD syntax errors detected.' : (sch.errors || []).join('; '), sch.isValid ? 'Valid' : 'Errors', null);
+        // Meta robots / title / meta desc quick refs already in content, but title presence matters technically
+        // Security headers
+        push(sec.hsts ? 'pass' : 'warn', 'HSTS Header', 'Strict-Transport-Security forces secure HTTPS connections.', sec.hsts ? 'Present' : 'Missing', null);
+        push(sec.xFrame ? 'pass' : 'warn', 'X-Frame-Options', 'Protects against clickjacking via iframe embedding.', sec.xFrame ? 'Present' : 'Missing', null);
+        push(sec.csp ? 'pass' : 'warn', 'Content-Security-Policy', 'Mitigates cross-site scripting (XSS) attacks.', sec.csp ? 'Present' : 'Missing', null);
+        // Broken links
+        if (t.brokenLinks) {
+          var nb = t.brokenLinks.length;
+          push(nb === 0 ? 'pass' : 'fail', 'Internal Link Health', nb === 0 ? 'No broken internal links in the sampled set.' : nb + ' broken link' + (nb > 1 ? 's' : '') + ' found (sampled first 5 internal links).', nb === 0 ? 'Healthy' : nb + ' broken', null);
+        }
+
+        var h = this.groupHead('Technical SEO Checks', st) + '<div class="sa-checks">' + rows.join('') + '</div>';
+        if (t.brokenLinks && t.brokenLinks.length > 0) {
+          h += '<div class="sa-group-head">Broken Links Detail</div><div class="sa-checks">';
+          t.brokenLinks.forEach(function (b) {
+            h += app.checkRow('fail', app.escapeHtml(b.url), 'Returned an error status when checked.', (b.status || 'unreachable'), null);
+          });
           h += '</div>';
-          if (c.title && c.title.text) h += '<div class="sa-mt"><span class="sa-text-muted">Title: ' + app.escapeHtml(c.title.text) + '</span></div>';
-          if (c.metaDescription && c.metaDescription.text) h += '<div class="sa-mt"><span class="sa-text-muted">Meta Description: ' + app.escapeHtml(c.metaDescription.text) + '</span></div>';
-          if (t.indexability && !t.indexability.indexable) {
-            t.indexability.reasons.forEach(function (r) { h += '<div class="sa-mt" style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(r) + '</div>'; });
-          }
-          if (t.brokenLinks && t.brokenLinks.length > 0) {
-            h += '<div class="sa-mt"><span class="sa-text-muted">Broken internal links:</span></div>';
-            t.brokenLinks.forEach(function (b) { h += '<div style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(b.url) + ' → ' + (b.status || 'unreachable') + '</div>'; });
-          }
         }
         return h;
       },
 
       renderPerformanceTab: function (d) {
-        var p = d.performance;
-        var h = '<div class="sa-stat-grid">';
-        h += '<div class="sa-stat"><div class="n">' + p.renderBlocking + '</div><div class="l">Render-Blocking</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + p.domSize.toLocaleString() + '</div><div class="l">DOM Elements</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + p.imagesWithoutDimensions + '</div><div class="l">Imgs w/o Dims</div></div>';
-        h += '</div>';
+        var p = d.performance || {};
+        var rows = [], st = [];
+        function push(s, name, detail, val, tgt) { st.push(s); rows.push(app.checkRow(s, name, detail, val, tgt)); }
+
+        push(p.renderBlocking === 0 ? 'pass' : p.renderBlocking <= 2 ? 'warn' : 'fail', 'Render-Blocking Resources', 'Scripts/styles in &lt;head&gt; without async/defer delay first paint (LCP).', String(p.renderBlocking || 0), '0');
+        push(p.domSize <= 1500 ? 'pass' : p.domSize <= 3000 ? 'warn' : 'fail', 'DOM Size', 'Large DOM trees slow rendering and interactivity (INP).', (p.domSize || 0).toLocaleString() + ' nodes', '≤ 1,500');
+        push(p.imagesWithoutDimensions === 0 ? 'pass' : 'warn', 'Image Dimensions (CLS)', 'Images without width/height cause layout shift as they load.', String(p.imagesWithoutDimensions || 0) + ' missing', '0');
+
+        var h = this.groupHead('Core Web Vitals & Performance Signals', st) + '<div class="sa-checks">' + rows.join('') + '</div>';
         if (p.cwvRisks && p.cwvRisks.length > 0) {
-          p.cwvRisks.forEach(function (risk) {
-            h += '<div class="sa-mt sa-cwv-risk">⚠ ' + app.escapeHtml(risk) + '</div>';
-          });
+          h += '<div class="sa-group-head">Detected Performance Risks</div><div class="sa-checks">';
+          p.cwvRisks.forEach(function (risk) { h += app.checkRow('warn', app.escapeHtml(risk), '', null, null); });
+          h += '</div>';
         }
         return h;
       },
 
       renderMediaTab: function (d) {
-        var im = d.images, l = d.links;
-        var h = '<div class="sa-section-title">Images</div><div class="sa-stat-grid">';
-        h += '<div class="sa-stat"><div class="n">' + im.total + '</div><div class="l">Total</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + im.missingAlt + '</div><div class="l">Missing Alt</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + im.outdatedFormats + '</div><div class="l">Old Formats</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + im.notLazyLoaded + '</div><div class="l">Not Lazy</div></div>';
-        h += '</div>';
-        h += '<div class="sa-section-title sa-mt">Links</div><div class="sa-stat-grid">';
-        h += '<div class="sa-stat"><div class="n">' + l.internal + '</div><div class="l">Internal</div></div>';
-        h += '<div class="sa-stat"><div class="n">' + l.external + '</div><div class="l">External</div></div>';
+        var im = d.images || {}, l = d.links || {};
+        var rows = [], st = [];
+        function push(s, name, detail, val, tgt) { st.push(s); rows.push(app.checkRow(s, name, detail, val, tgt)); }
+
+        var altCov = im.total > 0 ? Math.round(((im.total - im.missingAlt) / im.total) * 100) : 100;
+        push(im.missingAlt === 0 ? 'pass' : 'fail', 'Image Alt Text', im.missingAlt === 0 ? 'All images have alt text for accessibility & image search.' : im.missingAlt + ' image' + (im.missingAlt > 1 ? 's' : '') + ' missing alt text.', altCov + '% covered', '100%');
+        push(im.outdatedFormats === 0 ? 'pass' : 'warn', 'Modern Image Formats', 'WebP/AVIF compress far better than JPEG/PNG/GIF.', (im.outdatedFormats || 0) + ' legacy', '0');
+        push(im.notLazyLoaded <= 3 ? 'pass' : 'warn', 'Lazy Loading', 'Below-the-fold images should defer loading to improve LCP.', (im.notLazyLoaded || 0) + ' eager', 'below-fold lazy');
+
+        var poor = (l.poorAnchorText || []).length;
+        push(poor === 0 ? 'pass' : 'warn', 'Descriptive Anchor Text', poor === 0 ? 'No generic "click here" style links detected.' : poor + ' generic anchor' + (poor > 1 ? 's' : '') + ' found.', poor === 0 ? 'Good' : poor + ' generic', null);
+
+        var h = this.groupHead('Media & Link Checks', st) + '<div class="sa-checks">' + rows.join('') + '</div>';
+        h += '<div class="sa-group-head">Link Profile</div><div class="sa-checks">';
+        h += this.checkRow('pass', 'Internal Links', 'Links pointing within this domain.', String(l.internal || 0), null);
+        h += this.checkRow('pass', 'External Links', 'Links pointing to other domains.', String(l.external || 0), null);
+        h += this.checkRow('pass', 'Total Images', 'Image elements found on the page.', String(im.total || 0), null);
         h += '</div>';
         if (l.poorAnchorText && l.poorAnchorText.length > 0) {
-          l.poorAnchorText.forEach(function (a) { h += '<div class="sa-mt sa-text-muted">⚠ "' + app.escapeHtml(a) + '"</div>'; });
+          h += '<div class="sa-group-head">Generic Anchors To Fix</div><div class="sa-checks">';
+          l.poorAnchorText.forEach(function (a) { h += app.checkRow('warn', '"' + app.escapeHtml(a) + '"', 'Replace with descriptive, keyword-rich anchor text.', null, null); });
+          h += '</div>';
         }
         return h;
       },
 
       renderKeywordsTab: function (d) {
-        var so = d.social, kw = d.keywords || [];
-        var h = '<div class="sa-section-title">Social Media</div>';
-        if (so.ogTitle) h += '<div class="sa-mt"><span class="sa-text-muted">og:title:</span> ' + app.escapeHtml(so.ogTitle) + '</div>';
-        if (so.ogImage) h += '<div class="sa-mt"><span class="sa-text-muted">og:image:</span> ' + app.escapeHtml(so.ogImage) + '</div>';
-        if (so.missing && so.missing.length > 0) {
-          h += '<div class="sa-flex sa-mt">';
-          so.missing.forEach(function (m) { h += '<span class="sa-tag sa-tag-red">Missing: ' + m + '</span>'; });
-          h += '</div>';
-        }
+        var so = d.social || {}, kw = d.keywords || [];
+        var rows = [], st = [];
+        function push(s, name, detail, val, tgt) { st.push(s); rows.push(app.checkRow(s, name, detail, val, tgt)); }
+
+        var missing = so.missing || [];
+        push(missing.indexOf('og:title') === -1 ? 'pass' : 'fail', 'Open Graph Title', 'Controls the headline when shared on social media.', missing.indexOf('og:title') === -1 ? 'Present' : 'Missing', null);
+        push(missing.indexOf('og:description') === -1 ? 'pass' : 'warn', 'Open Graph Description', 'The preview text shown on shared links.', missing.indexOf('og:description') === -1 ? 'Present' : 'Missing', null);
+        push(missing.indexOf('og:image') === -1 ? 'pass' : 'fail', 'Open Graph Image', 'Missing og:image cuts social click-through by ~50%.', missing.indexOf('og:image') === -1 ? 'Present' : 'Missing', null);
+
+        var h = this.groupHead('Social Sharing Tags', st) + '<div class="sa-checks">' + rows.join('') + '</div>';
+        if (so.ogTitle) h += '<div class="sa-check"><div class="cbody"><div class="cdetail"><strong>og:title:</strong> ' + app.escapeHtml(so.ogTitle) + '</div></div></div>';
+
         if (kw.length > 0) {
-          h += '<div class="sa-section-title sa-mt">Top Keywords</div>';
+          h += '<div class="sa-group-head">Top Keywords by Frequency</div>';
           var maxCount = kw[0].count;
           kw.forEach(function (k) {
             var pct = (k.count / maxCount) * 100;
-            h += '<div class="sa-kw"><span class="name">' + app.escapeHtml(k.word) + '</span><div class="bar"><div class="fill" style="width:' + pct + '%"></div></div><span class="stat">' + k.count + ' (' + k.density + ')</span></div>';
+            var stuffed = parseFloat(k.density) > 5;
+            h += '<div class="sa-kw"><span class="name">' + app.escapeHtml(k.word) + '</span><div class="bar"><div class="fill" style="width:' + pct + '%;background:' + (stuffed ? 'var(--error)' : 'var(--primary)') + '"></div></div><span class="stat">' + k.count + ' (' + k.density + ')</span></div>';
           });
+          h += '<div class="sa-check" style="border:none;padding-top:10px;"><div class="cbody"><div class="cdetail">Density above 5% (shown in red) may be flagged as keyword stuffing.</div></div></div>';
         }
         return h;
       },
@@ -1143,6 +1379,8 @@ const faqs = [
         var recs = d.recommendations;
         if (!recs || typeof recs !== 'object') return '<div style="text-align:center;padding:24px;color:var(--text-muted);">No recommendations available.</div>';
         var h = '';
+        var codeIdx = 0;
+        this._codeBlocks = {};
         var priorities = ['critical', 'high', 'medium', 'low'];
         var labels = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
         var clsMap = { critical: '', high: 'high', medium: 'medium', low: 'low' };
@@ -1154,9 +1392,15 @@ const faqs = [
             recs[p].forEach(function (rec) {
               h += '<div class="sa-rec ' + clsMap[p] + '">';
               h += '<h4 style="color:' + colorMap[p] + '"><i class="fas ' + iconMap[p] + '"></i> ' + app.escapeHtml(rec.issue) + '</h4>';
-              h += '<p><strong>Impact:</strong> ' + app.escapeHtml(rec.impact) + '</p>';
-              h += '<p><strong>Fix:</strong> ' + app.escapeHtml(rec.solution) + '</p>';
-              if (rec.codeExample) { h += '<pre>' + app.escapeHtml(rec.codeExample) + '</pre>'; }
+              h += '<div class="why-how">';
+              h += '<div class="why-how-block why"><div class="block-label"><i class="fas fa-triangle-exclamation"></i> Why this hurts your rankings</div><p>' + app.escapeHtml(rec.impact) + '</p></div>';
+              h += '<div class="why-how-block how"><div class="block-label"><i class="fas fa-wrench"></i> How to fix it</div><p>' + app.escapeHtml(rec.solution) + '</p></div>';
+              h += '</div>';
+              if (rec.codeExample) {
+                var blockId = 'sa-code-' + (codeIdx++);
+                app._codeBlocks[blockId] = rec.codeExample;
+                h += '<div class="code-wrap"><button class="copy-code-btn" onclick="app.copyCode(\'' + blockId + '\', this)"><i class="fas fa-copy"></i> Copy</button><pre id="' + blockId + '">' + app.escapeHtml(rec.codeExample) + '</pre></div>';
+              }
               h += '<div class="meta"><span>⏱ ' + app.escapeHtml(rec.timeToFix) + '</span> <span>📈 ' + app.escapeHtml(rec.estimatedImpact) + '</span></div>';
               h += '</div>';
             });
@@ -1164,6 +1408,20 @@ const faqs = [
         });
         if (!h) h = '<div style="text-align:center;padding:24px;color:var(--success);"><i class="fas fa-check-circle" style="font-size:2rem;"></i><p class="sa-mt">No issues found. Your page is well-optimized.</p></div>';
         return h;
+      },
+
+      copyCode: function (blockId, btn) {
+        var code = (this._codeBlocks && this._codeBlocks[blockId]) || '';
+        var done = function () {
+          var original = btn.innerHTML;
+          btn.innerHTML = '<i class="fas fa-check"></i> Copied';
+          setTimeout(function () { btn.innerHTML = original; }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(code).then(done).catch(done);
+        } else {
+          done();
+        }
       },
 
       getGrade: function (score) {
@@ -1176,74 +1434,176 @@ const faqs = [
       },
 
       downloadPdf: function () {
-        if (!this.data || typeof window.jspdf === 'undefined') return;
+        if (!this.data) { alert('Run an analysis first.'); return; }
+        if (typeof window.jspdf === 'undefined') {
+          alert('The PDF library failed to load (likely a network or ad-blocker issue). Please disable any script blockers for this site and try again.');
+          return;
+        }
         var d = this.data;
         var jsPDF = window.jspdf.jsPDF;
         var doc = new jsPDF({ unit: 'pt', format: 'a4' });
         var pageW = doc.internal.pageSize.getWidth();
-        var pageH = doc.internal.pageSize.getHeight();
-        var margin = 48;
-        var y = margin;
-
-        function ensureSpace(needed) {
-          if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
-        }
-        function addWrapped(text, size, color, style, maxWidth) {
-          doc.setFontSize(size);
-          doc.setTextColor(color[0], color[1], color[2]);
-          doc.setFont('helvetica', style || 'normal');
-          var lines = doc.splitTextToSize(String(text), maxWidth || (pageW - margin * 2));
-          ensureSpace(lines.length * (size * 1.3) + 4);
-          doc.text(lines, margin, y);
-          y += lines.length * (size * 1.3) + 6;
-        }
-
-        // ── Cover ──
-        doc.setFillColor(30, 27, 75);
-        doc.rect(0, 0, pageW, 130, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('SEO Audit Report', margin, 55);
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(String(d.url || ''), margin, 78, { maxWidth: pageW - margin * 2 });
-        doc.text('Generated on ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + ' — ToolNestr SEO Analyzer', margin, 100);
-        y = 160;
-
+        var margin = 40;
+        var brand = [30, 27, 75];
         var gc = d.scores.overall >= 80 ? [16,185,129] : d.scores.overall >= 60 ? [245,158,11] : [239,68,68];
-        addWrapped('Overall Score: ' + d.scores.overall + ' / 100 (Grade ' + app.getGrade(d.scores.overall) + ')', 16, gc, 'bold');
-        addWrapped('Content: ' + d.scores.content + '  •  Technical: ' + d.scores.technical + '  •  Performance: ' + d.scores.performance + '  •  Accessibility: ' + d.scores.accessibility, 11, [71,85,105]);
-
         var recs = d.recommendations || {};
         var counts = { critical: (recs.critical||[]).length, high: (recs.high||[]).length, medium: (recs.medium||[]).length, low: (recs.low||[]).length };
-        y += 6;
-        addWrapped('Issues Found: ' + counts.critical + ' critical, ' + counts.high + ' high, ' + counts.medium + ' medium, ' + counts.low + ' low priority.', 11, [71,85,105]);
+        var totalIssues = counts.critical + counts.high + counts.medium + counts.low;
 
-        // ── Recommendations ──
+        // ── Cover / header band ──
+        doc.setFillColor(brand[0], brand[1], brand[2]);
+        doc.rect(0, 0, pageW, 118, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
+        doc.text('ToolNestr SEO Audit Report', margin, 42);
+        doc.setFontSize(10.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(d.url || ''), margin, 62, { maxWidth: pageW - margin * 2 });
+        doc.setTextColor(196, 181, 253);
+        doc.text('Generated ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), margin, 80);
+
+        // ── Score summary strip ──
+        var catBoxes = [
+          { label: 'Overall', val: d.scores.overall, color: gc },
+          { label: 'Content', val: d.scores.content, color: [99,102,241] },
+          { label: 'Technical', val: d.scores.technical, color: [16,185,129] },
+          { label: 'Performance', val: d.scores.performance, color: [245,158,11] },
+          { label: 'Accessibility', val: d.scores.accessibility, color: [59,130,246] },
+        ];
+        var boxW = (pageW - margin * 2) / catBoxes.length;
+        catBoxes.forEach(function (c, i) {
+          var x = margin + i * boxW;
+          doc.setFontSize(18);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(c.color[0], c.color[1], c.color[2]);
+          doc.text(String(c.val), x + boxW / 2, 100, { align: 'center' });
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(230, 230, 250);
+          doc.text(c.label, x + boxW / 2, 111, { align: 'center' });
+        });
+
+        var y = 140;
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Grade: ' + app.getGrade(d.scores.overall), margin, y);
+        y += 20;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+        var verdictText = document.getElementById('execVerdict') ? document.getElementById('execVerdict').textContent : '';
+        var verdictLines = doc.splitTextToSize(verdictText, pageW - margin * 2);
+        doc.text(verdictLines, margin, y);
+        y += verdictLines.length * 13 + 14;
+
+        // ── Issue count summary table ──
+        doc.autoTable({
+          startY: y,
+          margin: { left: margin, right: margin },
+          head: [['Severity', 'Count', 'Recommended Response Time']],
+          body: [
+            ['Critical', String(counts.critical), 'Within 24 hours'],
+            ['High', String(counts.high), 'Within 1 week'],
+            ['Medium', String(counts.medium), 'Next content update cycle'],
+            ['Low', String(counts.low), 'Whenever convenient'],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: brand, textColor: 255, fontSize: 9.5 },
+          bodyStyles: { fontSize: 9.5, textColor: [51, 65, 85] },
+          columnStyles: { 1: { halign: 'center' }, 2: { halign: 'left' } },
+        });
+        y = doc.lastAutoTable.finalY + 24;
+
+        // ── Detailed recommendations, one table per severity ──
         var priorities = ['critical','high','medium','low'];
-        var labels = { critical: 'Critical Priority', high: 'High Priority', medium: 'Medium Priority', low: 'Low Priority' };
+        var labels = { critical: 'Critical Priority Issues', high: 'High Priority Issues', medium: 'Medium Priority Issues', low: 'Low Priority Issues' };
         var colorMap = { critical: [220,38,38], high: [217,119,6], medium: [37,99,235], low: [100,116,139] };
-        var hasAny = false;
+
         priorities.forEach(function (p) {
           var list = recs[p] || [];
           if (list.length === 0) return;
-          hasAny = true;
+          if (y > doc.internal.pageSize.getHeight() - 100) { doc.addPage(); y = margin; }
+          doc.setFontSize(12.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(colorMap[p][0], colorMap[p][1], colorMap[p][2]);
+          doc.text(labels[p] + ' (' + list.length + ')', margin, y);
           y += 10;
-          ensureSpace(30);
-          addWrapped(labels[p] + ' (' + list.length + ')', 14, colorMap[p], 'bold');
-          list.forEach(function (rec) {
-            ensureSpace(20);
-            addWrapped(rec.issue, 12, [30,41,59], 'bold');
-            addWrapped('Impact: ' + rec.impact, 9.5, [71,85,105]);
-            addWrapped('Solution: ' + rec.solution, 9.5, [71,85,105]);
-            if (rec.timeToFix || rec.estimatedImpact) {
-              addWrapped('Time to fix: ' + (rec.timeToFix || 'n/a') + '   |   Expected impact: ' + (rec.estimatedImpact || 'n/a'), 9, [148,163,184], 'italic');
-            }
-            y += 6;
+
+          doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Issue', 'Why It Matters', 'How To Fix It', 'Fix Time / Impact']],
+            body: list.map(function (rec) {
+              return [
+                rec.issue || '',
+                rec.impact || '',
+                rec.solution || '',
+                (rec.timeToFix || 'n/a') + '\n' + (rec.estimatedImpact || ''),
+              ];
+            }),
+            theme: 'striped',
+            styles: { fontSize: 8.5, cellPadding: 5, valign: 'top', overflow: 'linebreak' },
+            headStyles: { fillColor: colorMap[p], textColor: 255, fontSize: 9 },
+            columnStyles: {
+              0: { cellWidth: 90, fontStyle: 'bold' },
+              1: { cellWidth: 155 },
+              2: { cellWidth: 155 },
+              3: { cellWidth: 'auto' },
+            },
           });
+          y = doc.lastAutoTable.finalY + 22;
         });
-        if (!hasAny) addWrapped('No issues found — this page is well-optimized.', 12, [16,185,129], 'bold');
+
+        if (totalIssues === 0) {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(16, 185, 129);
+          doc.text('No issues found — this page is well-optimized.', margin, y);
+        }
+
+        // ── Code reference appendix for critical/high issues ──
+        var codeIssues = (recs.critical || []).concat(recs.high || []).filter(function (r) { return r.codeExample; });
+        if (codeIssues.length > 0) {
+          doc.addPage();
+          y = margin;
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(brand[0], brand[1], brand[2]);
+          doc.text('Code Reference — Critical & High Priority Fixes', margin, y);
+          y += 20;
+          codeIssues.forEach(function (rec) {
+            var codeLines = doc.splitTextToSize(rec.codeExample, pageW - margin * 2 - 16);
+            var blockH = codeLines.length * 10.5 + 28;
+            if (y + blockH > doc.internal.pageSize.getHeight() - margin) { doc.addPage(); y = margin; }
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(30, 41, 59);
+            doc.text(rec.issue, margin, y);
+            y += 12;
+            doc.setFillColor(30, 41, 59);
+            doc.rect(margin, y, pageW - margin * 2, codeLines.length * 10.5 + 10, 'F');
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(226, 232, 240);
+            doc.text(codeLines, margin + 8, y + 12);
+            y += codeLines.length * 10.5 + 22;
+          });
+        }
+
+        // ── Footer: page numbers + branding on every page ──
+        var pageCount = doc.internal.getNumberOfPages();
+        for (var i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          var ph = doc.internal.pageSize.getHeight();
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(148, 163, 184);
+          doc.text('ToolNestr SEO Analyzer — toolnestr.com', margin, ph - 20);
+          doc.text('Page ' + i + ' of ' + pageCount, pageW - margin, ph - 20, { align: 'right' });
+        }
 
         var safeName = (d.url || 'seo-report').replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/gi, '-').slice(0, 60);
         doc.save('seo-audit-' + safeName + '.pdf');
