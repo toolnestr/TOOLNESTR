@@ -85,3 +85,9 @@ Ran PageSpeed Insights (mobile: Perf 93/Access 93/BP 92/SEO 100; desktop: Perf 1
 | — | No logo image suitable for schema `logo` (need square, ≥112×112, raster) — only have `og-image.png` (1200×628) and an SVG favicon | Not added — flagged, needs a real square logo asset | ⬜ Pending |
 
 **Not fabricated:** no founder name, no bio, no credentials, no social links, no logo — all skipped/deferred rather than invented, per user's explicit choice of "brand persona, no personal name."
+
+**Deployed & verified live (2026-07-04):** `npm ci` + `astro build` clean (550 pages, 0 errors) before push.
+Commit `d6209ce`, Cloudflare Pages deployment `14d1e958` Active. Confirmed on production:
+- Homepage emits enriched Organization schema (`foundingDate`, `description`, `contactPoint`) ✅
+- Tool pages reference it via `"author":{"@id":".../#organization"}` (no more duplicated bare object) ✅
+- About page shows the new methodology section and launch date ✅
