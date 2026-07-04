@@ -675,6 +675,11 @@ async function handleSeoAudit(url) {
     let images = { total: 0, missingAlt: 0, outdatedFormats: 0, notLazyLoaded: 0 };
     let links = { internal: 0, external: 0, poorAnchorText: [] };
     let social = { ogTitle: '', ogImage: '', missing: [] };
+    let title = { text: '', length: 0 };
+    let metaDescription = { text: '', length: 0 };
+    let freshness = 0;
+    let indexability = { indexable: true, reasons: [] };
+    let brokenLinks = [];
 
     let currentUrl = finalUrl;
     let response;
@@ -701,6 +706,7 @@ async function handleSeoAudit(url) {
     var hsts = response ? response.headers.get('Strict-Transport-Security') : null;
     var xFrame = response ? response.headers.get('X-Frame-Options') : null;
     var csp = response ? response.headers.get('Content-Security-Policy') : null;
+    var xRobotsTag = response ? response.headers.get('X-Robots-Tag') : null;
     securityHeaders = { hsts: hsts !== null, xFrame: xFrame !== null, csp: csp !== null };
 
     html = response ? await response.text() : '';
@@ -737,8 +743,18 @@ async function handleSeoAudit(url) {
       const entityResult = analyzeEntities(html);
       entities.push.apply(entities, (entityResult || []).map(function (e) { return e.name; }).slice(0, 10));
 
-      scores = calculateScoresRaw(wordCount, textRatio, isThin, headings, readability.fleschKincaid, eeaScore, snippets.score, schema, canonical, securityHeaders, perf, images, html);
-      const recs = generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippets.score, images, links, social, perf, schema, canonical, securityHeaders);
+      const titleText = extractTitle(html);
+      title = { text: titleText, length: titleText.length };
+
+      const metaDescText = extractMetaDescription(html);
+      metaDescription = { text: metaDescText, length: metaDescText.length };
+
+      freshness = calculateFreshness(html, {});
+      indexability = checkIndexability(html, xRobotsTag);
+      brokenLinks = await checkBrokenLinks(linkResult.internalUrls || [], finalUrl);
+
+      scores = calculateScoresRaw(wordCount, textRatio, isThin, headings, readability.fleschKincaid, eeaScore, snippets.score, schema, canonical, securityHeaders, perf, images, html, title, metaDescription, freshness, indexability);
+      const recs = generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippets.score, images, links, social, perf, schema, canonical, securityHeaders, title, metaDescription, indexability, brokenLinks);
       recommendations.critical = recs.critical || [];
       recommendations.high = recs.high || [];
       recommendations.medium = recs.medium || [];
@@ -747,8 +763,8 @@ async function handleSeoAudit(url) {
 
     return jsonResponse({
       url: finalUrl, redirectChain: redirectChain, scores: scores,
-      content: { wordCount, textRatio, isThin, headings, readability, eeat, snippets, entities },
-      technical: { schema, canonical, securityHeaders },
+      content: { wordCount, textRatio, isThin, headings, readability, eeat, snippets, entities, title, metaDescription, freshness },
+      technical: { schema, canonical, securityHeaders, indexability, brokenLinks },
       performance: perf, images, links, social, keywords, recommendations,
     });
   } catch (error) {
@@ -936,9 +952,11 @@ function analyzeImages(html) {
 // ─────────────────────────────────────────────────────────────
 
 function analyzeLinks(html, baseUrl) {
-  if (!html) return { internal: 0, external: 0, orphanParagraphs: 0, anchorTextDistribution: [] };
+  if (!html) return { internal: 0, external: 0, orphanParagraphs: 0, anchorTextDistribution: [], internalUrls: [] };
   var internal = 0, external = 0;
   var anchorTexts = {};
+  var internalUrls = [];
+  var seenInternal = {};
   var baseHost = baseUrl ? new URL(baseUrl).hostname.replace(/^www\./, '') : '';
   var linkRegex = /<a\s+[^>]*href\s*=\s*["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
   var match;
@@ -951,12 +969,61 @@ function analyzeLinks(html, baseUrl) {
       anchorTexts[lower] = (anchorTexts[lower] || 0) + 1;
     }
     try {
-      var linkHost = new URL(href, baseUrl).hostname.replace(/^www\./, '');
-      if (linkHost === baseHost) internal++; else external++;
+      var resolved = new URL(href, baseUrl).href;
+      var linkHost = new URL(resolved).hostname.replace(/^www\./, '');
+      if (linkHost === baseHost) {
+        internal++;
+        if (!seenInternal[resolved] && internalUrls.length < 5) { seenInternal[resolved] = true; internalUrls.push(resolved); }
+      } else external++;
     } catch (e) { internal++; }
   }
   var anchorTextDistribution = Object.keys(anchorTexts).filter(function (t) { return t.length > 0; }).map(function (text) { return { text: text, count: anchorTexts[text] }; }).sort(function (a, b) { return b.count - a.count; }).slice(0, 10);
-  return { internal: internal, external: external, orphanParagraphs: 0, anchorTextDistribution: anchorTextDistribution };
+  return { internal: internal, external: external, orphanParagraphs: 0, anchorTextDistribution: anchorTextDistribution, internalUrls: internalUrls };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TITLE / META DESCRIPTION
+// ─────────────────────────────────────────────────────────────
+
+function extractTitle(html) {
+  if (!html) return '';
+  var m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return m ? extractText(m[1]).trim() : '';
+}
+
+function extractMetaDescription(html) {
+  if (!html) return '';
+  var m = html.match(/<meta\s+[^>]*name\s*=\s*["']description["'][^>]*content\s*=\s*["']([^"']*)["']/i)
+    || html.match(/<meta\s+[^>]*content\s*=\s*["']([^"']*)["'][^>]*name\s*=\s*["']description["']/i);
+  return m ? m[1].trim() : '';
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INDEXABILITY
+// ─────────────────────────────────────────────────────────────
+
+function checkIndexability(html, xRobotsTag) {
+  var reasons = [];
+  var metaRobots = html.match(/<meta\s+[^>]*name\s*=\s*["']robots["'][^>]*content\s*=\s*["']([^"']*)["']/i);
+  var metaContent = metaRobots ? metaRobots[1].toLowerCase() : '';
+  if (/noindex/i.test(metaContent)) reasons.push('Meta robots tag contains "noindex"');
+  if (xRobotsTag && /noindex/i.test(xRobotsTag)) reasons.push('X-Robots-Tag header contains "noindex"');
+  return { indexable: reasons.length === 0, reasons: reasons };
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BROKEN INTERNAL LINKS (bounded spot-check)
+// ─────────────────────────────────────────────────────────────
+
+async function checkBrokenLinks(internalUrls, baseUrl) {
+  if (!internalUrls || internalUrls.length === 0) return [];
+  var checks = internalUrls.slice(0, 5).map(function (link) {
+    return fetch(link, { method: 'HEAD', redirect: 'follow' })
+      .then(function (r) { return { url: link, status: r.status }; })
+      .catch(function () { return { url: link, status: 0 }; });
+  });
+  var results = await Promise.all(checks);
+  return results.filter(function (r) { return r.status === 0 || r.status >= 400; });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1092,7 +1159,7 @@ function analyzeEntities(html) {
 //  SCORE CALCULATION (simplified, no external deps)
 // ─────────────────────────────────────────────────────────────
 
-function calculateScoresRaw(wordCount, textRatio, isThin, headings, fleschKincaid, eeaScore, snippetScore, schema, canonical, securityHeaders, perf, images, html) {
+function calculateScoresRaw(wordCount, textRatio, isThin, headings, fleschKincaid, eeaScore, snippetScore, schema, canonical, securityHeaders, perf, images, html, title, metaDescription, freshness, indexability) {
   var contentScore = 0;
   if (!isThin) contentScore += 20;
   contentScore += Math.min(20, wordCount / 100);
@@ -1101,6 +1168,7 @@ function calculateScoresRaw(wordCount, textRatio, isThin, headings, fleschKincai
   contentScore += fleschKincaid * 0.1;
   if (headings.h1 === 1) contentScore += 5;
   contentScore += Math.min(10, headings.h2 * 2);
+  if (freshness != null) contentScore += Math.min(5, freshness * 0.05);
   contentScore = Math.min(100, Math.round(contentScore));
 
   var technicalScore = 0;
@@ -1111,6 +1179,11 @@ function calculateScoresRaw(wordCount, textRatio, isThin, headings, fleschKincai
   else if (canonical.url) technicalScore += 5;
   if (schema.typesFound.length > 0) technicalScore += Math.min(15, schema.typesFound.length * 5);
   if (schema.errors.length === 0) technicalScore += 5;
+  if (title && title.length >= 30 && title.length <= 60) technicalScore += 10;
+  else if (title && title.length > 0) technicalScore += 3;
+  if (metaDescription && metaDescription.length >= 50 && metaDescription.length <= 160) technicalScore += 10;
+  else if (metaDescription && metaDescription.length > 0) technicalScore += 3;
+  if (!indexability || !indexability.indexable) technicalScore = Math.round(technicalScore * 0.3);
   technicalScore = Math.min(100, Math.round(technicalScore));
 
   var performanceScore = 70;
@@ -1156,8 +1229,18 @@ function calculateAccessibility(html) {
 //  RECOMMENDATIONS
 // ─────────────────────────────────────────────────────────────
 
-function generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippetScore, images, links, social, perf, schema, canonical, securityHeaders) {
+function generateRecommendationsRaw(wordCount, textRatio, isThin, headings, readability, eeaScore, snippetScore, images, links, social, perf, schema, canonical, securityHeaders, title, metaDescription, indexability, brokenLinks) {
   var critical = [], high = [], medium = [], low = [];
+
+  if (indexability && !indexability.indexable) critical.push({ issue: 'Page Is Blocking Search Engine Indexing', impact: 'This page cannot appear in search results at all: ' + indexability.reasons.join('; ') + '. This overrides every other SEO factor — no amount of content or technical optimization matters if the page is noindexed.', solution: 'Remove the noindex directive from the meta robots tag and/or the X-Robots-Tag HTTP header unless this page is intentionally excluded from search (e.g. a staging or admin page).', codeExample: '<!-- Remove this if indexing is desired -->\n<meta name="robots" content="index, follow">', timeToFix: '2 minutes', estimatedImpact: 'Unblocks all ranking potential' });
+
+  if (!title || !title.text) critical.push({ issue: 'Missing Title Tag', impact: 'The title tag is one of the strongest on-page ranking signals and is what users see as the clickable headline in search results. Without one, search engines must guess the page topic.', solution: 'Add a unique, descriptive <title> tag between 30–60 characters containing your primary keyword near the front.', codeExample: '<title>Primary Keyword — Supporting Phrase | Brand</title>', timeToFix: '5 minutes', estimatedImpact: '+20% CTR potential' });
+  else if (title.length < 30 || title.length > 60) medium.push({ issue: 'Title Tag Length Not Optimal', impact: 'Your title is ' + title.length + ' characters. Titles under 30 characters under-use valuable SERP real estate; titles over 60 characters are often truncated by Google, cutting off keywords or calls to action.', solution: 'Rewrite the title to fall between 30 and 60 characters while keeping the primary keyword near the beginning.', codeExample: '<title>' + (title.length > 60 ? title.text.slice(0, 55) + '...' : title.text + ' — Extend This Title') + '</title>', timeToFix: '5 minutes', estimatedImpact: '+8% CTR potential' });
+
+  if (!metaDescription || !metaDescription.text) high.push({ issue: 'Missing Meta Description', impact: 'Without a meta description, Google auto-generates a snippet from page content, which is often less compelling and does not include a deliberate call to action, reducing click-through rate.', solution: 'Write a unique meta description between 50–160 characters that summarizes the page value and includes a call to action.', codeExample: '<meta name="description" content="Free, fast tool that does X — try it now, no signup required.">', timeToFix: '10 minutes', estimatedImpact: '+10% CTR potential' });
+  else if (metaDescription.length < 50 || metaDescription.length > 160) medium.push({ issue: 'Meta Description Length Not Optimal', impact: 'Your meta description is ' + metaDescription.length + ' characters. Descriptions under 50 characters look thin in search results; descriptions over 160 characters are usually truncated mid-sentence.', solution: 'Adjust the meta description to fall between 50 and 160 characters.', codeExample: '<meta name="description" content="A concise, compelling summary between 50 and 160 characters that ends naturally.">', timeToFix: '10 minutes', estimatedImpact: '+5% CTR potential' });
+
+  if (brokenLinks && brokenLinks.length > 0) medium.push({ issue: 'Broken Internal Link(s) Detected', impact: brokenLinks.length + ' internal link(s) returned an error status (' + brokenLinks.map(function (b) { return b.url + ' → ' + (b.status || 'unreachable'); }).join(', ') + '). Broken links waste crawl budget and hurt user experience.', solution: 'Fix or remove links pointing to missing pages, or add a proper redirect to the correct destination.', codeExample: '<!-- Update the href to a working destination -->\n<a href="/correct-page/">Descriptive link text</a>', timeToFix: '10-20 minutes', estimatedImpact: '+3% crawl efficiency' });
 
   if (isThin) critical.push({ issue: 'Thin Content Detected', impact: 'Pages with fewer than 300 words and a text-to-HTML ratio below 15% lack sufficient substance to rank well in search results. Expanding your content is critical for visibility.', solution: 'Expand your content to at least 600 words. Add detailed paragraphs, examples, data, and visuals. Ensure the text-to-HTML ratio is above 20%.', codeExample: '<article>\n  <h1>Complete Guide to On-Page SEO for Small Businesses</h1>\n  <p>On-page SEO is the practice of optimizing individual web pages to rank higher in search engines and earn more relevant traffic. Unlike off-page SEO which focuses on backlinks, on-page SEO gives you full control over every element on your site. This guide covers the essential factors every small business owner needs to know to improve their search visibility and attract more customers through organic traffic.</p>\n  <h2>Why Title Tags Matter for Search Rankings</h2>\n  <p>The title tag is the first thing users see in search results. It should include your primary keyword near the beginning, stay under 60 characters to avoid truncation, and provide a clear reason to click. For example, a local bakery might use "Fresh Artisan Bread in Portland | Portland Bakery" rather than just "Home". A compelling title tag can improve click-through rate by up to 30% compared to a generic title.</p>\n  <h2>How to Write Meta Descriptions That Drive Clicks</h2>\n  <p>Meta descriptions are the short snippets beneath your title in search results. While they are not a direct ranking factor, they significantly impact click-through rate. A well-crafted meta description of 150-160 characters should summarize the page value, include a call to action, and naturally incorporate the target keyword. Pages with optimized meta descriptions see 5-10% higher CTR on average according to industry studies. Write unique descriptions for every page rather than using boilerplate text.</p>\n  <h2>Heading Structure and Content Organization</h2>\n  <p>Search engines use heading tags to understand the hierarchy of your content. The H1 should contain your primary keyword and match the page topic. H2 tags divide the content into major sections, while H3 tags break those sections into subtopics. Studies show that pages with clear heading hierarchies rank better because they signal comprehensive topic coverage to search engines. Avoid skipping heading levels such as jumping from H2 directly to H4, as this creates confusion for both users and crawlers.</p>\n  <p>Each section of your content should address a specific aspect of the topic. Use short paragraphs of 2-4 sentences to maintain readability, especially on mobile devices where users tend to scan rather than read in depth. Including bulleted or numbered lists where appropriate can improve user engagement and increase the chances of earning a featured snippet.</p>\n  <h2>Internal Linking and Site Architecture</h2>\n  <p>Internal linking is one of the most overlooked on-page SEO factors. Link to related pages on your site using descriptive anchor text to help search engines understand your site structure and distribute link equity across your pages. A well-linked site allows crawlers to discover all your important content and helps users navigate to relevant information. Aim for 3-5 internal links per page, linking to cornerstone content that covers your most important topics in depth.</p>\n  <h2>Optimizing Images for Search and Speed</h2>\n  <p>Images can enhance user engagement but must be optimized for both search engines and page speed. Use descriptive file names and fill in alt text that accurately describes the image content. Compress images to reduce file size without sacrificing quality, and use modern formats like WebP for better compression. Add width and height attributes to prevent layout shifts, which affect Core Web Vitals scores. A well-optimized image can load in under one second while still looking crisp on retina displays. Google considers page speed a direct ranking factor, and slow image loading is one of the most common causes of poor Core Web Vitals scores across small business websites. Tools like Lighthouse and PageSpeed Insights can help you identify which images need optimization and by how much. Lazy loading below-the-fold images with the loading attribute ensures that only visible images load on page start, improving initial load performance significantly.</p>\n</article>', timeToFix: '30-60 minutes', estimatedImpact: '+40% ranking potential' });
   if (headings.h1 === 0) critical.push({ issue: 'Missing H1 Tag', impact: 'Search engines cannot determine the primary topic of the page without an H1 tag.', solution: 'Add exactly one H1 tag at the top of your main content area containing your primary keyword.', codeExample: '<h1>Your Primary Keyword Here | Brand Name</h1>', timeToFix: '2 minutes', estimatedImpact: '+10% ranking potential' });

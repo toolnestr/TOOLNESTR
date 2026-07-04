@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const title = 'Invoice Generator';
 const description =
-  'Free online invoice generator — create professional invoices instantly. Add your business details, client info, line items and tax. Download as PDF with one click. No sign-up needed.';
+  'Free online invoice generator — create professional invoices instantly. Choose from 5 templates, add a signature, business details, client info, line items, tax and payment status. Download as PDF with one click. No sign-up needed.';
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$',  name: 'US Dollar' },
@@ -24,13 +24,24 @@ const CURRENCIES = [
   { code: 'PKR', symbol: '₨',  name: 'Pakistani Rupee' },
 ];
 
+const TEMPLATES = [
+  { id: 'classic', name: 'Classic' },
+  { id: 'modern', name: 'Modern Minimal' },
+  { id: 'bold', name: 'Bold Corporate' },
+  { id: 'elegant', name: 'Elegant Serif' },
+  { id: 'sidebar', name: 'Creative Sidebar' },
+];
+
 const faqs = [
   { q: 'Is the invoice generator really free?', a: 'Yes — completely free with no sign-up, no watermarks and no usage limits. Everything runs in your browser. Your invoice data is never sent to any server.' },
   { q: 'How do I download my invoice as a PDF?', a: 'Click the "Download PDF" button. This opens your browser\'s print dialog with the invoice ready to save. Select "Save as PDF" as the destination (available in Chrome, Edge, Firefox and Safari). On mobile, use "Share → Print" and choose PDF.' },
   { q: 'Can I add my company logo?', a: 'Yes — click the logo area or the "Add Logo" button to upload an image from your device. The logo is stored only in your browser and is included in the printed PDF.' },
-  { q: 'Is my invoice data saved?', a: 'Invoice data is not automatically saved between sessions. You can use your browser\'s "Save as PDF" feature to keep a copy. In a future update we plan to add local-storage saving so your business details are remembered.' },
-  { q: 'Can I add tax?', a: 'Yes — enter a tax percentage in the Tax field. The tool calculates the tax amount and adds it to the subtotal to give you the final total.' },
+  { q: 'Can I sign my invoice?', a: 'Yes — the Signature section lets you either draw your signature with your mouse or finger, or type your name in a cursive script font. Either way it is embedded directly into the invoice.' },
+  { q: 'How many invoice templates are there?', a: 'Five: Classic, Modern Minimal, Bold Corporate, Elegant Serif, and Creative Sidebar. Switch between them at any time — your data carries over automatically.' },
+  { q: 'Is my invoice data saved?', a: 'Yes — your invoice draft is automatically saved to your browser\'s local storage as you type, so refreshing the page won\'t lose your work. Nothing is ever sent to a server. Use "Reset" to clear the saved draft.' },
+  { q: 'Can I add tax and a discount?', a: 'Yes — enter a discount percentage and a tax percentage. The tool applies the discount to the subtotal first, then calculates tax on the discounted amount, and shows a transparent breakdown.' },
   { q: 'What currencies are supported?', a: 'The generator supports 16 major currencies including USD, EUR, GBP, JPY, INR, AED, SAR, PKR and more. Select your currency from the dropdown and the symbol updates throughout the invoice.' },
+  { q: 'Can I mark an invoice as paid?', a: 'Yes — the Status field lets you stamp the invoice as Paid, Unpaid, Overdue or Draft. The stamp renders directly on the preview and in the downloaded PDF.' },
 ];
 
 const faqSchema = {
@@ -45,6 +56,10 @@ const faqSchema = {
 ---
 
 <BaseLayout title={title} description={description} jsonLd={faqSchema}>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+
   <style is:inline>
     :root {
       --primary: #6366f1; --success: #10b981;
@@ -83,6 +98,12 @@ const faqSchema = {
     .field-group input:focus, .field-group textarea:focus, .field-group select:focus { border-color: var(--primary); }
     .field-full { grid-column: 1 / -1; }
 
+    /* Template picker */
+    .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+    .tpl-option { border: 2px solid var(--border); border-radius: 10px; padding: 8px 6px; cursor: pointer; text-align: center; font-size: .72rem; font-weight: 600; color: var(--muted); transition: all .15s; background: var(--bg); }
+    .tpl-option .swatch { height: 28px; border-radius: 6px; margin-bottom: 6px; }
+    .tpl-option.active { border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 2px rgba(99,102,241,.18); }
+
     /* Line items */
     .items-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
     .items-table th { text-align: left; padding: 6px 6px; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--border); }
@@ -110,12 +131,22 @@ const faqSchema = {
     .logo-upload:hover { border-color: var(--primary); color: var(--primary); }
     .logo-upload img { width: 100%; height: 100%; object-fit: contain; }
 
+    /* Signature */
+    .sig-mode-toggle { display: flex; gap: 6px; margin-bottom: 6px; }
+    .sig-mode-btn { flex: 1; padding: 7px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); font-size: .78rem; font-weight: 600; cursor: pointer; }
+    .sig-mode-btn.active { border-color: var(--primary); color: var(--primary); background: #eef2ff; }
+    .dark body .sig-mode-btn.active { background: #1e1b4b; }
+    #sigCanvas { width: 100%; height: 120px; border: 1.5px dashed var(--border); border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
+    .sig-clear-btn { margin-top: 6px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: .78rem; cursor: pointer; }
+    .sig-type-preview { font-family: 'Dancing Script', cursive; font-size: 1.8rem; color: var(--text); padding: 14px 10px; border: 1.5px dashed var(--border); border-radius: 8px; min-height: 44px; background: #fff; }
+
     /* Action buttons */
     .action-row { display: flex; gap: 8px; padding: 16px; background: var(--bg); border-top: 1px solid var(--border); }
     .btn-primary { flex: 1; padding: 11px; border-radius: 10px; background: var(--primary); color: #fff; font-size: .92rem; font-weight: 700; border: none; cursor: pointer; transition: opacity .15s; }
     .btn-primary:hover { opacity: .88; }
     .btn-outline { flex: 1; padding: 11px; border-radius: 10px; background: transparent; border: 1.5px solid var(--border); color: var(--muted); font-size: .92rem; font-weight: 600; cursor: pointer; transition: all .15s; }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .ig-save-note { font-size: .72rem; color: var(--muted); text-align: center; padding: 0 16px 12px; }
 
     /* ── Invoice Preview ── */
     .preview-wrap { position: sticky; top: 80px; }
@@ -123,7 +154,7 @@ const faqSchema = {
 
     #invoicePreview {
       background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; color: #1e293b;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; color: #1e293b; position: relative;
     }
     .inv-header { background: #312e81; padding: 28px 32px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
     .inv-header .inv-logo-area { max-width: 120px; max-height: 60px; }
@@ -159,6 +190,47 @@ const faqSchema = {
     .inv-footer { background: #f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; }
     .inv-footer .if-notes { font-size: .8rem; color: #64748b; white-space: pre-line; }
     .inv-footer .if-terms { font-size: .75rem; color: #94a3b8; margin-top: 8px; white-space: pre-line; }
+    .inv-footer .if-bank  { font-size: .78rem; color: #475569; margin-top: 8px; white-space: pre-line; }
+
+    .inv-signature { padding: 8px 32px 24px; display: flex; justify-content: flex-end; }
+    .inv-signature .sig-box { text-align: center; }
+    .inv-signature img { max-height: 60px; max-width: 220px; object-fit: contain; }
+    .inv-signature .sig-typed { font-family: 'Dancing Script', cursive; font-size: 1.9rem; color: #1e293b; }
+    .inv-signature .sig-line { border-top: 1.5px solid #94a3b8; margin-top: 6px; padding-top: 4px; font-size: .68rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; min-width: 200px; }
+
+    .inv-stamp { position: absolute; top: 130px; right: 40px; padding: 8px 22px; border: 4px solid; border-radius: 8px; font-size: 1.4rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; transform: rotate(-14deg); opacity: .82; pointer-events: none; }
+    .inv-stamp.paid    { color: #059669; border-color: #059669; }
+    .inv-stamp.unpaid  { color: #d97706; border-color: #d97706; }
+    .inv-stamp.overdue { color: #dc2626; border-color: #dc2626; }
+    .inv-stamp.draft   { color: #64748b; border-color: #64748b; }
+
+    /* ── Template variants (CSS-only skinning of the shared markup) ── */
+    .tpl-modern .inv-header { background: #fff; border-bottom: 3px solid #1e293b; }
+    .tpl-modern .inv-company-name { color: #1e293b; }
+    .tpl-modern .inv-company-sub { color: #64748b; }
+    .tpl-modern .inv-right .inv-title, .tpl-modern .inv-right .inv-number { color: #1e293b; }
+    .tpl-modern .inv-items-head, .tpl-modern .total-row.grand { border-color: #1e293b; color: #1e293b; }
+
+    .tpl-bold .inv-header { background: linear-gradient(120deg, #db2777 0%, #7c3aed 100%); }
+    .tpl-bold .inv-company-name, .tpl-bold .inv-right .inv-title { font-weight: 900; }
+    .tpl-bold .inv-items-head, .tpl-bold .total-row.grand { border-color: #7c3aed; color: #7c3aed; }
+    .tpl-bold .totals-box .total-row.grand { background: #f5f3ff; padding: 10px 12px; border-radius: 8px; }
+
+    .tpl-elegant .inv-header { background: #fff; border-bottom: 1px solid #d4d4d8; padding-bottom: 20px; }
+    .tpl-elegant .inv-company-name { color: #292524; font-family: 'Playfair Display', serif; }
+    .tpl-elegant .inv-company-sub { color: #78716c; }
+    .tpl-elegant .inv-right .inv-title { color: #292524; font-family: 'Playfair Display', serif; font-weight: 700; }
+    .tpl-elegant .inv-right .inv-number { color: #a8a29e; }
+    .tpl-elegant .inv-items-head, .tpl-elegant .total-row.grand { border-color: #292524; color: #292524; }
+
+    .tpl-sidebar #invoicePreview-inner { display: grid; grid-template-columns: 200px 1fr; }
+    .tpl-sidebar .inv-sidebar { background: #312e81; color: #fff; padding: 28px 22px; display: flex; flex-direction: column; gap: 14px; }
+    .tpl-sidebar .inv-sidebar .inv-company-name { color: #fff; font-size: 1rem; font-weight: 800; }
+    .tpl-sidebar .inv-sidebar .inv-company-sub { color: #c4b5fd; font-size: .74rem; white-space: pre-line; line-height: 1.6; }
+    .tpl-sidebar .inv-main { display: flex; flex-direction: column; }
+    .tpl-sidebar .inv-right { text-align: left; padding: 24px 28px 0; }
+    .tpl-sidebar .inv-right .inv-title, .tpl-sidebar .inv-right .inv-number { color: #1e293b; }
+    @media (max-width: 640px) { .tpl-sidebar #invoicePreview-inner { grid-template-columns: 1fr; } }
 
     /* ── About ── */
     .about-section { max-width: 860px; margin: 28px auto 0; padding: 0 16px; }
@@ -196,12 +268,32 @@ const faqSchema = {
   <div class="ig-hero">
     <div class="ig-badge">★ FLAGSHIP TOOL</div>
     <h1>🧾 Invoice Generator</h1>
-    <p>Create professional invoices in seconds — download as PDF, free & private</p>
+    <p>Create professional invoices in seconds — 5 templates, signatures, PDF, free & private</p>
   </div>
 
   <div class="ig-wrap">
     <!-- ── Editor Panel ── -->
     <div class="editor-panel">
+
+      <!-- Template picker -->
+      <div class="ed-section">
+        <div class="ed-section-head">🎨 Template</div>
+        <div class="ed-body">
+          <div class="tpl-grid" id="tplGrid">
+            {TEMPLATES.map((t, i) => (
+              <div class="tpl-option" data-tpl={t.id} onclick={`window.igSetTemplate('${t.id}')`}>
+                <div class="swatch" style={`background:${
+                  t.id === 'classic' ? '#312e81' :
+                  t.id === 'modern' ? 'linear-gradient(#fff,#fff)' :
+                  t.id === 'bold' ? 'linear-gradient(120deg,#db2777,#7c3aed)' :
+                  t.id === 'elegant' ? '#292524' : '#312e81'
+                };${t.id === 'modern' ? 'border:1px solid #cbd5e1;' : ''}`}></div>
+                {t.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <!-- Business info -->
       <div class="ed-section">
@@ -265,6 +357,16 @@ const faqSchema = {
             <div class="field-group"><label>Invoice Date</label><input type="date" id="invDate" /></div>
             <div class="field-group"><label>Due Date</label><input type="date" id="invDue" /></div>
           </div>
+          <div class="field-group">
+            <label>Status</label>
+            <select id="invStatus">
+              <option value="">No stamp</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="overdue">Overdue</option>
+              <option value="draft">Draft</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -298,8 +400,28 @@ const faqSchema = {
             <div class="field-group"><label>Discount (%)</label><input type="number" id="discount" value="0" min="0" max="100" /></div>
             <div class="field-group"><label>Tax (%)</label><input type="number" id="taxRate" value="0" min="0" /></div>
           </div>
+          <div class="field-group"><label>Bank / Payment Details</label><textarea id="bankDetails" rows="2" placeholder="Bank: Example Bank, IBAN: XX00 0000 0000, or PayPal: you@company.com"></textarea></div>
           <div class="field-group"><label>Notes</label><textarea id="invNotes" rows="2" placeholder="Thank you for your business!"></textarea></div>
           <div class="field-group"><label>Payment Terms</label><textarea id="invTerms" rows="2" placeholder="Payment due within 30 days. Bank transfer or PayPal accepted."></textarea></div>
+        </div>
+      </div>
+
+      <!-- Signature -->
+      <div class="ed-section">
+        <div class="ed-section-head">✍️ Signature</div>
+        <div class="ed-body">
+          <div class="sig-mode-toggle">
+            <button type="button" class="sig-mode-btn active" id="sigModeDrawBtn">✏️ Draw</button>
+            <button type="button" class="sig-mode-btn" id="sigModeTypeBtn">⌨️ Type</button>
+          </div>
+          <div id="sigDrawWrap">
+            <canvas id="sigCanvas"></canvas>
+            <button type="button" class="sig-clear-btn" id="sigClearBtn">Clear Signature</button>
+          </div>
+          <div id="sigTypeWrap" style="display:none;">
+            <div class="field-group"><label>Type Your Name</label><input type="text" id="sigTypeInput" placeholder="Jane Doe" /></div>
+            <div class="sig-type-preview" id="sigTypePreview"></div>
+          </div>
         </div>
       </div>
 
@@ -309,6 +431,7 @@ const faqSchema = {
           <button class="btn-outline" id="resetBtn">↺ Reset</button>
           <button class="btn-primary" id="printBtn">⬇ Download PDF</button>
         </div>
+        <div class="ig-save-note">🔒 Your draft auto-saves in this browser only — never sent to a server.</div>
       </div>
 
     </div>
@@ -325,26 +448,35 @@ const faqSchema = {
   <section class="about-section">
     <div class="about-card">
       <h2>About the Invoice Generator</h2>
-      <p>The ToolNestr Invoice Generator is a free, browser-based tool that lets you create professional invoices in minutes without any accounting software, subscriptions, or sign-up. Fill in your business details, add your client's information, list your line items with quantities and prices, set your discount and tax rates, and a live preview updates in real time on the right side of the screen. When you are ready, download the invoice as a PDF directly from your browser using the print-to-PDF function.</p>
-      <p>Freelancers, consultants, small business owners, and sole traders frequently need to create occasional invoices without the overhead of a full accounting platform. Most paid invoicing software charges a monthly subscription even if you only create a few invoices per year. This tool provides the core functionality — professional invoice layout, automatic calculations, logo upload, and PDF download — completely free and without storing any of your business or client data on any server.</p>
+      <p>The ToolNestr Invoice Generator is a free, browser-based tool that lets you create professional invoices in minutes without any accounting software, subscriptions, or sign-up. Fill in your business details, add your client's information, list your line items with quantities and prices, set your discount and tax rates, and a live preview updates in real time on the right side of the screen. Choose from five distinct templates, add a drawn or typed signature, stamp the invoice's payment status, and download it as a PDF directly from your browser.</p>
+      <p>Freelancers, consultants, small business owners, and sole traders frequently need to create occasional invoices without the overhead of a full accounting platform. Most paid invoicing software charges a monthly subscription even if you only create a few invoices per year. This tool provides the core functionality — professional invoice layouts, automatic calculations, logo upload, signatures, payment status stamps, bank details, and PDF download — completely free and without storing any of your business or client data on any server.</p>
+
+      <h3>Five professional templates</h3>
+      <p>Pick the look that matches your brand: <strong>Classic</strong> (a bold indigo header), <strong>Modern Minimal</strong> (clean lines, no color block), <strong>Bold Corporate</strong> (a vivid gradient header for creative agencies), <strong>Elegant Serif</strong> (a refined serif typeface for consultants and law firms), or <strong>Creative Sidebar</strong> (a colored sidebar layout that puts your branding front and center). Switching templates preserves all of your entered data — only the visual design changes.</p>
+
+      <h3>Signatures — draw or type</h3>
+      <p>Add a personal touch with a signature. Draw one directly with your mouse or finger on the signature pad, or simply type your name and have it rendered in an elegant cursive script font. Either option embeds the signature directly into the invoice preview and the printed PDF — no external e-signature service required.</p>
 
       <h3>Live preview and real-time calculations</h3>
-      <p>The two-panel layout shows the editor on the left and a live invoice preview on the right. Every change you make — typing a client name, adding a line item, changing a quantity — is instantly reflected in the preview. The preview renders as a true invoice layout with your logo, header information, itemised table, and totals section, so you can see exactly what the final PDF will look like before printing it. Subtotals, discount amounts, tax amounts, and the final total are all calculated automatically from your input values.</p>
+      <p>The two-panel layout shows the editor on the left and a live invoice preview on the right. Every change you make — typing a client name, adding a line item, changing a quantity — is instantly reflected in the preview. Subtotals, discount amounts, tax amounts, and the final total are all calculated automatically from your input values.</p>
 
       <h3>Logo upload</h3>
-      <p>You can upload your company logo or any image to appear in the top-left corner of the invoice. The tool reads the image file locally using the FileReader API and converts it to a base64 data URL that is embedded directly into the invoice HTML. This means your logo appears correctly in the PDF without requiring any server upload or external hosting. Supported image formats include PNG, JPG, GIF and WebP. For best results, use a logo with a transparent background (PNG format) on a white or light-coloured invoice.</p>
+      <p>You can upload your company logo or any image to appear in the top-left corner of the invoice. The tool reads the image file locally using the FileReader API and converts it to a base64 data URL that is embedded directly into the invoice HTML. This means your logo appears correctly in the PDF without requiring any server upload or external hosting. Supported image formats include PNG, JPG, GIF and WebP.</p>
+
+      <h3>Payment status stamps</h3>
+      <p>Mark any invoice as Paid, Unpaid, Overdue, or Draft. The tool renders a rotated, color-coded stamp directly on the invoice — green for Paid, amber for Unpaid, red for Overdue, and gray for Draft — so there's never any ambiguity about where a payment stands.</p>
 
       <h3>Multiple currencies</h3>
-      <p>The invoice generator supports 16 major currencies including USD, EUR, GBP, JPY, AED, INR, CAD, AUD and more. Selecting a currency changes the currency symbol displayed throughout the invoice. Note that the tool does not perform currency conversion — it simply formats amounts with the selected currency symbol. If you need to convert amounts before entering them, use the ToolNestr Currency Converter for live exchange rates.</p>
+      <p>The invoice generator supports 16 major currencies including USD, EUR, GBP, JPY, AED, INR, CAD, AUD and more. Selecting a currency changes the currency symbol displayed throughout the invoice. Note that the tool does not perform currency conversion — it simply formats amounts with the selected currency symbol.</p>
 
-      <h3>Discount and tax</h3>
-      <p>The discount field applies a percentage reduction to the subtotal before tax is calculated. The tax field applies a percentage tax (such as VAT, GST, or sales tax) to the discounted subtotal. Both fields are optional — leave them at zero if your invoice does not include discounts or tax. The totals section of the invoice shows the subtotal, discount amount, tax amount, and final total as separate line items, giving your clients a transparent breakdown of the charges.</p>
+      <h3>Discount, tax and bank details</h3>
+      <p>The discount field applies a percentage reduction to the subtotal before tax is calculated. The tax field applies a percentage tax (such as VAT, GST, or sales tax) to the discounted subtotal. The Bank / Payment Details field lets you include your IBAN, account number, or a payment link (e.g. PayPal.me) directly on the invoice so clients know exactly how to pay you.</p>
 
       <h3>How to download as PDF</h3>
-      <p>Click the "Download PDF" button to open your browser's print dialogue. Select "Save as PDF" (or "Microsoft Print to PDF" on Windows) as the destination. The tool uses print-specific CSS to hide the editor panel and format the invoice preview as a clean, print-ready page. For best results, set the paper size to A4 or Letter, set margins to None or Minimum, and enable "Background graphics" if your browser offers that option. The resulting PDF will be indistinguishable from an invoice created in professional invoicing software.</p>
+      <p>Click the "Download PDF" button to open your browser's print dialogue. Select "Save as PDF" (or "Microsoft Print to PDF" on Windows) as the destination. The tool uses print-specific CSS to hide the editor panel and format the invoice preview as a clean, print-ready page, regardless of which template is selected.</p>
 
       <h3>Privacy and data security</h3>
-      <p>All invoice data is processed entirely in your browser and is never transmitted to any server. Your business name, client details, pricing information, and uploaded logo stay on your device at all times. The tool uses no cookies and no local storage — all data is held in memory for the duration of your browser session and is cleared as soon as you close or refresh the tab. This makes the tool safe to use even for invoices containing sensitive pricing or client information.</p>
+      <p>All invoice data is processed entirely in your browser and is never transmitted to any server. Your business name, client details, pricing information, uploaded logo, and signature stay on your device at all times. Your draft is auto-saved to your browser's local storage so it survives a page refresh, and is cleared whenever you click Reset.</p>
     </div>
   </section>
 
@@ -363,7 +495,16 @@ const faqSchema = {
 
   <script is:inline>
   (function () {
+    var STORAGE_KEY = 'toolnestr_invoice_draft_v2';
+    var FIELD_IDS = ['fromName','fromAddress','fromEmail','fromPhone','fromWebsite',
+      'toName','toAddress','toEmail','toPhone',
+      'invNumber','invDate','invDue','invStatus','invNotes','invTerms','bankDetails','discount','taxRate'];
+
     let logoDataUrl = null;
+    let signatureDataUrl = null;
+    let signatureText = '';
+    let sigMode = 'draw';
+    let currentTemplate = 'classic';
     let items = [
       { desc: 'Service / Product', qty: 1, rate: 0 },
     ];
@@ -380,10 +521,21 @@ const faqSchema = {
       if (!s) return '–';
       try { return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return s; }
     }
+    function escapeHtml(s) { return (s || '').replace(/</g, '&lt;'); }
 
     // ── Init dates ──
     document.getElementById('invDate').value = today();
     document.getElementById('invDue').value  = addDays(today(), 30);
+
+    // ── Template picker ──
+    window.igSetTemplate = function (id) {
+      currentTemplate = id;
+      document.querySelectorAll('.tpl-option').forEach(function (el) {
+        el.classList.toggle('active', el.getAttribute('data-tpl') === id);
+      });
+      renderPreview();
+      saveDraft();
+    };
 
     // ── Items table ──
     function renderItemsTable() {
@@ -402,17 +554,20 @@ const faqSchema = {
     window.igUpdate = function(i, field, val) {
       items[i][field] = field === 'desc' ? val : parseFloat(val) || 0;
       renderPreview();
+      saveDraft();
     };
     window.igDel = function(i) {
       items.splice(i, 1);
       renderItemsTable();
       renderPreview();
+      saveDraft();
     };
 
     document.getElementById('addItemBtn').addEventListener('click', () => {
       items.push({ desc: '', qty: 1, rate: 0 });
       renderItemsTable();
       renderPreview();
+      saveDraft();
     });
 
     // ── Logo ──
@@ -429,8 +584,88 @@ const faqSchema = {
         document.getElementById('logoImg').style.display = '';
         document.getElementById('logoPlaceholder').style.display = 'none';
         renderPreview();
+        saveDraft();
       };
       reader.readAsDataURL(file);
+    });
+
+    // ── Signature ──
+    const sigCanvas = document.getElementById('sigCanvas');
+    const sigCtx = sigCanvas.getContext('2d');
+    let drawing = false, lastX = 0, lastY = 0;
+
+    function resizeCanvas() {
+      const rect = sigCanvas.getBoundingClientRect();
+      sigCanvas.width = rect.width;
+      sigCanvas.height = rect.height;
+      sigCtx.lineWidth = 2.2;
+      sigCtx.lineCap = 'round';
+      sigCtx.strokeStyle = '#1e293b';
+    }
+    setTimeout(resizeCanvas, 0);
+    window.addEventListener('resize', resizeCanvas);
+
+    function pos(e) {
+      const rect = sigCanvas.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: cx - rect.left, y: cy - rect.top };
+    }
+    function startDraw(e) { drawing = true; const p = pos(e); lastX = p.x; lastY = p.y; }
+    function moveDraw(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      sigCtx.beginPath();
+      sigCtx.moveTo(lastX, lastY);
+      sigCtx.lineTo(p.x, p.y);
+      sigCtx.stroke();
+      lastX = p.x; lastY = p.y;
+    }
+    function endDraw() {
+      if (!drawing) return;
+      drawing = false;
+      signatureDataUrl = sigCanvas.toDataURL('image/png');
+      renderPreview();
+      saveDraft();
+    }
+    sigCanvas.addEventListener('pointerdown', startDraw);
+    sigCanvas.addEventListener('pointermove', moveDraw);
+    window.addEventListener('pointerup', endDraw);
+    sigCanvas.addEventListener('touchstart', startDraw, { passive: true });
+    sigCanvas.addEventListener('touchmove', moveDraw, { passive: false });
+    sigCanvas.addEventListener('touchend', endDraw);
+
+    document.getElementById('sigClearBtn').addEventListener('click', () => {
+      sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+      signatureDataUrl = null;
+      renderPreview();
+      saveDraft();
+    });
+
+    const sigModeDrawBtn = document.getElementById('sigModeDrawBtn');
+    const sigModeTypeBtn = document.getElementById('sigModeTypeBtn');
+    const sigDrawWrap = document.getElementById('sigDrawWrap');
+    const sigTypeWrap = document.getElementById('sigTypeWrap');
+    function setSigMode(mode) {
+      sigMode = mode;
+      sigModeDrawBtn.classList.toggle('active', mode === 'draw');
+      sigModeTypeBtn.classList.toggle('active', mode === 'type');
+      sigDrawWrap.style.display = mode === 'draw' ? '' : 'none';
+      sigTypeWrap.style.display = mode === 'type' ? '' : 'none';
+      renderPreview();
+      saveDraft();
+    }
+    sigModeDrawBtn.addEventListener('click', () => setSigMode('draw'));
+    sigModeTypeBtn.addEventListener('click', () => setSigMode('type'));
+
+    const sigTypeInput = document.getElementById('sigTypeInput');
+    const sigTypePreview = document.getElementById('sigTypePreview');
+    sigTypeInput.addEventListener('input', function () {
+      signatureText = this.value;
+      sigTypePreview.textContent = signatureText;
+      renderPreview();
+      saveDraft();
     });
 
     // ── Currency ──
@@ -438,6 +673,7 @@ const faqSchema = {
       currSymbol = this.value;
       renderItemsTable();
       renderPreview();
+      saveDraft();
     });
 
     // ── Render preview ──
@@ -461,79 +697,179 @@ const faqSchema = {
       const invNum      = v('invNumber')   || 'INV-001';
       const invDate     = v('invDate')     || today();
       const invDue      = v('invDue')      || '';
+      const invStatus   = v('invStatus')   || '';
       const notes       = v('invNotes')    || '';
       const terms       = v('invTerms')    || '';
+      const bankDetails = v('bankDetails') || '';
 
       const fromSub = [fromAddr, fromEmail, fromPhone, fromWeb].filter(Boolean).join('\n');
 
-      const preview = document.getElementById('invoicePreview');
-      preview.innerHTML = `
-        <div class="inv-header">
-          <div>
-            ${logoDataUrl ? `<div class="inv-logo-area"><img src="${logoDataUrl}" alt="logo" /></div>` : ''}
-            <div class="inv-company-name">${fromName}</div>
-            ${fromSub ? `<div class="inv-company-sub">${fromSub.replace(/</g,'&lt;')}</div>` : ''}
-          </div>
+      const sidebarMode = currentTemplate === 'sidebar';
+
+      const headerBlock = `
+          <div class="inv-header">
+            <div>
+              ${logoDataUrl ? `<div class="inv-logo-area"><img src="${logoDataUrl}" alt="logo" /></div>` : ''}
+              <div class="inv-company-name">${escapeHtml(fromName)}</div>
+              ${fromSub ? `<div class="inv-company-sub">${escapeHtml(fromSub).replace(/\n/g,'<br>')}</div>` : ''}
+            </div>
+            ${sidebarMode ? '' : `
+            <div class="inv-right">
+              <div class="inv-title">INVOICE</div>
+              <div class="inv-number">${invNum}</div>
+            </div>`}
+          </div>`;
+
+      const bodyBlock = `
+          ${sidebarMode ? `
           <div class="inv-right">
             <div class="inv-title">INVOICE</div>
             <div class="inv-number">${invNum}</div>
-          </div>
-        </div>
-
-        <div class="inv-meta">
-          <div class="inv-bill-to">
-            <div class="inv-label">Bill To</div>
-            <div class="inv-val" style="font-weight:700;">${toName}</div>
-            ${toAddr  ? `<div class="inv-val" style="margin-top:4px;">${toAddr.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>` : ''}
-            ${toEmail ? `<div class="inv-val">${toEmail}</div>` : ''}
-          </div>
-          <div class="inv-dates">
-            <div class="inv-label">Invoice Details</div>
-            <div class="inv-date-row"><span class="dk">Invoice Date</span><span class="dv">${fmtDate(invDate)}</span></div>
-            ${invDue ? `<div class="inv-date-row"><span class="dk">Due Date</span><span class="dv">${fmtDate(invDue)}</span></div>` : ''}
-            <div class="inv-date-row"><span class="dk">Invoice #</span><span class="dv">${invNum}</span></div>
-          </div>
-        </div>
-
-        <div class="inv-items">
-          <div class="inv-items-head">
-            <div>Description</div><div style="text-align:center;">Qty</div><div style="text-align:center;">Rate</div><div style="text-align:right;">Amount</div>
-          </div>
-          ${items.map(it => `
-            <div class="inv-item-row">
-              <div>${it.desc || '–'}</div>
-              <div class="iq">${it.qty}</div>
-              <div class="ir">${fmtMoney(it.rate)}</div>
-              <div class="ia">${fmtMoney(it.qty * it.rate)}</div>
+          </div>` : ''}
+          <div class="inv-meta">
+            <div class="inv-bill-to">
+              <div class="inv-label">Bill To</div>
+              <div class="inv-val" style="font-weight:700;">${escapeHtml(toName)}</div>
+              ${toAddr  ? `<div class="inv-val" style="margin-top:4px;">${escapeHtml(toAddr).replace(/\n/g,'<br>')}</div>` : ''}
+              ${toEmail ? `<div class="inv-val">${escapeHtml(toEmail)}</div>` : ''}
             </div>
-          `).join('')}
-        </div>
-
-        <div class="inv-totals">
-          <div class="totals-box">
-            <div class="total-row"><span class="tk">Subtotal</span><span class="tv">${fmtMoney(subtotal)}</span></div>
-            ${discPct > 0 ? `<div class="total-row"><span class="tk">Discount (${discPct}%)</span><span class="tv">− ${fmtMoney(discAmt)}</span></div>` : ''}
-            ${taxPct  > 0 ? `<div class="total-row"><span class="tk">Tax (${taxPct}%)</span><span class="tv">${fmtMoney(taxAmt)}</span></div>` : ''}
-            <div class="total-row grand"><span>Total Due</span><span>${fmtMoney(total)}</span></div>
+            <div class="inv-dates">
+              <div class="inv-label">Invoice Details</div>
+              <div class="inv-date-row"><span class="dk">Invoice Date</span><span class="dv">${fmtDate(invDate)}</span></div>
+              ${invDue ? `<div class="inv-date-row"><span class="dk">Due Date</span><span class="dv">${fmtDate(invDue)}</span></div>` : ''}
+              <div class="inv-date-row"><span class="dk">Invoice #</span><span class="dv">${invNum}</span></div>
+            </div>
           </div>
-        </div>
 
-        ${(notes || terms) ? `
-        <div class="inv-footer">
-          ${notes ? `<div class="inv-label">Notes</div><div class="if-notes">${notes.replace(/</g,'&lt;')}</div>` : ''}
-          ${terms ? `<div class="inv-label" style="margin-top:${notes?'12px':'0'};">Payment Terms</div><div class="if-terms">${terms.replace(/</g,'&lt;')}</div>` : ''}
-        </div>` : ''}
+          <div class="inv-items">
+            <div class="inv-items-head">
+              <div>Description</div><div style="text-align:center;">Qty</div><div style="text-align:center;">Rate</div><div style="text-align:right;">Amount</div>
+            </div>
+            ${items.map(it => `
+              <div class="inv-item-row">
+                <div>${escapeHtml(it.desc) || '–'}</div>
+                <div class="iq">${it.qty}</div>
+                <div class="ir">${fmtMoney(it.rate)}</div>
+                <div class="ia">${fmtMoney(it.qty * it.rate)}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="inv-totals">
+            <div class="totals-box">
+              <div class="total-row"><span class="tk">Subtotal</span><span class="tv">${fmtMoney(subtotal)}</span></div>
+              ${discPct > 0 ? `<div class="total-row"><span class="tk">Discount (${discPct}%)</span><span class="tv">− ${fmtMoney(discAmt)}</span></div>` : ''}
+              ${taxPct  > 0 ? `<div class="total-row"><span class="tk">Tax (${taxPct}%)</span><span class="tv">${fmtMoney(taxAmt)}</span></div>` : ''}
+              <div class="total-row grand"><span>Total Due</span><span>${fmtMoney(total)}</span></div>
+            </div>
+          </div>
+
+          ${(signatureDataUrl && sigMode === 'draw') || (signatureText && sigMode === 'type') ? `
+          <div class="inv-signature">
+            <div class="sig-box">
+              ${sigMode === 'draw' && signatureDataUrl ? `<img src="${signatureDataUrl}" alt="signature" />` : ''}
+              ${sigMode === 'type' && signatureText ? `<div class="sig-typed">${escapeHtml(signatureText)}</div>` : ''}
+              <div class="sig-line">Authorized Signature — ${fmtDate(invDate)}</div>
+            </div>
+          </div>` : ''}
+
+          ${(notes || terms || bankDetails) ? `
+          <div class="inv-footer">
+            ${bankDetails ? `<div class="inv-label">Payment Details</div><div class="if-bank">${escapeHtml(bankDetails)}</div>` : ''}
+            ${notes ? `<div class="inv-label" style="margin-top:${bankDetails?'12px':'0'};">Notes</div><div class="if-notes">${escapeHtml(notes)}</div>` : ''}
+            ${terms ? `<div class="inv-label" style="margin-top:${(notes||bankDetails)?'12px':'0'};">Payment Terms</div><div class="if-terms">${escapeHtml(terms)}</div>` : ''}
+          </div>` : ''}
       `;
+
+      const preview = document.getElementById('invoicePreview');
+      preview.className = 'tpl-' + currentTemplate;
+
+      if (sidebarMode) {
+        preview.innerHTML = `
+          <div id="invoicePreview-inner">
+            <div class="inv-sidebar">
+              ${logoDataUrl ? `<div class="inv-logo-area"><img src="${logoDataUrl}" alt="logo" /></div>` : ''}
+              <div class="inv-company-name">${escapeHtml(fromName)}</div>
+              ${fromSub ? `<div class="inv-company-sub">${escapeHtml(fromSub).replace(/\n/g,'<br><br>')}</div>` : ''}
+            </div>
+            <div class="inv-main">${bodyBlock}</div>
+          </div>
+        `;
+      } else {
+        preview.innerHTML = headerBlock + bodyBlock;
+      }
+
+      if (invStatus) {
+        const stamp = document.createElement('div');
+        stamp.className = 'inv-stamp ' + invStatus;
+        stamp.textContent = invStatus;
+        preview.appendChild(stamp);
+      }
 
       renderItemsTable();
     }
 
+    // ── Persistence (localStorage) ──
+    function saveDraft() {
+      try {
+        const data = {};
+        FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
+        data.items = items;
+        data.currSymbol = currSymbol;
+        data.logoDataUrl = logoDataUrl;
+        data.signatureDataUrl = signatureDataUrl;
+        data.signatureText = signatureText;
+        data.sigMode = sigMode;
+        data.currentTemplate = currentTemplate;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) { /* storage unavailable — silently skip persistence */ }
+    }
+
+    function loadDraft() {
+      let raw;
+      try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return; }
+      if (!raw) return;
+      let data;
+      try { data = JSON.parse(raw); } catch (e) { return; }
+
+      FIELD_IDS.forEach(id => {
+        if (data[id] !== undefined) {
+          const el = document.getElementById(id);
+          if (el) el.value = data[id];
+        }
+      });
+      if (Array.isArray(data.items) && data.items.length) items = data.items;
+      if (data.currSymbol) {
+        currSymbol = data.currSymbol;
+        document.getElementById('currencySelect').value = currSymbol;
+      }
+      if (data.logoDataUrl) {
+        logoDataUrl = data.logoDataUrl;
+        document.getElementById('logoImg').src = logoDataUrl;
+        document.getElementById('logoImg').style.display = '';
+        document.getElementById('logoPlaceholder').style.display = 'none';
+      }
+      if (data.signatureText) {
+        signatureText = data.signatureText;
+        sigTypeInput.value = signatureText;
+        sigTypePreview.textContent = signatureText;
+      }
+      if (data.signatureDataUrl) {
+        signatureDataUrl = data.signatureDataUrl;
+        const img = new Image();
+        img.onload = function () {
+          resizeCanvas();
+          sigCtx.drawImage(img, 0, 0, sigCanvas.width, sigCanvas.height);
+        };
+        img.src = signatureDataUrl;
+      }
+      if (data.sigMode) setSigMode(data.sigMode);
+      if (data.currentTemplate) window.igSetTemplate(data.currentTemplate);
+    }
+
     // ── Live updates ──
-    ['fromName','fromAddress','fromEmail','fromPhone','fromWebsite',
-     'toName','toAddress','toEmail','toPhone',
-     'invNumber','invDate','invDue','invNotes','invTerms','discount','taxRate'
-    ].forEach(id => {
-      document.getElementById(id)?.addEventListener('input', renderPreview);
+    FIELD_IDS.forEach(id => {
+      document.getElementById(id)?.addEventListener('input', function () { renderPreview(); saveDraft(); });
     });
 
     // ── Buttons ──
@@ -542,7 +878,7 @@ const faqSchema = {
     document.getElementById('resetBtn').addEventListener('click', () => {
       if (!confirm('Reset all fields? This cannot be undone.')) return;
       ['fromName','fromAddress','fromEmail','fromPhone','fromWebsite',
-       'toName','toAddress','toEmail','toPhone','invNotes','invTerms'].forEach(id => {
+       'toName','toAddress','toEmail','toPhone','invNotes','invTerms','bankDetails'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
       });
@@ -551,14 +887,23 @@ const faqSchema = {
       document.getElementById('taxRate').value    = '0';
       document.getElementById('invDate').value    = today();
       document.getElementById('invDue').value     = addDays(today(), 30);
+      document.getElementById('invStatus').value  = '';
       logoDataUrl = null;
       document.getElementById('logoImg').style.display = 'none';
       document.getElementById('logoPlaceholder').style.display = '';
+      signatureDataUrl = null;
+      signatureText = '';
+      sigTypeInput.value = '';
+      sigTypePreview.textContent = '';
+      sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
       items = [{ desc: 'Service / Product', qty: 1, rate: 0 }];
+      window.igSetTemplate('classic');
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
       renderPreview();
     });
 
     // ── Init ──
+    loadDraft();
     renderPreview();
   })();
   </script>

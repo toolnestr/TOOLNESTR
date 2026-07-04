@@ -23,6 +23,7 @@ const faqs = [
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script is:inline src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 
   <style is:inline>
     :root {
@@ -183,6 +184,34 @@ const faqs = [
     .sa-flex { display: flex; flex-wrap: wrap; gap: 6px; }
     .sa-section-title { font-size: clamp(0.85rem, 2.2vw, 1rem); font-weight: 600; color: var(--text-main); margin: 0 0 10px; }
     .sa-text-muted { color: var(--text-muted); }
+
+    /* ── Executive Summary ── */
+    .sa-exec { display: flex; flex-direction: column; gap: 10px; }
+    .sa-exec-verdict { font-size: clamp(0.95rem, 2.4vw, 1.1rem); font-weight: 600; line-height: 1.5; }
+    .sa-exec-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sa-exec-count { padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+    .sa-exec-count.critical { background: #fee2e2; color: #991b1b; }
+    .sa-exec-count.high { background: #fef3c7; color: #92400e; }
+    .sa-exec-count.medium { background: #dbeafe; color: #1e40af; }
+    .sa-exec-count.low { background: #f1f5f9; color: #475569; }
+    .dark .sa-exec-count.critical { background: #7f1d1d; color: #fca5a5; }
+    .dark .sa-exec-count.high { background: #78350f; color: #fcd34d; }
+    .dark .sa-exec-count.medium { background: #1e3a8a; color: #93c5fd; }
+    .dark .sa-exec-count.low { background: #1e293b; color: #94a3b8; }
+
+    /* ── Radial score gauge ── */
+    .sa-gauge-wrap { position: relative; width: clamp(110px, 22vw, 140px); height: clamp(110px, 22vw, 140px); flex-shrink: 0; }
+    .sa-gauge-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .sa-gauge-track { fill: none; stroke: var(--border); stroke-width: 10; }
+    .sa-gauge-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+    .sa-gauge-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .sa-gauge-center .num { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; line-height: 1; }
+    .sa-gauge-center .lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+    /* ── PDF button ── */
+    .sa-pdf-btn { padding: 12px 20px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; background: rgba(255,255,255,0.1); color: #fff; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; transition: background 0.2s; }
+    .sa-pdf-btn:hover { background: rgba(255,255,255,0.2); }
+    .sa-pdf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   </style>
 
   <div class="sa-header">
@@ -195,6 +224,9 @@ const faqs = [
         <i class="fas fa-search"></i> Analyze
       </button>
     </div>
+    <button id="pdfBtn" class="sa-pdf-btn sa-hidden" onclick="app.downloadPdf()">
+      <i class="fas fa-file-pdf"></i> Download PDF Report
+    </button>
   </div>
 
   <div id="loadingOverlay" class="sa-loading sa-hidden">
@@ -214,12 +246,24 @@ const faqs = [
 
   <div id="dashboardContainer" class="sa-hidden">
     <div class="sa-container">
+      <div class="sa-card" id="execSummaryCard">
+        <div class="sa-exec">
+          <div class="sa-exec-verdict" id="execVerdict"></div>
+          <div class="sa-exec-counts" id="execCounts"></div>
+        </div>
+      </div>
+
       <div class="sa-card" id="scoreCard">
         <div class="sa-score-row">
-          <div class="sa-score-main">
-            <div class="num" id="overallScoreNum">0</div>
-            <div class="lbl">Overall Score</div>
-            <div class="grade" id="overallGradeLabel"></div>
+          <div class="sa-gauge-wrap">
+            <svg viewBox="0 0 120 120">
+              <circle class="sa-gauge-track" cx="60" cy="60" r="50"></circle>
+              <circle class="sa-gauge-fill" id="gaugeFill" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"></circle>
+            </svg>
+            <div class="sa-gauge-center">
+              <div class="num" id="overallScoreNum">0</div>
+              <div class="lbl" id="overallGradeLabel">Grade</div>
+            </div>
           </div>
           <div class="sa-score-breakdown" id="subScores"></div>
         </div>
@@ -820,6 +864,7 @@ const faqs = [
       showLoading: function () {
         document.getElementById('dashboardContainer').classList.add('sa-hidden');
         document.getElementById('errorContainer').classList.add('sa-hidden');
+        document.getElementById('pdfBtn').classList.add('sa-hidden');
         var lo = document.getElementById('loadingOverlay');
         lo.classList.remove('sa-hidden');
         var steps = lo.querySelectorAll('.sa-loading-step');
@@ -866,7 +911,50 @@ const faqs = [
         document.getElementById('overallScoreNum').textContent = d.scores.overall;
         var grade = this.getGrade(d.scores.overall);
         var gc = d.scores.overall >= 80 ? 'var(--success)' : d.scores.overall >= 60 ? 'var(--warning)' : 'var(--error)';
+        document.getElementById('overallScoreNum').style.color = gc;
         document.getElementById('overallGradeLabel').innerHTML = 'Grade <span style="color:' + gc + ';">' + grade + '</span>';
+
+        var circumference = 314.16;
+        var offset = circumference - (Math.max(0, Math.min(100, d.scores.overall)) / 100) * circumference;
+        var gaugeFill = document.getElementById('gaugeFill');
+        gaugeFill.style.stroke = gc;
+        gaugeFill.style.strokeDashoffset = offset;
+
+        var recs = d.recommendations || {};
+        var counts = {
+          critical: (recs.critical || []).length,
+          high: (recs.high || []).length,
+          medium: (recs.medium || []).length,
+          low: (recs.low || []).length,
+        };
+        var totalIssues = counts.critical + counts.high + counts.medium + counts.low;
+        var verdict;
+        if (d.scores.overall >= 90) verdict = 'Excellent — this page is well-optimized across the board.';
+        else if (d.scores.overall >= 75) verdict = 'Good — a few moderate issues remain, but nothing critical.';
+        else if (d.scores.overall >= 55) verdict = 'Average — meaningful improvements are available.';
+        else if (d.scores.overall >= 35) verdict = 'Poor — significant SEO issues are limiting this page\'s visibility.';
+        else verdict = 'Critical — major optimization work is required before this page can compete in search.';
+        if (counts.critical > 0) {
+          verdict += ' Start with the ' + counts.critical + ' critical issue' + (counts.critical > 1 ? 's' : '') + ' below — ' + (totalIssues) + ' total issue' + (totalIssues !== 1 ? 's' : '') + ' were found.';
+        } else if (totalIssues > 0) {
+          verdict += ' ' + totalIssues + ' non-critical issue' + (totalIssues !== 1 ? 's' : '') + ' found.';
+        } else {
+          verdict += ' No issues were found.';
+        }
+        document.getElementById('execVerdict').textContent = verdict;
+
+        var execCounts = document.getElementById('execCounts');
+        var countLabels = [
+          { key: 'critical', label: 'Critical', icon: 'fa-exclamation-triangle' },
+          { key: 'high', label: 'High', icon: 'fa-exclamation-circle' },
+          { key: 'medium', label: 'Medium', icon: 'fa-info-circle' },
+          { key: 'low', label: 'Low', icon: 'fa-check-circle' },
+        ];
+        execCounts.innerHTML = countLabels.map(function (c) {
+          return '<span class="sa-exec-count ' + c.key + '"><i class="fas ' + c.icon + '"></i> ' + counts[c.key] + ' ' + c.label + '</span>';
+        }).join('');
+
+        document.getElementById('pdfBtn').classList.remove('sa-hidden');
 
         var subs = document.getElementById('subScores');
         subs.innerHTML = '';
@@ -964,6 +1052,36 @@ const faqs = [
           t.schema.errors.forEach(function (e) { h += '<div class="sa-mt" style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(e) + '</div>'; });
         }
         h += '<div class="sa-mt"><span class="sa-text-muted">Canonical: ' + app.escapeHtml(t.canonical.url) + '</span></div>';
+
+        var c = d.content || {};
+        if (c.title || c.metaDescription || t.indexability || t.brokenLinks) {
+          h += '<div class="sa-section-title sa-mt">On-Page Fundamentals</div>';
+          h += '<div class="sa-flex">';
+          if (t.indexability) {
+            h += '<span class="sa-tag ' + (t.indexability.indexable ? 'sa-tag-green' : 'sa-tag-red') + '">' + (t.indexability.indexable ? 'Indexable' : 'Blocked from Indexing') + '</span>';
+          }
+          if (c.title) {
+            var titleOk = c.title.length >= 30 && c.title.length <= 60;
+            h += '<span class="sa-tag ' + (c.title.text ? (titleOk ? 'sa-tag-green' : 'sa-tag-amber') : 'sa-tag-red') + '">Title: ' + (c.title.text ? c.title.length + ' chars' : 'Missing') + '</span>';
+          }
+          if (c.metaDescription) {
+            var mdOk = c.metaDescription.length >= 50 && c.metaDescription.length <= 160;
+            h += '<span class="sa-tag ' + (c.metaDescription.text ? (mdOk ? 'sa-tag-green' : 'sa-tag-amber') : 'sa-tag-red') + '">Meta Description: ' + (c.metaDescription.text ? c.metaDescription.length + ' chars' : 'Missing') + '</span>';
+          }
+          if (typeof c.freshness === 'number') {
+            h += '<span class="sa-tag sa-tag-blue">Freshness: ' + c.freshness + '/100</span>';
+          }
+          h += '</div>';
+          if (c.title && c.title.text) h += '<div class="sa-mt"><span class="sa-text-muted">Title: ' + app.escapeHtml(c.title.text) + '</span></div>';
+          if (c.metaDescription && c.metaDescription.text) h += '<div class="sa-mt"><span class="sa-text-muted">Meta Description: ' + app.escapeHtml(c.metaDescription.text) + '</span></div>';
+          if (t.indexability && !t.indexability.indexable) {
+            t.indexability.reasons.forEach(function (r) { h += '<div class="sa-mt" style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(r) + '</div>'; });
+          }
+          if (t.brokenLinks && t.brokenLinks.length > 0) {
+            h += '<div class="sa-mt"><span class="sa-text-muted">Broken internal links:</span></div>';
+            t.brokenLinks.forEach(function (b) { h += '<div style="font-size:0.85rem;color:var(--error);">⚠ ' + app.escapeHtml(b.url) + ' → ' + (b.status || 'unreachable') + '</div>'; });
+          }
+        }
         return h;
       },
 
@@ -1055,6 +1173,80 @@ const faqs = [
         if (score >= 60) return 'C';
         if (score >= 50) return 'D';
         return 'F';
+      },
+
+      downloadPdf: function () {
+        if (!this.data || typeof window.jspdf === 'undefined') return;
+        var d = this.data;
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var margin = 48;
+        var y = margin;
+
+        function ensureSpace(needed) {
+          if (y + needed > pageH - margin) { doc.addPage(); y = margin; }
+        }
+        function addWrapped(text, size, color, style, maxWidth) {
+          doc.setFontSize(size);
+          doc.setTextColor(color[0], color[1], color[2]);
+          doc.setFont('helvetica', style || 'normal');
+          var lines = doc.splitTextToSize(String(text), maxWidth || (pageW - margin * 2));
+          ensureSpace(lines.length * (size * 1.3) + 4);
+          doc.text(lines, margin, y);
+          y += lines.length * (size * 1.3) + 6;
+        }
+
+        // ── Cover ──
+        doc.setFillColor(30, 27, 75);
+        doc.rect(0, 0, pageW, 130, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SEO Audit Report', margin, 55);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(d.url || ''), margin, 78, { maxWidth: pageW - margin * 2 });
+        doc.text('Generated on ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + ' — ToolNestr SEO Analyzer', margin, 100);
+        y = 160;
+
+        var gc = d.scores.overall >= 80 ? [16,185,129] : d.scores.overall >= 60 ? [245,158,11] : [239,68,68];
+        addWrapped('Overall Score: ' + d.scores.overall + ' / 100 (Grade ' + app.getGrade(d.scores.overall) + ')', 16, gc, 'bold');
+        addWrapped('Content: ' + d.scores.content + '  •  Technical: ' + d.scores.technical + '  •  Performance: ' + d.scores.performance + '  •  Accessibility: ' + d.scores.accessibility, 11, [71,85,105]);
+
+        var recs = d.recommendations || {};
+        var counts = { critical: (recs.critical||[]).length, high: (recs.high||[]).length, medium: (recs.medium||[]).length, low: (recs.low||[]).length };
+        y += 6;
+        addWrapped('Issues Found: ' + counts.critical + ' critical, ' + counts.high + ' high, ' + counts.medium + ' medium, ' + counts.low + ' low priority.', 11, [71,85,105]);
+
+        // ── Recommendations ──
+        var priorities = ['critical','high','medium','low'];
+        var labels = { critical: 'Critical Priority', high: 'High Priority', medium: 'Medium Priority', low: 'Low Priority' };
+        var colorMap = { critical: [220,38,38], high: [217,119,6], medium: [37,99,235], low: [100,116,139] };
+        var hasAny = false;
+        priorities.forEach(function (p) {
+          var list = recs[p] || [];
+          if (list.length === 0) return;
+          hasAny = true;
+          y += 10;
+          ensureSpace(30);
+          addWrapped(labels[p] + ' (' + list.length + ')', 14, colorMap[p], 'bold');
+          list.forEach(function (rec) {
+            ensureSpace(20);
+            addWrapped(rec.issue, 12, [30,41,59], 'bold');
+            addWrapped('Impact: ' + rec.impact, 9.5, [71,85,105]);
+            addWrapped('Solution: ' + rec.solution, 9.5, [71,85,105]);
+            if (rec.timeToFix || rec.estimatedImpact) {
+              addWrapped('Time to fix: ' + (rec.timeToFix || 'n/a') + '   |   Expected impact: ' + (rec.estimatedImpact || 'n/a'), 9, [148,163,184], 'italic');
+            }
+            y += 6;
+          });
+        });
+        if (!hasAny) addWrapped('No issues found — this page is well-optimized.', 12, [16,185,129], 'bold');
+
+        var safeName = (d.url || 'seo-report').replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/gi, '-').slice(0, 60);
+        doc.save('seo-audit-' + safeName + '.pdf');
       },
 
       escapeHtml: function (str) {
