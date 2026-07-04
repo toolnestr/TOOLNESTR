@@ -12,4 +12,6 @@ export const site = {
   url: 'https://toolnestr.com',
   // Change this to a real inbox you can check (used on the Contact + Privacy pages).
   email: 'hello@toolnestr.com',
+  // Real launch date (first commit), used in Organization schema — keep accurate.
+  foundingDate: '2026-06-21',
 };

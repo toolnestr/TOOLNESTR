@@ -67,3 +67,21 @@ sitemap, robots.txt.
 - **2026-07-04** — Fix #2 DONE: replaced broken `/tools/slope-calculator` related-link in `linear-equation-calculator.astro` with Ratio & Proportion Calculator. `/tools/tools` & `/hr` are phantom URLs with no source link — left as correct 404s.
 - **2026-07-04** — Fix #3 analysed: internal linking healthy, no orphans; 366 pages are crawl-budget/time-bound. Fix #5 DONE: removed artificial sitemap `lastmod` override (verified live — apex sitemap no longer emits lastmod). User chose to skip manual Request-Indexing.
 - **2026-07-04** — Fix #4: started GSC "Validate Fix" on Crawled-not-indexed (223). All code fixes verified live on production. Now in monitoring phase.
+
+---
+
+## E-E-A-T audit (2026-07-04)
+
+Ran PageSpeed Insights (mobile: Perf 93/Access 93/BP 92/SEO 100; desktop: Perf 100/Access 93/BP 92/SEO 100)
+— technical SEO is not the bottleneck. Real gaps found by reading live pages/schema:
+
+| # | Finding | Fix | Status |
+|---|---------|-----|--------|
+| 1 | No named human/team anywhere; no `/team` or `/author` page (404) | User opted for **brand persona, no personal name, no social links** (no fabrication) | Addressed via #2/#3 below within that constraint |
+| 2 | About page had no methodology/verification story | Added "How we build and verify our tools" section: formulas sourced from public standards (IRS brackets, standard BMI/BMR, IEEE/NIST constants), reference-value testing, re-verification on standard changes. Also added real launch date (June 2026, from first git commit 2026-06-21) | ✅ Done |
+| 3 | Organization schema was bare `{name, url}` only, duplicated per tool page | Added site-wide enriched `Organization` schema in `BaseLayout.astro` (`foundingDate`, `description`, `contactPoint`) referenced via `@id` from `ToolLayout.astro` and `about.astro` instead of duplicating | ✅ Done |
+| 4 | YMYL categories (Finance, Health) have no citations to authoritative sources | Not yet done — real research per tool needed, separate pass | ⬜ Pending (deferred) |
+| 5 | No social profiles (`sameAs`) | User has none yet — skipped, revisit if profiles are created | ⬜ Skipped by user choice |
+| — | No logo image suitable for schema `logo` (need square, ≥112×112, raster) — only have `og-image.png` (1200×628) and an SVG favicon | Not added — flagged, needs a real square logo asset | ⬜ Pending |
+
+**Not fabricated:** no founder name, no bio, no credentials, no social links, no logo — all skipped/deferred rather than invented, per user's explicit choice of "brand persona, no personal name."
