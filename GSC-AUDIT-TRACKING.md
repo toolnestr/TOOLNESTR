@@ -1,0 +1,58 @@
+# Google Search Console — Index Audit & Fix Tracking
+
+**Property:** `sc-domain:toolnestr.com`
+**Audit date:** 2026-07-04
+**Site age in Google's eyes:** ~3 days (first detected 2026-07-01)
+**Baseline:** Indexed **409** | Not indexed **625**
+
+---
+
+## Baseline snapshot (2026-07-04, from GSC "Why pages aren't indexed")
+
+| Reason | Source | Pages | Verdict |
+|--------|--------|-------|---------|
+| Discovered – currently not indexed | Google systems | 366 | Real non-www pages, never crawled (crawl-budget starvation) |
+| Crawled – currently not indexed | Google systems | 223 | www duplicate URLs dropped as duplicates |
+| Page with redirect | Website | 17 | ✅ Benign (slash / http→https redirects) |
+| Alternate page with proper canonical tag | Website | 16 | ✅ Healthy (correctly consolidated) |
+| Not found (404) | Website | 3 | ⚠️ Genuine broken links |
+
+**Sitemap:** `sitemap-0.xml` — 514 URLs, Status Success, 0 errors.
+
+## Root cause (verified via live HTTP checks)
+
+`www.toolnestr.com` served the full site with **HTTP 200** instead of redirecting to
+canonical `toolnestr.com`. Both hosts are custom domains on the same Cloudflare Pages
+project. Result: on a brand-new site with tiny crawl budget, Google burned its budget
+crawling www duplicates (→ 223 "Crawled – not indexed") instead of the real non-www
+pages (→ 366 "Discovered – not indexed", Last crawled: N/A).
+
+**Confirmed healthy (not touched):** canonical tags (all → non-www), trailing-slash
+normalization (no-slash 308→slash), http→https 301, robots meta `index,follow`,
+sitemap, robots.txt.
+
+---
+
+## Fix log
+
+| # | Fix | Status | Date | Notes |
+|---|-----|--------|------|-------|
+| 1 | www → non-www 301 redirect (`public/_redirects`) | 🔧 In progress | 2026-07-04 | Added `https://www.toolnestr.com/* → https://toolnestr.com/:splat 301!` |
+| 2 | Fix 3 broken 404 links (`/tools/tools`, `/tools/slope-calculator`, `/hr`) | ⬜ Pending | — | 404 on both hosts, not in sitemap; find internal links |
+| 3 | Accelerate 366 Discovered pages (internal linking / URL Inspection API) | ⬜ Pending | — | After www fix lands |
+| 4 | Validate fixes in GSC ("Validate Fix" buttons) | ⬜ Pending | — | After deploy propagates |
+
+---
+
+## Verification checklist (post-deploy)
+
+- [ ] `curl -I https://www.toolnestr.com/` returns 301 → `https://toolnestr.com/`
+- [ ] `curl -I https://www.toolnestr.com/tools/password-strength-tester/` returns 301 → apex
+- [ ] GSC: "Crawled – currently not indexed" count trending down
+- [ ] GSC: "Discovered – currently not indexed" count trending down (pages getting crawled)
+- [ ] GSC: 404 count → 0
+- [ ] Indexed count trending up from 409
+
+## Progress log
+
+- **2026-07-04** — Connected GSC via service-account API (Cloudflare Worker `GSC_CREDENTIALS` secret). Completed full index audit through GSC UI + live HTTP checks. Identified www duplication as root cause. Added www→apex redirect to `public/_redirects`. (this entry)
