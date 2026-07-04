@@ -78,7 +78,7 @@ function unquoteTxt(s) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
@@ -87,6 +87,26 @@ export default {
       const url = new URL(request.url);
       const path = url.pathname.replace(/\/+$/, '');
       const method = request.method;
+
+      // ── Route: GSC — list verified sites ──
+      if (path === '/api/gsc-sites' && method === 'GET') {
+        return handleGscSites(env);
+      }
+
+      // ── Route: GSC — list/submit sitemaps ──
+      if (path === '/api/gsc-sitemaps' && (method === 'GET' || method === 'POST')) {
+        return handleGscSitemaps(url, env, method);
+      }
+
+      // ── Route: GSC — search analytics query ──
+      if (path === '/api/gsc-search-analytics' && method === 'GET') {
+        return handleGscSearchAnalytics(url, env);
+      }
+
+      // ── Route: GSC — URL inspection ──
+      if (path === '/api/gsc-inspect-url' && method === 'GET') {
+        return handleGscInspectUrl(url, env);
+      }
 
       // ── Route: SEO Analyzer (existing) ──
       if (path === '/api/full-audit' && method === 'GET') {
@@ -1162,4 +1182,148 @@ function generateRecommendationsRaw(wordCount, textRatio, isThin, headings, read
   if (!securityHeaders.xFrame) low.push({ issue: 'Missing X-Frame-Options Header', impact: 'Without X-Frame-Options, your page can be embedded in iframes on other domains (clickjacking risk).', solution: 'Add X-Frame-Options: SAMEORIGIN or DENY to prevent clickjacking attacks.', codeExample: 'X-Frame-Options: SAMEORIGIN', timeToFix: '2 minutes', estimatedImpact: '+2% security score' });
 
   return { critical: critical, high: high, medium: medium, low: low };
+}
+
+// ── Google Search Console — auth + API handlers ──
+
+function base64UrlEncode(bytes) {
+  var bin = typeof bytes === 'string' ? bytes : String.fromCharCode.apply(null, new Uint8Array(bytes));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function pemToArrayBuffer(pem) {
+  var b64 = pem.replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s/g, '');
+  var bin = atob(b64);
+  var buf = new ArrayBuffer(bin.length);
+  var view = new Uint8Array(buf);
+  for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+  return buf;
+}
+
+var gscTokenCache = { token: null, expiresAt: 0 };
+
+async function getGscAccessToken(env) {
+  if (gscTokenCache.token && Date.now() < gscTokenCache.expiresAt) {
+    return gscTokenCache.token;
+  }
+  if (!env || !env.GSC_CREDENTIALS) {
+    throw new Error('GSC_CREDENTIALS secret is not configured');
+  }
+  var creds = JSON.parse(env.GSC_CREDENTIALS);
+  var now = Math.floor(Date.now() / 1000);
+  var header = { alg: 'RS256', typ: 'JWT' };
+  var claimSet = {
+    iss: creds.client_email,
+    scope: 'https://www.googleapis.com/auth/webmasters',
+    aud: creds.token_uri,
+    iat: now,
+    exp: now + 3600,
+  };
+  var unsigned = base64UrlEncode(JSON.stringify(header)) + '.' + base64UrlEncode(JSON.stringify(claimSet));
+
+  var key = await crypto.subtle.importKey(
+    'pkcs8',
+    pemToArrayBuffer(creds.private_key),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  var signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned));
+  var jwt = unsigned + '.' + base64UrlEncode(signature);
+
+  var res = await fetch(creds.token_uri, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + encodeURIComponent(jwt),
+  });
+  var data = await res.json();
+  if (!res.ok || !data.access_token) {
+    throw new Error('Token exchange failed: ' + (data.error_description || data.error || res.status));
+  }
+  gscTokenCache = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
+  return data.access_token;
+}
+
+async function gscApiFetch(env, path, options) {
+  var token = await getGscAccessToken(env);
+  var res = await fetch('https://searchconsole.googleapis.com' + path, Object.assign({}, options, {
+    headers: Object.assign({}, (options && options.headers) || {}, { Authorization: 'Bearer ' + token }),
+  }));
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error && data.error.message ? data.error.message : 'GSC API error ' + res.status);
+  return data;
+}
+
+async function handleGscSites(env) {
+  try {
+    var data = await gscApiFetch(env, '/webmasters/v3/sites', { method: 'GET' });
+    return jsonResponse(data);
+  } catch (error) {
+    return jsonResponse({ error: error.message }, 502);
+  }
+}
+
+async function handleGscSitemaps(url, env, method) {
+  var siteUrl = url.searchParams.get('siteUrl');
+  if (!siteUrl) return jsonResponse({ error: 'siteUrl parameter is required' }, 400);
+  var encodedSite = encodeURIComponent(siteUrl);
+
+  try {
+    if (method === 'POST') {
+      var feedpath = url.searchParams.get('feedpath');
+      if (!feedpath) return jsonResponse({ error: 'feedpath parameter is required' }, 400);
+      await gscApiFetch(env, '/webmasters/v3/sites/' + encodedSite + '/sitemaps/' + encodeURIComponent(feedpath), { method: 'PUT' });
+      return jsonResponse({ submitted: feedpath });
+    }
+    var data = await gscApiFetch(env, '/webmasters/v3/sites/' + encodedSite + '/sitemaps', { method: 'GET' });
+    return jsonResponse(data);
+  } catch (error) {
+    return jsonResponse({ error: error.message }, 502);
+  }
+}
+
+async function handleGscSearchAnalytics(url, env) {
+  var siteUrl = url.searchParams.get('siteUrl');
+  if (!siteUrl) return jsonResponse({ error: 'siteUrl parameter is required' }, 400);
+  var days = parseInt(url.searchParams.get('days') || '28', 10);
+  var endDate = new Date();
+  var startDate = new Date(endDate.getTime() - days * 86400000);
+  var toIso = function (d) { return d.toISOString().slice(0, 10); };
+
+  var body = {
+    startDate: toIso(startDate),
+    endDate: toIso(endDate),
+    dimensions: (url.searchParams.get('dimensions') || 'query').split(','),
+    rowLimit: parseInt(url.searchParams.get('rowLimit') || '25', 10),
+  };
+
+  try {
+    var data = await gscApiFetch(env, '/webmasters/v3/sites/' + encodeURIComponent(siteUrl) + '/searchAnalytics/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return jsonResponse(data);
+  } catch (error) {
+    return jsonResponse({ error: error.message }, 502);
+  }
+}
+
+async function handleGscInspectUrl(url, env) {
+  var siteUrl = url.searchParams.get('siteUrl');
+  var inspectionUrl = url.searchParams.get('url');
+  if (!siteUrl || !inspectionUrl) return jsonResponse({ error: 'siteUrl and url parameters are required' }, 400);
+
+  try {
+    var data = await gscApiFetch(env, '/v1/urlInspection/index:inspect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inspectionUrl: inspectionUrl, siteUrl: siteUrl }),
+    });
+    return jsonResponse(data);
+  } catch (error) {
+    return jsonResponse({ error: error.message }, 502);
+  }
 }
