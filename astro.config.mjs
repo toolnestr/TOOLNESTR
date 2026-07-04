@@ -7,12 +7,10 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://toolnestr.com',
   integrations: [
-    sitemap({
-      serialize(item) {
-        item.lastmod = new Date().toISOString().split('T')[0];
-        return item;
-      },
-    }),
+    // No artificial `lastmod`: stamping today's date on every URL each build
+    // makes the signal unreliable to Google and wastes crawl budget. Omitting
+    // lastmod lets Google use its own crawl-based freshness signals instead.
+    sitemap(),
   ],
   vite: {
     plugins: [tailwindcss()],

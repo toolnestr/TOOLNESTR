@@ -39,8 +39,9 @@ sitemap, robots.txt.
 |---|-----|--------|------|-------|
 | 1 | www → non-www 301 redirect | ✅ **Done & verified** | 2026-07-04 | Implemented as a **Cloudflare Redirect Rule** (zone toolnestr.com): `https://www.*` → `https://${1}`, 301, preserve query string. Verified live: www root, tool pages (slash & no-slash), and query strings all 301 → apex; apex stays 200. First attempted via `_redirects` but Pages only matches on path, not host — that approach was abandoned. |
 | 2 | Fix 3 broken 404 links (`/tools/tools`, `/tools/slope-calculator`, `/hr`) | ✅ **Done** | 2026-07-04 | `/tools/slope-calculator` was a real broken related-tool link in `linear-equation-calculator.astro` → replaced with existing Ratio & Proportion Calculator (verified 200). `/tools/tools` & `/hr` have NO source reference — stale/phantom URLs from an earlier crawl; a genuine 404 is correct SEO behaviour and they will drop from GSC on re-crawl. No code change needed for those two. |
-| 3 | Accelerate 366 Discovered pages (internal linking / URL Inspection API) | ⬜ Pending | — | After www fix lands |
-| 4 | Validate fixes in GSC ("Validate Fix" buttons) | ⬜ Pending | — | After deploy propagates |
+| 3 | Accelerate 366 Discovered pages | ✅ **Analysed** | 2026-07-04 | Internal linking verified HEALTHY (homepage → category hub → tool, 2-click; `[category].astro` links every live tool + ItemList schema). **No orphans.** The 366 = crawl-budget + new-site-age, primary lever (www fix) already applied. Cannot force-index via API (Indexing API = JobPosting/BroadcastEvent only; URL Inspection = read-only). Remaining levers: TIME + optional manual "Request Indexing" (~10–15/day) for priority pages. |
+| 4 | Validate fixes in GSC ("Validate Fix" buttons) | ⬜ Pending | — | After deploy propagates (allow 1–3 days) |
+| 5 | Sitemap `lastmod` = build date on every deploy | ✅ **Done** | 2026-07-04 | Removed the `serialize` override in `astro.config.mjs` that stamped today's date on all 514 URLs each build. Sitemap now omits lastmod → cleaner crawl signals. (User opted to skip manual "Request Indexing"; relying on www fix + time.) |
 
 ---
 
@@ -58,3 +59,4 @@ sitemap, robots.txt.
 - **2026-07-04** — Connected GSC via service-account API (Cloudflare Worker `GSC_CREDENTIALS` secret). Completed full index audit through GSC UI + live HTTP checks. Identified www duplication as root cause.
 - **2026-07-04** — Fix #1 DONE: deployed Cloudflare Redirect Rule `www.* → apex` (301). Verified live. (Note: `_redirects` approach failed because Pages matches path-only, not host — cleaned up that dead line.)
 - **2026-07-04** — Fix #2 DONE: replaced broken `/tools/slope-calculator` related-link in `linear-equation-calculator.astro` with Ratio & Proportion Calculator. `/tools/tools` & `/hr` are phantom URLs with no source link — left as correct 404s.
+- **2026-07-04** — Fix #3 analysed: internal linking healthy, no orphans; 366 pages are crawl-budget/time-bound. Fix #5 DONE: removed artificial sitemap `lastmod` override. User chose to skip manual Request-Indexing.
