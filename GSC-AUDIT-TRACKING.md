@@ -37,7 +37,7 @@ sitemap, robots.txt.
 
 | # | Fix | Status | Date | Notes |
 |---|-----|--------|------|-------|
-| 1 | www → non-www 301 redirect (`public/_redirects`) | 🔧 In progress | 2026-07-04 | Added `https://www.toolnestr.com/* → https://toolnestr.com/:splat 301!` |
+| 1 | www → non-www 301 redirect | ✅ **Done & verified** | 2026-07-04 | Implemented as a **Cloudflare Redirect Rule** (zone toolnestr.com): `https://www.*` → `https://${1}`, 301, preserve query string. Verified live: www root, tool pages (slash & no-slash), and query strings all 301 → apex; apex stays 200. First attempted via `_redirects` but Pages only matches on path, not host — that approach was abandoned. |
 | 2 | Fix 3 broken 404 links (`/tools/tools`, `/tools/slope-calculator`, `/hr`) | ⬜ Pending | — | 404 on both hosts, not in sitemap; find internal links |
 | 3 | Accelerate 366 Discovered pages (internal linking / URL Inspection API) | ⬜ Pending | — | After www fix lands |
 | 4 | Validate fixes in GSC ("Validate Fix" buttons) | ⬜ Pending | — | After deploy propagates |
@@ -46,8 +46,8 @@ sitemap, robots.txt.
 
 ## Verification checklist (post-deploy)
 
-- [ ] `curl -I https://www.toolnestr.com/` returns 301 → `https://toolnestr.com/`
-- [ ] `curl -I https://www.toolnestr.com/tools/password-strength-tester/` returns 301 → apex
+- [x] `curl -I https://www.toolnestr.com/` returns 301 → `https://toolnestr.com/` ✅ 2026-07-04
+- [x] `curl -I https://www.toolnestr.com/tools/password-strength-tester/` returns 301 → apex ✅ 2026-07-04
 - [ ] GSC: "Crawled – currently not indexed" count trending down
 - [ ] GSC: "Discovered – currently not indexed" count trending down (pages getting crawled)
 - [ ] GSC: 404 count → 0
@@ -55,4 +55,5 @@ sitemap, robots.txt.
 
 ## Progress log
 
-- **2026-07-04** — Connected GSC via service-account API (Cloudflare Worker `GSC_CREDENTIALS` secret). Completed full index audit through GSC UI + live HTTP checks. Identified www duplication as root cause. Added www→apex redirect to `public/_redirects`. (this entry)
+- **2026-07-04** — Connected GSC via service-account API (Cloudflare Worker `GSC_CREDENTIALS` secret). Completed full index audit through GSC UI + live HTTP checks. Identified www duplication as root cause.
+- **2026-07-04** — Fix #1 DONE: deployed Cloudflare Redirect Rule `www.* → apex` (301). Verified live. (Note: `_redirects` approach failed because Pages matches path-only, not host — cleaned up that dead line.)
