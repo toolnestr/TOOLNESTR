@@ -3,7 +3,46 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-03 (70/70 tools built, 35 Physics + 35 Chemistry)
+**Last updated:** 2026-07-07 (80/80 tools built, 40 Physics + 40 Chemistry)
+
+## Batch-5 — 10 tools complete (2026-07-07, commit `86d59f4`)
+
+Built **sequentially by hand, no parallel agents** (explicit user instruction this round — a
+prior attempt to dispatch 3 parallel agents for this batch was caught and aborted mid-flight
+before any file was touched). Verified local and origin/main were at the same commit (`528ca6b`)
+before starting. Live-browser preview/audit skipped per user instruction — validated via a full
+production build only.
+
+Physics: Magnetic Force, Simple Harmonic Motion, Sound Intensity, Thermal Expansion, Bernoulli's
+Equation. Chemistry: Isotope Calculator, Atom Calculator, Electron Configuration Calculator, Cell
+EMF Calculator, Faraday's Law of Electrolysis Calculator.
+
+All built on `SubjectToolPage` + `window.STK`, 2 static auto-rotating 3D diagrams + 2 Chart.js
+charts each, 1000+ words content, 2 worked examples, misconceptions, sources — same pattern as
+Batch-1 through Batch-4. Every worked-example calculation hand-verified before writing (electron
+config filling order for Iron double-checked for the 4s-before-3d Aufbau exception; chlorine
+isotope weighted average ≈35.45 amu matches periodic table; Daniell cell E°cell=1.10V/ΔG°=−212.3
+kJ/mol; Faraday's law copper 2.371g and silver 1.006g deposited). Post-build audit (code-only):
+full `npm run build` = 560 pages, 0 errors; confirmed all 10 new `dist/tools/<slug>/index.html`
+files exist; 0 duplicate slugs across `tools.js`. Emojis chosen to avoid collisions within the
+physics/chemistry category listings specifically (🌀🎻🔊📏🛩️ physics; ☢️🔘🔷🔌🪫 chemistry).
+
+**Batch-1 through Batch-5 combined: 80 flagship tools (40 Physics + 40 Chemistry).** Pushed to
+origin/main (`86d59f4`) — Cloudflare Pages auto-deploy triggered.
+
+Remaining un-built from spec §8 (10 each, verified against the full 50-item lists):
+- **Physics (10):** Kinetic Energy(17), Gravitational PE(18), Work(19), Power(20), Ohm's Law(23),
+  Frequency(35), Wavelength(36), Density(44), Mirror Equation(47), Newton's Law of Gravitation(49).
+  All but Mirror Equation already exist as basic `engineering`-category pages and are
+  migration-eligible (enhance in place + move category), matching the pattern used for Free Fall,
+  Force, Momentum, Ohm's-Law-adjacent tools in earlier batches.
+- **Chemistry (10):** pH(16), Ideal Gas Law(24), Combined Gas Law(25), Interactive Periodic
+  Table(30), Atomic Mass Calculator(34, a simple single-element atomic-mass lookup — distinct
+  from Molar Mass #7 and from the multi-isotope `isotope-calculator` built this batch), Half-Life
+  (45, exists as `engineering`-category `half-life-calculator`, migration-eligible), Rate
+  Constant(47), Boiling Point Elevation(48), Freezing Point Depression(49), Vapor Pressure(50).
+
+Next: Batch-6 (10 more), continuing the 10+10 cadence.
 
 ## Batch-4 — 10 tools complete (2026-07-03, commit `0460387`)
 
