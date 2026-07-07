@@ -3,7 +3,61 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-07 (90/90 tools built, 45 Physics + 45 Chemistry)
+**Last updated:** 2026-07-07 (110/150 tools built — 45 Physics + 45 Chemistry + 20 Biology)
+
+## Batch-7 — Biology category launched, 20 tools complete (2026-07-07, commit `b75173f`)
+
+**First Biology tools built** — resolves the long-open "Biology deferred until its first tool
+exists" question from 2026-07-02. Built sequentially by hand, no parallel agents (standing
+instruction). Git sync verified before starting.
+
+**Category setup (new, one-time):** added `biology` to the `categories` array in `tools.js`
+(🧬 emoji), a DNA-helix homepage icon in `index.astro`'s `catIcons`, and a full SEO
+intro/highlights entry in `category-content.js` — following the exact pattern used when Physics
+and Chemistry were split out of `engineering` on 2026-07-02. The `biology` disclaimer text in
+`ToolLayout.astro` already existed from that same date, so no layout change was needed there.
+
+**20 tools built, picked from spec §8's 50-item Biology list to span every sub-discipline** rather
+than clustering in one area — deliberately avoided the UI-heavy "Simulator"/"Builder"/"Identifier"
+items (Genetic Drift Simulator, Pedigree Chart Analyzer, Interactive Periodic Table-style Mitosis
+Stage Identifier, Simple Phylogenetic Tree Builder) for this first batch in favor of tools with a
+well-defined single calculation, same selection bias as Chemistry's "Interactive Periodic Table"
+deferral.
+
+- **Genetics (8):** Punnett Square (monohybrid), Dihybrid Cross, Hardy-Weinberg Allele Frequency,
+  Codominance, Incomplete Dominance, Chi-Square Goodness of Fit, Recombination Frequency,
+  Sex-Linked Trait Punnett.
+- **Molecular Biology (6):** DNA→mRNA Transcription, mRNA→Protein Translation (full 64-codon
+  standard genetic code table implemented in JS), GC Content, DNA Melting Temperature (Wallace
+  rule), Reverse Complement (+ palindrome detection for restriction sites), PCR Primer Annealing
+  Temperature.
+- **Cell Biology (1):** Surface Area-to-Volume Ratio (cube model, SA:V=6/s).
+- **Ecology (4):** Exponential Population Growth, Logistic Growth/Carrying Capacity, Population
+  Density, Shannon Diversity Index.
+- **Biochemistry (1):** Michaelis-Menten Enzyme Kinetics.
+
+**Slug collision found and resolved:** `exponential-growth-calculator` already existed as a
+general Math-category tool (growth/decay/compounding) — the Biology tool was built at
+`exponential-population-growth-calculator` instead to avoid overwriting it. Checked all other
+planned slugs before writing; no other collisions found.
+
+Post-build audit (code-only, no live browser per user instruction): full `npm run build` = 583
+pages, 0 errors (562→583: +20 tool pages +1 new `/tools/biology` category page). 0 duplicate slugs
+across all tools. 0 emoji collisions within the new biology category specifically (verified via a
+node script scanning `tools.js` for repeated `category: 'biology'` emoji). Independently
+re-derived every formula/worked-example outside the pages' own text: Hardy-Weinberg (q²=0.09 →
+q=0.3, p=0.7, 2pq=42%, p²=49%), Mendel's classic dihybrid chi-square (χ²=0.4700, matching the
+historically famous low value), recombination frequency (60/1000=6%), GC content (ATGCGCATCG=60%),
+Wallace-rule Tm (GCGCATGCAT=32°C), reverse complement (ATGCGT→ACGCAT, and confirmed GAATTC is a
+true palindrome/EcoRI site), SA:V ratio (s=1→6.0, s=3→2.0), exponential growth (N(10)=271.83,
+doubling time=6.93), logistic growth (N(20)≈802.96≈803), Shannon diversity (H'=1.0889,
+evenness=0.9912), Michaelis-Menten (v at [S]=Km → 50, at [S]=20mM → 80). All matched exactly.
+
+**Batch-1 through Batch-7 combined: 110 flagship tools (45 Physics + 45 Chemistry + 20 Biology).**
+Pushed to origin/main (`b75173f`) — Cloudflare Pages auto-deploy triggered. Remaining un-built:
+Physics 5, Chemistry 5 (see Batch-6 entry below for the exact lists), Biology 30 (the rest of
+spec §8's 50-item list, including the deliberately-deferred UI-heavy tools). Next: Batch-8, or
+finish the last 5+5 Physics/Chemistry tools to complete all 100 non-Biology tools.
 
 ## Batch-6 — 10 tools complete (2026-07-07, commit `126f1c5`)
 
