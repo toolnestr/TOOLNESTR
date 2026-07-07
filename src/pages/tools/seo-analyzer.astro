@@ -1517,6 +1517,78 @@ const faqs = [
         });
         y = doc.lastAutoTable.finalY + 24;
 
+        // ── Full audit checklist (mirrors the on-screen checks: pass/warn/fail) ──
+        function extractChecks(tabKey) {
+          var el = document.getElementById('tab-' + tabKey);
+          if (!el) return [];
+          var out = [];
+          el.querySelectorAll('.sa-check').forEach(function (c) {
+            var ci = c.querySelector('.ci');
+            if (!ci) return;
+            var status = ci.classList.contains('pass') ? 'PASS' : ci.classList.contains('warn') ? 'WARN' : ci.classList.contains('fail') ? 'FAIL' : '';
+            if (!status) return;
+            var name = (c.querySelector('.cname') || {}).textContent || '';
+            var detail = (c.querySelector('.cdetail') || {}).textContent || '';
+            var val = (c.querySelector('.vv') || {}).textContent || '—';
+            var tgt = ((c.querySelector('.vt') || {}).textContent || '').replace('Target: ', '') || '—';
+            out.push([status, name + (detail ? '\n' + detail : ''), val, tgt]);
+          });
+          return out;
+        }
+
+        if (y > doc.internal.pageSize.getHeight() - 120) { doc.addPage(); y = margin; }
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(brand[0], brand[1], brand[2]);
+        doc.text('Full Audit Checklist', margin, y);
+        y += 8;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text('Every check we ran, with the measured result and the recommended target.', margin, y + 6);
+        y += 20;
+
+        var checkCats = [
+          { key: 'content', label: 'Content' },
+          { key: 'technical', label: 'Technical SEO' },
+          { key: 'performance', label: 'Performance' },
+          { key: 'media', label: 'Media & Links' },
+          { key: 'keywords', label: 'Social & Keywords' },
+        ];
+        var statusColor = { PASS: [16, 133, 89], WARN: [180, 83, 9], FAIL: [190, 30, 30] };
+        checkCats.forEach(function (cat) {
+          var rows = extractChecks(cat.key);
+          if (rows.length === 0) return;
+          if (y > doc.internal.pageSize.getHeight() - 90) { doc.addPage(); y = margin; }
+          doc.setFontSize(11.5);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 41, 59);
+          doc.text(cat.label + ' (' + rows.length + ' checks)', margin, y);
+          y += 8;
+          doc.autoTable({
+            startY: y,
+            margin: { left: margin, right: margin },
+            head: [['Status', 'Check', 'Result', 'Target']],
+            body: rows,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 4, valign: 'top', overflow: 'linebreak' },
+            headStyles: { fillColor: brand, textColor: 255, fontSize: 8.5 },
+            columnStyles: {
+              0: { cellWidth: 44, halign: 'center', fontStyle: 'bold' },
+              1: { cellWidth: 'auto' },
+              2: { cellWidth: 95 },
+              3: { cellWidth: 85 },
+            },
+            didParseCell: function (data) {
+              if (data.section === 'body' && data.column.index === 0) {
+                var col = statusColor[data.cell.raw];
+                if (col) data.cell.styles.textColor = col;
+              }
+            },
+          });
+          y = doc.lastAutoTable.finalY + 16;
+        });
+
         // ── Detailed recommendations, one table per severity ──
         var priorities = ['critical','high','medium','low'];
         var labels = { critical: 'Critical Priority Issues', high: 'High Priority Issues', medium: 'Medium Priority Issues', low: 'Low Priority Issues' };
