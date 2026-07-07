@@ -3,7 +3,44 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-07 (80/80 tools built, 40 Physics + 40 Chemistry)
+**Last updated:** 2026-07-07 (90/90 tools built, 45 Physics + 45 Chemistry)
+
+## Batch-6 — 10 tools complete (2026-07-07, commit `126f1c5`)
+
+Built sequentially by hand, no parallel agents (same standing instruction as Batch-5). Git sync
+verified before starting.
+
+Physics (5, all migrated from basic `engineering`-category pages up to flagship depth, in place —
+same slug, original calc logic preserved exactly): Kinetic Energy, Gravitational Potential Energy
+(retitled from "Potential Energy Calculator"), Work, Power, Ohm's Law. Chemistry (3 migrated + 2
+new): pH, Ideal Gas Law, Half-Life migrated `engineering`→`chemistry`; Boiling Point Elevation and
+Freezing Point Depression built new.
+
+Migrating existing pages surfaced 5 emoji collisions the moment they joined the physics/chemistry
+category listings (kinetic-energy ⚡ clashed with coulombs-law; ohms-law ⚡ likewise; power 💡
+clashed with electric-power; ideal-gas-law 🫧 clashed with neutralization-reaction; ph 🧪 clashed
+with molarity, the category's own emoji). All 5 reassigned to unique emoji within their category
+(🏃🎚️📶 physics; 💨🌈 chemistry) — verified via a node script that parses `tools.js` and flags any
+same-category emoji repeated more than once. One collision found was pre-existing from before this
+session (momentum-calculator vs projectile-motion-calculator, both 🎯) — left untouched as it
+predates Batch-6.
+
+Post-build audit (code-only, no live browser per user instruction): full `npm run build` = 562
+pages, 0 errors (560→562, +2 for the two brand-new chemistry tools; the 8 migrations kept their
+existing slugs so added no new pages). 0 duplicate slugs across all ~562 tools. Physics and
+Chemistry both land at exactly 45 tools each. Independently re-derived every formula outside
+migration: confirmed original two/three/four-of-N solve logic was copied verbatim into the new
+template (kinetic energy, potential energy, work, power, Ohm's law, ideal gas law, half-life all
+byte-for-byte identical calculation branches, just re-skinned). New tools hand-verified: boiling
+point elevation (NaCl ΔTb=2.048°C, glucose ΔTb=1.024°C) and freezing point depression (NaCl
+ΔTf=7.44°C, ethylene glycol ΔTf=5.58°C) both match standard colligative-property textbook values.
+
+**Batch-1 through Batch-6 combined: 90 flagship tools (45 Physics + 45 Chemistry).** Pushed to
+origin/main (`126f1c5`) — Cloudflare Pages auto-deploy triggered. Remaining un-built: Physics 5 left
+(Frequency, Wavelength, Density, Mirror Equation, Newton's Law of Gravitation — see spec §8), Chemistry
+5 left (Combined Gas Law, Interactive Periodic Table, Atomic Mass Calculator [single-element lookup],
+Rate Constant, Vapor Pressure). Next: Batch-7 (final 5+5 to complete all 100 non-Biology tools),
+or pivot to Biology's first tools per the open cadence question.
 
 ## Batch-5 — 10 tools complete (2026-07-07, commit `86d59f4`)
 
