@@ -1,0 +1,230 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'PCR Primer Annealing Temperature Calculator';
+const description = 'PCR annealing temperature calculator with a live 3D primer-binding diagram and charts. Estimate primer Tm via the Wallace rule and the recommended annealing temperature (Ta = Tm − 5°C), with worked examples.';
+const intro = 'Enter a PCR primer sequence to estimate its melting temperature and the recommended annealing temperature for your PCR reaction. Two 3D diagrams show a primer binding at low versus high annealing temperature specificity, and charts compare annealing temperature recommendations across primers.';
+const category = { id: 'biology', name: 'Biology', emoji: '🧬' };
+
+const faqs = [
+  { q: 'What is PCR annealing temperature?', a: 'Annealing temperature (Ta) is the temperature during a PCR cycle at which primers bind (anneal) to the complementary template DNA strand, before DNA polymerase extends them. Choosing the right Ta is critical for a successful, specific PCR reaction.' },
+  { q: 'How is annealing temperature calculated from primer Tm?', a: 'A common rule of thumb sets Ta about 5°C below the primer\'s melting temperature (Ta = Tm − 5°C), balancing enough primer-template binding stability against unwanted non-specific binding.' },
+  { q: 'What happens if the annealing temperature is too low?', a: 'Too low an annealing temperature allows primers to bind non-specifically to partially mismatched sequences, producing unwanted extra PCR bands or smeared, non-specific amplification products.' },
+  { q: 'What happens if the annealing temperature is too high?', a: "Too high an annealing temperature can prevent the primer from binding stably to its intended target at all, resulting in weak or completely failed amplification — no PCR product forms." },
+  { q: 'Why should both PCR primers have similar Tm values?', a: 'A PCR reaction uses one universal annealing temperature for both primers — if their individual Tm values differ significantly, one primer may bind poorly at the temperature optimized for the other, weakening or preventing amplification.' },
+];
+
+const badge = { label: 'Biology', color: 'purple' };
+const howto = {
+  name: 'How to use the PCR Primer Annealing Temperature Calculator',
+  description: 'Estimate a PCR primer\'s melting temperature and recommended annealing temperature.',
+  steps: [
+    { name: 'Enter your primer sequence', text: 'Type the primer sequence (typically 18-25 bases for real PCR primers).' },
+    { name: 'Read the Tm', text: 'Melting temperature is estimated via the Wallace rule.' },
+    { name: 'Read the recommended Ta', text: 'The suggested annealing temperature (Tm − 5°C) is calculated automatically.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'Tm = 4°C × (G+C) + 2°C × (A+T)', note: 'Wallace rule estimate of primer melting temperature' },
+  { expr: 'Ta = Tm − 5°C', note: 'a common rule-of-thumb starting point for the PCR annealing temperature' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — a balanced 20-base primer', tone: 'slate',
+    given: 'Primer sequence: ATGCGGCATCGATCGATCGA (20 bases, G+C count = 11, A+T count = 9)',
+    rows: [
+      { label: 'Melting temperature:', value: 'Tm = 4×11 + 2×9 = 44 + 18 = 62°C' },
+      { label: 'Recommended annealing temp:', value: 'Ta = 62 − 5 = 57°C', full: true },
+    ],
+    note: 'A recommended Ta of 57°C is a typical, workable starting point for most standard PCR protocols — often refined further with a gradient PCR test.',
+  },
+  {
+    title: 'Worked example 2 — a short, AT-rich primer', tone: 'amber',
+    given: 'Primer sequence: ATTAATATCG (10 bases, G+C count = 3, A+T count = 7)',
+    rows: [
+      { label: 'Melting temperature:', value: 'Tm = 4×3 + 2×7 = 12 + 14 = 26°C' },
+      { label: 'Recommended annealing temp:', value: 'Ta = 26 − 5 = 21°C', full: true },
+    ],
+    note: 'This primer is unusually short and AT-rich, giving it a low Tm — real PCR primers are typically designed longer (18-25 bases) with 40-60% GC content to achieve a Tm in a more practical 55-65°C range.',
+  },
+];
+
+const comparison = {
+  heading: 'Recommended annealing temperature by primer Tm',
+  note: 'The rule-of-thumb offset (Tm − 5°C) applies consistently across the practical primer Tm range.',
+  headers: [{ label: 'Primer Tm' }, { label: 'Recommended Ta' }],
+  rows: [
+    ['50°C', '45°C'],
+    ['55°C', '50°C'],
+    ['62°C ★', '57°C'],
+    ['65°C', '60°C'],
+  ],
+  highlightIndex: 2,
+  footnote: '★ Reference row (worked example 1). Real protocols often test a small temperature gradient around this estimate to find the optimal annealing temperature experimentally.',
+};
+
+const realWorld = [
+  { emoji: '🧫', title: 'Molecular diagnostics and disease testing', body: 'PCR-based diagnostic tests (including many infectious disease and genetic tests) depend on correctly calculated annealing temperatures to reliably amplify only the intended target sequence.' },
+  { emoji: '🧬', title: 'Cloning and genetic engineering', body: 'Researchers designing primers to amplify a gene of interest for cloning must calculate appropriate annealing temperatures to ensure specific, efficient amplification of just that gene.' },
+  { emoji: '🔬', title: 'Forensic DNA analysis', body: 'Forensic DNA profiling relies on PCR to amplify specific genetic markers from tiny DNA samples — precise annealing temperature control is essential for reliable, reproducible results in legal contexts.' },
+  { emoji: '🦠', title: 'Pathogen detection and genotyping', body: 'Distinguishing between closely related pathogen strains via PCR often requires carefully tuned annealing temperatures to ensure primers bind specifically to the target strain\'s sequence and not similar variants.' },
+];
+
+const misconceptions = [
+  { claim: '"The calculated annealing temperature will always work perfectly on the first try."', truth: 'The Tm−5°C rule is a useful starting estimate, not a guaranteed final answer — real PCR optimization often involves testing a small temperature gradient around the calculated value to find the actual optimal annealing temperature for a specific reaction.' },
+  { claim: '"A higher annealing temperature is always safer or better."', truth: "Too high an annealing temperature can prevent the primer from binding at all, causing weak or failed amplification — there's a real risk on both sides, not just from setting the temperature too low." },
+  { claim: '"Primer length doesn\'t matter, only GC content determines Tm."', truth: "Both matter — a very short primer (even if GC-rich) will generally have a lower absolute Tm than a longer one, and the Wallace rule's simple additive approach only applies reliably to short sequences typical of real PCR primers." },
+  { claim: '"Both primers in a PCR reaction can have very different Tm values without any problem."', truth: 'Since a PCR reaction uses one shared annealing temperature for both primers, a large Tm mismatch between the forward and reverse primer often causes one to bind poorly, reducing amplification efficiency — designing primers with closely matched Tm values is standard best practice.' },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Biology 2e</em></strong> — Chapter 17, "Biotechnology and Genomics" (free, peer-reviewed). <a href="https://openstax.org/books/biology-2e/pages/17-1-biotechnology" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Sambrook &amp; Russell, <em>Molecular Cloning: A Laboratory Manual</em></strong> — PCR primer design guidelines.' },
+  { html: '<strong>Alberts et al., <em>Molecular Biology of the Cell</em></strong> — Chapter 8, Manipulating Proteins, DNA, and RNA (PCR section).' },
+];
+const sourcesNote = 'Tm via Wallace rule (4(G+C)+2(A+T)); Ta = Tm−5°C rule of thumb. Real protocols often refine Ta experimentally via gradient PCR. Results are rough estimates for short primers.';
+
+const howToUse = [
+  { title: 'Enter your primer sequence', body: 'Type the primer sequence, ideally 18-25 bases for realistic PCR design.' },
+  { title: 'Read the estimated Tm', body: 'Melting temperature is calculated via the Wallace rule.' },
+  { title: 'Read the recommended Ta', body: 'The suggested annealing temperature (Tm − 5°C) gives a practical starting point.' },
+];
+
+const related = [
+  { href: '/tools/dna-melting-temperature-calculator', emoji: '🌡️', title: 'DNA Melting Temperature (Tm) Calculator', desc: 'Wallace rule — Tm = 4(G+C) + 2(A+T).' },
+  { href: '/tools/gc-content-calculator', emoji: '🔬', title: 'GC Content Calculator', desc: 'GC% = (G+C)/total bases × 100.' },
+  { href: '/tools/reverse-complement-calculator', emoji: '🔄', title: 'Reverse Complement Sequence Tool', desc: 'Find the reverse complement of a DNA strand.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="PCR annealing temperature is deliberately set a few degrees below a primer's calculated melting point, giving the primer enough thermal stability to bind its exact intended target firmly while still being too warm for weaker, partially-mismatched bindings to survive."
+  howIntro="Once a primer's approximate melting temperature is known (via the Wallace rule for short sequences), the annealing step of a PCR cycle needs to run somewhat below that Tm — if the reaction ran exactly at Tm, only half of the primer-template pairs would be bound at any instant, which is far too unstable for reliable amplification. Subtracting about 5°C (Ta = Tm − 5°C) gives enough of a stability margin for specific, efficient binding without straying so low that non-specific, partially-mismatched primers can also bind and amplify unwanted sequences."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where PCR annealing temperature actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block"><span class="text-sm font-medium text-slate-700">Primer sequence (A/T/C/G only)</span>
+      <input id="primer" type="text" value="ATGCGGCATCGATCGATCGA" class="mt-1 w-full rounded-xl border border-slate-300 p-3 font-mono uppercase tracking-widest outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-5 text-center"><div class="text-sm text-slate-500">Melting temperature (Tm)</div><div id="r-tm" class="mt-1 text-2xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white"><div class="text-sm opacity-80">Recommended annealing temp (Ta)</div><div id="r-ta" class="mt-1 text-2xl font-bold">—</div></div>
+    </div>
+    <p id="pcr-err" class="mt-3 text-center text-sm text-amber-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ: two static 3D diagrams + charts + script ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Primer binding specificity</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-loose" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Too low a temperature (loose binding)</h3>
+          <p class="mt-1 text-sm text-slate-600">The primer (amber) can bind loosely even where bases don't perfectly match — a risk of non-specific amplification.</p>
+        </div>
+        <div>
+          <div id="diag-tight" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Correct annealing temperature (specific binding)</h3>
+          <p class="mt-1 text-sm text-slate-600">The primer (amber) binds tightly and specifically only to its perfectly complementary template sequence.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Annealing temperature graphs</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Recommended Ta vs primer Tm</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-ta"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Tm vs GC content (fixed 20-base primer length)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-gc"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, makeScene, mountResize, chartSetup } = window.STK;
+      const OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      function update() {
+        el('pcr-err').textContent = '';
+        const raw = (el('primer').value || '').toUpperCase().replace(/[^ATCG]/g, '');
+        el('primer').value = el('primer').value.toUpperCase();
+        if (!raw) { el('r-tm').textContent = '—'; el('r-ta').textContent = '—'; return; }
+        let gc = 0, at = 0;
+        raw.split('').forEach((b) => { if (b === 'G' || b === 'C') gc++; else at++; });
+        const tm = 4 * gc + 2 * at;
+        const ta = tm - 5;
+        el('r-tm').textContent = tm + '°C';
+        el('r-ta').textContent = ta + '°C';
+        if (raw.length < 18 || raw.length > 25) el('pcr-err').textContent = 'Note: real PCR primers are typically 18-25 bases — this length is outside that typical range.';
+      }
+      el('primer').addEventListener('input', update);
+
+      // ---- charts ----
+      const charts = {};
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        const labelsTm = [], dataTa = [];
+        for (let tm = 45; tm <= 70; tm += 5) { labelsTm.push(tm); dataTa.push(tm - 5); }
+        charts.ta = new Chart(el('chart-ta'), {
+          type: 'line',
+          data: { labels: labelsTm, datasets: [{ label: 'Ta (°C)', data: dataTa, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Primer Tm (°C)' } }, y: { title: { display: true, text: 'Recommended Ta (°C)' } } }, plugins: { legend: { display: false } } }),
+        });
+        const labelsGC = [], dataTm = [];
+        for (let gc = 0; gc <= 20; gc += 2) { labelsGC.push(gc); dataTm.push(4 * gc + 2 * (20 - gc)); }
+        charts.gc = new Chart(el('chart-gc'), {
+          type: 'line',
+          data: { labels: labelsGC, datasets: [{ label: 'Tm (°C)', data: dataTm, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', fill: true, tension: 0, pointRadius: 0 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'GC count (out of 20)' } }, y: { title: { display: true, text: 'Tm (°C)' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.ready = true;
+      }
+
+      function bindingScene(container, tight) {
+        const s = makeScene(container, 9, new THREE.Vector3(0, 0, 0), OPTS);
+        const template = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5, 16), new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5 }));
+        template.rotation.z = Math.PI / 2;
+        s.scene.add(template);
+        const primerColor = 0xf59e0b;
+        const primer = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 2.2, 16), new THREE.MeshStandardMaterial({ color: primerColor, roughness: 0.5 }));
+        primer.rotation.z = Math.PI / 2;
+        primer.position.set(0, tight ? -0.3 : -0.7, 0);
+        s.scene.add(primer);
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+      let diagLoose = null, diagTight = null;
+      function initDiagLoose() { const c = el('diag-loose'); if (!c) throw new Error('no container'); diagLoose = bindingScene(c, false); }
+      function initDiagTight() { const c = el('diag-tight'); if (!c) throw new Error('no container'); diagTight = bindingScene(c, true); }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[pcr-annealing] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[pcr-annealing] charts failed', e); }
+        if (window.THREE) {
+          try { initDiagLoose(); } catch (e) { console.error('[pcr-annealing] loose diagram failed', e); }
+          try { initDiagTight(); } catch (e) { console.error('[pcr-annealing] tight diagram failed', e); }
+        }
+        mountResize([diagLoose, diagTight]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
