@@ -1,13 +1,64 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { categories, tools } from '../data/tools.js';
+
+const liveTools = tools.filter((t) => t.enabled && t.status === 'live');
+
+// Categories that actually have live tools, so we never link to an empty page.
+const browseCategories = categories.filter(
+  (c) => liveTools.some((t) => t.category === c.id)
+);
+
+// A handful of popular tools to offer as recovery links: flagship tools first,
+// then anything else to top up to six, de-duplicated by slug.
+const seen = new Set();
+const popularTools = [...liveTools.filter((t) => t.flagship), ...liveTools]
+  .filter((t) => (seen.has(t.slug) ? false : seen.add(t.slug)))
+  .slice(0, 6);
 ---
 
-<BaseLayout title="Page not found" description="The page you are looking for does not exist on ToolNestr.">
-  <div class="mx-auto max-w-lg px-4 py-20 text-center">
+<BaseLayout title="Page not found" description="The page you are looking for does not exist on ToolNestr — browse categories or jump to a popular tool instead.">
+  <div class="mx-auto max-w-3xl px-4 py-16 text-center sm:py-20">
     <h1 class="text-6xl font-bold text-indigo-600">404</h1>
-    <p class="mt-4 text-lg text-slate-600">The page you are looking for does not exist.</p>
-    <a href="/" class="mt-6 inline-block rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white transition hover:bg-indigo-700">
-      Back to Home
-    </a>
+    <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">
+      We couldn&rsquo;t find that page. It may have moved, or the link might be wrong.
+    </p>
+
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+      <a href="/" class="inline-block rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white transition hover:bg-indigo-700">
+        Back to Home
+      </a>
+      <button
+        type="button"
+        onclick="document.getElementById('search-trigger')?.click(); document.getElementById('search-trigger-m')?.click();"
+        class="inline-block rounded-xl border border-indigo-200 bg-white px-6 py-3 font-medium text-indigo-700 transition hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800 dark:text-indigo-300 dark:hover:bg-slate-700"
+      >
+        Search all tools
+      </button>
+    </div>
+
+    {popularTools.length > 0 && (
+      <section class="mt-12 text-left">
+        <h2 class="text-center text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Popular tools</h2>
+        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {popularTools.map((t) => (
+            <a href={`/tools/${t.slug}`} class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+              <span>{t.emoji}</span> {t.title}
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section class="mt-10 text-left">
+      <h2 class="text-center text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Browse by category</h2>
+      <div class="mt-4 flex flex-wrap justify-center gap-2">
+        {browseCategories.map((c) => (
+          <a href={`/tools/${c.id}/`} class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+            <span>{c.emoji}</span> {c.name}
+          </a>
+        ))}
+      </div>
+    </section>
   </div>
 </BaseLayout>
