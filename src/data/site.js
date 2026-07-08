@@ -5,10 +5,10 @@
 export const site = {
   name: 'ToolNestr',
   tagline: 'Free, fast & private online tools',
+  // Kept to ~155 chars — Google/Bing truncate meta descriptions past ~160.
   description:
-    'A growing collection of free online tools — calculators, converters, ' +
-    'text, image, PDF and developer utilities. Fast, private, and no sign-up. ' +
-    'Everything runs right in your browser.',
+    'Free online calculators, converters, text, image and PDF tools. ' +
+    'Fast, private, no sign-up — everything runs right in your browser.',
   url: 'https://toolnestr.com',
   // Change this to a real inbox you can check (used on the Contact + Privacy pages).
   email: 'hello@toolnestr.com',
