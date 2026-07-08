@@ -3,7 +3,67 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-08 (137/150 tools built — 50 Physics + 50 Chemistry (both complete) + **37 Biology**)
+**Last updated:** 2026-07-08 (**ALL 150 TOOLS COMPLETE — 50 Physics + 50 Chemistry + 50 Biology**)
+
+## Batch-11 — final 13 Biology tools complete, project finished at 150/150 (2026-07-08)
+
+Built sequentially by hand, no parallel agents (same standing instruction as every prior batch).
+Git sync verified before starting. This batch tackled the remaining 13 tools, including all 4
+previously-deferred UI-heavy items (Genetic Drift Simulator, Mitosis Stage Identifier, Pedigree
+Chart Analyzer, Simple Phylogenetic Tree Builder) by adapting them into calculator-compatible
+designs rather than complex drag-and-drop widgets:
+
+- **Speciation Rate Estimator, Hardy-Weinberg Equilibrium Checker, Natural Selection Simulator,
+  Predator-Prey (Lotka-Volterra) Simulator** — straightforward formula/chart-based tools.
+  Equilibrium Checker runs a real chi-square goodness-of-fit test (differentiated from the existing
+  Hardy-Weinberg Allele Frequency Calculator, which predicts rather than tests). Natural Selection
+  and Predator-Prey use exact recursive/analytical formulas (q(t+1)=q(1-sq)/(1-sq²); Lotka-Volterra
+  equilibrium Prey*=c/d, Predator*=a/b) rather than hand-wavy description.
+- **Protein Molecular Weight Calculator, Amino Acid Sequence Analyzer, pH-Enzyme Activity Simulator**
+  — reused the exact verified 64-codon table's amino acid set; residue-mass summation (MW=Σresidues+18.02)
+  and composition/net-charge analysis are genuinely distinct calculations from each other.
+- **Photosynthesis Rate Calculator, Cellular Respiration Equation Balancer** — saturation-curve
+  light-response model with light compensation point; balanced C6H12O6+6O2→6CO2+6H2O stoichiometry
+  with the modern ~30 ATP/glucose estimate (not the outdated 36-38 textbook figure).
+- **Genetic Drift Simulator** (UI-heavy → adapted) — exact analytical heterozygosity decay
+  Ht=H0(1-1/2N)^t plus genuine Monte Carlo binomial-sampling simulated trajectories in charts.
+- **Mitosis Stage Identifier** (UI-heavy → adapted) — a 4-question dichotomous key (nuclear envelope
+  → alignment → separation → reforming) instead of a drawn interactive diagram.
+- **Pedigree Chart Analyzer** (UI-heavy → adapted) — a 2-3 question decision tree (skips generations?
+  sex-biased? father-to-son transmission?) inferring one of the 4 classic Mendelian inheritance
+  patterns, matching real clinical/textbook pedigree-analysis logic.
+- **Simple Phylogenetic Tree Builder** (UI-heavy → adapted) — real UPGMA distance-based clustering
+  (generic algorithm, not hardcoded) on an editable binary character matrix, defaulting to the
+  classic 5-taxon vertebrate cladogram teaching example (Lamprey/Fish/Amphibian/Reptile/Mammal).
+
+**Two real bugs caught during self-review before the audit pass** (both unescaped apostrophes inside
+single-quoted JS strings, the same class of bug caught in Batch-9): `pedigree-chart-analyzer.astro`
+had a mismatched-brace Chart.js tooltip callback (extra closing brace, unrelated to the apostrophe
+issue — fixed by reformatting the options object across multiple lines) plus two separate raw-apostrophe
+string breaks in `speciation-rate-calculator.astro` ("evolutionarily 'better'") and
+`natural-selection-calculator.astro` ("real populations' allele frequencies") — both fixed by removing/
+rewording the offending apostrophes. Caught via a script that runs every file's frontmatter AND every
+inline `<script>` through Node's `new Function()` constructor — this check should be considered a
+mandatory step before every future batch's build, not an optional nicety.
+
+Post-build audit (code-only, no live browser per standing instruction): full `npm run build` = 619
+pages, 0 errors. 0 duplicate slugs across all 595 tools. 0 emoji collisions within biology — now at
+exactly 50/50. Validated every inline `<script>` and every frontmatter block's JS syntax via
+`new Function()` across all 13 files — zero syntax errors after the 2 fixes above. Checked every
+`related` link across all 13 files against the live slug list — 0 broken links. Independently
+re-derived formulas outside the pages' own text: UPGMA Fish-Reptile Hamming distance (=2, matches
+worked example), speciation rate (ln(16)/10≈0.277/Myr), Lotka-Volterra equilibrium (Prey*=30,
+Predator*=25), protein MW for AGS (=233.23 Da) and MKVL (=489.67 Da), pH-activity bell curve at
+pH=5/opt=7/width=1.5 (=41.1%) and pepsin-vs-trypsin at pH=2 (100% vs 0.03%), UPGMA/Wright-Fisher
+heterozygosity decay (N=50,t=50→0.303; N=5,t=10→0.174). All matched exactly.
+
+**PROJECT COMPLETE: all 150 flagship tools built (50 Physics + 50 Chemistry + 50 Biology).**
+Not yet pushed to origin/main — awaiting user go-ahead. Every tool from spec §8's full 150-item list
+now has a flagship-depth page on `SubjectToolPage` with 3D diagrams, charts, worked examples, FAQ
+schema, and misconceptions sections. No further batches planned unless the user requests revisions,
+theme/audit passes (Section 12's browser-based audit loop was skipped throughout per standing user
+instruction — code-only verification was used instead), or entirely new tools beyond the original
+150-item spec list.
 
 ## Batch-10 — 10 more Biology tools complete, 23→13 remaining (2026-07-08)
 

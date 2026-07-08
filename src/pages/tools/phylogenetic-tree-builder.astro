@@ -1,0 +1,339 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Simple Phylogenetic Tree Builder';
+const description = 'Simple phylogenetic tree builder with a live 3D branching diagram and charts. Build a UPGMA distance-based tree from a binary character matrix, with a worked example using the classic vertebrate cladogram data.';
+const intro = 'Build a simple phylogenetic tree from a binary character matrix (1=derived trait present, 0=ancestral/absent) using UPGMA distance-based clustering — the same core logic behind many real phylogenetic tree-building tools. Two 3D diagrams compare a balanced tree to a fully nested "ladder" tree, and charts show the pairwise character differences driving the clustering.';
+const category = { id: 'biology', name: 'Biology', emoji: '🧬' };
+
+const faqs = [
+  { q: 'What is a phylogenetic tree?', a: 'A phylogenetic tree is a branching diagram showing the inferred evolutionary relationships between organisms, with more closely related groups sharing a more recent common ancestor (a more recent branch point).' },
+  { q: 'What is UPGMA?', a: '"Unweighted Pair Group Method with Arithmetic mean" is a simple, widely-taught distance-based clustering algorithm — it repeatedly groups the two closest taxa or clusters together, based on how many characters differ between them, until every taxon is joined into one tree.' },
+  { q: 'What do the 1s and 0s in the character matrix mean?', a: 'A 1 means a taxon has the derived (evolved, newer) version of a trait, while a 0 means it retains the ancestral (original, older) version — shared derived traits are the primary evidence used to group related organisms together.' },
+  { q: 'Is UPGMA the same method real scientists use to build phylogenetic trees?', a: "UPGMA is a genuine, real method, but modern phylogenetics more often uses more sophisticated approaches — maximum parsimony, maximum likelihood, or Bayesian methods — which can better handle unequal rates of evolutionary change across different lineages, something UPGMA assumes is constant." },
+  { q: 'Can UPGMA give a different tree than a character-based (parsimony) method on the same data?', a: "Yes — this is a genuine, important limitation. Because UPGMA groups strictly by overall similarity (total number of matching characters) rather than specifically by shared *derived* characters, it can sometimes produce a different branching order than a proper cladistic (parsimony) analysis of the exact same character matrix." },
+];
+
+const badge = { label: 'Biology', color: 'purple' };
+const howto = {
+  name: 'How to use the Simple Phylogenetic Tree Builder',
+  description: 'Build a UPGMA distance-based tree from a binary character matrix.',
+  steps: [
+    { name: 'Review or edit the character matrix', text: 'Toggle each taxon\'s trait values (1=derived/present, 0=ancestral/absent).' },
+    { name: 'Read the pairwise distances', text: 'The number of differing characters between every pair of taxa.' },
+    { name: 'Read the resulting tree', text: 'UPGMA clusters the closest taxa first, building up to a full tree.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'Distance = number of differing characters between two taxa', note: 'the Hamming distance, used as the similarity measure' },
+  { expr: 'UPGMA: merge the closest pair first, then average distances to the new cluster', note: 'repeated until every taxon is joined into one tree' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — pairwise distance calculation', tone: 'slate',
+    given: 'Fish: [1,1,0,0,0] and Reptile: [1,1,1,1,0] across 5 characters (vertebrae, jaws, four legs, amniotic egg, hair).',
+    rows: [
+      { label: 'Compare character by character:', value: 'Match, match, differ, differ, match' },
+      { label: 'Formula:', value: 'Distance = count of differing positions' },
+      { label: 'Result:', value: 'Distance = 2 (they differ at "four legs" and "amniotic egg")', full: true },
+    ],
+    note: 'This distance directly reflects how many evolutionary character changes separate the two taxa in this simplified model.',
+  },
+  {
+    title: 'Worked example 2 — the classic vertebrate cladogram matrix', tone: 'amber',
+    given: 'Five taxa (Lamprey, Fish, Amphibian, Reptile, Mammal) scored for 5 characters: vertebrae, jaws, four legs, amniotic egg, and hair — a standard textbook cladogram exercise.',
+    rows: [
+      { label: 'Closest pairs (distance=1):', value: 'Fish-Amphibian, Amphibian-Reptile, and Reptile-Mammal all differ by just 1 character' },
+      { label: 'UPGMA groups:', value: '(Fish, Amphibian) and (Reptile, Mammal) cluster first, then join together' },
+      { label: 'Outgroup:', value: 'Lamprey (lacking jaws and vertebrae) joins last, as the most distantly related taxon', full: true },
+    ],
+    note: "Lamprey correctly comes out as the outgroup here since it lacks every derived character the other four taxa share — exactly matching its real biological position as a jawless fish, the most distant relative of the group.",
+  },
+];
+
+const comparison = {
+  heading: 'Character matrix for the classic vertebrate example',
+  note: '1 = derived trait present, 0 = ancestral/absent.',
+  headers: [{ label: 'Taxon' }, { label: 'Vertebrae' }, { label: 'Jaws' }, { label: 'Four legs' }, { label: 'Amniotic egg' }, { label: 'Hair' }],
+  rows: [
+    ['Lamprey (outgroup) ★', '0', '0', '0', '0', '0'],
+    ['Fish', '1', '1', '0', '0', '0'],
+    ['Amphibian', '1', '1', '1', '0', '0'],
+    ['Reptile', '1', '1', '1', '1', '0'],
+    ['Mammal', '1', '1', '1', '1', '1'],
+  ],
+  highlightIndex: 0,
+  footnote: '★ Reference row. The outgroup lacks every derived character seen in the rest of the group — exactly why it anchors the base of the tree.',
+};
+
+const realWorld = [
+  { emoji: '🧬', title: 'Molecular phylogenetics', body: 'Modern phylogenetic trees are usually built from DNA or protein sequence differences rather than visible physical traits, but the core distance-clustering logic demonstrated here is the same principle behind real tools like UPGMA and neighbor-joining.' },
+  { emoji: '🦠', title: 'Tracking pathogen outbreaks', body: 'Public health researchers build phylogenetic trees from viral genome sequences to trace how an outbreak spread and identify its likely source, using the same shared-mutation clustering logic.' },
+  { emoji: '🐾', title: 'Classifying newly discovered species', body: "When a new species is discovered, comparing its traits (or DNA) to known relatives and building a phylogenetic tree helps taxonomists determine where it belongs in the tree of life." },
+  { emoji: '💊', title: 'Drug and vaccine strain selection', body: 'Building phylogenetic trees of circulating virus strains (like influenza) helps public health agencies select which strains to include in each year\'s vaccine formulation.' },
+];
+
+const misconceptions = [
+  { claim: '"A phylogenetic tree shows exactly how evolution happened, with total certainty."', truth: "A phylogenetic tree is always the best-supported hypothesis given the available data and method used — different data sets or different tree-building methods can sometimes produce different trees, and trees are regularly revised as new evidence emerges." },
+  { claim: '"Any clustering method applied to the same data gives the same tree."', truth: 'Different algorithms use different logic — UPGMA groups by overall similarity assuming a constant evolutionary rate, while parsimony methods specifically seek the tree requiring the fewest total character changes — and these different approaches can genuinely disagree on the same dataset.' },
+  { claim: '"The taxa positioned closer together at the tips of the tree are always more similar overall."', truth: 'Branch positions show relatedness (recency of common ancestry) based on shared derived characters, not necessarily overall visual or ecological similarity — two taxa can look quite different overall while still being closely related, or look similar while being only distantly related (convergent evolution).' },
+  { claim: '"An outgroup is chosen randomly, or is simply whichever taxon is added first."', truth: "An outgroup is deliberately chosen because independent evidence suggests it branched off before all the other taxa share a common ancestor — it's a considered choice based on prior knowledge, not an arbitrary starting point." },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Biology 2e</em></strong> — Chapter 18, "Phylogenies and the History of Life" (free, peer-reviewed). <a href="https://openstax.org/books/biology-2e/pages/18-1-organizing-life-on-earth" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Sokal &amp; Michener (1958)</strong> — original UPGMA clustering method paper.' },
+  { html: '<strong>Felsenstein, <em>Inferring Phylogenies</em></strong> — Standard reference on phylogenetic tree-building methods.' },
+];
+const sourcesNote = 'Uses UPGMA (distance-based) clustering on Hamming distance between binary character vectors. A simplified teaching method — real phylogenetics more often uses parsimony, likelihood, or Bayesian methods.';
+
+const howToUse = [
+  { title: 'Review the character matrix', body: 'Toggle any cell between 0 (ancestral) and 1 (derived) to build your own matrix.' },
+  { title: 'Check pairwise distances', body: 'The number of differing characters between every pair of taxa.' },
+  { title: 'Read the resulting tree', body: 'UPGMA clustering order shows which taxa group together, and in what sequence.' },
+];
+
+const related = [
+  { href: '/tools/speciation-rate-calculator', emoji: '🌿', title: 'Speciation Rate Estimator', desc: "Net diversification rate for a clade's species richness." },
+  { href: '/tools/chi-square-genetics-calculator', emoji: '📊', title: 'Chi-Square Goodness of Fit Calculator', desc: 'Test whether observed ratios match an expected genetic ratio.' },
+  { href: '/tools/hardy-weinberg-equilibrium-checker', emoji: '⚖️', title: 'Hardy-Weinberg Equilibrium Checker', desc: 'Chi-square test comparing observed vs. expected genotypes.' },
+];
+
+const taxaNames = ['Lamprey', 'Fish', 'Amphibian', 'Reptile', 'Mammal'];
+const defaultMatrix = [
+  [0, 0, 0, 0, 0],
+  [1, 1, 0, 0, 0],
+  [1, 1, 1, 0, 0],
+  [1, 1, 1, 1, 0],
+  [1, 1, 1, 1, 1],
+];
+const charNames = ['Vertebrae', 'Jaws', 'Four legs', 'Amniotic egg', 'Hair'];
+const treeDataJson = JSON.stringify({ taxaNames, defaultMatrix, charNames });
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="taxa that differ in the fewest characters are, by this method's logic, treated as the most closely related — so repeatedly joining whichever two groups currently differ the least builds a tree from the bottom up, one merge at a time."
+  howIntro="UPGMA builds a tree the same way a matchmaking algorithm might pair up the most compatible options first: calculate how many characters differ between every possible pair of taxa, join the single closest pair into one cluster, then recalculate distances from that new cluster to everyone else (as an average of its members' distances) and repeat. Each merge becomes one branch point in the growing tree, continuing until every taxon has been joined into a single connected structure — with taxa or clusters that merge earliest sitting closer together on the finished tree, and the very last taxon to join naturally ending up positioned as the outgroup at the tree's base."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where phylogenetic tree-building actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <p class="mb-3 text-sm text-slate-500">Click any cell to toggle between 0 (ancestral) and 1 (derived)</p>
+    <div class="overflow-x-auto rounded-xl border border-slate-200">
+      <table class="w-full text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600"><tr id="matrix-head"><th class="px-3 py-2 text-left">Taxon</th></tr></thead>
+        <tbody id="matrix-body" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+    <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+      <table class="w-full text-center text-xs sm:text-sm">
+        <thead class="bg-slate-50 text-slate-600"><tr><th class="px-3 py-2 text-left">Pair</th><th class="px-3 py-2">Distance</th></tr></thead>
+        <tbody id="dist-body" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+    <div class="mt-4 rounded-xl bg-indigo-600 p-4 text-center text-white">
+      <div class="text-xs opacity-80">UPGMA merge order</div>
+      <div id="r-tree" class="mt-1 text-sm font-bold sm:text-base">—</div>
+    </div>
+  </div>
+
+  <!-- ============ VIZ ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Balanced tree vs. nested "ladder" tree</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-balanced" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Balanced tree</h3>
+          <p class="mt-1 text-sm text-slate-600">Two pairs merge independently before joining — what UPGMA often produces.</p>
+        </div>
+        <div>
+          <div id="diag-ladder" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Nested "ladder" tree</h3>
+          <p class="mt-1 text-sm text-slate-600">Each taxon joins one at a time — the fully nested cladogram pattern.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Character and distance charts</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Number of derived characters per taxon</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-derived"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Pairwise distance matrix (heatmap-style)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-distances"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline define:vars={{ treeDataJson }}>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, makeScene, mountResize, chartSetup } = window.STK;
+      const OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+      const { taxaNames, defaultMatrix, charNames } = JSON.parse(treeDataJson);
+      let matrix = defaultMatrix.map((row) => row.slice());
+      let charts = {};
+
+      function buildMatrixTable() {
+        const head = el('matrix-head');
+        charNames.forEach((name) => { const th = document.createElement('th'); th.className = 'px-2 py-2'; th.textContent = name; head.appendChild(th); });
+        const body = el('matrix-body');
+        taxaNames.forEach((taxon, ti) => {
+          const tr = document.createElement('tr');
+          const td0 = document.createElement('td'); td0.className = 'px-3 py-2 text-left font-medium text-slate-700'; td0.textContent = taxon;
+          tr.appendChild(td0);
+          charNames.forEach((_, ci) => {
+            const td = document.createElement('td'); td.className = 'px-2 py-2';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'h-7 w-7 rounded font-mono font-bold';
+            function paint() { btn.textContent = String(matrix[ti][ci]); btn.style.background = matrix[ti][ci] ? '#6366f1' : '#e2e8f0'; btn.style.color = matrix[ti][ci] ? '#fff' : '#334155'; }
+            paint();
+            btn.addEventListener('click', () => { matrix[ti][ci] = matrix[ti][ci] ? 0 : 1; paint(); update(); });
+            td.appendChild(btn);
+            tr.appendChild(td);
+          });
+          body.appendChild(tr);
+        });
+      }
+
+      function hamming(a, b) { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; }
+
+      function upgma(names, mat) {
+        let clusters = names.map((n, i) => ({ name: n, members: [i], size: 1 }));
+        let dist = {};
+        for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) dist[i + '-' + j] = hamming(mat[i], mat[j]);
+        const steps = [];
+        let active = clusters.map((c, i) => ({ ...c, id: i }));
+        let idCounter = names.length;
+        const distMap = {};
+        active.forEach((a) => active.forEach((b) => { if (a.id < b.id) distMap[a.id + ':' + b.id] = dist[a.members[0] + '-' + b.members[0]]; }));
+        while (active.length > 1) {
+          let best = null;
+          for (let i = 0; i < active.length; i++) {
+            for (let j = i + 1; j < active.length; j++) {
+              const key = active[i].id + ':' + active[j].id;
+              const d = distMap[key];
+              if (best === null || d < best.d) best = { i, j, d };
+            }
+          }
+          const a = active[best.i], b = active[best.j];
+          const merged = { id: idCounter++, name: '(' + a.name + ',' + b.name + ')', members: a.members.concat(b.members), size: a.size + b.size };
+          steps.push({ a: a.name, b: b.name, distance: +best.d.toFixed(2) });
+          const rest = active.filter((c) => c !== a && c !== b);
+          rest.forEach((c) => {
+            const dA = distMap[Math.min(a.id, c.id) + ':' + Math.max(a.id, c.id)];
+            const dB = distMap[Math.min(b.id, c.id) + ':' + Math.max(b.id, c.id)];
+            const newD = (dA * a.size + dB * b.size) / (a.size + b.size);
+            distMap[Math.min(merged.id, c.id) + ':' + Math.max(merged.id, c.id)] = newD;
+          });
+          active = rest.concat([merged]);
+        }
+        return steps;
+      }
+
+      function update() {
+        const distBody = el('dist-body');
+        distBody.innerHTML = '';
+        const distPairs = [];
+        for (let i = 0; i < taxaNames.length; i++) {
+          for (let j = i + 1; j < taxaNames.length; j++) {
+            const d = hamming(matrix[i], matrix[j]);
+            distPairs.push([taxaNames[i] + ' – ' + taxaNames[j], d]);
+          }
+        }
+        distPairs.sort((a, b) => a[1] - b[1]);
+        distPairs.forEach(([label, d]) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td class="px-3 py-2 text-left">' + label + '</td><td class="px-3 py-2 font-mono">' + d + '</td>';
+          distBody.appendChild(tr);
+        });
+        const steps = upgma(taxaNames, matrix);
+        el('r-tree').textContent = steps.map((s) => s.a + '+' + s.b + ' (d=' + s.distance + ')').join('  →  ');
+        updateCharts();
+      }
+
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        charts.derived = new Chart(el('chart-derived'), {
+          type: 'bar',
+          data: { labels: taxaNames, datasets: [{ label: 'Derived characters', data: defaultMatrix.map((row) => row.reduce((a, b) => a + b, 0)), backgroundColor: '#6366f1' }] },
+          options: Object.assign({}, base, { scales: { y: { title: { display: true, text: 'Number of derived (1) characters' } } }, plugins: { legend: { display: false } } }),
+        });
+        charts.distances = new Chart(el('chart-distances'), {
+          type: 'bar',
+          data: { labels: [], datasets: [{ label: 'Distance', data: [], backgroundColor: '#f59e0b' }] },
+          options: Object.assign({}, base, { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Distance (differing characters)' } } }, plugins: { legend: { display: false } } }),
+        });
+      }
+      function updateCharts() {
+        if (charts.derived) { charts.derived.data.datasets[0].data = matrix.map((row) => row.reduce((a, b) => a + b, 0)); charts.derived.update('none'); }
+        if (charts.distances) {
+          const pairs = [];
+          for (let i = 0; i < taxaNames.length; i++) for (let j = i + 1; j < taxaNames.length; j++) pairs.push([taxaNames[i][0] + taxaNames[j][0], hamming(matrix[i], matrix[j])]);
+          charts.distances.data.labels = pairs.map((p) => p[0]);
+          charts.distances.data.datasets[0].data = pairs.map((p) => p[1]);
+          charts.distances.update('none');
+        }
+      }
+
+      function branchScene(container, balanced) {
+        const s = makeScene(container, 8, new THREE.Vector3(0, 0, 0), OPTS);
+        function line(p1, p2, color) {
+          const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+          s.scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color })));
+        }
+        function node(p) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshStandardMaterial({ color: 0x6366f1 })); m.position.copy(p); s.scene.add(m); }
+        if (balanced) {
+          const root = new THREE.Vector3(0, 2, 0);
+          const left = new THREE.Vector3(-1.5, 0.5, 0), right = new THREE.Vector3(1.5, 0.5, 0);
+          line(root, left, 0x6366f1); line(root, right, 0x6366f1);
+          const tips = [[-2.2, -1.5], [-0.8, -1.5], [0.8, -1.5], [2.2, -1.5]];
+          tips.forEach((t, i) => { const p = new THREE.Vector3(t[0], t[1], 0); line(i < 2 ? left : right, p, 0x94a3b8); node(p); });
+          node(root); node(left); node(right);
+        } else {
+          let prev = new THREE.Vector3(-2.5, 2, 0);
+          for (let i = 0; i < 4; i++) {
+            const next = new THREE.Vector3(-2.5 + i * 1.2, 2 - (i + 1) * 0.9, 0);
+            const tip = new THREE.Vector3(-2.5 + i * 1.2 + 1, 2 - (i + 1) * 0.9 + 0.3, 0);
+            line(prev, next, 0x6366f1);
+            line(next, tip, 0x94a3b8);
+            node(prev); node(tip);
+            prev = next;
+          }
+          node(prev);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+      let diagBalanced = null, diagLadder = null;
+      function initDiagBalanced() { const c = el('diag-balanced'); if (!c) throw new Error('no container'); diagBalanced = branchScene(c, true); }
+      function initDiagLadder() { const c = el('diag-ladder'); if (!c) throw new Error('no container'); diagLadder = branchScene(c, false); }
+
+      function boot() {
+        try { buildMatrixTable(); initCharts(); update(); } catch (e) { console.error('[phylogenetic-tree] init failed', e); }
+        if (window.THREE) {
+          try { initDiagBalanced(); } catch (e) { console.error('[phylogenetic-tree] balanced diagram failed', e); }
+          try { initDiagLadder(); } catch (e) { console.error('[phylogenetic-tree] ladder diagram failed', e); }
+        }
+        mountResize([diagBalanced, diagLadder]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
