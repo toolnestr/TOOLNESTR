@@ -80,6 +80,7 @@ export const tools = [
   { slug: 'retirement-calculator', title: 'Retirement Calculator', short: 'Project your retirement savings.', category: 'finance', emoji: '🏖️', enabled: false, status: 'soon' },
 
   // ── Networking & IP Tools ──
+  { slug: 'dropspot', title: 'Dropspot — File & Text Sharing', short: 'A shared spot to drop files, links & text across any network. No login.', category: 'networking', emoji: '📡', enabled: true, status: 'live', flagship: true },
   { slug: 'ip-tracker', title: 'IP Address Tracker', short: 'Trace any IP address — location, ISP, ASN and timezone.', category: 'networking', emoji: '🌐', enabled: true, status: 'live', flagship: true },
   { slug: 'what-is-my-ip', title: 'What Is My IP Address', short: 'See your public IP, location, ISP and browser info instantly.', category: 'networking', emoji: '🌐', enabled: true, status: 'live' },
   { slug: 'subnet-calculator', title: 'IPv4 Subnet Calculator', short: 'Calculate subnet masks, network ranges and host counts.', category: 'networking', emoji: '🔢', enabled: true, status: 'live' },
@@ -711,7 +712,7 @@ const priorities = {
   'investment-calculator': 60, 'mortgage-calculator': 60, 'break-even': 50, 'roas-calculator': 40,
   'savings-goal-calculator': 40, 'crypto-profit-calculator': 40,
   // ── Networking ──
-  'what-is-my-ip': 100, 'ip-tracker': 90, 'dns-lookup': 80, 'whois-lookup': 70,
+  'dropspot': 100, 'what-is-my-ip': 95, 'ip-tracker': 90, 'dns-lookup': 80, 'whois-lookup': 70,
   'port-checker': 60, 'ssl-certificate-checker': 60, 'subnet-calculator': 50, 'mac-address-lookup': 50,
   'blacklist-checker': 40, 'dns-propagation-checker': 40, 'uptime-checker': 40,
   // ── Math ──

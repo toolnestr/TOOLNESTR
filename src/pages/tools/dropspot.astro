@@ -1,0 +1,898 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const title = 'Dropspot – Cross-Network File & Text Sharing (No Login)';
+const description =
+  'A shared spot to drop files, links and text across any network with a simple room code. No login, no app. Text & links sync instantly; files transfer peer-to-peer or fall back to secure storage. Works across Wi-Fi, mobile data and different networks.';
+
+const faqs = [
+  { q: 'Do I need an account to use Dropspot?', a: 'No. Dropspot is completely login-free. You create a room, get a 6-character code, and share that code (or the QR) with anyone. They join instantly — no sign-up, no app install, nothing to download. The room and its contents automatically expire after the time you choose.' },
+  { q: 'Does it work across different networks?', a: 'Yes. Unlike local-only tools that need everyone on the same Wi-Fi, Dropspot works across any network using room codes. One person can be on home Wi-Fi and another on mobile data on the other side of the world — as long as both have the room code, they share the same room. Text and links sync through the cloud; files transfer directly peer-to-peer when possible.' },
+  { q: 'How are files transferred?', a: 'When another device is online in the room, files transfer directly peer-to-peer (P2P) between browsers using WebRTC — the file never touches our servers, and there is no size limit. If no one else is online, the file is uploaded to secure temporary storage (up to 25 MB) so the other person can download it later. Dropspot picks the best path automatically.' },
+  { q: 'Is my data private?', a: 'Text and links are stored only for the lifetime you choose and are then permanently deleted. Peer-to-peer file transfers never touch our servers at all. Fallback file uploads go to private storage that is only reachable through the room and are auto-deleted on expiry. You can also protect any room with a PIN and delete any item manually at any time.' },
+  { q: 'How long does content stay available?', a: 'You choose when you create the room: 10 minutes, 1 hour, 24 hours, or a custom time. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
+  { q: 'Why does it warn me about backgrounding the tab?', a: 'Browsers pause or throttle background tabs to save battery. Dropspot sends a small heartbeat every few seconds so others can see you are online and route peer-to-peer transfers to you. If you switch tabs or minimise, that heartbeat pauses and you will drop off the live device list — so keep the tab visible during an active transfer.' },
+  { q: 'Is there a file size limit?', a: 'For direct peer-to-peer transfers (when another device is online), there is no fixed limit — files stream directly between browsers. For the store-and-forward fallback (when nobody else is online), uploads are capped at 25 MB to keep the free service fast and abuse-resistant.' },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+};
+const toolSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Dropspot',
+  applicationCategory: 'UtilityApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript',
+  description,
+};
+const howToSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How to share files and text with Dropspot',
+  step: [
+    { '@type': 'HowToStep', position: 1, name: 'Create a room', text: 'Open Dropspot and click Create room. You get a 6-character code and a QR code.' },
+    { '@type': 'HowToStep', position: 2, name: 'Share the code', text: 'Send the code, link or QR to anyone you want to share with — on any network.' },
+    { '@type': 'HowToStep', position: 3, name: 'Join', text: 'The other person enters the code (or scans the QR) to join the same room instantly.' },
+    { '@type': 'HowToStep', position: 4, name: 'Share', text: 'Paste text or links to sync instantly, or drop a file to transfer it peer-to-peer.' },
+  ],
+};
+---
+
+<BaseLayout title={title} description={description} jsonLd={[faqSchema, toolSchema, howToSchema]}>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style is:inline>
+    /* ══════════════════════════════════════════════════════════
+       Dropspot — "Refined" theme (Linear / Vercel-inspired)
+       Flat near-black (dark) / near-white (light), faint grid,
+       one restrained indigo accent, hairline borders, line icons.
+       Light is the default; `html.dark` supplies the dark tokens.
+       Scoped under .ds so nothing leaks into the site shell.
+       ══════════════════════════════════════════════════════════ */
+    .ds {
+      /* light (default) */
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --panel-2: #f2f4f7;
+      --border: rgba(9, 9, 11, 0.09);
+      --border-2: rgba(9, 9, 11, 0.16);
+      --border-grad: linear-gradient(180deg, rgba(9, 9, 11, 0.12), rgba(9, 9, 11, 0.045));
+      --text: #15161a;
+      --muted: #565c6a;
+      --faint: #8b909d;
+      --accent: #5b5bf0;
+      --accent-hover: #4a49e0;
+      --accent-weak: rgba(99, 102, 241, 0.1);
+      --accent-fg: #ffffff;
+      --grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      --grad-shadow: 0 6px 18px rgba(99, 102, 241, 0.22);
+      --ok: #0d9f6e;
+      --danger: #dc2f45;
+      --grid: rgba(9, 9, 11, 0.03);
+      --shadow: 0 1px 2px rgba(9, 9, 11, 0.04), 0 8px 24px rgba(9, 9, 11, 0.06);
+      --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.05), 0 16px 40px rgba(9, 9, 11, 0.09);
+      --glow: radial-gradient(52% 40% at 50% -4%, rgba(124, 92, 246, 0.13), transparent 72%);
+
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    html.dark .ds {
+      --bg: #08090d;
+      --panel: #101218;
+      --panel-2: #171a22;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-2: rgba(255, 255, 255, 0.16);
+      --border-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.045));
+      --text: #eaecf1;
+      --muted: #969cab;
+      --faint: #616776;
+      --accent: #6366f1;
+      --accent-hover: #7a7cf5;
+      --accent-weak: rgba(99, 102, 241, 0.18);
+      --grad: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      --grad-shadow: 0 6px 22px rgba(99, 102, 241, 0.4);
+      --ok: #34d399;
+      --danger: #f87171;
+      --grid: rgba(255, 255, 255, 0.03);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
+      --glow: radial-gradient(50% 38% at 50% -6%, rgba(139, 92, 246, 0.22), transparent 72%), radial-gradient(40% 30% at 78% 8%, rgba(56, 189, 248, 0.08), transparent 70%);
+    }
+    .ds * { box-sizing: border-box; }
+
+    /* faint grid + soft accent glow */
+    .ds::before {
+      content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 36px 36px;
+      -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 45%, transparent 100%);
+      mask-image: radial-gradient(120% 80% at 50% 0%, #000 45%, transparent 100%);
+    }
+    .ds::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: var(--glow); }
+
+    .ds-wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 44px 20px 80px; }
+
+    /* accent icon tile */
+    .ds-tile { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: var(--grad); box-shadow: var(--grad-shadow); flex: none; }
+    .ds-tile .ico { width: 17px; height: 17px; stroke-width: 1.8; stroke: #fff; color: #fff; }
+
+    .ds svg { display: block; }
+    .ds .ico { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .ds .ico-sm { width: 14px; height: 14px; }
+    .ds .ico-lg { width: 22px; height: 22px; }
+
+    /* ── Hero ── */
+    .ds-badge {
+      display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 7px;
+      background: var(--panel-2); border: 1px solid var(--border);
+      color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0.01em;
+    }
+    .ds-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+    .ds-hero { text-align: center; padding: 8px 0 30px; }
+    .ds-hero h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; margin: 22px 0 14px; color: var(--text); }
+    .ds-hero h1 .g { background: linear-gradient(120deg, #818cf8, #c084fc); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .ds-hero p { color: var(--muted); font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.6; max-width: 520px; margin: 0 auto; }
+
+    /* feature strip */
+    .ds-strip { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 30px; text-align: left; }
+    @media (min-width: 620px) { .ds-strip { grid-template-columns: repeat(3, 1fr); } }
+    .ds-feat { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+    .ds-feat .ds-tile { width: 30px; height: 30px; border-radius: 8px; }
+    .ds-feat .ds-tile .ico { width: 15px; height: 15px; }
+    .ds-feat div b { display: block; font-size: 13px; font-weight: 500; color: var(--text); }
+    .ds-feat div span { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Panels (gradient-lit hairline border + elevation) ── */
+    .ds-panel {
+      position: relative; border: 1px solid transparent; border-radius: 14px;
+      background: linear-gradient(var(--panel), var(--panel)) padding-box, var(--border-grad) border-box;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Landing ── */
+    .ds-landing { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 720px) { .ds-landing { grid-template-columns: 1fr 1fr; } }
+    .ds-card { padding: 24px; }
+    .ds-card h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 11px; letter-spacing: -0.01em; }
+    .ds-card .sub { color: var(--muted); font-size: 13px; margin: 2px 0 20px; line-height: 1.5; }
+
+    .ds-field { margin-bottom: 16px; }
+    .ds-field label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 7px; }
+    .ds-input, .ds-select {
+      width: 100%; padding: 9px 12px; border-radius: 9px; background: var(--bg);
+      border: 1px solid var(--border); color: var(--text); font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    html.dark .ds-input, html.dark .ds-select { background: var(--panel-2); }
+    .ds-input::placeholder { color: var(--faint); }
+    .ds-input:focus, .ds-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+    .ds-input.code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; font-size: 17px; font-weight: 600; }
+    .ds-row { display: flex; gap: 12px; }
+    .ds-row > * { flex: 1; }
+
+    .ds-btn {
+      width: 100%; padding: 10px 16px; border-radius: 9px; cursor: pointer; border: 1px solid transparent;
+      font-family: inherit; font-weight: 500; font-size: 14px; color: #fff; background: var(--grad);
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: var(--grad-shadow); transition: transform .15s, box-shadow .15s, opacity .15s;
+    }
+    .ds-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(99, 102, 241, 0.4); }
+    .ds-btn:active { transform: translateY(0); }
+    .ds-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-weak); }
+    .ds-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    .ds-btn.ghost { background: var(--panel); color: var(--text); border-color: var(--border-2); box-shadow: var(--shadow); }
+    .ds-btn.ghost:hover { background: var(--panel-2); transform: translateY(-1px); }
+    .ds-btn.sm { width: auto; padding: 7px 13px; font-size: 13px; box-shadow: none; }
+    .ds-btn.sm:not(.ghost) { box-shadow: var(--grad-shadow); }
+    .ds-btn .ico { width: 15px; height: 15px; }
+
+    /* optional PIN toggle */
+    .ds-toggle { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+    .ds-toggle input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+    /* ── Room view ── */
+    .ds-room { display: none; }
+    .ds-room.active { display: block; }
+    .ds-roomhead { padding: 22px; margin-bottom: 14px; display: grid; gap: 20px; grid-template-columns: 1fr; align-items: center; }
+    @media (min-width: 600px) { .ds-roomhead { grid-template-columns: 1fr auto; } }
+    .ds-codewrap .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 600; }
+    .ds-code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: clamp(1.7rem, 6vw, 2.3rem); font-weight: 600; letter-spacing: 0.18em; margin: 4px 0 12px; color: var(--text); }
+    .ds-codebtns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ds-qr { background: #fff; border-radius: 12px; padding: 8px; width: 108px; height: 108px; justify-self: center; border: 1px solid var(--border); }
+    .ds-qr canvas, .ds-qr img { width: 100% !important; height: 100% !important; display: block; }
+
+    .ds-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; padding: 13px 20px; margin-bottom: 14px; font-size: 13px; color: var(--muted); align-items: center; }
+    .ds-meta > span { display: inline-flex; align-items: center; gap: 7px; }
+    .ds-meta .ico { color: var(--faint); }
+    .ds-meta b { color: var(--text); font-weight: 500; }
+    .ds-count { font-variant-numeric: tabular-nums; }
+
+    .ds-warn { display: none; align-items: center; gap: 9px; padding: 10px 15px; margin-bottom: 14px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border-2); color: var(--muted); font-size: 13px; }
+    .ds-warn.show { display: flex; }
+    .ds-warn .ico { color: var(--accent); }
+
+    .ds-sect { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 600; margin: 0 0 11px; }
+    .ds-presence { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; min-height: 32px; }
+    .ds-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border); font-size: 13px; color: var(--text); }
+    .ds-chip .live { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+    .ds-chip.me { border-color: var(--accent); }
+    .ds-empty { color: var(--faint); font-size: 13px; padding: 2px 0; }
+
+    /* composer */
+    .ds-composer { padding: 18px; margin-bottom: 24px; }
+    .ds-tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--panel-2); padding: 4px; border-radius: 10px; width: fit-content; border: 1px solid var(--border); }
+    .ds-tab { padding: 6px 13px; border-radius: 7px; background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; display: inline-flex; align-items: center; gap: 7px; transition: color .15s, background .15s; }
+    .ds-tab:hover { color: var(--text); }
+    .ds-tab.active { color: var(--text); background: var(--panel); box-shadow: var(--shadow); }
+    .ds-tab .ico { width: 15px; height: 15px; }
+    .ds-composer textarea { width: 100%; min-height: 84px; resize: vertical; padding: 11px 13px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 14px; line-height: 1.5; outline: none; transition: border-color .15s, box-shadow .15s; }
+    html.dark .ds-composer textarea { background: var(--panel-2); }
+    .ds-composer textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-weak); }
+    .ds-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .ds-foot .ds-select { flex: 0 0 auto; width: auto; padding: 7px 11px; font-size: 13px; }
+    .ds-foot .ds-btn { width: auto; margin-left: auto; }
+
+    .ds-drop { border: 1.5px dashed var(--border-2); border-radius: 12px; padding: 30px 20px; text-align: center; color: var(--muted); transition: border-color .15s, background .15s; cursor: pointer; }
+    .ds-drop:hover, .ds-drop.hot { border-color: var(--accent); background: var(--accent-weak); }
+    .ds-drop .ico-lg { margin: 0 auto 10px; color: var(--faint); }
+    .ds-drop .hint { font-size: 12px; color: var(--faint); margin-top: 6px; }
+
+    /* items */
+    .ds-items { display: flex; flex-direction: column; gap: 10px; }
+    .ds-item { padding: 14px 16px; display: flex; gap: 13px; align-items: flex-start; }
+    .ds-item .ic { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+    .ds-item .body { flex: 1; min-width: 0; }
+    .ds-item .txt { font-size: 14px; word-break: break-word; white-space: pre-wrap; margin: 0 0 4px; line-height: 1.5; }
+    .ds-item a.txt { color: var(--accent); text-decoration: none; }
+    .ds-item a.txt:hover { text-decoration: underline; }
+    .ds-item .sub { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+    .ds-item .acts { display: flex; gap: 4px; flex: none; }
+    .ds-iconbtn { width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; transition: color .15s, background .15s, border-color .15s; }
+    .ds-iconbtn:hover { color: var(--text); background: var(--panel-2); border-color: var(--border); }
+    .ds-iconbtn.danger:hover { color: var(--danger); border-color: var(--border); }
+
+    /* toast */
+    .ds-toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .ds-toast { display: flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 9px; background: var(--panel); border: 1px solid var(--border-2); color: var(--text); font-size: 13px; box-shadow: var(--shadow); animation: ds-in .18s ease; }
+    .ds-toast .ico { color: var(--accent); }
+    @keyframes ds-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* FAQ */
+    .ds-faq { margin-top: 44px; }
+    .ds-faq h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 16px; }
+    .ds-faq details { padding: 15px 18px; margin-bottom: 8px; }
+    .ds-faq summary { cursor: pointer; font-weight: 500; font-size: 14px; list-style: none; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .ds-faq summary::-webkit-details-marker { display: none; }
+    .ds-faq summary .chev { color: var(--faint); transition: transform .18s; }
+    .ds-faq details[open] summary .chev { transform: rotate(180deg); }
+    .ds-faq details p { color: var(--muted); font-size: 13.5px; line-height: 1.65; margin: 12px 0 0; }
+
+    /* transfers */
+    .ds-transfers { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .ds-xfer { padding: 13px 15px; }
+    .ds-xfer .top { display: flex; align-items: center; gap: 11px; }
+    .ds-xfer .ic { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+    .ds-xfer .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ds-xfer .tag { flex: none; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: var(--accent-weak); color: var(--accent); }
+    .ds-xfer .st { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .ds-bar { height: 5px; border-radius: 999px; background: var(--panel-2); overflow: hidden; margin-top: 11px; }
+    .ds-bar > i { display: block; height: 100%; width: 0%; background: var(--grad); border-radius: 999px; transition: width .25s ease; }
+    .ds-bar.err > i { background: var(--danger); }
+    .ds-bar.ok > i { background: var(--ok); }
+
+    .ds-hidden { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { .ds * { animation: none !important; transition: none !important; } }
+  </style>
+
+  <div class="ds">
+    <div class="ds-wrap">
+      <!-- Hero -->
+      <header class="ds-hero">
+        <span class="ds-badge"><span class="dot"></span> Cross-network sharing · no login</span>
+        <h1>Drop it here.<br />Grab it <span class="g">anywhere</span>.</h1>
+        <p>A shared spot to send files, links and text across any network — with nothing more than a room code.</p>
+        <div class="ds-strip">
+          <div class="ds-panel ds-feat">
+            <span class="ds-tile"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18 15 15 0 010-18z"/></svg></span>
+            <div><b>Any network</b><span>Wi-Fi, mobile, worldwide</span></div>
+          </div>
+          <div class="ds-panel ds-feat">
+            <span class="ds-tile"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <div><b>No login</b><span>No account or install</span></div>
+          </div>
+          <div class="ds-panel ds-feat">
+            <span class="ds-tile"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+            <div><b>Auto-expiring</b><span>Gone when you choose</span></div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ══ LANDING ══ -->
+      <section id="landing" class="ds-landing">
+        <div class="ds-panel ds-card">
+          <h2>
+            <span class="ds-tile"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+            Create a room
+          </h2>
+          <p class="sub">Spin up a fresh room and share the code or QR.</p>
+
+          <label class="ds-toggle"><input type="checkbox" id="pinToggle" /> Protect with a PIN</label>
+          <div class="ds-field ds-hidden" id="pinField">
+            <label for="createPin">Room PIN</label>
+            <input class="ds-input" id="createPin" inputmode="numeric" maxlength="8" placeholder="e.g. 1234" autocomplete="off" />
+          </div>
+
+          <div class="ds-row">
+            <div class="ds-field">
+              <label for="createTtl">Auto-expire</label>
+              <select class="ds-select" id="createTtl">
+                <option value="600">10 minutes</option>
+                <option value="3600" selected>1 hour</option>
+                <option value="86400">24 hours</option>
+              </select>
+            </div>
+            <div class="ds-field">
+              <label for="createMax">Max devices</label>
+              <select class="ds-select" id="createMax">
+                <option value="0">Unlimited</option>
+                <option value="2" selected>2</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="ds-btn" id="createBtn">Create room</button>
+        </div>
+
+        <div class="ds-panel ds-card">
+          <h2>
+            <span class="ds-tile"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            Join a room
+          </h2>
+          <p class="sub">Got a code? Enter it to hop straight in.</p>
+          <div class="ds-field">
+            <label for="joinCode">Room code</label>
+            <input class="ds-input code" id="joinCode" maxlength="12" placeholder="A3F9B2" autocomplete="off" spellcheck="false" />
+          </div>
+          <div class="ds-field ds-hidden" id="joinPinField">
+            <label for="joinPin">Room PIN</label>
+            <input class="ds-input" id="joinPin" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="off" />
+          </div>
+          <button class="ds-btn ghost" id="joinBtn">Join room</button>
+        </div>
+      </section>
+
+      <!-- ══ ROOM VIEW ══ -->
+      <section id="room" class="ds-room">
+        <div class="ds-panel ds-roomhead">
+          <div class="ds-codewrap">
+            <div class="k">Room code</div>
+            <div class="ds-code" id="roomCode">------</div>
+            <div class="ds-codebtns">
+              <button class="ds-btn sm" id="copyCodeBtn">
+                <svg class="ico" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy code
+              </button>
+              <button class="ds-btn sm ghost" id="copyLinkBtn">Copy link</button>
+              <button class="ds-btn sm ghost" id="leaveBtn">Leave</button>
+            </div>
+          </div>
+          <div class="ds-qr" id="qr" title="Scan to join"></div>
+        </div>
+
+        <div class="ds-panel ds-meta">
+          <span><svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg><b id="metaPin">Open</b></span>
+          <span><svg class="ico ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>Expires in <b class="ds-count" id="metaExpiry">—</b></span>
+          <span><svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><b id="metaDevices">0</b>&nbsp;online</span>
+        </div>
+
+        <div class="ds-warn" id="bgWarn" role="alert">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          This tab is in the background — your presence is paused. Keep Dropspot visible during transfers.
+        </div>
+
+        <p class="ds-sect">Live devices</p>
+        <div class="ds-presence" id="presence"><span class="ds-empty">Connecting…</span></div>
+
+        <!-- Composer -->
+        <div class="ds-panel ds-composer">
+          <div class="ds-tabs">
+            <button class="ds-tab active" data-tab="text">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> Text
+            </button>
+            <button class="ds-tab" data-tab="link">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> Link
+            </button>
+            <button class="ds-tab" data-tab="file">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.2-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg> File
+            </button>
+          </div>
+
+          <div data-pane="text">
+            <textarea id="textInput" placeholder="Type or paste text to share instantly…"></textarea>
+          </div>
+          <div data-pane="link" class="ds-hidden">
+            <input class="ds-input" id="linkInput" placeholder="https://…" autocomplete="off" />
+          </div>
+          <div data-pane="file" class="ds-hidden">
+            <div class="ds-drop" id="drop">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 8l5-5 5 5M12 3v12"/></svg>
+              <div id="dropLabel">Drag a file here or click to choose</div>
+              <div class="hint">Peer-to-peer when someone's online · up to 25 MB stored otherwise</div>
+              <input type="file" id="fileInput" class="ds-hidden" />
+            </div>
+          </div>
+
+          <div class="ds-foot" id="composerFoot">
+            <select class="ds-select" id="itemTtl" title="How long this item lasts">
+              <option value="">Room default</option>
+              <option value="600">10 min</option>
+              <option value="3600">1 hour</option>
+              <option value="86400">24 hours</option>
+            </select>
+            <button class="ds-btn" id="shareBtn">Share</button>
+          </div>
+        </div>
+
+        <p class="ds-sect" id="xferSect" style="display:none">Transfers</p>
+        <div class="ds-transfers" id="transfers"></div>
+
+        <p class="ds-sect">Shared in this room</p>
+        <div class="ds-items" id="items"><span class="ds-empty">Nothing shared yet.</span></div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="ds-faq">
+        <h2>Frequently asked questions</h2>
+        {faqs.map((f) => (
+          <details class="ds-panel">
+            <summary>{f.q}<svg class="ico chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
+      </section>
+    </div>
+
+    <div class="ds-toasts" id="toasts" aria-live="polite"></div>
+  </div>
+
+  <script>
+    import QRCode from 'https://esm.sh/qrcode@1.5.4';
+
+    // ── Line-icon set (Lucide-style, stroke 1.6) ──
+    const ICONS = {
+      copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
+      download: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+      trash: '<path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/>',
+      text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+      link: '<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>',
+      file: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>',
+      check: '<path d="M20 6L9 17l-5-5"/>',
+      up: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+      down: '<path d="M12 5v14M19 12l-7 7-7-7"/>',
+    };
+    function iconSvg(name, cls) {
+      return '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24">' + (ICONS[name] || '') + '</svg>';
+    }
+
+    // ── Config ──
+    const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    const API = (isLocal ? 'http://127.0.0.1:8799' : 'https://toolnestr-dropspot.toolnestr.workers.dev') + '/api';
+
+    function uid() { try { return crypto.randomUUID().replace(/-/g, ''); } catch { return String(Math.random()).slice(2) + Date.now(); } }
+    const DEVICE_ID = (() => { let v = localStorage.getItem('dropspot_device_id'); if (!v) { v = uid(); localStorage.setItem('dropspot_device_id', v); } return v; })();
+    const DEVICE_LABEL = (() => {
+      let v = localStorage.getItem('dropspot_device_label');
+      if (!v) { const a = ['Falcon','Otter','Lynx','Heron','Fox','Wren','Ibex','Koi']; v = a[Math.floor(Math.random()*a.length)] + '-' + Math.floor(Math.random()*900+100); localStorage.setItem('dropspot_device_label', v); }
+      return v;
+    })();
+
+    const state = { code: null, pin: null, room: null, hbTimer: null, pollTimer: null, cdTimer: null, sigTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], rtc: null, xfers: {} };
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      landing: $('landing'), room: $('room'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
+      pinToggle: $('pinToggle'), pinField: $('pinField'), createPin: $('createPin'),
+      createTtl: $('createTtl'), createMax: $('createMax'),
+      joinCode: $('joinCode'), joinPin: $('joinPin'), joinPinField: $('joinPinField'),
+      roomCode: $('roomCode'), qr: $('qr'), copyCodeBtn: $('copyCodeBtn'), copyLinkBtn: $('copyLinkBtn'), leaveBtn: $('leaveBtn'),
+      metaPin: $('metaPin'), metaExpiry: $('metaExpiry'), metaDevices: $('metaDevices'),
+      bgWarn: $('bgWarn'), presence: $('presence'), items: $('items'),
+      textInput: $('textInput'), linkInput: $('linkInput'), itemTtl: $('itemTtl'),
+      shareBtn: $('shareBtn'), toasts: $('toasts'), drop: $('drop'), fileInput: $('fileInput'), dropLabel: $('dropLabel'),
+    };
+    let activeTab = 'text';
+
+    function toast(msg, icon) {
+      const t = document.createElement('div'); t.className = 'ds-toast';
+      t.innerHTML = iconSvg(icon || 'check') + '<span></span>';
+      t.querySelector('span').textContent = msg;
+      els.toasts.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .25s'; setTimeout(() => t.remove(), 260); }, 2600);
+    }
+    async function api(path, opts) {
+      const headers = Object.assign({ 'Content-Type': 'application/json' }, (opts && opts.headers) || {});
+      if (state.pin) headers['X-Room-Pin'] = state.pin;
+      const res = await fetch(API + path, Object.assign({}, opts, { headers }));
+      let data = null; try { data = await res.json(); } catch {}
+      if (!res.ok) throw Object.assign(new Error((data && data.error) || 'error'), { status: res.status, data });
+      return data;
+    }
+    function nowSec() { return Math.floor(Date.now() / 1000); }
+    function fmtDuration(sec) {
+      if (sec <= 0) return 'expired';
+      const d = Math.floor(sec/86400), h = Math.floor((sec%86400)/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+      if (d) return d + 'd ' + h + 'h'; if (h) return h + 'h ' + m + 'm';
+      if (m) return m + 'm ' + String(s).padStart(2,'0') + 's'; return s + 's';
+    }
+    function fmtSize(b) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b/1024).toFixed(1) + ' KB'; return (b/1048576).toFixed(1) + ' MB'; }
+
+    // ── Create / Join ──
+    els.pinToggle.addEventListener('change', () => els.pinField.classList.toggle('ds-hidden', !els.pinToggle.checked));
+    els.createBtn.addEventListener('click', async () => {
+      els.createBtn.disabled = true; els.createBtn.textContent = 'Creating…';
+      try {
+        const body = { ttl_seconds: Number(els.createTtl.value), default_ttl_seconds: Number(els.createTtl.value), max_devices: Number(els.createMax.value) };
+        if (els.pinToggle.checked && els.createPin.value) body.pin = els.createPin.value;
+        const data = await api('/room', { method: 'POST', body: JSON.stringify(body) });
+        state.pin = body.pin || null;
+        await enterRoom(data.room.code);
+      } catch { toast('Could not create room. Is the service reachable?', 'trash'); }
+      finally { els.createBtn.disabled = false; els.createBtn.textContent = 'Create room'; }
+    });
+    els.joinCode.addEventListener('input', () => { els.joinCode.value = els.joinCode.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+    els.joinBtn.addEventListener('click', () => attemptJoin());
+    els.joinCode.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptJoin(); });
+    els.joinPin.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptJoin(); });
+    async function attemptJoin() {
+      const code = els.joinCode.value.trim().toUpperCase();
+      if (code.length < 6) { toast('Enter a valid 6-character code.', 'trash'); return; }
+      state.pin = els.joinPin.value || null;
+      els.joinBtn.disabled = true; els.joinBtn.textContent = 'Joining…';
+      try { await enterRoom(code); }
+      catch (e) {
+        if (e.status === 401) { els.joinPinField.classList.remove('ds-hidden'); toast('This room needs a PIN.', 'file'); }
+        else if (e.status === 404) toast('Room not found or expired.', 'trash');
+        else if (e.status === 429) toast('Too many attempts — wait a minute.', 'trash');
+        else toast('Could not join room.', 'trash');
+      } finally { els.joinBtn.disabled = false; els.joinBtn.textContent = 'Join room'; }
+    }
+    async function enterRoom(code) {
+      state.code = code;
+      const data = await api('/room/' + code);
+      state.room = data;
+      els.landing.classList.add('ds-hidden');
+      els.room.classList.add('active');
+      els.roomCode.textContent = code;
+      renderQR(code); applyState(data); startLoops();
+      const url = new URL(location.href); url.searchParams.set('room', code); history.replaceState({}, '', url);
+      toast('You are in room ' + code);
+    }
+    function renderQR(code) {
+      const url = location.origin + location.pathname + '?room=' + code;
+      els.qr.innerHTML = '';
+      const canvas = document.createElement('canvas'); els.qr.appendChild(canvas);
+      QRCode.toCanvas(canvas, url, { width: 200, margin: 1, color: { dark: '#0a0b0f', light: '#ffffff' } }, (err) => { if (err) els.qr.innerHTML = ''; });
+    }
+
+    // ── Render ──
+    function applyState(data) {
+      state.room = data; const room = data.room;
+      els.metaPin.textContent = room.has_pin ? 'PIN protected' : 'Open';
+      els.metaDevices.textContent = String((data.presence || []).length);
+      renderPresence(data.presence || []);
+      renderItems(data.items || [], data.files || []);
+      state.expiresAt = room.expires_at; updateCountdown();
+    }
+    function renderPresence(list) {
+      state.presenceList = list;
+      els.presence.innerHTML = '';
+      if (!list.length) { els.presence.innerHTML = '<span class="ds-empty">No one else here yet — share the code.</span>'; return; }
+      list.forEach((p) => {
+        const chip = document.createElement('span'); chip.className = 'ds-chip' + (p.device_id === DEVICE_ID ? ' me' : '');
+        const dot = document.createElement('span'); dot.className = 'live'; chip.appendChild(dot);
+        const name = document.createElement('span'); name.textContent = p.label + (p.device_id === DEVICE_ID ? ' (you)' : ''); chip.appendChild(name);
+        els.presence.appendChild(chip);
+      });
+    }
+    function renderItems(items, files) {
+      const all = [
+        ...files.map((f) => ({ t: 'file', created_at: f.created_at, data: f })),
+        ...items.map((i) => ({ t: i.kind, created_at: i.created_at, data: i })),
+      ].sort((a, b) => b.created_at - a.created_at);
+      els.items.innerHTML = '';
+      if (!all.length) { els.items.innerHTML = '<span class="ds-empty">Nothing shared yet.</span>'; return; }
+      all.forEach((entry) => {
+        const el = document.createElement('div'); el.className = 'ds-panel ds-item';
+        const ic = document.createElement('div'); ic.className = 'ic';
+        const body = document.createElement('div'); body.className = 'body';
+        const acts = document.createElement('div'); acts.className = 'acts';
+        if (entry.t === 'file') {
+          const f = entry.data; ic.innerHTML = iconSvg('file');
+          const name = document.createElement('div'); name.className = 'txt'; name.textContent = f.filename;
+          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - nowSec());
+          body.appendChild(name); body.appendChild(sub);
+          acts.appendChild(iconBtn('download', 'Download', () => downloadFile(f)));
+          acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('file', f.id), true));
+        } else {
+          const i = entry.data; ic.innerHTML = iconSvg(i.kind === 'link' ? 'link' : 'text');
+          if (i.kind === 'link') { const a = document.createElement('a'); a.className = 'txt'; a.href = i.content; a.target = '_blank'; a.rel = 'noopener nofollow'; a.textContent = i.content; body.appendChild(a); }
+          else { const p = document.createElement('div'); p.className = 'txt'; p.textContent = i.content; body.appendChild(p); }
+          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - nowSec());
+          body.appendChild(sub);
+          acts.appendChild(iconBtn('copy', 'Copy', () => { navigator.clipboard.writeText(i.content); toast('Copied'); }));
+          acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('item', i.id), true));
+        }
+        el.appendChild(ic); el.appendChild(body); el.appendChild(acts); els.items.appendChild(el);
+      });
+    }
+    function iconBtn(name, title, onClick, danger) {
+      const b = document.createElement('button'); b.className = 'ds-iconbtn' + (danger ? ' danger' : ''); b.title = title;
+      b.setAttribute('aria-label', title); b.innerHTML = iconSvg(name); b.addEventListener('click', onClick); return b;
+    }
+    function downloadFile(f) {
+      const a = document.createElement('a');
+      fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {} })
+        .then((r) => r.blob())
+        .then((blob) => { const u = URL.createObjectURL(blob); a.href = u; a.download = f.filename; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); })
+        .catch(() => toast('Download failed', 'trash'));
+    }
+    async function deleteItem(kind, id) {
+      try { if (kind === 'item') await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' }); await refresh(); toast('Deleted'); }
+      catch { toast('Could not delete', 'trash'); }
+    }
+
+    // ── Composer ──
+    document.querySelectorAll('.ds-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        activeTab = tab.getAttribute('data-tab');
+        document.querySelectorAll('.ds-tab').forEach((t) => t.classList.toggle('active', t === tab));
+        document.querySelectorAll('[data-pane]').forEach((p) => p.classList.toggle('ds-hidden', p.getAttribute('data-pane') !== activeTab));
+        $('composerFoot').style.display = activeTab === 'file' ? 'none' : 'flex';
+      });
+    });
+    els.shareBtn.addEventListener('click', shareCurrent);
+    els.textInput.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') shareCurrent(); });
+    els.linkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') shareCurrent(); });
+    async function shareCurrent() {
+      const kind = activeTab === 'link' ? 'link' : 'text';
+      const content = (kind === 'link' ? els.linkInput.value : els.textInput.value).trim();
+      if (!content) { toast('Nothing to share.', 'trash'); return; }
+      if (kind === 'link' && !/^https?:\/\//i.test(content)) { toast('Links must start with http:// or https://', 'trash'); return; }
+      const body = { kind, content, device_id: DEVICE_ID };
+      if (els.itemTtl.value) body.ttl_seconds = Number(els.itemTtl.value);
+      els.shareBtn.disabled = true;
+      try { await api('/room/' + state.code + '/item', { method: 'POST', body: JSON.stringify(body) }); els.textInput.value=''; els.linkInput.value=''; await refresh(); toast('Shared'); }
+      catch (e) { toast(e.data && e.data.error === 'content_too_long' ? 'That is too long.' : 'Could not share.', 'trash'); }
+      finally { els.shareBtn.disabled = false; }
+    }
+    els.drop.addEventListener('click', () => els.fileInput.click());
+    ['dragover','dragenter'].forEach((ev) => els.drop.addEventListener(ev, (e) => { e.preventDefault(); els.drop.classList.add('hot'); }));
+    ['dragleave','drop'].forEach((ev) => els.drop.addEventListener(ev, (e) => { e.preventDefault(); els.drop.classList.remove('hot'); }));
+    els.drop.addEventListener('drop', (e) => { for (const f of e.dataTransfer.files) onFilePicked(f); });
+    els.fileInput.addEventListener('change', () => { for (const f of els.fileInput.files) onFilePicked(f); els.fileInput.value = ''; });
+
+    // ════════════════════════════════════════════════════════════
+    //  File transfer — P2P (WebRTC) with R2 fallback (Phase 6)
+    // ════════════════════════════════════════════════════════════
+    const MAX_R2 = 26214400;             // 25 MB store-and-forward cap
+    const CHUNK = 16 * 1024;             // 16 KB DataChannel chunks
+    const BUFFER_HIGH = 1024 * 1024;     // pause sending above 1 MB buffered
+    const BUFFER_LOW = 256 * 1024;       // resume threshold
+    const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+    function xid() { return 'x' + Math.random().toString(36).slice(2, 9); }
+
+    // Decide the path the moment a file is chosen (spec 4.3): peer online → P2P,
+    // otherwise → R2 store-and-forward.
+    function onFilePicked(file) {
+      if (!state.code) return;
+      const peers = (state.presenceList || []).filter((p) => p.device_id !== DEVICE_ID);
+      if (peers.length) { sendFileP2P(file, peers[0].device_id); }
+      else {
+        if (file.size > MAX_R2) { toast('No one else is online — file exceeds the 25 MB storage limit.', 'trash'); return; }
+        sendFileR2(file, xid());
+      }
+    }
+
+    // ── Transfer progress UI ──
+    function addTransfer(id, name, dir, tag) {
+      if (state.xfers[id]) return state.xfers[id];
+      $('xferSect').style.display = '';
+      const el = document.createElement('div'); el.className = 'ds-panel ds-xfer';
+      el.innerHTML =
+        '<div class="top"><span class="ic">' + iconSvg(dir) + '</span>' +
+        '<span class="nm"></span><span class="tag"></span><span class="st"></span></div>' +
+        '<div class="ds-bar"><i></i></div>';
+      el.querySelector('.nm').textContent = name;
+      el.querySelector('.tag').textContent = tag;
+      document.getElementById('transfers').prepend(el);
+      const rec = { el, bar: el.querySelector('.ds-bar'), fill: el.querySelector('.ds-bar > i'), st: el.querySelector('.st') };
+      state.xfers[id] = rec; return rec;
+    }
+    function setTransfer(id, pct, status, kind) {
+      const r = state.xfers[id]; if (!r) return;
+      if (pct != null) r.fill.style.width = pct + '%';
+      if (status != null) r.st.textContent = status;
+      r.bar.classList.toggle('err', kind === 'err');
+      r.bar.classList.toggle('ok', kind === 'ok');
+    }
+
+    // ── R2 store-and-forward (with upload progress) ──
+    function sendFileR2(file, id) {
+      addTransfer(id, file.name, 'up', 'Stored');
+      if (file.size > MAX_R2) { setTransfer(id, 100, 'Too large (25 MB max)', 'err'); return; }
+      setTransfer(id, 0, 'Uploading…');
+      const xhr = new XMLHttpRequest();
+      const url = API + '/room/' + state.code + '/file?filename=' + encodeURIComponent(file.name) + '&device_id=' + DEVICE_ID;
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      if (state.pin) xhr.setRequestHeader('X-Room-Pin', state.pin);
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) setTransfer(id, Math.round(e.loaded / e.total * 90), 'Uploading…'); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) { setTransfer(id, 100, 'Stored', 'ok'); refresh(); }
+        else if (xhr.status === 413) setTransfer(id, 100, 'Too large (25 MB max)', 'err');
+        else setTransfer(id, 100, 'Upload failed', 'err');
+      };
+      xhr.onerror = () => setTransfer(id, 100, 'Upload failed', 'err');
+      xhr.send(file);
+    }
+
+    // ── WebRTC helpers (Fix B: NON-trickle ICE — gather fully, then send once) ──
+    function newPC() { return new RTCPeerConnection({ iceServers: ICE_SERVERS, iceCandidatePoolSize: 2 }); }
+    function waitIce(pc) {
+      return new Promise((res) => {
+        if (pc.iceGatheringState === 'complete') return res();
+        const check = () => { if (pc.iceGatheringState === 'complete') { pc.removeEventListener('icegatheringstatechange', check); res(); } };
+        pc.addEventListener('icegatheringstatechange', check);
+        setTimeout(res, 4000); // cap the wait so a stalled gather still proceeds
+      });
+    }
+
+    // ── Sender: establish P2P, fall back to R2 on any failure/timeout ──
+    async function sendFileP2P(file, peerId) {
+      const id = xid();
+      addTransfer(id, file.name, 'up', 'Direct'); setTransfer(id, 0, 'Connecting…');
+      const pc = newPC();
+      const dc = pc.createDataChannel('file', { ordered: true });
+      dc.binaryType = 'arraybuffer';
+      const session = { pc, dc, role: 'send', peer: peerId, id, file, done: false, connected: false };
+      state.rtc = session;
+      dc.onopen = () => { session.connected = true; sendChunks(session); };
+      pc.onconnectionstatechange = () => {
+        if (['failed', 'disconnected', 'closed'].includes(pc.connectionState) && !session.done && !session.connected) fallbackR2(session);
+      };
+      try {
+        await pc.setLocalDescription(await pc.createOffer());
+        await waitIce(pc);
+        await api('/room/' + state.code + '/signal', { method: 'POST', body: JSON.stringify({ kind: 'offer', from: DEVICE_ID, to: peerId, sdp: pc.localDescription.sdp }) });
+      } catch { fallbackR2(session); return; }
+      setTimeout(() => { if (!session.connected && !session.done) { try { pc.close(); } catch {} fallbackR2(session); } }, 15000);
+    }
+
+    function fallbackR2(session) {
+      if (session.done || session.fellBack) return;
+      session.fellBack = true; session.done = true;
+      try { session.pc.close(); } catch {}
+      if (state.rtc === session) state.rtc = null;
+      if (session.file.size > MAX_R2) { setTransfer(session.id, 100, 'Peer offline · file over 25 MB', 'err'); return; }
+      setTransfer(session.id, 0, 'No direct route — storing…');
+      sendFileR2(session.file, session.id); // reuse the same progress row
+    }
+
+    function sendChunks(session) {
+      const { dc, file, id } = session;
+      dc.bufferedAmountLowThreshold = BUFFER_LOW;
+      dc.send(JSON.stringify({ type: 'meta', name: file.name, size: file.size, mime: file.type }));
+      let offset = 0;
+      async function pump() {
+        try {
+          while (offset < file.size) {
+            if (dc.readyState !== 'open') return;
+            if (dc.bufferedAmount > BUFFER_HIGH) {
+              await new Promise((res) => { dc.onbufferedamountlow = () => { dc.onbufferedamountlow = null; res(); }; });
+              continue;
+            }
+            const buf = await file.slice(offset, offset + CHUNK).arrayBuffer();
+            dc.send(buf); offset += buf.byteLength;
+            setTransfer(id, Math.min(99, Math.round(offset / file.size * 100)), 'Sending…');
+          }
+          dc.send(JSON.stringify({ type: 'done' }));
+          session.done = true; setTransfer(id, 100, 'Sent', 'ok'); toast('File sent peer-to-peer');
+          setTimeout(() => { try { session.pc.close(); } catch {} }, 1200);
+        } catch { if (!session.done) fallbackR2(session); }
+      }
+      pump();
+    }
+
+    // ── Receiver: answer an incoming offer, assemble chunks, save ──
+    function handleOffer(sig) {
+      const pc = newPC();
+      const session = { pc, role: 'recv', peer: sig.from, done: false };
+      state.rtc = session;
+      pc.ondatachannel = (e) => setupRecv(e.channel, session);
+      pc.setRemoteDescription({ type: 'offer', sdp: sig.sdp })
+        .then(() => pc.createAnswer())
+        .then((ans) => pc.setLocalDescription(ans))
+        .then(() => waitIce(pc))
+        .then(() => api('/room/' + state.code + '/signal', { method: 'POST', body: JSON.stringify({ kind: 'answer', from: DEVICE_ID, to: sig.from, sdp: pc.localDescription.sdp }) }))
+        .catch(() => {});
+    }
+    function handleAnswer(sig) {
+      if (state.rtc && state.rtc.role === 'send' && !state.rtc.done) state.rtc.pc.setRemoteDescription({ type: 'answer', sdp: sig.sdp }).catch(() => {});
+    }
+    function setupRecv(dc, session) {
+      dc.binaryType = 'arraybuffer';
+      const id = xid(); let meta = null; const buffers = []; let received = 0;
+      dc.onmessage = (e) => {
+        if (typeof e.data === 'string') {
+          const m = JSON.parse(e.data);
+          if (m.type === 'meta') { meta = m; addTransfer(id, m.name, 'down', 'Direct'); setTransfer(id, 0, 'Receiving…'); }
+          else if (m.type === 'done') {
+            session.done = true;
+            const blob = new Blob(buffers, { type: (meta && meta.mime) || 'application/octet-stream' });
+            const a = document.createElement('a'); const u = URL.createObjectURL(blob);
+            a.href = u; a.download = meta ? meta.name : 'download'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+            setTransfer(id, 100, 'Received', 'ok'); toast('File received');
+            setTimeout(() => { try { session.pc.close(); } catch {} }, 800);
+          }
+        } else {
+          buffers.push(e.data); received += e.data.byteLength;
+          if (meta && meta.size) setTransfer(id, Math.min(99, Math.round(received / meta.size * 100)), 'Receiving…');
+        }
+      };
+    }
+    async function pollSignals() {
+      if (!state.code || document.hidden) return;
+      try {
+        const d = await api('/room/' + state.code + '/signal?device_id=' + DEVICE_ID);
+        if (d && d.signal) { if (d.signal.kind === 'offer') handleOffer(d.signal); else if (d.signal.kind === 'answer') handleAnswer(d.signal); }
+      } catch {}
+    }
+
+    // ── Copy / leave ──
+    els.copyCodeBtn.addEventListener('click', () => { navigator.clipboard.writeText(state.code); toast('Code copied'); });
+    els.copyLinkBtn.addEventListener('click', () => { navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + state.code); toast('Join link copied'); });
+    els.leaveBtn.addEventListener('click', leaveRoom);
+    function leaveRoom() {
+      stopLoops(); state.code = null; state.pin = null; state.room = null;
+      els.room.classList.remove('active'); els.landing.classList.remove('ds-hidden');
+      const url = new URL(location.href); url.searchParams.delete('room'); history.replaceState({}, '', url);
+    }
+
+    // ── Heartbeat + polling (Page Visibility aware) ──
+    async function heartbeat() {
+      if (document.hidden || !state.code) return;
+      try {
+        const data = await api('/room/' + state.code + '/heartbeat', { method: 'POST', body: JSON.stringify({ device_id: DEVICE_ID, label: DEVICE_LABEL, foreground: !document.hidden }) });
+        if (data && data.presence) { renderPresence(data.presence); els.metaDevices.textContent = String(data.presence.length); }
+      } catch (e) { if (e.status === 403) toast('Room is full.', 'trash'); }
+    }
+    async function refresh() {
+      if (document.hidden || !state.code) return;
+      try { applyState(await api('/room/' + state.code)); } catch (e) { if (e.status === 404) { toast('Room expired.', 'trash'); leaveRoom(); } }
+    }
+    function startLoops() { stopLoops(); heartbeat(); state.hbTimer = setInterval(heartbeat, 5000); state.pollTimer = setInterval(refresh, 3000); state.cdTimer = setInterval(updateCountdown, 1000); state.sigTimer = setInterval(pollSignals, 2000); }
+    function stopLoops() { [state.hbTimer, state.pollTimer, state.cdTimer, state.sigTimer].forEach((t) => t && clearInterval(t)); state.hbTimer = state.pollTimer = state.cdTimer = state.sigTimer = null; }
+    function updateCountdown() { if (!state.expiresAt) return; const left = state.expiresAt - nowSec(); els.metaExpiry.textContent = fmtDuration(left); if (left <= 0) { toast('Room expired.', 'trash'); leaveRoom(); } }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!state.code) return;
+      if (document.hidden) { state.wasHidden = true; els.bgWarn.classList.add('show'); }
+      else { els.bgWarn.classList.remove('show'); if (state.wasHidden) { state.wasHidden = false; heartbeat(); refresh(); toast('Presence resumed'); } }
+    });
+    window.addEventListener('beforeunload', () => stopLoops());
+
+    (function initFromUrl() { const code = new URLSearchParams(location.search).get('room'); if (code) { els.joinCode.value = code.toUpperCase(); els.joinCode.scrollIntoView({ block: 'center' }); } })();
+  </script>
+</BaseLayout>
