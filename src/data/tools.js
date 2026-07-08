@@ -508,6 +508,13 @@ export const tools = [
   { slug: 'population-density-calculator', title: 'Population Density Calculator', short: 'D = N/A — individuals per unit area.', category: 'biology', emoji: '🌍', enabled: true, status: 'live' },
   { slug: 'shannon-diversity-index-calculator', title: 'Shannon Diversity Index Calculator', short: "H' = −Σ(pᵢ ln pᵢ) — measure community biodiversity.", category: 'biology', emoji: '🦋', enabled: true, status: 'live' },
   { slug: 'michaelis-menten-calculator', title: 'Michaelis-Menten Enzyme Kinetics Calculator', short: 'v = Vmax[S]/(Km+[S]) — enzyme reaction velocity.', category: 'biology', emoji: '🔑', enabled: true, status: 'live' },
+  { slug: 'trihybrid-cross-calculator', title: 'Trihybrid Cross Calculator', short: 'AaBbCc × AaBbCc — the 27:9:9:9:3:3:3:1 phenotype ratio.', category: 'biology', emoji: '🔺', enabled: true, status: 'live' },
+  { slug: 'genotype-frequency-calculator', title: 'Genotype Frequency Calculator', short: 'Observed genotype and allele frequencies from population counts.', category: 'biology', emoji: '🧮', enabled: true, status: 'live' },
+  { slug: 'dna-base-pairing-calculator', title: 'DNA/RNA Base-Pairing Calculator', short: 'Watson-Crick pairing rules — DNA/RNA partner strands + H-bonds.', category: 'biology', emoji: '🪢', enabled: true, status: 'live' },
+  { slug: 'codon-usage-calculator', title: 'Codon Usage Calculator', short: 'Tally codon frequency and reveal synonymous codon bias.', category: 'biology', emoji: '📖', enabled: true, status: 'live' },
+  { slug: 'restriction-enzyme-calculator', title: 'Restriction Enzyme Cut-Site Finder', short: 'Scan a DNA sequence for EcoRI, BamHI, HindIII, and more.', category: 'biology', emoji: '✂️', enabled: true, status: 'live' },
+  { slug: 'dna-concentration-calculator', title: 'DNA Concentration (A260) Calculator', short: 'A260 absorbance → ng/µL, plus A260/A280 purity ratio.', category: 'biology', emoji: '💧', enabled: true, status: 'live' },
+  { slug: 'microscope-magnification-calculator', title: 'Microscope Magnification Calculator', short: 'Total magnification = eyepiece × objective, plus field of view.', category: 'biology', emoji: '🔎', enabled: true, status: 'live' },
   // ── Part 1: Finance (non-loan) ──
   { slug: 'roi-calculator', title: 'ROI Calculator', short: 'Return on investment from cost and gain.', category: 'finance', emoji: '📈', enabled: true, status: 'live' },
   { slug: 'emergency-fund-calculator', title: 'Emergency Fund Calculator', short: 'Recommended fund size from monthly costs.', category: 'finance', emoji: '🛡️', enabled: true, status: 'live' },

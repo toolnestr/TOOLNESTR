@@ -3,7 +3,76 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-08 (120/150 tools built — **50 Physics + 50 Chemistry (both complete)** + 20 Biology)
+**Last updated:** 2026-07-08 (127/150 tools built — 50 Physics + 50 Chemistry (both complete) + **27 Biology**)
+
+## Batch-9 — 7 more Biology tools complete, 30→23 remaining (2026-07-08)
+
+Built sequentially by hand, no parallel agents (same standing instruction as prior batches). Git
+sync verified before starting (local and origin/main both at `b084fb2` — note: origin had moved
+forward with unrelated SEO/GEO commits from another session between Batch-8 and this batch; local
+was already fast-forwarded to match, no action needed).
+
+Picked the 7 most straightforward remaining calculators from the Biology 50-list, deferring the 4
+explicitly UI-heavy items (Genetic Drift Simulator, Pedigree Chart Analyzer, Mitosis Stage
+Identifier, Simple Phylogenetic Tree Builder) and the 3 simulator-style items (Predator-Prey,
+Natural Selection, pH-Enzyme Activity) for a later batch, same selection bias as Batch-7.
+
+- **Trihybrid Cross Calculator** — fixed AaBbCc × AaBbCc reference cross (8×8=64 grid), same
+  fixed-illustrative-example pattern as the existing Dihybrid Cross Calculator rather than free-text
+  genotype input (avoids the complexity/bug-risk of parsing 3-gene genotypes from user text).
+- **Genotype Frequency Calculator** — deliberately differentiated from the existing Hardy-Weinberg
+  Allele Frequency Calculator: this one computes *observed* genotype/allele frequencies directly from
+  raw population counts (no equilibrium assumption), while Hardy-Weinberg predicts *expected*
+  equilibrium frequencies from a known/assumed allele frequency.
+- **DNA/RNA Base-Pairing Calculator** — differentiated from the existing Reverse Complement tool
+  (which reverses the strand to give the conventional 5'→3' reading) and the existing DNA→mRNA
+  Transcription tool (biological process, one direction only): this one shows the direct
+  non-reversed complementary DNA *and* RNA partner strands side by side, plus new content not
+  covered elsewhere — Chargaff's rule and hydrogen-bond counting (A-T=2, G-C=3).
+- **Codon Usage Calculator** — reuses the exact verified 64-codon standard genetic code table from
+  the existing mRNA Translation tool (copied directly for accuracy) but analyzes codon *frequency*
+  and synonymous codon bias (+ GC3 content) rather than producing a single translated protein chain.
+- **Restriction Enzyme Cut-Site Finder** — 8-enzyme reference library (EcoRI, BamHI, HindIII, NotI,
+  PstI, SmaI, XhoI, SalI) with known recognition sites and cut offsets; scans the entered strand for
+  exact substring matches.
+- **DNA Concentration (A260) Calculator** — standard NanoDrop-convention conversion factors (dsDNA=50,
+  ssDNA=33, RNA=40 ng/µL per A260 unit) plus A260/A280 and A260/A230 purity ratio checks.
+- **Microscope Magnification Calculator** — total magnification (eyepiece×objective), field-of-view
+  scaling between magnifications, and specimen-size estimation from field-fraction.
+
+**Bug caught during self-review before the audit pass:** one FAQ answer in the Restriction Enzyme
+tool used an unescaped apostrophe inside a single-quoted JS string (`5\' to 3'`), which would have
+silently truncated the string and broken the frontmatter — caught by scanning for raw apostrophes
+and switching that string to double-quotes. Also caught two broken `related` link slug mismatches
+before they shipped: `pcr-primer-annealing-temperature-calculator` (actual slug is
+`pcr-annealing-temperature-calculator`) and a forward-reference to a not-yet-built
+`cell-doubling-time-calculator` (swapped to the existing Exponential Population Growth Calculator).
+
+Post-build audit (code-only, no live browser per standing instruction): full `npm run build` = 596
+pages, 0 errors (589→596: +7 new tool pages). 0 duplicate slugs across all 572 tools. 0 emoji
+collisions within biology specifically (now 27/50, all unique). Validated every inline `<script>`'s
+JS syntax via `new Function()` across all 7 files — zero syntax errors after the apostrophe fix.
+Checked every `related` link across all 7 files against the live slug list — 0 broken links after
+the two fixes above. Independently re-derived every formula/worked-example outside the pages' own
+text: genotype frequency (p=0.75, q=0.25, sum=1.0 exactly), DNA base-pairing H-bond count for
+ATGCGC (2 A-T pairs × 2 + 4 G-C pairs × 3 = 16 H-bonds), codon usage Ala bias (GCU=2, GCC=1 matching
+66.7%/33.3%), DNA concentration (0.75×10×50=375 ng/µL), microscope field-of-view scaling
+(4.5mm×(40/400)=0.45mm=450µm, specimen size at 20% fraction=90µm). All matched.
+
+**Batch-1 through Batch-9 combined: 127 flagship tools (50 Physics + 50 Chemistry + 27 Biology).**
+Not yet pushed to origin/main — awaiting user go-ahead. Remaining un-built: Biology 23 —
+**Genetics (2):** Genetic Drift Simulator*, Pedigree Chart Analyzer*.
+**Cell Biology (3):** Osmosis/Tonicity Predictor, Mitosis Stage Identifier*, Cell Doubling Time.
+**Ecology (4):** Predator-Prey (Lotka-Volterra) Simulator, Energy Pyramid/10% Rule, Mark-Recapture
+Population Estimator, Biomass Calculator.
+**Microbiology (5):** Bacterial Growth Rate, Generation (Doubling) Time, Serial Dilution, CFU per
+mL, Microbial Growth Curve Plotter.
+**Evolution (4):** Natural Selection Simulator, Hardy-Weinberg Equilibrium Checker, Simple
+Phylogenetic Tree Builder*, Speciation Rate Estimator.
+**Biochemistry (3):** Protein Molecular Weight, Amino Acid Sequence Analyzer, pH-Enzyme Activity
+Simulator.
+**Photosynthesis/Respiration (2):** Photosynthesis Rate, Cellular Respiration Equation Balancer.
+(`*` = the 4 deliberately-deferred UI-heavy items.) Next: Batch-10 continuing Biology.
 
 ## Batch-8 — final 10 non-Biology tools complete, Physics & Chemistry both hit 50/50 (2026-07-08)
 
