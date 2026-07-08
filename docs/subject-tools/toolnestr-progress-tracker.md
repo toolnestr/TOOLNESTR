@@ -3,7 +3,64 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-08 (127/150 tools built — 50 Physics + 50 Chemistry (both complete) + **27 Biology**)
+**Last updated:** 2026-07-08 (137/150 tools built — 50 Physics + 50 Chemistry (both complete) + **37 Biology**)
+
+## Batch-10 — 10 more Biology tools complete, 23→13 remaining (2026-07-08)
+
+Built sequentially by hand, no parallel agents (same standing instruction as prior batches). Git
+sync verified before starting (local and origin/main both at `12b2516`).
+
+Cleared the entire Microbiology cluster (5/5) plus 3 Ecology tools and 2 Cell Biology tools, all
+straightforward calculators with no UI-heavy widgets required:
+
+- **Bacterial Growth Rate Calculator** — k=ln(Nt/N0)/t, the continuous exponential growth rate
+  constant.
+- **Generation (Doubling) Time Calculator** — g=t/n, n=log₂(Nt/N0); deliberately framed around
+  discrete generation-counting rather than the continuous k of the growth-rate tool, to avoid
+  duplicating that tool's angle.
+- **Serial Dilution Calculator** — per-step and cumulative dilution factor across a dilution series.
+- **CFU per mL Calculator** — standard plate-count formula plus the 30-300 countable-range rule as
+  a live advisory check.
+- **Microbial Growth Curve Plotter** — full 4-phase (lag/log/stationary/death) growth model,
+  inherently a plotting tool; calculator inputs solve for phase transition times, main output is
+  the log-scale curve chart.
+- **Energy Pyramid / 10% Rule Calculator** — trophic energy transfer efficiency, rendered as a
+  live visual pyramid (proportional bar widths) plus charts.
+- **Mark-Recapture Population Estimator** — Lincoln-Petersen index plus the Chapman small-sample
+  correction shown side by side.
+- **Biomass Calculator** — direct (population×mass) or density-based (density×area×mass) modes;
+  content deliberately differentiated from Energy Pyramid by covering biomass-pyramid inversion
+  (which energy pyramids can never do) as new comparison content.
+- **Osmosis/Tonicity Predictor** — animal vs. plant cell toggle (crenation/lysis vs.
+  plasmolysis/turgor), since the cell wall changes the outcome, not just the magnitude.
+- **Cell Doubling Time Calculator** — same core math as Generation Time (g=t/n) but reframed
+  entirely around mammalian tissue culture: population doubling level (PDL) tracking across
+  passages, HeLa/primary-cell/senescence content, explicitly distinguished in its own FAQ from the
+  microbiology Generation Time tool to avoid being a near-duplicate.
+
+Post-build audit (code-only, no live browser per standing instruction): full `npm run build` = 606
+pages, 0 errors (596→606: +10 new tool pages). 0 duplicate slugs across all 582 tools. 0 emoji
+collisions within biology (now 37/50, all unique). Validated every inline `<script>`'s JS syntax via
+`new Function()` across all 10 files — zero errors. Checked every `related` link (including
+cross-references between tools within this same batch) against the live slug list — 0 broken links.
+Independently re-derived every formula/worked-example outside the pages' own text: bacterial growth
+rate (k=0.6931/hr, doubling time=1.00hr), generation time (n=5, g=0.8hr), serial dilution
+(cumulative DF=100,000, final conc=1000/mL), CFU (1.5×10⁸ CFU/mL), energy pyramid level 4
+(1000 kcal), mark-recapture (Lincoln-Petersen=250, Chapman=34.75), HeLa cell doubling (n=1,
+dt=24hr). All matched.
+
+**Batch-1 through Batch-10 combined: 137 flagship tools (50 Physics + 50 Chemistry + 37 Biology).**
+Not yet pushed to origin/main — awaiting user go-ahead. Remaining un-built: Biology 13 —
+**Genetics (2):** Genetic Drift Simulator*, Pedigree Chart Analyzer*.
+**Cell Biology (1):** Mitosis Stage Identifier*.
+**Ecology (1):** Predator-Prey (Lotka-Volterra) Simulator.
+**Evolution (4):** Natural Selection Simulator, Hardy-Weinberg Equilibrium Checker, Simple
+Phylogenetic Tree Builder*, Speciation Rate Estimator.
+**Biochemistry (3):** Protein Molecular Weight, Amino Acid Sequence Analyzer, pH-Enzyme Activity
+Simulator.
+**Photosynthesis/Respiration (2):** Photosynthesis Rate, Cellular Respiration Equation Balancer.
+(`*` = the 4 deliberately-deferred UI-heavy items — all 4 remain, none built yet.) Next: Batch-11 to
+finish the last 13 Biology tools and complete all 150.
 
 ## Batch-9 — 7 more Biology tools complete, 30→23 remaining (2026-07-08)
 

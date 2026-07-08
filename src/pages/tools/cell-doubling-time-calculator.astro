@@ -1,0 +1,237 @@
+---
+import SubjectToolPage from '../../components/SubjectToolPage.astro';
+
+const title = 'Cell Doubling Time Calculator';
+const description = 'Cell doubling time calculator with a live 3D cell culture diagram and charts. Solve doubling time and population doubling level (PDL) for mammalian cell culture, with worked examples for cancer cell lines and stem cells.';
+const intro = 'Solve doubling time and population doubling level (PDL) for a mammalian cell culture from a passage\'s starting and ending cell counts. Two 3D diagrams compare a slow-dividing primary cell culture to a fast-dividing immortalized cell line, and charts show cumulative population doublings building up across successive passages.';
+const category = { id: 'biology', name: 'Biology', emoji: '🧬' };
+
+const faqs = [
+  { q: 'What is cell doubling time in tissue culture?', a: 'It\'s the average time a mammalian cell population takes to double in number during active growth in culture — typically expressed in hours or days, much longer than typical bacterial doubling times (usually minutes).' },
+  { q: 'What is population doubling level (PDL)?', a: 'PDL is the cumulative number of times a cell population has doubled since it was first established in culture, tracked across every passage — it\'s a standard way cell biologists quantify how much a cell line has been expanded, and how close a finite-lifespan cell line is to senescence.' },
+  { q: 'How is this different from the microbiology Generation (Doubling) Time Calculator?', a: 'The underlying math (g = t/n, n = log₂(Nt/N0)) is identical, but this tool is built around mammalian cell culture — doubling times of hours to days, population doubling level tracking across passages, and senescence — rather than bacterial plate counts and fermentation.' },
+  { q: 'Why do different cell lines have such different doubling times?', a: 'Doubling time depends heavily on cell type and culture conditions — immortalized cancer cell lines like HeLa divide roughly every 24 hours under good conditions, while many primary (non-immortalized) cell types divide much more slowly and eventually stop dividing altogether (replicative senescence).' },
+  { q: 'What happens when a primary cell line reaches its maximum PDL?', a: 'Most primary (non-cancerous, non-stem) cell lines have a finite number of possible doublings — known as the Hayflick limit — after which they enter replicative senescence and stop dividing permanently, even though they remain metabolically alive.' },
+];
+
+const badge = { label: 'Biology', color: 'purple' };
+const howto = {
+  name: 'How to use the Cell Doubling Time Calculator',
+  description: 'Solve doubling time and population doubling level from cell counts at the start and end of a passage.',
+  steps: [
+    { name: 'Enter cell counts and elapsed time', text: 'The seeding density and harvest count for one passage, plus the time in culture.' },
+    { name: 'Read doubling time and PDL for this passage', text: 'Both the average doubling time and how many doublings occurred are calculated instantly.' },
+    { name: 'Track cumulative PDL (optional)', text: 'Add the starting PDL to see the running total across passages.' },
+  ],
+};
+
+const formulas = [
+  { expr: 'n = log₂(Nt/N0)', note: 'population doublings during this passage' },
+  { expr: 'Doubling time = t / n', note: 'average time per doubling during this passage' },
+  { expr: 'Cumulative PDL = starting PDL + n', note: 'running total of doublings since the cell line was established' },
+];
+
+const workedExamples = [
+  {
+    title: 'Worked example 1 — a HeLa cell passage', tone: 'slate',
+    given: 'A HeLa cell flask is seeded with 2×10⁵ cells and harvested 24 hours later with 4×10⁵ cells.',
+    rows: [
+      { label: 'Doublings this passage:', value: 'n = log₂(4×10⁵/2×10⁵) = log₂(2) = 1' },
+      { label: 'Formula:', value: 'Doubling time = t / n' },
+      { label: 'Result:', value: 'Doubling time = 24/1 = 24 hours', full: true },
+    ],
+    note: "24 hours is a widely cited textbook doubling time for HeLa cells under standard culture conditions — one of the reasons this famously fast-growing cancer cell line is so widely used in research.",
+  },
+  {
+    title: 'Worked example 2 — tracking cumulative PDL across a passage', tone: 'amber',
+    given: 'A cell line already at PDL 10 is expanded from 1×10⁶ to 8×10⁶ cells during this passage.',
+    rows: [
+      { label: 'Doublings this passage:', value: 'n = log₂(8×10⁶/1×10⁶) = log₂(8) = 3' },
+      { label: 'New cumulative PDL:', value: 'PDL = 10 + 3 = 13' },
+      { label: 'Interpretation:', value: 'The cell line has now doubled a total of 13 times since it was first established', full: true },
+    ],
+    note: "For finite-lifespan primary cell lines, tracking cumulative PDL this way is standard practice — researchers often stop using a culture past a certain PDL as it approaches replicative senescence.",
+  },
+];
+
+const comparison = {
+  heading: 'Doubling time across different mammalian cell types',
+  note: 'Doubling time varies enormously depending on how the cell line was derived.',
+  headers: [{ label: 'Cell type' }, { label: 'Approx. doubling time' }],
+  rows: [
+    ['HeLa (immortalized cervical cancer line) ★', '~24 hours'],
+    ['Many other immortalized cancer cell lines', '18-30 hours'],
+    ['Primary human fibroblasts', '~24-48 hours (early passage)'],
+    ['Senescent cells (near Hayflick limit)', 'Effectively stop dividing'],
+  ],
+  highlightIndex: 0,
+  footnote: '★ Reference row (worked example 1). Immortalized cell lines like HeLa have bypassed the normal cellular aging process and can, in principle, divide indefinitely — unlike most primary cell cultures.',
+};
+
+const realWorld = [
+  { emoji: '🧬', title: 'Cancer research', body: 'Doubling time is a standard metric for characterizing how aggressively a cancer cell line grows in culture, and for measuring how effectively a candidate drug slows that growth.' },
+  { emoji: '🧫', title: 'Stem cell expansion', body: 'Stem cell researchers track doubling time and cumulative PDL carefully to expand cell populations to the numbers needed for therapy or research, while monitoring for signs of unwanted differentiation or senescence.' },
+  { emoji: '💊', title: 'Drug screening and toxicology', body: "Comparing a treated cell population's doubling time to an untreated control is a core method for quantifying how strongly a drug candidate inhibits cell proliferation." },
+  { emoji: '🔬', title: 'Cell line quality control', body: "Tracking a cell line's PDL history helps labs recognize when a culture is approaching senescence or has changed in some other significant biological way, prompting them to work from an earlier, healthier frozen stock instead." },
+];
+
+const misconceptions = [
+  { claim: '"Cell doubling time in culture is the same as bacterial doubling time."', truth: 'Mammalian cells typically divide vastly more slowly than bacteria — hours to days rather than minutes — due to fundamental differences in cell cycle regulation, size, and complexity.' },
+  { claim: '"All cell lines can be expanded indefinitely without limit."', truth: 'Most primary (non-immortalized) cell lines have a finite maximum number of doublings — the Hayflick limit — after which they permanently stop dividing (replicative senescence), even under ideal culture conditions.' },
+  { claim: '"A shorter doubling time always means a healthier cell culture."', truth: 'An unusually short doubling time can sometimes indicate uncontrolled or abnormal proliferation (as in cancer) rather than simply "healthy" growth — doubling time on its own doesn\'t indicate whether growth is normal or pathological.' },
+  { claim: '"Population doubling level (PDL) is the same thing as the number of passages."', truth: "PDL counts actual doublings of the cell population, while a passage is simply one round of splitting and re-plating a culture — a single passage can include several population doublings (or sometimes fewer than one), so the two numbers are related but not interchangeable." },
+];
+
+const sources = [
+  { html: '<strong>OpenStax, <em>Biology 2e</em></strong> — Chapter 10, "Cell Reproduction" (free, peer-reviewed). <a href="https://openstax.org/books/biology-2e/pages/10-2-the-cell-cycle" rel="noopener nofollow" target="_blank" class="text-indigo-500 hover:text-indigo-600 hover:underline">openstax.org</a>' },
+  { html: '<strong>Hayflick &amp; Moorhead (1961)</strong> — foundational paper establishing the replicative senescence limit, <em>Experimental Cell Research</em>.' },
+  { html: '<strong>Freshney, <em>Culture of Animal Cells</em></strong> — Standard reference for mammalian cell culture technique and PDL tracking.' },
+];
+const sourcesNote = 'n = log₂(Nt/N0); doubling time = t/n. Assumes exponential growth throughout the passage. Results are rounded for display.';
+
+const howToUse = [
+  { title: 'Enter cell counts and time', body: 'Seeding density, harvest count, and time elapsed for one passage.' },
+  { title: 'Read this passage\'s results', body: 'Doublings and average doubling time calculate instantly.' },
+  { title: 'Track cumulative PDL (optional)', body: 'Enter a starting PDL to see the running total across passages.' },
+];
+
+const related = [
+  { href: '/tools/generation-time-calculator', emoji: '🧮', title: 'Generation (Doubling) Time Calculator', desc: 'g = t/n — microbial generation time from population counts.' },
+  { href: '/tools/bacterial-growth-rate-calculator', emoji: '⏱️', title: 'Bacterial Growth Rate Calculator', desc: 'k = ln(Nt/N0)/t — exponential growth rate constant.' },
+  { href: '/tools/exponential-population-growth-calculator', emoji: '📈', title: 'Exponential Population Growth Calculator', desc: 'N(t) = N₀e^(rt) — unconstrained population growth.' },
+];
+---
+
+<SubjectToolPage
+  title={title} description={description} intro={intro} category={category} faqs={faqs}
+  badge={badge} howto={howto}
+  coreIdea="tracking exactly how many times a cell population has doubled since it was first established turns an abstract culture history into a single running number — population doubling level — that tells researchers how much a cell line has grown, and how close a finite-lifespan line is to running out of divisions altogether."
+  howIntro="A mammalian cell culture's doubling time is calculated exactly like a bacterial population's — count how many doublings occurred (n = log₂(Nt/N0)) and divide the elapsed time by that count — but the numbers involved and their biological meaning are very different. Where bacteria might double every 20 minutes, mammalian cells typically take many hours to a full day per doubling, reflecting the far greater complexity of the eukaryotic cell cycle. Tracking population doubling level (PDL) — the cumulative doublings since a cell line was first established — becomes especially important for primary cell lines, since most have a finite maximum number of divisions (the Hayflick limit) before they permanently stop dividing."
+  formulas={formulas} workedExamples={workedExamples} comparison={comparison}
+  realWorld={realWorld} realWorldHeading="Where cell doubling time actually matters"
+  misconceptions={misconceptions} sources={sources} sourcesNote={sourcesNote}
+  howToUse={howToUse} related={related}
+>
+  <!-- ============ CALCULATOR ============ -->
+  <div slot="calculator" class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Seeded cells (N0)</span>
+        <input id="n0" type="number" step="any" value="200000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Harvested cells (Nt)</span>
+        <input id="nt" type="number" step="any" value="400000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Elapsed time (hours)</span>
+        <input id="t" type="number" step="any" value="24" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <label class="mt-4 block max-w-xs"><span class="text-sm font-medium text-slate-700">Starting PDL (optional, default 0)</span>
+      <input id="pdl0" type="number" step="any" value="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div class="rounded-xl bg-indigo-600 p-4 text-center text-white"><div class="text-xs opacity-80">Doublings this passage</div><div id="r-n" class="mt-1 text-xl font-bold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Doubling time</div><div id="r-dt" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4 text-center"><div class="text-xs text-slate-500">Cumulative PDL</div><div id="r-pdl" class="mt-1 text-xl font-bold text-slate-800">—</div></div>
+    </div>
+    <p id="cd-err" class="mt-3 text-center text-sm text-red-600" role="alert"></p>
+  </div>
+
+  <!-- ============ VIZ ============ -->
+  <div slot="viz">
+    <section class="mt-8 no-print">
+      <h2 class="text-xl font-bold text-slate-900">Slow-dividing vs. fast-dividing culture</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <div>
+          <div id="diag-slow" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">1. Primary cell culture</h3>
+          <p class="mt-1 text-sm text-slate-600">Divides more slowly, with a finite number of doublings remaining.</p>
+        </div>
+        <div>
+          <div id="diag-fast" class="w-full rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white" style="height:240px;"></div>
+          <h3 class="mt-3 font-semibold text-slate-900">2. Immortalized cancer cell line</h3>
+          <p class="mt-1 text-sm text-slate-600">Divides much faster, with no fixed limit on further doublings.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-10 no-print">
+      <h2 class="text-lg font-bold text-slate-900">Doubling time and PDL charts</h2>
+      <div class="mt-4 grid gap-6 sm:grid-cols-2">
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Doubling time by cell type</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-doubling"></canvas></div>
+        </figure>
+        <figure>
+          <figcaption class="mb-1 text-sm font-semibold text-slate-700">Cumulative PDL across passages (3 doublings/passage)</figcaption>
+          <div class="rounded-xl border border-slate-200 bg-white p-3" style="height:240px;"><canvas id="chart-pdl"></canvas></div>
+        </figure>
+      </div>
+    </section>
+
+    <script is:inline>
+    (function () {
+      'use strict';
+      const { el, reduceMotion, fmtSig: fmt, makeScene, mountResize, chartSetup } = window.STK;
+      const OPTS = { ambient: 0.9, dirLight: 0.5, azim: 0.7, pol: 1.2, polMin: 0.3, polMax: Math.PI / 2 + 0.2 };
+
+      // ---- calculator ----
+      function update() {
+        el('cd-err').textContent = '';
+        el('r-n').textContent = '—'; el('r-dt').textContent = '—'; el('r-pdl').textContent = '—';
+        const n0 = parseFloat(el('n0').value), nt = parseFloat(el('nt').value), t = parseFloat(el('t').value);
+        const pdl0 = parseFloat(el('pdl0').value);
+        if (isNaN(n0) || isNaN(nt) || isNaN(t)) return;
+        if (n0 <= 0 || nt <= 0 || t <= 0) { el('cd-err').textContent = 'Cell counts and time must be positive.'; return; }
+        if (nt < n0) { el('cd-err').textContent = 'Harvested cell count must be at least the seeded count.'; return; }
+        const n = Math.log(nt / n0) / Math.log(2);
+        el('r-n').textContent = fmt(n);
+        if (n > 0) el('r-dt').textContent = fmt(t / n) + ' hr';
+        else el('r-dt').textContent = 'N/A (no growth)';
+        if (!isNaN(pdl0)) el('r-pdl').textContent = fmt(pdl0 + n);
+      }
+      ['n0', 'nt', 't', 'pdl0'].forEach((id) => el(id).addEventListener('input', update));
+
+      // ---- charts ----
+      function initCharts() {
+        if (!window.Chart) return;
+        const base = chartSetup();
+        new Chart(el('chart-doubling'), {
+          type: 'bar',
+          data: { labels: ['HeLa', 'Other cancer lines', 'Primary fibroblasts', 'Senescent cells'], datasets: [{ label: 'Doubling time (hours)', data: [24, 24, 36, 999], backgroundColor: ['#6366f1', '#818cf8', '#f59e0b', '#94a3b8'] }] },
+          options: Object.assign({}, base, { scales: { y: { type: 'logarithmic', title: { display: true, text: 'Doubling time (hours, log scale)' } } }, plugins: { legend: { display: false } } }),
+        });
+        const passageLabels = [0, 1, 2, 3, 4, 5];
+        const pdlData = passageLabels.map((p) => p * 3);
+        new Chart(el('chart-pdl'), {
+          type: 'line',
+          data: { labels: passageLabels, datasets: [{ label: 'Cumulative PDL', data: pdlData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.12)', fill: true, tension: 0, pointRadius: 4 }] },
+          options: Object.assign({}, base, { scales: { x: { title: { display: true, text: 'Passage number' } }, y: { title: { display: true, text: 'Cumulative PDL' } } }, plugins: { legend: { display: false } } }),
+        });
+      }
+
+      function cultureScene(container, count, size) {
+        const s = makeScene(container, 7, new THREE.Vector3(0, 0, 0), OPTS);
+        for (let i = 0; i < count; i++) {
+          const m = new THREE.Mesh(new THREE.SphereGeometry(size, 12, 10), new THREE.MeshStandardMaterial({ color: 0x6366f1, transparent: true, opacity: 0.75 }));
+          m.position.set((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 2);
+          s.scene.add(m);
+        }
+        function frame() { requestAnimationFrame(frame); if (!reduceMotion) s.spin(0.003); s.renderer.render(s.scene, s.camera); }
+        frame();
+        return { resize: s.resize };
+      }
+      let diagSlow = null, diagFast = null;
+      function initDiagSlow() { const c = el('diag-slow'); if (!c) throw new Error('no container'); diagSlow = cultureScene(c, 8, 0.35); }
+      function initDiagFast() { const c = el('diag-fast'); if (!c) throw new Error('no container'); diagFast = cultureScene(c, 30, 0.22); }
+
+      function boot() {
+        try { update(); } catch (e) { console.error('[cell-doubling-time] calc init failed', e); }
+        try { initCharts(); } catch (e) { console.error('[cell-doubling-time] charts failed', e); }
+        if (window.THREE) {
+          try { initDiagSlow(); } catch (e) { console.error('[cell-doubling-time] slow diagram failed', e); }
+          try { initDiagFast(); } catch (e) { console.error('[cell-doubling-time] fast diagram failed', e); }
+        }
+        mountResize([diagSlow, diagFast]);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+      else boot();
+    })();
+    </script>
+  </div>
+</SubjectToolPage>
