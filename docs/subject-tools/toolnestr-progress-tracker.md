@@ -3,7 +3,52 @@
 **Companion file to:** `toolnestr-subject-tools-project-spec.md`
 **Location in repo:** `docs/subject-tools/` (both this tracker and the spec live here so any session can resume).
 **Purpose:** Live status log. Read this file first when resuming work on this project. The spec file holds the rules; this file holds where things currently stand.
-**Last updated:** 2026-07-07 (110/150 tools built — 45 Physics + 45 Chemistry + 20 Biology)
+**Last updated:** 2026-07-08 (120/150 tools built — **50 Physics + 50 Chemistry (both complete)** + 20 Biology)
+
+## Batch-8 — final 10 non-Biology tools complete, Physics & Chemistry both hit 50/50 (2026-07-08)
+
+Built sequentially by hand, no parallel agents (same standing instruction as Batch-5 through Batch-7).
+Git sync verified before starting (local and origin/main both at `60d97f1`).
+
+**Completes spec §8's last 5 Physics + 5 Chemistry tools** left open at the end of Batch-6/7:
+
+- **New pages (6):** Frequency Calculator, Mirror Equation Calculator, Interactive Periodic Table
+  (`periodic-table`), Atomic Mass Calculator (`atomic-weight-calculator` — single-element lookup,
+  distinct from the existing isotope-calculator and the formula-based Molar Mass Calculator at slug
+  `atomic-mass-calculator`), Rate Constant Calculator, Vapor Pressure Calculator (Raoult's law, with
+  a mode toggle for non-volatile-solute lowering vs. an ideal two-volatile-liquid mixture).
+- **Enhanced in place + moved category (4)**, following the exact pattern used for free-fall/momentum/
+  force/dilution back in Batch-1 — found these already existed as basic ~190-line `engineering`-category
+  pages covering the exact same formulas, so rebuilt them to flagship depth on `SubjectToolPage` instead
+  of creating near-duplicate pages: `wavelength-frequency-calculator` (Wavelength Calculator, v=fλ) →
+  physics, `density-calculator` (ρ=m/V) → physics, `gravitational-force-calculator` → retitled
+  "Newton's Law of Gravitation Calculator" → physics, `gas-laws-calculator` → retitled "Combined Gas
+  Law Calculator" → chemistry (kept its Boyle's/Charles's/Combined mode-switch UI and exact calculation
+  logic byte-for-byte, only the surrounding content/viz/category changed).
+- Frequency and Wavelength were deliberately split into two distinct tools with non-overlapping content
+  (Frequency covers period↔frequency↔angular frequency↔RPM for oscillators/rotation; Wavelength covers
+  v=fλ for waves) even though they're mathematically related, since the spec lists them as separate
+  items and the existing basic tool only covered the wave-speed relationship.
+
+Post-build audit (code-only, no live browser per standing instruction): full `npm run build` = 589
+pages, 0 errors (583→589: +6 new tool pages, the other 4 were enhanced in place with no page-count
+change). 0 duplicate slugs across all tools (Node script check). 0 new emoji collisions within physics
+or chemistry categories — both now land at exactly 50/50 (the only remaining collision is the
+pre-existing momentum/projectile-motion 🎯 dup from before this project). Validated every inline
+`<script>`'s JS syntax via `new Function()` across all 10 files — zero syntax errors. Independently
+re-derived every formula/worked-example outside the pages' own text: mirror equation convex-mirror
+case (di=−8.57cm, m=+0.57, matches virtual/upright/reduced), gravitation Moon-vs-Sun pull on Earth
+(1.986×10²⁰ N vs 3.543×10²² N, ratio≈178×, matches "about 180×" claim), rate constant two-reactant
+case (k=0.25 M⁻²s⁻¹), Raoult's law glucose-in-water case (P_solution=21.64 mmHg, ΔP=2.16 mmHg) — all
+matched. Checked every `related` tool link across all 10 files against the live slug list in
+`tools.js` — 0 broken links.
+
+**Batch-1 through Batch-8 combined: 120 flagship tools (50 Physics + 50 Chemistry + 20 Biology).**
+**Physics and Chemistry are now both fully complete at 50/50 per spec §8.** Not yet pushed to
+origin/main — awaiting user go-ahead. Remaining un-built: Biology 30 (the rest of spec §8's 50-item
+list, including the deliberately-deferred UI-heavy tools — Genetic Drift Simulator, Pedigree Chart
+Analyzer, Mitosis Stage Identifier, Simple Phylogenetic Tree Builder, etc.). Next: Batch-9+ continuing
+Biology until all 150 tools are complete.
 
 ## Batch-7 — Biology category launched, 20 tools complete (2026-07-07, commit `b75173f`)
 
