@@ -66,18 +66,18 @@ const howToSchema = {
       --text: #15161a;
       --muted: #565c6a;
       --faint: #8b909d;
-      --accent: #5b5bf0;
-      --accent-hover: #4a49e0;
-      --accent-weak: rgba(99, 102, 241, 0.1);
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-weak: rgba(37, 99, 235, 0.1);
       --accent-fg: #ffffff;
-      --grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      --grad-shadow: 0 6px 18px rgba(99, 102, 241, 0.22);
+      --grad: var(--accent);
+      --grad-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
       --ok: #0d9f6e;
       --danger: #dc2f45;
       --grid: rgba(9, 9, 11, 0.03);
       --shadow: 0 1px 2px rgba(9, 9, 11, 0.04), 0 8px 24px rgba(9, 9, 11, 0.06);
       --shadow-lg: 0 2px 4px rgba(9, 9, 11, 0.05), 0 16px 40px rgba(9, 9, 11, 0.09);
-      --glow: radial-gradient(52% 40% at 50% -4%, rgba(124, 92, 246, 0.13), transparent 72%);
+      --glow: radial-gradient(52% 40% at 50% -4%, rgba(37, 99, 235, 0.1), transparent 72%);
 
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       color: var(--text);
@@ -97,17 +97,17 @@ const howToSchema = {
       --text: #eaecf1;
       --muted: #969cab;
       --faint: #616776;
-      --accent: #6366f1;
-      --accent-hover: #7a7cf5;
-      --accent-weak: rgba(99, 102, 241, 0.18);
-      --grad: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-      --grad-shadow: 0 6px 22px rgba(99, 102, 241, 0.4);
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-weak: rgba(59, 130, 246, 0.18);
+      --grad: var(--accent);
+      --grad-shadow: 0 4px 14px rgba(59, 130, 246, 0.28);
       --ok: #34d399;
       --danger: #f87171;
       --grid: rgba(255, 255, 255, 0.03);
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.4);
       --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.45), 0 24px 60px rgba(0, 0, 0, 0.55);
-      --glow: radial-gradient(50% 38% at 50% -6%, rgba(139, 92, 246, 0.22), transparent 72%), radial-gradient(40% 30% at 78% 8%, rgba(56, 189, 248, 0.08), transparent 70%);
+      --glow: radial-gradient(50% 38% at 50% -6%, rgba(59, 130, 246, 0.18), transparent 72%);
     }
     .ds * { box-sizing: border-box; }
 
@@ -141,7 +141,7 @@ const howToSchema = {
     .ds-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
     .ds-hero { text-align: center; padding: 8px 0 30px; }
     .ds-hero h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; margin: 22px 0 14px; color: var(--text); }
-    .ds-hero h1 .g { background: linear-gradient(120deg, #818cf8, #c084fc); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .ds-hero h1 .g { color: var(--accent); }
     .ds-hero p { color: var(--muted); font-size: clamp(1rem, 2vw, 1.12rem); line-height: 1.6; max-width: 520px; margin: 0 auto; }
 
     /* feature strip */
@@ -187,7 +187,7 @@ const howToSchema = {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       box-shadow: var(--grad-shadow); transition: transform .15s, box-shadow .15s, opacity .15s;
     }
-    .ds-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(99, 102, 241, 0.4); }
+    .ds-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(37, 99, 235, 0.32); filter: brightness(1.05); }
     .ds-btn:active { transform: translateY(0); }
     .ds-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-weak); }
     .ds-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
@@ -469,7 +469,13 @@ const howToSchema = {
   </div>
 
   <script>
-    import QRCode from 'https://esm.sh/qrcode@1.5.4';
+    // QR library is loaded lazily (only when a room opens) so a slow/blocked
+    // CDN can never stop the core create/join/share flow from working.
+    let _qrLib = null;
+    function loadQR() {
+      if (!_qrLib) _qrLib = import('https://esm.sh/qrcode@1.5.4').then((m) => m.default).catch(() => null);
+      return _qrLib;
+    }
 
     // ── Line-icon set (Lucide-style, stroke 1.6) ──
     const ICONS = {
@@ -583,7 +589,10 @@ const howToSchema = {
       const url = location.origin + location.pathname + '?room=' + code;
       els.qr.innerHTML = '';
       const canvas = document.createElement('canvas'); els.qr.appendChild(canvas);
-      QRCode.toCanvas(canvas, url, { width: 200, margin: 1, color: { dark: '#0a0b0f', light: '#ffffff' } }, (err) => { if (err) els.qr.innerHTML = ''; });
+      loadQR().then((QRCode) => {
+        if (!QRCode) { els.qr.innerHTML = ''; return; }
+        QRCode.toCanvas(canvas, url, { width: 200, margin: 1, color: { dark: '#0a0b0f', light: '#ffffff' } }, (err) => { if (err) els.qr.innerHTML = ''; });
+      });
     }
 
     // ── Render ──
