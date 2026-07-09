@@ -319,6 +319,9 @@ const howToSchema = {
     .ds-xfer .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ds-xfer .tag { flex: none; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; background: var(--accent-weak); color: var(--accent); }
     .ds-xfer .st { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .ds-xfer-cancel { flex: none; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor: pointer; margin-left: 2px; transition: color .15s, border-color .15s; }
+    .ds-xfer-cancel:hover { color: var(--danger); border-color: var(--danger); }
+    .ds-xfer-cancel .ico { width: 13px; height: 13px; }
     .ds-bar { height: 5px; border-radius: 999px; background: var(--panel-2); overflow: hidden; margin-top: 11px; }
     .ds-bar > i { display: block; height: 100%; width: 0%; background: var(--grad); border-radius: 999px; transition: width .25s ease; }
     .ds-bar.err > i { background: var(--danger); }
@@ -756,23 +759,34 @@ const howToSchema = {
     }
     function fileCategory(files) {
       const box = catBox('file', 'Files', files.length);
+      const cards = []; // { f, cb, card } — for select-all to drive each card
       // ── Header actions: select-all + download-selected (zips when 2+ chosen) ──
       const acts = document.createElement('div'); acts.className = 'ds-catacts';
       const selAll = document.createElement('label'); selAll.className = 'ds-selall';
-      const selAllCb = document.createElement('input'); selAllCb.type = 'checkbox'; selAllCb.className = 'ds-check'; selAllCb.id = 'filesSelAll';
+      const selAllCb = document.createElement('input'); selAllCb.type = 'checkbox'; selAllCb.className = 'ds-check';
       selAllCb.setAttribute('aria-label', 'Select all files');
       const selAllTxt = document.createElement('span'); selAllTxt.textContent = 'All';
       selAll.appendChild(selAllCb); selAll.appendChild(selAllTxt);
-      selAllCb.addEventListener('change', () => {
-        if (selAllCb.checked) files.forEach((f) => state.selectedFiles.add(f.id));
-        else files.forEach((f) => state.selectedFiles.delete(f.id));
-        renderMerged(); // rebuild so every card checkbox reflects the new state
-      });
-      const dlBtn = document.createElement('button'); dlBtn.className = 'ds-btn sm'; dlBtn.id = 'filesDlBtn';
+      const dlBtn = document.createElement('button'); dlBtn.className = 'ds-btn sm';
       dlBtn.innerHTML = iconSvg('download') + '<span></span>';
       dlBtn.addEventListener('click', downloadSelectedFiles);
       acts.appendChild(selAll); acts.appendChild(dlBtn);
       box.querySelector('.ds-cat-head').appendChild(acts);
+
+      // Sync header + card visuals from state.selectedFiles using captured refs
+      // (no getElementById — the box isn't in the DOM yet while this builds).
+      const syncUI = () => {
+        const n = state.selectedFiles.size;
+        dlBtn.querySelector('span').textContent = n >= 2 ? ('Download ' + n + ' as zip') : (n === 1 ? 'Download 1' : 'Download selected');
+        dlBtn.disabled = n === 0;
+        selAllCb.checked = files.length > 0 && files.every((f) => state.selectedFiles.has(f.id));
+        cards.forEach(({ f, cb, card }) => { const on = state.selectedFiles.has(f.id); cb.checked = on; card.classList.toggle('sel', on); });
+      };
+      selAllCb.addEventListener('change', () => {
+        if (selAllCb.checked) files.forEach((f) => state.selectedFiles.add(f.id));
+        else files.forEach((f) => state.selectedFiles.delete(f.id));
+        syncUI();
+      });
 
       const grid = document.createElement('div'); grid.className = 'ds-catgrid';
       files.forEach((f) => {
@@ -782,9 +796,10 @@ const howToSchema = {
         cb.checked = state.selectedFiles.has(f.id); cb.setAttribute('aria-label', 'Select ' + f.filename);
         cb.addEventListener('change', () => {
           if (cb.checked) state.selectedFiles.add(f.id); else state.selectedFiles.delete(f.id);
-          card.classList.toggle('sel', cb.checked); updateFilesDlUI(files);
+          syncUI();
         });
         card.classList.toggle('sel', cb.checked);
+        cards.push({ f, cb, card });
         const ic = document.createElement('span'); ic.className = 'fic'; ic.innerHTML = iconSvg('file');
         const meta = document.createElement('div'); meta.className = 'fmeta';
         const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = f.filename;
@@ -798,19 +813,8 @@ const howToSchema = {
         card.appendChild(fh); card.appendChild(btns); grid.appendChild(card);
       });
       box.appendChild(grid);
-      updateFilesDlUI(files);
+      syncUI();
       return box;
-    }
-    // Sync the "Download selected" button label/disabled state and the header
-    // select-all checkbox against the current selection.
-    function updateFilesDlUI(files) {
-      const btn = $('filesDlBtn'), all = $('filesSelAll');
-      const n = state.selectedFiles.size;
-      if (btn) {
-        btn.querySelector('span').textContent = n >= 2 ? ('Download ' + n + ' as zip') : (n === 1 ? 'Download 1' : 'Download selected');
-        btn.disabled = n === 0;
-      }
-      if (all && files) all.checked = files.length > 0 && files.every((f) => state.selectedFiles.has(f.id));
     }
     function textLinkCategory(kind, label, list) {
       const box = catBox(kind, label, list.length);
@@ -844,8 +848,8 @@ const howToSchema = {
     // Fetch a file's bytes while streaming the response body so we can report
     // real download progress (calling onBytes as chunks arrive) instead of only
     // jumping when each whole file finishes.
-    async function fetchBlobWithProgress(f, onBytes) {
-      const res = await fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {} });
+    async function fetchBlobWithProgress(f, onBytes, signal) {
+      const res = await fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {}, signal });
       if (!res.ok) throw new Error('dl');
       if (!res.body || !res.body.getReader) return res.blob(); // no streaming support → still completes
       const reader = res.body.getReader(); const chunks = [];
@@ -882,7 +886,8 @@ const howToSchema = {
       if (!sel.length) return;
       if (sel.length === 1) { downloadFile(sel[0]); return; }
       const id = xid();
-      addTransfer(id, sel.length + ' files → zip', 'down', 'Zip');
+      const ctrl = new AbortController(); let cancelled = false;
+      addTransfer(id, sel.length + ' files → zip', 'down', 'Zip', () => { cancelled = true; ctrl.abort(); });
       setTransfer(id, 0, 'Downloading…');
       try {
         const total = sel.reduce((s, f) => s + (f.size || 0), 0) || 1;
@@ -892,7 +897,7 @@ const howToSchema = {
             downloaded += n;
             const pct = Math.min(90, Math.round((downloaded / total) * 90));
             if (pct !== lastPct) { lastPct = pct; setTransfer(id, pct, 'Downloading ' + fmtSize(downloaded) + ' / ' + fmtSize(total)); }
-          }));
+          }, ctrl.signal));
         }
         const fflate = await loadZip();
         if (!fflate || !(fflate.zip || fflate.zipSync)) { removeTransfer(id); sel.forEach(downloadFile); return; } // esm.sh blocked → individual downloads
@@ -907,7 +912,10 @@ const howToSchema = {
         const zipped = await zipEntries(fflate, entries);
         setTransfer(id, 100, 'Downloaded', 'ok');
         triggerDownload(new Blob([zipped], { type: 'application/zip' }), 'dropspot-files.zip');
-      } catch { setTransfer(id, 100, 'Download failed', 'err'); }
+      } catch {
+        if (cancelled) { removeTransfer(id); toast('Download cancelled', 'trash'); }
+        else setTransfer(id, 100, 'Download failed', 'err');
+      }
     }
     async function deleteItem(kind, id) {
       // Optimistic: hide immediately, then confirm with the server. The DELETE
@@ -979,7 +987,7 @@ const howToSchema = {
 
     // ── Upload progress rows (fade out once done — the file then lives in the
     //    Files box below, so rows don't stack up and bury the shared content) ──
-    function addTransfer(id, name, dir, tag) {
+    function addTransfer(id, name, dir, tag, onCancel) {
       if (state.xfers[id]) return state.xfers[id];
       $('xferSect').style.display = '';
       const el = document.createElement('div'); el.className = 'ds-panel ds-xfer';
@@ -989,8 +997,14 @@ const howToSchema = {
         '<div class="ds-bar"><i></i></div>';
       el.querySelector('.nm').textContent = name;
       el.querySelector('.tag').textContent = tag;
+      const rec = { el, bar: el.querySelector('.ds-bar'), fill: el.querySelector('.ds-bar > i'), st: el.querySelector('.st'), cancelBtn: null };
+      if (onCancel) {
+        const x = document.createElement('button'); x.className = 'ds-xfer-cancel'; x.title = 'Cancel'; x.setAttribute('aria-label', 'Cancel');
+        x.innerHTML = '<svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+        x.addEventListener('click', onCancel);
+        el.querySelector('.top').appendChild(x); rec.cancelBtn = x;
+      }
       document.getElementById('transfers').prepend(el);
-      const rec = { el, bar: el.querySelector('.ds-bar'), fill: el.querySelector('.ds-bar > i'), st: el.querySelector('.st') };
       state.xfers[id] = rec; return rec;
     }
     function setTransfer(id, pct, status, kind) {
@@ -999,6 +1013,8 @@ const howToSchema = {
       if (status != null) r.st.textContent = status;
       r.bar.classList.toggle('err', kind === 'err');
       r.bar.classList.toggle('ok', kind === 'ok');
+      // once finished (ok/err) it's no longer cancellable — drop the X
+      if ((kind === 'ok' || kind === 'err') && r.cancelBtn) { r.cancelBtn.remove(); r.cancelBtn = null; }
       if (kind === 'ok') setTimeout(() => removeTransfer(id), 2200); // failures stay put
     }
     function removeTransfer(id) {
