@@ -573,7 +573,9 @@ const howToSchema = {
         if (els.pinToggle.checked && els.createPin.value) body.pin = els.createPin.value;
         const data = await api('/room', { method: 'POST', body: JSON.stringify(body) });
         state.pin = body.pin || null;
-        await enterRoom(data.room.code);
+        // Use the create response directly — a GET here would race KV's
+        // read-after-write lag and 404 on a room that definitely exists.
+        await enterRoom(data.room.code, { room: data.room, items: [], files: [], presence: [], server_time: data.room.created_at });
       } catch { toast('Could not create room. Is the service reachable?', 'trash'); }
       finally { els.createBtn.disabled = false; els.createBtn.textContent = 'Create room'; }
     });
@@ -594,9 +596,18 @@ const howToSchema = {
         else toast('Could not join room.', 'trash');
       } finally { els.joinBtn.disabled = false; els.joinBtn.textContent = 'Join room'; }
     }
-    async function enterRoom(code) {
+    async function enterRoom(code, initialData) {
       state.code = code;
-      const data = await api('/room/' + code);
+      let data = initialData;
+      if (!data) {
+        // Cloudflare KV is eventually consistent: a room GET right after its
+        // creation can hit a replica without the write yet (404). Retry a few
+        // times before giving up so create/rejoin don't spuriously fail.
+        for (let i = 0; i < 4; i++) {
+          try { data = await api('/room/' + code); break; }
+          catch (e) { if (e.status === 404 && i < 3) { await new Promise((r) => setTimeout(r, 600)); continue; } throw e; }
+        }
+      }
       state.room = data;
       els.landing.classList.add('ds-hidden');
       els.room.classList.add('active');
