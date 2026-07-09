@@ -291,6 +291,17 @@ const howToSchema = {
     .ds-bar.err > i { background: var(--danger); }
     .ds-bar.ok > i { background: var(--ok); }
 
+    /* received files (user-initiated download + multi-select zip) */
+    .ds-sect-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .ds-sect-row .ds-btn.sm { text-transform: none; letter-spacing: normal; }
+    .ds-received { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .ds-recv { padding: 12px 15px; display: flex; align-items: center; gap: 12px; }
+    .ds-recv .ds-check { width: 17px; height: 17px; accent-color: var(--accent); flex: none; cursor: pointer; margin: 0; }
+    .ds-recv .ic { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
+    .ds-recv .body { flex: 1; min-width: 0; }
+    .ds-recv .nm { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ds-recv .sub { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
     .ds-hidden { display: none !important; }
     @media (prefers-reduced-motion: reduce) { .ds * { animation: none !important; transition: none !important; } }
   </style>
@@ -449,6 +460,12 @@ const howToSchema = {
         <p class="ds-sect" id="xferSect" style="display:none">Transfers</p>
         <div class="ds-transfers" id="transfers"></div>
 
+        <div class="ds-sect ds-sect-row" id="recvSect" style="display:none">
+          <span>Received files</span>
+          <button class="ds-btn sm" id="dlSelected" disabled>Download selected</button>
+        </div>
+        <div class="ds-received" id="received"></div>
+
         <p class="ds-sect">Shared in this room</p>
         <div class="ds-items" id="items"><span class="ds-empty">Nothing shared yet.</span></div>
       </section>
@@ -505,7 +522,7 @@ const howToSchema = {
       return v;
     })();
 
-    const state = { code: null, pin: null, room: null, hbTimer: null, pollTimer: null, cdTimer: null, sigTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], rtc: null, xfers: {} };
+    const state = { code: null, pin: null, room: null, lastData: null, hbTimer: null, pollTimer: null, cdTimer: null, sigTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], rtc: null, xfers: {}, skew: 0, deletedIds: new Set(), optimistic: {}, received: {}, sendQueue: [], sending: false };
     const $ = (id) => document.getElementById(id);
     const els = {
       landing: $('landing'), room: $('room'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
@@ -536,6 +553,9 @@ const howToSchema = {
       return data;
     }
     function nowSec() { return Math.floor(Date.now() / 1000); }
+    // Server-authoritative clock so every device shows the same countdowns
+    // regardless of local clock skew.
+    function serverNow() { return nowSec() + state.skew; }
     function fmtDuration(sec) {
       if (sec <= 0) return 'expired';
       const d = Math.floor(sec/86400), h = Math.floor((sec%86400)/3600), m = Math.floor((sec%3600)/60), s = sec%60;
@@ -597,12 +617,31 @@ const howToSchema = {
 
     // ── Render ──
     function applyState(data) {
-      state.room = data; const room = data.room;
+      state.lastData = data; state.room = data; const room = data.room;
+      // Track server↔local clock offset for skew-free countdowns.
+      if (typeof data.server_time === 'number') state.skew = data.server_time - nowSec();
       els.metaPin.textContent = room.has_pin ? 'PIN protected' : 'Open';
       els.metaDevices.textContent = String((data.presence || []).length);
       renderPresence(data.presence || []);
-      renderItems(data.items || [], data.files || []);
+      renderMerged();
       state.expiresAt = room.expires_at; updateCountdown();
+    }
+    // Merge the server snapshot with the user's optimistic add/delete ops so
+    // their own actions feel instant despite KV read-after-write lag.
+    function renderMerged() {
+      const data = state.lastData || { items: [], files: [] };
+      const serverItems = data.items || [];
+      const serverIds = new Set(serverItems.map((i) => i.id));
+      // forget delete-markers the server has already dropped
+      for (const id of [...state.deletedIds]) if (!serverIds.has(id)) state.deletedIds.delete(id);
+      const items = serverItems.filter((i) => !state.deletedIds.has(i.id));
+      // keep optimistic items until the server starts returning them
+      for (const id in state.optimistic) {
+        if (serverIds.has(id) || state.deletedIds.has(id)) delete state.optimistic[id];
+        else items.push(state.optimistic[id]);
+      }
+      const files = (data.files || []).filter((f) => !state.deletedIds.has(f.id));
+      renderItems(items, files);
     }
     function renderPresence(list) {
       state.presenceList = list;
@@ -630,7 +669,7 @@ const howToSchema = {
         if (entry.t === 'file') {
           const f = entry.data; ic.innerHTML = iconSvg('file');
           const name = document.createElement('div'); name.className = 'txt'; name.textContent = f.filename;
-          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - nowSec());
+          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - serverNow());
           body.appendChild(name); body.appendChild(sub);
           acts.appendChild(iconBtn('download', 'Download', () => downloadFile(f)));
           acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('file', f.id), true));
@@ -638,7 +677,7 @@ const howToSchema = {
           const i = entry.data; ic.innerHTML = iconSvg(i.kind === 'link' ? 'link' : 'text');
           if (i.kind === 'link') { const a = document.createElement('a'); a.className = 'txt'; a.href = i.content; a.target = '_blank'; a.rel = 'noopener nofollow'; a.textContent = i.content; body.appendChild(a); }
           else { const p = document.createElement('div'); p.className = 'txt'; p.textContent = i.content; body.appendChild(p); }
-          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - nowSec());
+          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - serverNow());
           body.appendChild(sub);
           acts.appendChild(iconBtn('copy', 'Copy', () => { navigator.clipboard.writeText(i.content); toast('Copied'); }));
           acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('item', i.id), true));
@@ -658,8 +697,14 @@ const howToSchema = {
         .catch(() => toast('Download failed', 'trash'));
     }
     async function deleteItem(kind, id) {
-      try { if (kind === 'item') await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' }); await refresh(); toast('Deleted'); }
-      catch { toast('Could not delete', 'trash'); }
+      // Optimistic: hide immediately, then confirm with the server.
+      state.deletedIds.add(id); delete state.optimistic[id]; renderMerged();
+      try {
+        if (kind === 'item') await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' });
+        toast('Deleted'); refresh();
+      } catch {
+        state.deletedIds.delete(id); renderMerged(); toast('Could not delete', 'trash');
+      }
     }
 
     // ── Composer ──
@@ -682,7 +727,12 @@ const howToSchema = {
       const body = { kind, content, device_id: DEVICE_ID };
       if (els.itemTtl.value) body.ttl_seconds = Number(els.itemTtl.value);
       els.shareBtn.disabled = true;
-      try { await api('/room/' + state.code + '/item', { method: 'POST', body: JSON.stringify(body) }); els.textInput.value=''; els.linkInput.value=''; await refresh(); toast('Shared'); }
+      try {
+        const resp = await api('/room/' + state.code + '/item', { method: 'POST', body: JSON.stringify(body) });
+        els.textInput.value = ''; els.linkInput.value = '';
+        if (resp && resp.item) { state.optimistic[resp.item.id] = resp.item; renderMerged(); } // instant
+        toast('Shared'); refresh();
+      }
       catch (e) { toast(e.data && e.data.error === 'content_too_long' ? 'That is too long.' : 'Could not share.', 'trash'); }
       finally { els.shareBtn.disabled = false; }
     }
@@ -703,16 +753,26 @@ const howToSchema = {
     function xid() { return 'x' + Math.random().toString(36).slice(2, 9); }
 
     // Decide the path the moment a file is chosen (spec 4.3): peer online → P2P,
-    // otherwise → R2 store-and-forward.
+    // otherwise → R2 store-and-forward. P2P sends are queued and run one at a
+    // time — a single per-recipient signaling slot means two concurrent offers
+    // would collide, so we serialize them (each file still becomes downloadable
+    // the instant its own transfer finishes).
     function onFilePicked(file) {
       if (!state.code) return;
       const peers = (state.presenceList || []).filter((p) => p.device_id !== DEVICE_ID);
-      if (peers.length) { sendFileP2P(file, peers[0].device_id); }
+      if (peers.length) { state.sendQueue.push({ file, peer: peers[0].device_id }); processQueue(); }
       else {
         if (file.size > MAX_R2) { toast('No one else is online — file exceeds the 25 MB storage limit.', 'trash'); return; }
         sendFileR2(file, xid());
       }
     }
+    function processQueue() {
+      if (state.sending || !state.sendQueue.length || !state.code) return;
+      state.sending = true;
+      const job = state.sendQueue.shift();
+      sendFileP2P(job.file, job.peer);
+    }
+    function finishSend() { state.sending = false; setTimeout(processQueue, 200); }
 
     // ── Transfer progress UI ──
     function addTransfer(id, name, dir, tag) {
@@ -794,6 +854,7 @@ const howToSchema = {
       session.fellBack = true; session.done = true;
       try { session.pc.close(); } catch {}
       if (state.rtc === session) state.rtc = null;
+      finishSend(); // release the P2P slot; the R2 upload runs independently
       if (session.file.size > MAX_R2) { setTransfer(session.id, 100, 'Peer offline · file over 25 MB', 'err'); return; }
       setTransfer(session.id, 0, 'No direct route — storing…');
       sendFileR2(session.file, session.id); // reuse the same progress row
@@ -818,6 +879,8 @@ const howToSchema = {
           }
           dc.send(JSON.stringify({ type: 'done' }));
           session.done = true; setTransfer(id, 100, 'Sent', 'ok'); toast('File sent peer-to-peer');
+          if (state.rtc === session) state.rtc = null;
+          finishSend(); // let the next queued P2P send start
           setTimeout(() => { try { session.pc.close(); } catch {} }, 1200);
         } catch { if (!session.done) fallbackR2(session); }
       }
@@ -850,9 +913,11 @@ const howToSchema = {
           else if (m.type === 'done') {
             session.done = true;
             const blob = new Blob(buffers, { type: (meta && meta.mime) || 'application/octet-stream' });
-            const a = document.createElement('a'); const u = URL.createObjectURL(blob);
-            a.href = u; a.download = meta ? meta.name : 'download'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 5000);
-            setTransfer(id, 100, 'Received', 'ok'); toast('File received');
+            const rid = 'r' + id;
+            // Store — do NOT auto-download. User downloads on click (single) or zips (multiple).
+            state.received[rid] = { id: rid, name: meta ? meta.name : 'download', mime: meta && meta.mime, size: blob.size, blob, selected: false };
+            setTransfer(id, 100, 'Received', 'ok'); renderReceived();
+            toast((meta ? meta.name : 'File') + ' received — ready to download');
             setTimeout(() => { try { session.pc.close(); } catch {} }, 800);
           }
         } else {
@@ -869,12 +934,67 @@ const howToSchema = {
       } catch {}
     }
 
+    // ── Received files: user-initiated download, zip when multiple selected ──
+    function triggerDownload(blob, name) {
+      const a = document.createElement('a'); const u = URL.createObjectURL(blob);
+      a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 6000);
+    }
+    let _zipLib = null;
+    function loadZip() { if (!_zipLib) _zipLib = import('https://esm.sh/fflate@0.8.2').then((m) => m).catch(() => null); return _zipLib; }
+    function updateDlBtn() {
+      const n = Object.values(state.received).filter((r) => r.selected).length;
+      const btn = $('dlSelected');
+      btn.textContent = n >= 2 ? 'Download ' + n + ' as zip' : 'Download selected';
+      btn.disabled = n === 0;
+    }
+    function renderReceived() {
+      const list = Object.values(state.received);
+      const sect = $('recvSect'), cont = $('received');
+      if (!list.length) { sect.style.display = 'none'; cont.innerHTML = ''; return; }
+      sect.style.display = 'flex';
+      cont.innerHTML = '';
+      list.forEach((r) => {
+        const el = document.createElement('div'); el.className = 'ds-panel ds-recv';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'ds-check'; cb.checked = r.selected;
+        cb.setAttribute('aria-label', 'Select ' + r.name);
+        cb.addEventListener('change', () => { r.selected = cb.checked; updateDlBtn(); });
+        const ic = document.createElement('span'); ic.className = 'ic'; ic.innerHTML = iconSvg('file');
+        const body = document.createElement('div'); body.className = 'body';
+        const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = r.name;
+        const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = fmtSize(r.size);
+        body.appendChild(nm); body.appendChild(sub);
+        const dl = iconBtn('download', 'Download', () => triggerDownload(r.blob, r.name));
+        el.appendChild(cb); el.appendChild(ic); el.appendChild(body); el.appendChild(dl);
+        cont.appendChild(el);
+      });
+      updateDlBtn();
+    }
+    async function downloadSelected() {
+      const sel = Object.values(state.received).filter((r) => r.selected);
+      if (!sel.length) return;
+      if (sel.length === 1) { triggerDownload(sel[0].blob, sel[0].name); return; }
+      const fflate = await loadZip();
+      if (!fflate || !fflate.zipSync) { sel.forEach((r) => triggerDownload(r.blob, r.name)); return; }
+      const files = {};
+      for (const r of sel) files[r.name] = new Uint8Array(await r.blob.arrayBuffer());
+      const zipped = fflate.zipSync(files, { level: 0 });
+      triggerDownload(new Blob([zipped], { type: 'application/zip' }), 'dropspot-files.zip');
+    }
+    document.getElementById('dlSelected').addEventListener('click', downloadSelected);
+
     // ── Copy / leave ──
     els.copyCodeBtn.addEventListener('click', () => { navigator.clipboard.writeText(state.code); toast('Code copied'); });
     els.copyLinkBtn.addEventListener('click', () => { navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + state.code); toast('Join link copied'); });
     els.leaveBtn.addEventListener('click', leaveRoom);
     function leaveRoom() {
-      stopLoops(); state.code = null; state.pin = null; state.room = null;
+      stopLoops(); state.code = null; state.pin = null; state.room = null; state.lastData = null;
+      state.skew = 0; state.deletedIds = new Set(); state.optimistic = {}; state.received = {}; state.xfers = {}; state.sendQueue = []; state.sending = false;
+      try { if (state.rtc && state.rtc.pc) state.rtc.pc.close(); } catch {} state.rtc = null;
+      const rc = document.getElementById('received'); if (rc) rc.innerHTML = '';
+      const tf = document.getElementById('transfers'); if (tf) tf.innerHTML = '';
+      const rs = document.getElementById('recvSect'); if (rs) rs.style.display = 'none';
+      const xs = document.getElementById('xferSect'); if (xs) xs.style.display = 'none';
       els.room.classList.remove('active'); els.landing.classList.remove('ds-hidden');
       const url = new URL(location.href); url.searchParams.delete('room'); history.replaceState({}, '', url);
     }
@@ -893,7 +1013,7 @@ const howToSchema = {
     }
     function startLoops() { stopLoops(); heartbeat(); state.hbTimer = setInterval(heartbeat, 5000); state.pollTimer = setInterval(refresh, 3000); state.cdTimer = setInterval(updateCountdown, 1000); state.sigTimer = setInterval(pollSignals, 2000); }
     function stopLoops() { [state.hbTimer, state.pollTimer, state.cdTimer, state.sigTimer].forEach((t) => t && clearInterval(t)); state.hbTimer = state.pollTimer = state.cdTimer = state.sigTimer = null; }
-    function updateCountdown() { if (!state.expiresAt) return; const left = state.expiresAt - nowSec(); els.metaExpiry.textContent = fmtDuration(left); if (left <= 0) { toast('Room expired.', 'trash'); leaveRoom(); } }
+    function updateCountdown() { if (!state.expiresAt) return; const left = state.expiresAt - serverNow(); els.metaExpiry.textContent = fmtDuration(left); if (left <= 0) { toast('Room expired.', 'trash'); leaveRoom(); } }
 
     document.addEventListener('visibilitychange', () => {
       if (!state.code) return;
