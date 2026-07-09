@@ -12,9 +12,9 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Env, FileRecord, RoomRecord } from './types';
-import { kvKey, buildR2Key } from './types';
+import { buildR2Key } from './types';
 import { json, errorResponse, nowSec, isExpired, envInt, generateId, clamp, LIMITS } from './util';
-import { verifyAccess } from './rooms';
+import { verifyAccess, appendFileToRoom, loadRoom } from './rooms';
 
 // ── POST /api/room/:code/file — stream upload to R2 ────────────
 //
@@ -70,7 +70,8 @@ export async function uploadFile(request: Request, env: Env, code: string): Prom
     return errorResponse('upload_failed', 500);
   }
 
-  // Only now — after a successful put — write the KV metadata (no orphans).
+  // Only now — after a successful put — record metadata in the room doc
+  // (no orphans; also extends the room to outlive the file).
   const record: FileRecord = {
     id: fileId,
     filename,
@@ -81,13 +82,7 @@ export async function uploadFile(request: Request, env: Env, code: string): Prom
     expires_at: expiresAt,
     uploader: (url.searchParams.get('device_id') || 'anon').slice(0, 64),
   };
-  await env.AIRSHARE_KV.put(kvKey.file(code, fileId), JSON.stringify(record));
-
-  // Keep the room alive at least as long as this file (reaper consistency).
-  if (expiresAt > room.expires_at) {
-    const extended: RoomRecord = { ...room, expires_at: expiresAt };
-    await env.AIRSHARE_KV.put(kvKey.room(code), JSON.stringify(extended));
-  }
+  await appendFileToRoom(env, room, record);
 
   return json({ file: record }, 201);
 }
@@ -102,7 +97,8 @@ export async function downloadFile(
   const access = await verifyAccess(request, env, code);
   if (!access.ok) return access.response;
 
-  const record = await env.AIRSHARE_KV.get<FileRecord>(kvKey.file(code, id), 'json');
+  const room = access.room.code === code ? access.room : await loadRoom(env, code);
+  const record = room && (room.files || []).find((f) => f.id === id);
   if (!record || isExpired(record)) return errorResponse('file_not_found', 404);
 
   const obj = await env.AIRSHARE_R2.get(record.r2_key);

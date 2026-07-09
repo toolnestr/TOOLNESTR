@@ -9,29 +9,20 @@
 //  Both sweeps paginate, so >1000 R2 objects / KV keys are handled correctly.
 // ─────────────────────────────────────────────────────────────
 
-import type {
-  Env,
-  RoomRecord,
-  ItemRecord,
-  FileRecord,
-  PresenceRecord,
-  SignalRecord,
-} from './types';
-import { kvKey, parseR2Key } from './types';
-import { nowSec, envInt } from './util';
+import type { Env, RoomRecord, SignalRecord } from './types';
+import { parseR2Key } from './types';
+import { nowSec } from './util';
 
 export interface ReaperStats {
   r2_deleted: number;
-  file_meta_deleted: number;
   rooms_deleted: number;
-  items_deleted: number;
   signals_deleted: number;
   presence_deleted: number;
   scanned_r2: number;
   scanned_kv: number;
 }
 
-/** Sweep expired R2 blobs (and their KV file metadata). Paginated. */
+/** Sweep expired R2 blobs by parsing expires_at from the key (Fix A). Paginated. */
 async function sweepR2(env: Env, now: number, stats: ReaperStats): Promise<void> {
   let cursor: string | undefined;
   do {
@@ -39,61 +30,43 @@ async function sweepR2(env: Env, now: number, stats: ReaperStats): Promise<void>
     for (const obj of listing.objects) {
       stats.scanned_r2++;
       const parsed = parseR2Key(obj.key);
-      // Unparseable keys are left alone; a valid, expired key gets reaped.
       if (parsed && parsed.expiresAt <= now) {
         await env.AIRSHARE_R2.delete(obj.key).catch(() => {});
-        await env.AIRSHARE_KV.delete(kvKey.file(parsed.roomCode, parsed.fileId)).catch(() => {});
         stats.r2_deleted++;
-        stats.file_meta_deleted++;
       }
     }
     cursor = listing.truncated ? listing.cursor : undefined;
   } while (cursor);
 }
 
-/** Sweep expired KV records under the room: namespace. Paginated. */
+/**
+ * Sweep the KV `room:` namespace. Keys are:
+ *   room:{code}            → room doc (items/files inline)  → delete if expired
+ *   room:{code}:presence   → presence map                  → delete if orphaned
+ *   room:{code}:signal:{to}→ signal blob                   → delete if expired
+ * Runs infrequently (cron), so the one `list` here is well within budget.
+ */
 async function sweepKv(env: Env, now: number, stats: ReaperStats): Promise<void> {
-  const presenceTtl = envInt(env.PRESENCE_TTL_SECONDS, 15);
   let cursor: string | undefined;
-
   do {
     const listed = await env.AIRSHARE_KV.list({ prefix: 'room:', limit: 1000, cursor });
     for (const k of listed.keys) {
       stats.scanned_kv++;
       const name = k.name;
+      const parts = name.split(':'); // ['room', CODE, ...]
 
-      if (name.includes(':presence:')) {
-        const rec = await env.AIRSHARE_KV.get<PresenceRecord>(name, 'json');
-        if (!rec || now - rec.last_seen > presenceTtl) {
-          await env.AIRSHARE_KV.delete(name);
-          stats.presence_deleted++;
-        }
-      } else if (name.includes(':item:')) {
-        const rec = await env.AIRSHARE_KV.get<ItemRecord>(name, 'json');
-        if (!rec || rec.expires_at <= now) {
-          await env.AIRSHARE_KV.delete(name);
-          stats.items_deleted++;
-        }
-      } else if (name.includes(':signal:')) {
+      if (name.includes(':signal:')) {
         const rec = await env.AIRSHARE_KV.get<SignalRecord>(name, 'json');
-        if (!rec || rec.expires_at <= now) {
-          await env.AIRSHARE_KV.delete(name);
-          stats.signals_deleted++;
-        }
-      } else if (name.includes(':file:')) {
-        // File metadata whose blob is already gone/expired (belt-and-suspenders
-        // with sweepR2, which deletes meta by parsing the R2 key).
-        const rec = await env.AIRSHARE_KV.get<FileRecord>(name, 'json');
-        if (!rec || rec.expires_at <= now) {
-          if (rec) await env.AIRSHARE_R2.delete(rec.r2_key).catch(() => {});
-          await env.AIRSHARE_KV.delete(name);
-          stats.file_meta_deleted++;
-        }
-      } else {
-        // Bare `room:{code}` descriptor.
+        if (!rec || rec.expires_at <= now) { await env.AIRSHARE_KV.delete(name); stats.signals_deleted++; }
+      } else if (parts.length === 3 && parts[2] === 'presence') {
+        // Orphaned presence map (its room doc is gone/expired).
+        const room = await env.AIRSHARE_KV.get<RoomRecord>(`room:${parts[1]}`, 'json');
+        if (!room || room.expires_at <= now) { await env.AIRSHARE_KV.delete(name); stats.presence_deleted++; }
+      } else if (parts.length === 2) {
         const rec = await env.AIRSHARE_KV.get<RoomRecord>(name, 'json');
         if (!rec || rec.expires_at <= now) {
           await env.AIRSHARE_KV.delete(name);
+          await env.AIRSHARE_KV.delete(`${name}:presence`).catch(() => {});
           stats.rooms_deleted++;
         }
       }
@@ -107,9 +80,7 @@ export async function runReaper(env: Env): Promise<ReaperStats> {
   const now = nowSec();
   const stats: ReaperStats = {
     r2_deleted: 0,
-    file_meta_deleted: 0,
     rooms_deleted: 0,
-    items_deleted: 0,
     signals_deleted: 0,
     presence_deleted: 0,
     scanned_r2: 0,

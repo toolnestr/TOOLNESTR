@@ -1,20 +1,25 @@
 // ─────────────────────────────────────────────────────────────
-//  AirShare — Rooms, Presence & Items (Phase 2)
-//  All persistence goes through KV with an in-value `expires_at`
-//  (Fix A: never native TTL for room/item/file records). Reads
-//  filter out expired records so users never see stale data between
-//  the 5-minute Cron sweeps.
+//  AirShare — Rooms, Presence & Items
+//
+//  KV free-plan limits `KV.list` to 1,000 ops/day, so the hot path must
+//  NEVER list. Instead:
+//   • items + file metadata live INLINE in the room record (`room:{code}`)
+//     → reading a room is one `get`.
+//   • presence is a single map at `room:{code}:presence` → one `get`.
+//   • signals stay as `room:{code}:signal:{to}` (get/put, no list).
+//  Reads (100k/day) and writes (1k/day) are the budgets; lists are avoided.
 // ─────────────────────────────────────────────────────────────
 
 import type {
   Env,
   RoomRecord,
   PresenceRecord,
+  PresenceMap,
   ItemRecord,
   ItemKind,
   FileRecord,
 } from './types';
-import { kvKey, kvPrefix } from './types';
+import { kvKey } from './types';
 import {
   json,
   errorResponse,
@@ -46,13 +51,20 @@ function rateCfg(env: Env): RateLimitConfig {
   };
 }
 
+/** Load + normalize a room record (guarantees items/files arrays exist). */
+async function loadRoom(env: Env, code: string): Promise<RoomRecord | null> {
+  const room = await env.AIRSHARE_KV.get<RoomRecord>(kvKey.room(code), 'json');
+  if (!room) return null;
+  if (!Array.isArray(room.items)) room.items = [];
+  if (!Array.isArray(room.files)) room.files = [];
+  return room;
+}
+
 /**
- * Load a room and verify the caller may access it. Enforces:
- *  - valid code format,
- *  - room exists and is not expired,
- *  - correct PIN when the room is protected (Fix D),
- *  - per-IP brute-force throttle on failed attempts.
- * A wrong PIN or a guess at a non-existent code counts as a failure.
+ * Load a room and verify the caller may access it (valid code, exists, not
+ * expired, correct PIN), with a per-IP brute-force throttle. A wrong PIN counts
+ * as a failure; a plain "not found" does NOT (so legitimate joins that race KV
+ * propagation aren't penalised — the 6-char code space makes enumeration moot).
  */
 export async function verifyAccess(
   request: Request,
@@ -67,13 +79,11 @@ export async function verifyAccess(
   }
 
   if (!isValidRoomCode(code)) {
-    await recordFailure(env, ip, cfg);
     return { ok: false, response: errorResponse('room_not_found', 404) };
   }
 
-  const room = await env.AIRSHARE_KV.get<RoomRecord>(kvKey.room(code), 'json');
+  const room = await loadRoom(env, code);
   if (!room || isExpired(room)) {
-    await recordFailure(env, ip, cfg);
     return { ok: false, response: errorResponse('room_not_found', 404) };
   }
 
@@ -89,46 +99,18 @@ export async function verifyAccess(
   return { ok: true, room };
 }
 
-// ── Presence helpers ───────────────────────────────────────────
+// ── Presence (single map key, no list) ─────────────────────────
 
-/** List presence records for a room that are still "online" (within TTL). */
-async function activePresence(env: Env, code: string): Promise<PresenceRecord[]> {
-  const ttl = envInt(env.PRESENCE_TTL_SECONDS, 15);
-  const now = nowSec();
-  const listed = await env.AIRSHARE_KV.list({ prefix: kvPrefix.presence(code) });
-  const out: PresenceRecord[] = [];
-  for (const k of listed.keys) {
-    const rec = await env.AIRSHARE_KV.get<PresenceRecord>(k.name, 'json');
-    if (rec && now - rec.last_seen <= ttl) out.push(rec);
-  }
-  return out.sort((a, b) => a.last_seen - b.last_seen);
+async function getPresence(env: Env, code: string): Promise<PresenceMap> {
+  return (await env.AIRSHARE_KV.get<PresenceMap>(kvKey.presence(code), 'json')) || {};
+}
+function activePresence(map: PresenceMap, ttl: number, now: number): PresenceRecord[] {
+  return Object.values(map)
+    .filter((p) => now - p.last_seen <= ttl)
+    .sort((a, b) => a.last_seen - b.last_seen);
 }
 
-/** List non-expired items for a room. */
-async function activeItems(env: Env, code: string): Promise<ItemRecord[]> {
-  const now = nowSec();
-  const listed = await env.AIRSHARE_KV.list({ prefix: kvPrefix.item(code) });
-  const out: ItemRecord[] = [];
-  for (const k of listed.keys) {
-    const rec = await env.AIRSHARE_KV.get<ItemRecord>(k.name, 'json');
-    if (rec && !isExpired(rec, now)) out.push(rec);
-  }
-  return out.sort((a, b) => b.created_at - a.created_at);
-}
-
-/** List non-expired file metadata records for a room (R2 fallback uploads). */
-export async function activeFiles(env: Env, code: string): Promise<FileRecord[]> {
-  const now = nowSec();
-  const listed = await env.AIRSHARE_KV.list({ prefix: kvPrefix.file(code) });
-  const out: FileRecord[] = [];
-  for (const k of listed.keys) {
-    const rec = await env.AIRSHARE_KV.get<FileRecord>(k.name, 'json');
-    if (rec && !isExpired(rec, now)) out.push(rec);
-  }
-  return out.sort((a, b) => b.created_at - a.created_at);
-}
-
-/** Strip the PIN hash before returning a room to clients. */
+/** Strip the PIN hash + inline arrays before returning room meta to clients. */
 function publicRoom(room: RoomRecord) {
   return {
     code: room.code,
@@ -140,62 +122,56 @@ function publicRoom(room: RoomRecord) {
   };
 }
 
+/** Append a file record to a room doc (used by the R2 upload handler). */
+export async function appendFileToRoom(env: Env, room: RoomRecord, file: FileRecord): Promise<void> {
+  const now = nowSec();
+  const files = (room.files || []).filter((f) => !isExpired(f, now));
+  files.push(file);
+  const updated: RoomRecord = {
+    ...room,
+    files,
+    expires_at: Math.max(room.expires_at, file.expires_at),
+  };
+  await env.AIRSHARE_KV.put(kvKey.room(room.code), JSON.stringify(updated));
+}
+export { loadRoom };
+
 // ── POST /api/room — create a room ─────────────────────────────
 
 interface CreateRoomBody {
   pin?: string;
   code?: string;
   max_devices?: number;
-  ttl_seconds?: number; // room lifetime
-  default_ttl_seconds?: number; // default expiry for items posted here
+  ttl_seconds?: number;
+  default_ttl_seconds?: number;
 }
 
 export async function createRoom(request: Request, env: Env): Promise<Response> {
   const body = (await readJson<CreateRoomBody>(request)) || {};
   const now = nowSec();
 
-  const ttl = clamp(
-    envInt(body.ttl_seconds as unknown as string, LIMITS.ROOM_TTL_DEFAULT),
-    60,
-    LIMITS.ROOM_TTL_MAX
-  );
-  const defaultItemTtl = clamp(
-    envInt(body.default_ttl_seconds as unknown as string, LIMITS.ITEM_TTL_DEFAULT),
-    60,
-    LIMITS.ITEM_TTL_MAX
-  );
-  const maxDevices = clamp(
-    envInt(body.max_devices as unknown as string, LIMITS.MAX_DEVICES_DEFAULT),
-    0,
-    100
-  );
+  const ttl = clamp(envInt(body.ttl_seconds as unknown as string, LIMITS.ROOM_TTL_DEFAULT), 60, LIMITS.ROOM_TTL_MAX);
+  const defaultItemTtl = clamp(envInt(body.default_ttl_seconds as unknown as string, LIMITS.ITEM_TTL_DEFAULT), 60, LIMITS.ITEM_TTL_MAX);
+  const maxDevices = clamp(envInt(body.max_devices as unknown as string, LIMITS.MAX_DEVICES_DEFAULT), 0, 100);
 
-  // Optional custom code, else generate a guaranteed-unique one.
   let code: string;
   if (body.code != null && body.code !== '') {
     const custom = String(body.code).toUpperCase();
     if (!isValidRoomCode(custom)) {
       return errorResponse('invalid_code', 400, 'Codes are 6–12 uppercase alphanumeric chars.');
     }
-    const existing = await env.AIRSHARE_KV.get(kvKey.room(custom));
-    if (existing) return errorResponse('code_taken', 409);
+    if (await env.AIRSHARE_KV.get(kvKey.room(custom))) return errorResponse('code_taken', 409);
     code = custom;
   } else {
     code = '';
     for (let attempt = 0; attempt < LIMITS.CODE_UNIQUE_RETRIES; attempt++) {
       const candidate = generateRoomCode();
-      const existing = await env.AIRSHARE_KV.get(kvKey.room(candidate));
-      if (!existing) {
-        code = candidate;
-        break;
-      }
+      if (!(await env.AIRSHARE_KV.get(kvKey.room(candidate)))) { code = candidate; break; }
     }
     if (!code) return errorResponse('code_generation_failed', 503);
   }
 
-  const pinHash = body.pin
-    ? await sha256Hex(String(body.pin).slice(0, LIMITS.CUSTOM_PIN_MAX))
-    : null;
+  const pinHash = body.pin ? await sha256Hex(String(body.pin).slice(0, LIMITS.CUSTOM_PIN_MAX)) : null;
 
   const room: RoomRecord = {
     code,
@@ -204,31 +180,28 @@ export async function createRoom(request: Request, env: Env): Promise<Response> 
     pin_hash: pinHash,
     max_devices: maxDevices,
     default_ttl_seconds: defaultItemTtl,
+    items: [],
+    files: [],
   };
 
   await env.AIRSHARE_KV.put(kvKey.room(code), JSON.stringify(room));
   return json({ room: publicRoom(room) }, 201);
 }
 
-// ── GET /api/room/:code — room state, items & presence ─────────
+// ── GET /api/room/:code — room state (1 get room + 1 get presence) ──
 
 export async function getRoom(request: Request, env: Env, code: string): Promise<Response> {
   const access = await verifyAccess(request, env, code);
   if (!access.ok) return access.response;
+  const room = access.room;
+  const now = nowSec();
+  const ttl = envInt(env.PRESENCE_TTL_SECONDS, 15);
 
-  const [items, presence, files] = await Promise.all([
-    activeItems(env, code),
-    activePresence(env, code),
-    activeFiles(env, code),
-  ]);
+  const items = (room.items || []).filter((i) => !isExpired(i, now)).sort((a, b) => b.created_at - a.created_at);
+  const files = (room.files || []).filter((f) => !isExpired(f, now)).sort((a, b) => b.created_at - a.created_at);
+  const presence = activePresence(await getPresence(env, code), ttl, now);
 
-  return json({
-    room: publicRoom(access.room),
-    items,
-    presence,
-    files,
-    server_time: nowSec(),
-  });
+  return json({ room: publicRoom(room), items, files, presence, server_time: now });
 }
 
 // ── POST /api/room/:code/heartbeat — presence ping ─────────────
@@ -250,27 +223,31 @@ export async function heartbeat(request: Request, env: Env, code: string): Promi
   }
   const deviceId = body.device_id.slice(0, 64);
   const now = nowSec();
+  const ttl = envInt(env.PRESENCE_TTL_SECONDS, 15);
 
-  // Enforce the device cap: count distinct active devices; a device that is
-  // already present may always re-ping (it isn't a new join).
-  if (room.max_devices > 0) {
-    const active = await activePresence(env, code);
-    const alreadyHere = active.some((p) => p.device_id === deviceId);
-    if (!alreadyHere && active.length >= room.max_devices) {
-      return errorResponse('room_full', 403);
-    }
+  const map = await getPresence(env, code);
+  // Prune long-dead entries so the map can't grow unbounded.
+  for (const id of Object.keys(map)) {
+    const p = map[id];
+    if (!p || now - p.last_seen > ttl * 6) delete map[id];
   }
 
-  const presence: PresenceRecord = {
+  // Device cap (a device already present may always re-ping).
+  if (room.max_devices > 0) {
+    const here = map[deviceId] && now - map[deviceId]!.last_seen <= ttl;
+    const others = Object.values(map).filter((p) => p.device_id !== deviceId && now - p.last_seen <= ttl).length;
+    if (!here && others >= room.max_devices) return errorResponse('room_full', 403);
+  }
+
+  map[deviceId] = {
     device_id: deviceId,
     label: (body.label || 'Device').slice(0, LIMITS.LABEL_MAX),
     last_seen: now,
     foreground: body.foreground !== false,
   };
-  await env.AIRSHARE_KV.put(kvKey.presence(code, deviceId), JSON.stringify(presence));
+  await env.AIRSHARE_KV.put(kvKey.presence(code), JSON.stringify(map));
 
-  const active = await activePresence(env, code);
-  return json({ ok: true, presence: active, server_time: now });
+  return json({ ok: true, presence: activePresence(map, ttl, now), server_time: now });
 }
 
 // ── POST /api/room/:code/item — add text / link ────────────────
@@ -301,11 +278,7 @@ export async function addItem(request: Request, env: Env, code: string): Promise
   }
 
   const now = nowSec();
-  const ttl = clamp(
-    envInt(body.ttl_seconds as unknown as string, room.default_ttl_seconds),
-    60,
-    LIMITS.ITEM_TTL_MAX
-  );
+  const ttl = clamp(envInt(body.ttl_seconds as unknown as string, room.default_ttl_seconds), 60, LIMITS.ITEM_TTL_MAX);
   const item: ItemRecord = {
     id: generateId(),
     kind,
@@ -315,30 +288,30 @@ export async function addItem(request: Request, env: Env, code: string): Promise
     author: (body.device_id || 'anon').slice(0, 64),
   };
 
-  await env.AIRSHARE_KV.put(kvKey.item(code, item.id), JSON.stringify(item));
-
-  // Keep the room alive at least as long as its longest-lived item so items
-  // never outlive their room (and the Cron reaper has consistent state).
-  if (item.expires_at > room.expires_at) {
-    const extended: RoomRecord = { ...room, expires_at: item.expires_at };
-    await env.AIRSHARE_KV.put(kvKey.room(code), JSON.stringify(extended));
-  }
+  // Append to the room doc (drop expired items while we're writing it).
+  const items = (room.items || []).filter((i) => !isExpired(i, now));
+  items.push(item);
+  const updated: RoomRecord = { ...room, items, expires_at: Math.max(room.expires_at, item.expires_at) };
+  await env.AIRSHARE_KV.put(kvKey.room(code), JSON.stringify(updated));
 
   return json({ item }, 201);
 }
 
-// ── DELETE /api/room/:code/item/:id — remove an item ───────────
+// ── DELETE /api/room/:code/item/:id — remove an item or file ───
 
-export async function deleteItem(
-  request: Request,
-  env: Env,
-  code: string,
-  id: string
-): Promise<Response> {
+export async function deleteItem(request: Request, env: Env, code: string, id: string): Promise<Response> {
   const access = await verifyAccess(request, env, code);
   if (!access.ok) return access.response;
+  const room = access.room;
 
-  // Any room member may delete (spec 4.4). Deleting a missing key is a no-op.
-  await env.AIRSHARE_KV.delete(kvKey.item(code, id));
+  const items = (room.items || []).filter((i) => i.id !== id);
+  const files = (room.files || []).filter((f) => f.id !== id);
+  const changed = items.length !== (room.items || []).length || files.length !== (room.files || []).length;
+
+  if (changed) {
+    const removedFile = (room.files || []).find((f) => f.id === id);
+    if (removedFile) await env.AIRSHARE_R2.delete(removedFile.r2_key).catch(() => {});
+    await env.AIRSHARE_KV.put(kvKey.room(code), JSON.stringify({ ...room, items, files }));
+  }
   return json({ ok: true });
 }

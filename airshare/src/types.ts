@@ -41,7 +41,18 @@ export interface RoomRecord extends Expirable {
   max_devices: number;
   /** Default expiry window (seconds) applied to new items posted here. */
   default_ttl_seconds: number;
+  /**
+   * Text/link items and file metadata live INLINE in the room record — a
+   * single KV `get` reads the whole room, so hot-path reads never call
+   * `KV.list` (which is capped at 1,000/day on the free plan). Presence is the
+   * only sub-key (`room:{code}:presence`), a single map, also read via `get`.
+   */
+  items: ItemRecord[];
+  files: FileRecord[];
 }
+
+/** KV key `room:{code}:presence` — one map of device_id → presence. */
+export type PresenceMap = Record<string, PresenceRecord>;
 
 // ── Presence ───────────────────────────────────────────────────
 
@@ -140,18 +151,9 @@ export const ROOM_CODE_LENGTH = 6;
 /** Namespaced KV key builders — single source of truth for the key scheme. */
 export const kvKey = {
   room: (code: string): string => `room:${code}`,
-  presence: (code: string, deviceId: string): string => `room:${code}:presence:${deviceId}`,
-  item: (code: string, id: string): string => `room:${code}:item:${id}`,
-  file: (code: string, id: string): string => `room:${code}:file:${id}`,
+  presence: (code: string): string => `room:${code}:presence`,
   signal: (code: string, toDevice: string): string => `room:${code}:signal:${toDevice}`,
   rateLimit: (ip: string): string => `ratelimit:${ip}`,
-} as const;
-
-/** KV list prefixes, used to enumerate a room's items/presence/files. */
-export const kvPrefix = {
-  presence: (code: string): string => `room:${code}:presence:`,
-  item: (code: string): string => `room:${code}:item:`,
-  file: (code: string): string => `room:${code}:file:`,
 } as const;
 
 /**
