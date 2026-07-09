@@ -417,8 +417,8 @@ const howToSchema = {
             </div>
           </div>
           <div class="eq-filter-group">
-            <div class="eq-filter-label">Min Magnitude <span class="eq-mag-val" id="eqMagVal">M 2.5+</span></div>
-            <input type="range" id="eqMinMag" min="0" max="8" step="0.5" value="2.5">
+            <div class="eq-filter-label">Min Magnitude <span class="eq-mag-val" id="eqMagVal">M 1+</span></div>
+            <input type="range" id="eqMinMag" min="0" max="8" step="0.5" value="1">
           </div>
           <div class="eq-search-wrap">
             <span class="eq-search-icon">🔍</span>
@@ -501,8 +501,8 @@ const howToSchema = {
           </select>
         </div>
         <div class="eq-mlp-mag">
-          <div class="eq-filter-label" style="display:flex;justify-content:space-between">Min Magnitude <span class="eq-mag-val" id="eqMMagVal">M 2.5+</span></div>
-          <input type="range" id="eqMMinMag" min="0" max="8" step="0.5" value="2.5">
+          <div class="eq-filter-label" style="display:flex;justify-content:space-between">Min Magnitude <span class="eq-mag-val" id="eqMMagVal">M 1+</span></div>
+          <input type="range" id="eqMMinMag" min="0" max="8" step="0.5" value="1">
         </div>
       </div>
       <div class="eq-quake-list" id="eqMQuakeList"></div>
@@ -663,13 +663,17 @@ const howToSchema = {
     else if (sort==='depth') f.sort((a,b)=>b.geometry.coordinates[2]-a.geometry.coordinates[2]);
     else f.sort((a,b)=>b.properties.time-a.properties.time);
 
-    const count = `${f.length.toLocaleString()} earthquakes`;
+    const LIST_CAP = 300;
+    const magTag = `M${minMag}+`;
+    const count = f.length > LIST_CAP
+      ? `Showing ${LIST_CAP} of ${f.length.toLocaleString()} · ${magTag}`
+      : `${f.length.toLocaleString()} earthquakes · ${magTag}`;
     document.getElementById('eqListCount').textContent  = count;
     document.getElementById('eqMListCount').textContent = count;
 
     const html = f.length === 0
       ? `<div class="eq-empty-state"><div class="eq-empty-icon">🔍</div><div class="eq-empty-text">No earthquakes match your filters</div></div>`
-      : f.slice(0,200).map(q => {
+      : f.slice(0,LIST_CAP).map(q => {
           const p   = q.properties;
           const mag = (p.mag||0).toFixed(1);
           const dep = q.geometry.coordinates[2]?.toFixed(0)||'?';
@@ -849,8 +853,14 @@ const howToSchema = {
   }
 
   function eqInitApp() {
-    eqMap = L.map('eq-map', { center: [20, 0], zoom: 2, minZoom: 1, maxZoom: 18, zoomControl: false, attributionControl: false });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(eqMap);
+    eqMap = L.map('eq-map', {
+      center: [20, 0], zoom: 2, minZoom: 2, maxZoom: 18,
+      zoomControl: false, attributionControl: false,
+      worldCopyJump: true,                          // wrap smoothly instead of showing void
+      maxBounds: [[-85, -180], [85, 180]],          // don't pan past the tiled world (black edges)
+      maxBoundsViscosity: 1.0,
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, bounds: [[-85, -180], [85, 180]] }).addTo(eqMap);
 
     // Match tool height to the real header height, and keep map sized correctly on resize
     eqSizeWrap();
