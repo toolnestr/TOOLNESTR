@@ -603,6 +603,8 @@ const howToSchema = {
       els.roomCode.textContent = code;
       renderQR(code); applyState(data); startLoops();
       const url = new URL(location.href); url.searchParams.set('room', code); history.replaceState({}, '', url);
+      // Persist so a refresh rejoins the same room instead of dropping to landing.
+      try { sessionStorage.setItem('dropspot_room', JSON.stringify({ code, pin: state.pin || null })); } catch {}
       toast('You are in room ' + code);
     }
     function renderQR(code) {
@@ -990,6 +992,7 @@ const howToSchema = {
     function leaveRoom() {
       stopLoops(); state.code = null; state.pin = null; state.room = null; state.lastData = null;
       state.skew = 0; state.deletedIds = new Set(); state.optimistic = {}; state.received = {}; state.xfers = {}; state.sendQueue = []; state.sending = false;
+      try { sessionStorage.removeItem('dropspot_room'); } catch {}
       try { if (state.rtc && state.rtc.pc) state.rtc.pc.close(); } catch {} state.rtc = null;
       const rc = document.getElementById('received'); if (rc) rc.innerHTML = '';
       const tf = document.getElementById('transfers'); if (tf) tf.innerHTML = '';
@@ -1022,6 +1025,25 @@ const howToSchema = {
     });
     window.addEventListener('beforeunload', () => stopLoops());
 
-    (function initFromUrl() { const code = new URLSearchParams(location.search).get('room'); if (code) { els.joinCode.value = code.toUpperCase(); els.joinCode.scrollIntoView({ block: 'center' }); } })();
+    // On load, rejoin the room from the URL (?room=) or the persisted session,
+    // so a refresh restores the room + its server-side content instead of
+    // dropping to the landing page.
+    (async function autoResume() {
+      let code = new URLSearchParams(location.search).get('room');
+      let pin = null;
+      try { const s = JSON.parse(sessionStorage.getItem('dropspot_room') || 'null'); if (s && (!code || s.code === code)) { code = code || s.code; pin = s.pin || null; } } catch {}
+      if (!code) return;
+      code = code.toUpperCase();
+      els.joinCode.value = code;
+      state.pin = pin;
+      try {
+        await enterRoom(code);
+      } catch (e) {
+        state.pin = null;
+        if (e.status === 401) { els.joinPinField.classList.remove('ds-hidden'); toast('Enter the room PIN to rejoin.'); els.joinCode.scrollIntoView({ block: 'center' }); }
+        else if (e.status === 404) { try { sessionStorage.removeItem('dropspot_room'); } catch {} const url = new URL(location.href); url.searchParams.delete('room'); history.replaceState({}, '', url); toast('That room has expired.', 'trash'); }
+        else { els.joinCode.scrollIntoView({ block: 'center' }); }
+      }
+    })();
   </script>
 </BaseLayout>
