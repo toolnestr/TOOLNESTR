@@ -10,7 +10,7 @@ const faqs = [
   { q: 'Does it work across different networks?', a: 'Yes. Unlike local-only tools that need everyone on the same Wi-Fi, Dropspot works across any network using room codes. One person can be on home Wi-Fi and another on mobile data on the other side of the world — as long as both have the room code, they share the same room. Text, links and files all sync through secure cloud storage, so everyone in the room can grab them on any network.' },
   { q: 'How are files transferred?', a: 'Files up to 50 MB each are uploaded to fast, secure temporary storage — they appear for everyone in the room to download, work across any network, survive a page refresh, and are kept for about an hour. Each room can hold up to 100 MB of files at a time. Just drag a file onto the drop zone or click to choose one.' },
   { q: 'Is my data private?', a: 'Text, links and files are stored only for the lifetime you choose and are then permanently deleted. Uploads go to private storage that is only reachable through the room and are auto-deleted on expiry. You can also protect any room with a PIN and delete any item manually at any time.' },
-  { q: 'How long does content stay available?', a: 'You choose when you create the room: 10 minutes, 1 hour, 24 hours, or a custom time. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
+  { q: 'How long does content stay available?', a: 'You choose when you create the room: from 10 minutes up to 8 hours. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
   { q: 'Why does it warn me about backgrounding the tab?', a: 'Browsers pause or throttle background tabs to save battery. Dropspot sends a small heartbeat every few seconds so others can see you are online in the room. If you switch tabs or minimise, that heartbeat pauses and you will drop off the live device list — so keep the tab visible to stay shown as present.' },
   { q: 'Is there a file size limit?', a: 'Each file can be up to 50 MB, and a single room can hold up to 100 MB of files at a time. Uploads use secure temporary storage — fast, reliable, downloadable by everyone in the room, and kept for about an hour before they auto-expire.' },
 ];
@@ -385,14 +385,15 @@ const howToSchema = {
               <select class="ds-select" id="createTtl">
                 <option value="600">10 minutes</option>
                 <option value="3600" selected>1 hour</option>
-                <option value="86400">24 hours</option>
+                <option value="14400">4 hours</option>
+                <option value="28800">8 hours</option>
               </select>
             </div>
             <div class="ds-field">
               <label for="createMax">Max devices</label>
               <select class="ds-select" id="createMax">
-                <option value="0">Unlimited</option>
-                <option value="2" selected>2</option>
+                <option value="0" selected>Unlimited</option>
+                <option value="2">2</option>
                 <option value="5">5</option>
                 <option value="10">10</option>
               </select>
@@ -486,7 +487,7 @@ const howToSchema = {
               <option value="">Room default</option>
               <option value="600">10 min</option>
               <option value="3600">1 hour</option>
-              <option value="86400">24 hours</option>
+              <option value="28800">8 hours</option>
             </select>
             <button class="ds-btn" id="shareBtn">Share</button>
           </div>
@@ -840,9 +841,20 @@ const howToSchema = {
         .then((blob) => { const u = URL.createObjectURL(blob); a.href = u; a.download = f.filename; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); })
         .catch(() => toast('Download failed', 'trash'));
     }
-    function fetchR2Blob(f) {
-      return fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {} })
-        .then((r) => { if (!r.ok) throw new Error('dl'); return r.blob(); });
+    // Fetch a file's bytes while streaming the response body so we can report
+    // real download progress (calling onBytes as chunks arrive) instead of only
+    // jumping when each whole file finishes.
+    async function fetchBlobWithProgress(f, onBytes) {
+      const res = await fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {} });
+      if (!res.ok) throw new Error('dl');
+      if (!res.body || !res.body.getReader) return res.blob(); // no streaming support → still completes
+      const reader = res.body.getReader(); const chunks = [];
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); if (value) onBytes(value.length);
+      }
+      return new Blob(chunks);
     }
     function triggerDownload(blob, name) {
       const a = document.createElement('a'); const u = URL.createObjectURL(blob);
@@ -874,11 +886,13 @@ const howToSchema = {
       setTransfer(id, 0, 'Downloading…');
       try {
         const total = sel.reduce((s, f) => s + (f.size || 0), 0) || 1;
-        let done = 0; const blobs = [];
+        let downloaded = 0, lastPct = -1; const blobs = [];
         for (let i = 0; i < sel.length; i++) {
-          blobs.push(await fetchR2Blob(sel[i]));
-          done += sel[i].size || 0;
-          setTransfer(id, Math.min(90, Math.round((done / total) * 90)), 'Downloading ' + (i + 1) + '/' + sel.length + '…');
+          blobs.push(await fetchBlobWithProgress(sel[i], (n) => {
+            downloaded += n;
+            const pct = Math.min(90, Math.round((downloaded / total) * 90));
+            if (pct !== lastPct) { lastPct = pct; setTransfer(id, pct, 'Downloading ' + fmtSize(downloaded) + ' / ' + fmtSize(total)); }
+          }));
         }
         const fflate = await loadZip();
         if (!fflate || !(fflate.zip || fflate.zipSync)) { removeTransfer(id); sel.forEach(downloadFile); return; } // esm.sh blocked → individual downloads

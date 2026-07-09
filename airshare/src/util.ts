@@ -111,15 +111,15 @@ export const LIMITS = {
   TEXT_MAX: 10_000, // chars for a text item
   LINK_MAX: 2_048, // chars for a link item
   LABEL_MAX: 40, // chars for a device label
-  ROOM_TTL_DEFAULT: 86_400, // 24h room lifetime
-  ROOM_TTL_MAX: 604_800, // 7d hard cap
+  ROOM_TTL_DEFAULT: 3_600, // 1h room lifetime
+  ROOM_TTL_MAX: 28_800, // 8h hard cap
   ITEM_TTL_DEFAULT: 3_600, // 1h default item expiry
-  ITEM_TTL_MAX: 604_800, // 7d hard cap
+  ITEM_TTL_MAX: 28_800, // 8h hard cap (can't outlive the room cap)
   FILE_TTL_DEFAULT: 3_600, // 1h — stored files are transient transfer artifacts
   FILE_TTL_MAX: 7_200, // 2h hard cap on stored files (bounds R2 dwell time)
   ROOM_FILE_COUNT_MAX: 30, // max concurrent stored files per room
   ROOM_BYTES_MAX: 104_857_600, // 100 MB total stored per room
-  MAX_DEVICES_DEFAULT: 10, // 0 = unlimited
+  MAX_DEVICES_DEFAULT: 0, // 0 = unlimited
   CODE_UNIQUE_RETRIES: 6, // attempts to find a free room code
   CUSTOM_PIN_MAX: 32,
 } as const;
