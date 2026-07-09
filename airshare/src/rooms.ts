@@ -201,7 +201,17 @@ export async function getRoom(request: Request, env: Env, code: string): Promise
   const files = (room.files || []).filter((f) => !isExpired(f, now)).sort((a, b) => b.created_at - a.created_at);
   const presence = activePresence(await getPresence(env, code), ttl, now);
 
-  return json({ room: publicRoom(room), items, files, presence, server_time: now });
+  // Storage budget so the client can render an accurate capacity bar and know
+  // the per-file / per-room limits without hardcoding them.
+  const storage = {
+    used: files.reduce((sum, f) => sum + (f.size || 0), 0),
+    max: LIMITS.ROOM_BYTES_MAX,
+    file_max: envInt(env.MAX_FILE_BYTES, 52_428_800),
+    file_count: files.length,
+    file_count_max: LIMITS.ROOM_FILE_COUNT_MAX,
+  };
+
+  return json({ room: publicRoom(room), items, files, presence, storage, server_time: now });
 }
 
 // ── POST /api/room/:code/heartbeat — presence ping ─────────────

@@ -8,7 +8,6 @@ import type { Env } from './types';
 import { CORS_HEADERS, errorResponse } from './util';
 import { createRoom, getRoom, heartbeat, addItem, deleteItem } from './rooms';
 import { uploadFile, downloadFile } from './files';
-import { postSignal, getSignal } from './signal';
 import { runReaper } from './reaper';
 
 /** Split a normalized pathname into segments (no leading/trailing slash). */
@@ -62,16 +61,6 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (seg.length === 5 && seg[3] === 'file' && method === 'GET') {
       return downloadFile(request, env, code, decodeURIComponent(seg[4]!));
     }
-
-    // POST /api/room/:code/signal  (publish complete offer/answer — Fix B)
-    if (seg.length === 4 && seg[3] === 'signal' && method === 'POST') {
-      return postSignal(request, env, code);
-    }
-
-    // GET /api/room/:code/signal?device_id=me  (consume my pending signal)
-    if (seg.length === 4 && seg[3] === 'signal' && method === 'GET') {
-      return getSignal(request, env, code);
-    }
   }
 
   return errorResponse('not_found', 404);
@@ -92,7 +81,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Every 5 minutes: reap expired R2 blobs + KV records (Fix A).
+    // Every 15 minutes: reap expired R2 blobs + KV records (Fix A).
     ctx.waitUntil(runReaper(env));
   },
 } satisfies ExportedHandler<Env>;

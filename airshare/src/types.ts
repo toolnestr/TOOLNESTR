@@ -152,7 +152,6 @@ export const ROOM_CODE_LENGTH = 6;
 export const kvKey = {
   room: (code: string): string => `room:${code}`,
   presence: (code: string): string => `room:${code}:presence`,
-  signal: (code: string, toDevice: string): string => `room:${code}:signal:${toDevice}`,
   rateLimit: (ip: string): string => `ratelimit:${ip}`,
 } as const;
 

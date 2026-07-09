@@ -35,7 +35,7 @@ export async function uploadFile(request: Request, env: Env, code: string): Prom
   if (!filename) return errorResponse('filename_required', 400);
   if (!request.body) return errorResponse('empty_body', 400);
 
-  const maxBytes = envInt(env.MAX_FILE_BYTES, 10_485_760); // 10 MB instant-share cap
+  const maxBytes = envInt(env.MAX_FILE_BYTES, 52_428_800); // 50 MB per-file cap
 
   // R2 needs a known length; require Content-Length and enforce the cap on it.
   const declared = Number(request.headers.get('Content-Length'));
