@@ -377,7 +377,6 @@ const howToSchema = {
         EarthPulse
       </div>
       <div class="eq-header-right">
-        <span class="eq-updated-text" id="eqUpdatedText">Fetching...</span>
         <div class="eq-live-pill"><div class="eq-live-dot"></div>LIVE</div>
       </div>
     </header>
@@ -594,10 +593,10 @@ const howToSchema = {
   const eqMagSize  = m => m>=7?22:m>=6?17:m>=5?13:m>=2.5?9:6;
 
   function eqTimeAgo(ts) {
-    const s = (Date.now()-ts)/1000;
-    if(s<60) return `${Math.floor(s)}s ago`;
-    if(s<3600) return `${Math.floor(s/60)}m ago`;
-    if(s<86400) return `${Math.floor(s/3600)}h ago`;
+    const s = (Date.now() - ts) / 1000;
+    if (!isFinite(s) || s < 45) return 'just now';   // guard clock skew / future timestamps
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
     return `${Math.floor(s/86400)}d ago`;
   }
   function eqFmtTime(ts) {
@@ -628,13 +627,8 @@ const howToSchema = {
       const data = await res.json();
       eqAllQuakes  = data.features.filter(f => f.properties.mag !== null);
       eqLastFetchTime = Date.now();
-      document.getElementById('eqUpdatedText').textContent = 'Updated ' + eqTimeAgo(eqLastFetchTime);
     } catch(e) {
-      const txt = eqLastFetchTime
-        ? 'Updated ' + eqTimeAgo(eqLastFetchTime) + ' · retrying'
-        : 'Retrying...';
-      document.getElementById('eqUpdatedText').textContent = txt;
-      setTimeout(eqFetchQuakes, 5000);
+      setTimeout(eqFetchQuakes, 5000); // transient failure — keep old data, retry shortly
       return;
     }
     // Rendering is outside the fetch try/catch — a Leaflet error here
@@ -834,8 +828,9 @@ const howToSchema = {
   function eqRefreshData() {
     const btn = document.getElementById('eqRefreshBtn');
     btn.classList.add('spinning');
-    eqAllQuakes = [];
-    eqRenderList(); eqRenderMarkers(); eqFetchQuakes();
+    // Keep the current data on screen and let a successful fetch replace it —
+    // clearing first made the list flash empty (and stay empty if the fetch lagged/failed).
+    eqFetchQuakes();
     setTimeout(()=>btn.classList.remove('spinning'), 1000);
   }
 
@@ -920,7 +915,7 @@ const howToSchema = {
     s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     s.onload = eqInitApp;
     s.onerror = function() {
-      document.getElementById('eqUpdatedText').textContent = 'Map library failed to load';
+      if (typeof eqShowToast === 'function') eqShowToast('⚠️', 'Map failed to load', 'Please check your connection and refresh.', 8000);
     };
     document.head.appendChild(s);
   })();
