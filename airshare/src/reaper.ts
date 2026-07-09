@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 //  AirShare — Cron reaper (Phase 4)
 //
-//  Runs every 5 minutes. Two sweeps:
+//  Runs every 15 minutes (see wrangler cron). Two sweeps:
 //   1) R2: list objects, parse expires_at straight FROM THE KEY (Fix A — no KV
 //      read needed to know expiry), delete expired blobs and their KV metadata.
 //   2) KV: delete expired room/item/signal records and stale presence.

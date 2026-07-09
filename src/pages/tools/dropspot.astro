@@ -3,16 +3,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const title = 'Dropspot – Cross-Network File & Text Sharing (No Login)';
 const description =
-  'A shared spot to drop files, links and text across any network with a simple room code. No login, no app. Text & links sync instantly; files transfer peer-to-peer or fall back to secure storage. Works across Wi-Fi, mobile data and different networks.';
+  'A shared spot to drop files, links and text across any network with a simple room code. No login, no app. Text, links and files up to 10 MB sync instantly through secure storage; larger files transfer directly device-to-device. Works across Wi-Fi, mobile data and different networks.';
 
 const faqs = [
   { q: 'Do I need an account to use Dropspot?', a: 'No. Dropspot is completely login-free. You create a room, get a 6-character code, and share that code (or the QR) with anyone. They join instantly — no sign-up, no app install, nothing to download. The room and its contents automatically expire after the time you choose.' },
   { q: 'Does it work across different networks?', a: 'Yes. Unlike local-only tools that need everyone on the same Wi-Fi, Dropspot works across any network using room codes. One person can be on home Wi-Fi and another on mobile data on the other side of the world — as long as both have the room code, they share the same room. Text and links sync through the cloud; files transfer directly peer-to-peer when possible.' },
-  { q: 'How are files transferred?', a: 'When another device is online in the room, files transfer directly peer-to-peer (P2P) between browsers using WebRTC — the file never touches our servers, and there is no size limit. If no one else is online, the file is uploaded to secure temporary storage (up to 25 MB) so the other person can download it later. Dropspot picks the best path automatically.' },
+  { q: 'How are files transferred?', a: 'Files up to 10 MB are uploaded to fast, secure temporary storage — they appear instantly for everyone in the room to download, work across any network, survive a page refresh, and are kept for about an hour. Files larger than 10 MB transfer directly device-to-device (peer-to-peer over WebRTC) when another device is online, so they never touch our servers and have no size limit. Dropspot picks the best path automatically based on file size.' },
   { q: 'Is my data private?', a: 'Text and links are stored only for the lifetime you choose and are then permanently deleted. Peer-to-peer file transfers never touch our servers at all. Fallback file uploads go to private storage that is only reachable through the room and are auto-deleted on expiry. You can also protect any room with a PIN and delete any item manually at any time.' },
   { q: 'How long does content stay available?', a: 'You choose when you create the room: 10 minutes, 1 hour, 24 hours, or a custom time. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
   { q: 'Why does it warn me about backgrounding the tab?', a: 'Browsers pause or throttle background tabs to save battery. Dropspot sends a small heartbeat every few seconds so others can see you are online and route peer-to-peer transfers to you. If you switch tabs or minimise, that heartbeat pauses and you will drop off the live device list — so keep the tab visible during an active transfer.' },
-  { q: 'Is there a file size limit?', a: 'For direct peer-to-peer transfers (when another device is online), there is no fixed limit — files stream directly between browsers. For the store-and-forward fallback (when nobody else is online), uploads are capped at 25 MB to keep the free service fast and abuse-resistant.' },
+  { q: 'Is there a file size limit?', a: 'Files up to 10 MB use secure temporary storage — fast, reliable, downloadable by everyone in the room, and kept for about an hour. For files larger than 10 MB, Dropspot switches to a direct device-to-device transfer, which has no fixed size limit but needs another device online in the room and a compatible network. Each room can hold up to 100 MB of stored files at a time.' },
 ];
 
 const faqSchema = {
@@ -248,19 +248,63 @@ const howToSchema = {
     .ds-drop .ico-lg { margin: 0 auto 10px; color: var(--faint); }
     .ds-drop .hint { font-size: 12px; color: var(--faint); margin-top: 6px; }
 
-    /* items */
-    .ds-items { display: flex; flex-direction: column; gap: 10px; }
-    .ds-item { padding: 14px 16px; display: flex; gap: 13px; align-items: flex-start; }
-    .ds-item .ic { flex: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); }
-    .ds-item .body { flex: 1; min-width: 0; }
-    .ds-item .txt { font-size: 14px; word-break: break-word; white-space: pre-wrap; margin: 0 0 4px; line-height: 1.5; }
-    .ds-item a.txt { color: var(--accent); text-decoration: none; }
-    .ds-item a.txt:hover { text-decoration: underline; }
-    .ds-item .sub { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
-    .ds-item .acts { display: flex; gap: 4px; flex: none; }
+    /* Over-the-cap → direct (P2P) explainer + action */
+    .ds-bigfile { margin-top: 12px; border: 1px solid var(--border-2); border-radius: 12px; background: var(--panel-2); padding: 15px 16px; }
+    html.dark .ds-bigfile { background: var(--bg); }
+    .ds-bigfile .bf-head { display: flex; align-items: flex-start; gap: 11px; }
+    .ds-bigfile .bf-ic { flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-weak); color: var(--accent); border: 1px solid var(--border); }
+    .ds-bigfile .bf-t { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.35; }
+    .ds-bigfile .bf-d { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin-top: 5px; }
+    .ds-bigfile .bf-d b { color: var(--text); font-weight: 600; }
+    /* device-online status line */
+    .ds-bigfile .bf-status { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+    .ds-bigfile .bf-status .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    .ds-bigfile .bf-status.on .dot { background: var(--ok); }
+    .ds-bigfile .bf-status.off .dot { background: var(--faint); }
+    .ds-bigfile .bf-status.on b { color: var(--text); font-weight: 600; }
+    .ds-bigfile .bf-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .ds-bigfile .bf-btns .ds-btn { width: auto; }
+    .ds-bigfile .bf-note { font-size: 11.5px; color: var(--faint); line-height: 1.5; margin-top: 10px; }
+
+    /* icon buttons (shared by items, files, received) */
     .ds-iconbtn { width: 30px; height: 30px; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; transition: color .15s, background .15s, border-color .15s; }
     .ds-iconbtn:hover { color: var(--text); background: var(--panel-2); border-color: var(--border); }
     .ds-iconbtn.danger:hover { color: var(--danger); border-color: var(--border); }
+
+    /* ── Shared-in-room category boxes (Files / Text / Links) ── */
+    .ds-cats { display: flex; flex-direction: column; gap: 14px; }
+    .ds-cat { padding: 16px 16px 18px; }
+    .ds-cat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+    .ds-cat-head .ds-tile { width: 28px; height: 28px; border-radius: 8px; }
+    .ds-cat-head .ds-tile .ico { width: 14px; height: 14px; }
+    .ds-cat-head .lbl { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); }
+    .ds-cat-head .cnt { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+    /* files → responsive grid of small boxes; text/links → stacked boxes */
+    .ds-catgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    .ds-catlist { display: flex; flex-direction: column; gap: 10px; }
+    .ds-sub { position: relative; border: 1px solid var(--border); border-radius: 11px; background: var(--panel-2); padding: 13px; transition: border-color .15s; }
+    html.dark .ds-sub { background: var(--bg); }
+    .ds-sub:hover { border-color: var(--border-2); }
+    /* file sub-box: icon on top, name, meta, download button */
+    .ds-sub.file { display: flex; flex-direction: column; gap: 9px; }
+    .ds-sub.file .fh { display: flex; align-items: flex-start; gap: 10px; }
+    .ds-sub.file .fic { flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-weak); color: var(--accent); border: 1px solid var(--border); }
+    .ds-sub.file .fmeta { flex: 1; min-width: 0; }
+    .ds-sub.file .nm { font-size: 13px; font-weight: 500; color: var(--text); word-break: break-word; line-height: 1.35; }
+    .ds-sub.file .sz { font-size: 11.5px; color: var(--faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .ds-sub.file .fbtns { display: flex; gap: 8px; margin-top: 1px; }
+    .ds-sub.file .fbtns .ds-btn.sm { flex: 1; box-shadow: none; }
+    .ds-sub.file .fbtns .ds-iconbtn { flex: none; }
+    /* text/link sub-box: content + footer row */
+    .ds-sub.tl { display: flex; gap: 12px; align-items: flex-start; }
+    .ds-sub.tl .tic { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
+    .ds-sub.tl .tbody { flex: 1; min-width: 0; }
+    .ds-sub.tl .txt { font-size: 14px; word-break: break-word; white-space: pre-wrap; line-height: 1.5; color: var(--text); margin: 0; }
+    .ds-sub.tl a.txt { color: var(--accent); text-decoration: none; }
+    .ds-sub.tl a.txt:hover { text-decoration: underline; }
+    .ds-sub.tl .sub { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; margin-top: 5px; }
+    .ds-sub.tl .acts { flex: none; display: flex; gap: 4px; }
+    .ds-catempty { color: var(--faint); font-size: 12.5px; padding: 2px 0 1px; }
 
     /* toast */
     .ds-toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center; }
@@ -290,6 +334,8 @@ const howToSchema = {
     .ds-bar > i { display: block; height: 100%; width: 0%; background: var(--grad); border-radius: 999px; transition: width .25s ease; }
     .ds-bar.err > i { background: var(--danger); }
     .ds-bar.ok > i { background: var(--ok); }
+    /* completed rows fade out — the file then lives in the Files box below */
+    .ds-xfer.gone { opacity: 0; transform: translateY(-4px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; overflow: hidden; transition: opacity .3s ease, transform .3s ease, max-height .35s ease, padding .35s ease; }
 
     /* received files (user-initiated download + multi-select zip) */
     .ds-sect-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -441,9 +487,11 @@ const howToSchema = {
             <div class="ds-drop" id="drop">
               <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 8l5-5 5 5M12 3v12"/></svg>
               <div id="dropLabel">Drag a file here or click to choose</div>
-              <div class="hint">Peer-to-peer when someone's online · up to 25 MB stored otherwise</div>
+              <div class="hint">Up to 10 MB — shared instantly with everyone, kept ~1 hour.<br />Bigger files send directly to another online device.</div>
               <input type="file" id="fileInput" class="ds-hidden" />
             </div>
+            <!-- Shown when a chosen file is over the 10 MB instant-share cap: -->
+            <div class="ds-bigfile ds-hidden" id="bigFilePrompt"></div>
           </div>
 
           <div class="ds-foot" id="composerFoot">
@@ -467,7 +515,7 @@ const howToSchema = {
         <div class="ds-received" id="received"></div>
 
         <p class="ds-sect">Shared in this room</p>
-        <div class="ds-items" id="items"><span class="ds-empty">Nothing shared yet.</span></div>
+        <div class="ds-cats" id="items"><span class="ds-empty">Nothing shared yet.</span></div>
       </section>
 
       <!-- FAQ -->
@@ -522,7 +570,7 @@ const howToSchema = {
       return v;
     })();
 
-    const state = { code: null, pin: null, room: null, lastData: null, hbTimer: null, pollTimer: null, cdTimer: null, sigTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], rtc: null, xfers: {}, skew: 0, deletedIds: new Set(), optimistic: {}, received: {}, sendQueue: [], sending: false };
+    const state = { code: null, pin: null, room: null, lastData: null, hbTimer: null, pollTimer: null, cdTimer: null, sigTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], rtc: null, xfers: {}, skew: 0, deletedIds: new Set(), optimistic: {}, optimisticFiles: {}, received: {}, sendQueue: [], sending: false, pendingBigFile: null };
     const $ = (id) => document.getElementById(id);
     const els = {
       landing: $('landing'), room: $('room'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
@@ -644,20 +692,32 @@ const howToSchema = {
     function renderMerged() {
       const data = state.lastData || { items: [], files: [] };
       const serverItems = data.items || [];
-      const serverIds = new Set(serverItems.map((i) => i.id));
-      // forget delete-markers the server has already dropped
-      for (const id of [...state.deletedIds]) if (!serverIds.has(id)) state.deletedIds.delete(id);
+      const serverFiles = data.files || [];
+      const serverItemIds = new Set(serverItems.map((i) => i.id));
+      const serverFileIds = new Set(serverFiles.map((f) => f.id));
+      // forget delete-markers once the server has actually dropped the item OR
+      // file (checking BOTH arrays — otherwise a deleted file's marker gets
+      // pruned while it's still in the snapshot and the file flickers back).
+      for (const id of [...state.deletedIds]) if (!serverItemIds.has(id) && !serverFileIds.has(id)) state.deletedIds.delete(id);
       const items = serverItems.filter((i) => !state.deletedIds.has(i.id));
       // keep optimistic items until the server starts returning them
       for (const id in state.optimistic) {
-        if (serverIds.has(id) || state.deletedIds.has(id)) delete state.optimistic[id];
+        if (serverItemIds.has(id) || state.deletedIds.has(id)) delete state.optimistic[id];
         else items.push(state.optimistic[id]);
       }
-      const files = (data.files || []).filter((f) => !state.deletedIds.has(f.id));
+      const files = serverFiles.filter((f) => !state.deletedIds.has(f.id));
+      // keep just-uploaded R2 files visible until the server snapshot includes them
+      for (const id in state.optimisticFiles) {
+        if (serverFileIds.has(id) || state.deletedIds.has(id)) delete state.optimisticFiles[id];
+        else files.push(state.optimisticFiles[id]);
+      }
       renderItems(items, files);
     }
     function renderPresence(list) {
       state.presenceList = list;
+      // if the "send directly" panel is waiting on a peer, refresh it so the
+      // button enables the moment someone joins (or disables when they leave)
+      if (state.pendingBigFile) renderBigFilePrompt();
       els.presence.innerHTML = '';
       if (!list.length) { els.presence.innerHTML = '<span class="ds-empty">No one else here yet — share the code.</span>'; return; }
       list.forEach((p) => {
@@ -667,36 +727,67 @@ const howToSchema = {
         els.presence.appendChild(chip);
       });
     }
+    // "Shared in this room" is grouped into three category boxes — Files, Text
+    // and Links — each holding one small sub-box per item. Empty categories are
+    // hidden; if nothing is shared at all we show a single empty state.
     function renderItems(items, files) {
-      const all = [
-        ...files.map((f) => ({ t: 'file', created_at: f.created_at, data: f })),
-        ...items.map((i) => ({ t: i.kind, created_at: i.created_at, data: i })),
-      ].sort((a, b) => b.created_at - a.created_at);
+      const fileList = [...files].sort((a, b) => b.created_at - a.created_at);
+      const textList = items.filter((i) => i.kind !== 'link').sort((a, b) => b.created_at - a.created_at);
+      const linkList = items.filter((i) => i.kind === 'link').sort((a, b) => b.created_at - a.created_at);
       els.items.innerHTML = '';
-      if (!all.length) { els.items.innerHTML = '<span class="ds-empty">Nothing shared yet.</span>'; return; }
-      all.forEach((entry) => {
-        const el = document.createElement('div'); el.className = 'ds-panel ds-item';
-        const ic = document.createElement('div'); ic.className = 'ic';
-        const body = document.createElement('div'); body.className = 'body';
-        const acts = document.createElement('div'); acts.className = 'acts';
-        if (entry.t === 'file') {
-          const f = entry.data; ic.innerHTML = iconSvg('file');
-          const name = document.createElement('div'); name.className = 'txt'; name.textContent = f.filename;
-          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - serverNow());
-          body.appendChild(name); body.appendChild(sub);
-          acts.appendChild(iconBtn('download', 'Download', () => downloadFile(f)));
-          acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('file', f.id), true));
-        } else {
-          const i = entry.data; ic.innerHTML = iconSvg(i.kind === 'link' ? 'link' : 'text');
-          if (i.kind === 'link') { const a = document.createElement('a'); a.className = 'txt'; a.href = i.content; a.target = '_blank'; a.rel = 'noopener nofollow'; a.textContent = i.content; body.appendChild(a); }
-          else { const p = document.createElement('div'); p.className = 'txt'; p.textContent = i.content; body.appendChild(p); }
-          const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - serverNow());
-          body.appendChild(sub);
-          acts.appendChild(iconBtn('copy', 'Copy', () => { navigator.clipboard.writeText(i.content); toast('Copied'); }));
-          acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('item', i.id), true));
-        }
-        el.appendChild(ic); el.appendChild(body); el.appendChild(acts); els.items.appendChild(el);
+      if (!fileList.length && !textList.length && !linkList.length) {
+        els.items.innerHTML = '<span class="ds-empty">Nothing shared yet.</span>'; return;
+      }
+      if (fileList.length) els.items.appendChild(fileCategory(fileList));
+      if (textList.length) els.items.appendChild(textLinkCategory('text', 'Text', textList));
+      if (linkList.length) els.items.appendChild(textLinkCategory('link', 'Links', linkList));
+    }
+    function catBox(icon, label, count) {
+      const box = document.createElement('div'); box.className = 'ds-panel ds-cat';
+      const head = document.createElement('div'); head.className = 'ds-cat-head';
+      head.innerHTML = '<span class="ds-tile">' + iconSvg(icon) + '</span><span class="lbl"></span><span class="cnt"></span>';
+      head.querySelector('.lbl').textContent = label;
+      head.querySelector('.cnt').textContent = String(count);
+      box.appendChild(head);
+      return box;
+    }
+    function fileCategory(files) {
+      const box = catBox('file', 'Files', files.length);
+      const grid = document.createElement('div'); grid.className = 'ds-catgrid';
+      files.forEach((f) => {
+        const card = document.createElement('div'); card.className = 'ds-sub file';
+        const fh = document.createElement('div'); fh.className = 'fh';
+        const ic = document.createElement('span'); ic.className = 'fic'; ic.innerHTML = iconSvg('file');
+        const meta = document.createElement('div'); meta.className = 'fmeta';
+        const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = f.filename;
+        const sz = document.createElement('div'); sz.className = 'sz'; sz.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - serverNow());
+        meta.appendChild(nm); meta.appendChild(sz); fh.appendChild(ic); fh.appendChild(meta);
+        const btns = document.createElement('div'); btns.className = 'fbtns';
+        const dl = document.createElement('button'); dl.className = 'ds-btn sm'; dl.innerHTML = iconSvg('download') + '<span>Download</span>';
+        dl.addEventListener('click', () => downloadFile(f));
+        btns.appendChild(dl);
+        btns.appendChild(iconBtn('trash', 'Delete', () => deleteItem('file', f.id), true));
+        card.appendChild(fh); card.appendChild(btns); grid.appendChild(card);
       });
+      box.appendChild(grid); return box;
+    }
+    function textLinkCategory(kind, label, list) {
+      const box = catBox(kind, label, list.length);
+      const cont = document.createElement('div'); cont.className = 'ds-catlist';
+      list.forEach((i) => {
+        const card = document.createElement('div'); card.className = 'ds-sub tl';
+        const ic = document.createElement('span'); ic.className = 'tic'; ic.innerHTML = iconSvg(kind === 'link' ? 'link' : 'text');
+        const body = document.createElement('div'); body.className = 'tbody';
+        if (kind === 'link') { const a = document.createElement('a'); a.className = 'txt'; a.href = i.content; a.target = '_blank'; a.rel = 'noopener nofollow'; a.textContent = i.content; body.appendChild(a); }
+        else { const p = document.createElement('div'); p.className = 'txt'; p.textContent = i.content; body.appendChild(p); }
+        const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - serverNow());
+        body.appendChild(sub);
+        const acts = document.createElement('div'); acts.className = 'acts';
+        acts.appendChild(iconBtn('copy', 'Copy', () => { navigator.clipboard.writeText(i.content); toast('Copied'); }));
+        acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('item', i.id), true));
+        card.appendChild(ic); card.appendChild(body); card.appendChild(acts); cont.appendChild(card);
+      });
+      box.appendChild(cont); return box;
     }
     function iconBtn(name, title, onClick, danger) {
       const b = document.createElement('button'); b.className = 'ds-iconbtn' + (danger ? ' danger' : ''); b.title = title;
@@ -710,10 +801,12 @@ const howToSchema = {
         .catch(() => toast('Download failed', 'trash'));
     }
     async function deleteItem(kind, id) {
-      // Optimistic: hide immediately, then confirm with the server.
-      state.deletedIds.add(id); delete state.optimistic[id]; renderMerged();
+      // Optimistic: hide immediately, then confirm with the server. The DELETE
+      // route removes from BOTH the items and files arrays (and the R2 object),
+      // so the same call works for text, links and stored files.
+      state.deletedIds.add(id); delete state.optimistic[id]; delete state.optimisticFiles[id]; renderMerged();
       try {
-        if (kind === 'item') await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' });
+        await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' });
         toast('Deleted'); refresh();
       } catch {
         state.deletedIds.delete(id); renderMerged(); toast('Could not delete', 'trash');
@@ -758,26 +851,89 @@ const howToSchema = {
     // ════════════════════════════════════════════════════════════
     //  File transfer — P2P (WebRTC) with R2 fallback (Phase 6)
     // ════════════════════════════════════════════════════════════
-    const MAX_R2 = 26214400;             // 25 MB store-and-forward cap
+    const MAX_R2 = 10485760;             // 10 MB instant-share cap (must match worker MAX_FILE_BYTES)
     const CHUNK = 16 * 1024;             // 16 KB DataChannel chunks
     const BUFFER_HIGH = 1024 * 1024;     // pause sending above 1 MB buffered
     const BUFFER_LOW = 256 * 1024;       // resume threshold
     const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
     function xid() { return 'x' + Math.random().toString(36).slice(2, 9); }
 
-    // Decide the path the moment a file is chosen (spec 4.3): peer online → P2P,
-    // otherwise → R2 store-and-forward. P2P sends are queued and run one at a
-    // time — a single per-recipient signaling slot means two concurrent offers
-    // would collide, so we serialize them (each file still becomes downloadable
-    // the instant its own transfer finishes).
+    // Path decision (R2-first): R2 is fast, reliable, persists, works across
+    // every network, and lands in "Shared in this room" for all devices — so
+    // any file within the 10 MB cap goes to R2 regardless of who's online.
+    // Direct P2P is reserved for files OVER the cap (R2 can't take them); it
+    // needs another device present and a compatible network. P2P sends are
+    // queued and run one at a time (a single per-recipient signaling slot means
+    // concurrent offers would collide).
     function onFilePicked(file) {
       if (!state.code) return;
-      const peers = (state.presenceList || []).filter((p) => p.device_id !== DEVICE_ID);
-      if (peers.length) { state.sendQueue.push({ file, peer: peers[0].device_id }); processQueue(); }
-      else {
-        if (file.size > MAX_R2) { toast('No one else is online — file exceeds the 25 MB storage limit.', 'trash'); return; }
-        sendFileR2(file, xid());
-      }
+      if (file.size <= MAX_R2) { sendFileR2(file, xid()); return; }
+      // Over the 10 MB instant-share cap → explain the situation and offer a
+      // direct (peer-to-peer) send rather than silently failing.
+      showBigFilePrompt(file, 'size');
+    }
+
+    // ── "Over the limit → send peer-to-peer" explainer panel ──
+    function peersOnline() { return (state.presenceList || []).filter((p) => p.device_id !== DEVICE_ID); }
+    function showBigFilePrompt(file, reason) {
+      state.pendingBigFile = { file, reason };
+      // make sure the File tab is showing so the panel is visible
+      const fileTab = document.querySelector('.ds-tab[data-tab="file"]');
+      if (fileTab && !fileTab.classList.contains('active')) fileTab.click();
+      renderBigFilePrompt();
+      const el = $('bigFilePrompt'); if (el) { el.classList.remove('ds-hidden'); el.scrollIntoView({ block: 'nearest' }); }
+    }
+    function hideBigFilePrompt() {
+      state.pendingBigFile = null;
+      const el = $('bigFilePrompt'); if (el) { el.classList.add('ds-hidden'); el.innerHTML = ''; }
+    }
+    function renderBigFilePrompt() {
+      const pending = state.pendingBigFile; const el = $('bigFilePrompt');
+      if (!pending || !el) return;
+      const { file, reason } = pending;
+      const peers = peersOnline();
+      const online = peers.length > 0;
+      const peerLabel = online ? peers[0].label : '';
+
+      el.innerHTML =
+        '<div class="bf-head"><span class="bf-ic">' + iconSvg('up') + '</span>' +
+          '<div><div class="bf-t"></div><div class="bf-d"></div></div></div>' +
+        '<div class="bf-status"><span class="dot"></span><span class="bf-stxt"></span></div>' +
+        '<div class="bf-btns"></div>' +
+        '<div class="bf-note"></div>';
+
+      el.querySelector('.bf-t').textContent = reason === 'roomfull'
+        ? "This room's shared storage is full"
+        : 'This file is ' + fmtSize(file.size) + ' — over the 10 MB instant limit';
+      el.querySelector('.bf-d').innerHTML = reason === 'roomfull'
+        ? 'A room can hold up to 100 MB of stored files. Delete a file below, or send this one <b>directly to the other device</b> — a direct transfer doesn\'t use the room\'s storage at all.'
+        : 'Files up to 10 MB upload to secure storage so <b>everyone</b> in the room can download them. Larger files send <b>directly device-to-device</b> — straight from your browser to the other person\'s, with no size limit.';
+
+      const status = el.querySelector('.bf-status');
+      const stxt = el.querySelector('.bf-stxt');
+      status.classList.add(online ? 'on' : 'off');
+      if (online) { const b = document.createElement('b'); b.textContent = peerLabel; stxt.appendChild(b); stxt.appendChild(document.createTextNode(' is online — ready to receive')); }
+      else stxt.textContent = 'No other device online yet — a direct send needs someone else in this room.';
+
+      const btns = el.querySelector('.bf-btns');
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'ds-btn' + (online ? '' : ' ghost');
+      sendBtn.disabled = !online;
+      sendBtn.innerHTML = iconSvg('up');
+      const bl = document.createElement('span'); bl.textContent = online ? ('Send directly to ' + peerLabel) : 'Waiting for another device…'; sendBtn.appendChild(bl);
+      sendBtn.addEventListener('click', () => {
+        const p = peersOnline(); if (!p.length) return;
+        state.sendQueue.push({ file, peer: p[0].device_id }); processQueue();
+        hideBigFilePrompt(); toast('Starting direct transfer…', 'up');
+      });
+      const cancel = document.createElement('button');
+      cancel.className = 'ds-btn ghost'; cancel.style.width = 'auto';
+      const cl = document.createElement('span'); cl.textContent = 'Cancel'; cancel.appendChild(cl);
+      cancel.addEventListener('click', hideBigFilePrompt);
+      btns.appendChild(sendBtn); btns.appendChild(cancel);
+
+      el.querySelector('.bf-note').innerHTML =
+        '<b>New to peer-to-peer?</b> Your two devices talk to each other directly, so the file never touches our servers. Because of that the other device must stay <b>open in this room</b> for the whole transfer, and both work best on the same Wi-Fi or a normal home/office network. If it can\'t connect (some mobile networks block direct links), send a file under 10 MB instead.';
     }
     function processQueue() {
       if (state.sending || !state.sendQueue.length || !state.code) return;
@@ -808,12 +964,26 @@ const howToSchema = {
       if (status != null) r.st.textContent = status;
       r.bar.classList.toggle('err', kind === 'err');
       r.bar.classList.toggle('ok', kind === 'ok');
+      // A finished transfer no longer needs a progress row — the file now shows
+      // in "Shared in this room" (R2) or "Received files" (direct). Fade it out
+      // so multiple transfers don't stack up and bury the shared content.
+      // Failures stay put so the user can see what went wrong.
+      if (kind === 'ok') setTimeout(() => removeTransfer(id), 2200);
+    }
+    function removeTransfer(id) {
+      const r = state.xfers[id]; if (!r) return;
+      delete state.xfers[id];
+      r.el.classList.add('gone');
+      setTimeout(() => {
+        try { r.el.remove(); } catch {}
+        if (!Object.keys(state.xfers).length) $('xferSect').style.display = 'none';
+      }, 380);
     }
 
     // ── R2 store-and-forward (with upload progress) ──
     function sendFileR2(file, id) {
       addTransfer(id, file.name, 'up', 'Stored');
-      if (file.size > MAX_R2) { setTransfer(id, 100, 'Too large (25 MB max)', 'err'); return; }
+      if (file.size > MAX_R2) { setTransfer(id, 100, 'Too large — 10 MB max', 'err'); return; }
       setTransfer(id, 0, 'Uploading…');
       const xhr = new XMLHttpRequest();
       const url = API + '/room/' + state.code + '/file?filename=' + encodeURIComponent(file.name) + '&device_id=' + DEVICE_ID;
@@ -822,8 +992,15 @@ const howToSchema = {
       if (state.pin) xhr.setRequestHeader('X-Room-Pin', state.pin);
       xhr.upload.onprogress = (e) => { if (e.lengthComputable) setTransfer(id, Math.round(e.loaded / e.total * 90), 'Uploading…'); };
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) { setTransfer(id, 100, 'Stored', 'ok'); refresh(); }
-        else if (xhr.status === 413) setTransfer(id, 100, 'Too large (25 MB max)', 'err');
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setTransfer(id, 100, 'Stored', 'ok');
+          // Show the file in "Shared in this room" immediately — KV can lag a
+          // few seconds behind this write, so don't wait for the next poll.
+          try { const r = JSON.parse(xhr.responseText); if (r && r.file) { state.optimisticFiles[r.file.id] = r.file; renderMerged(); } } catch {}
+          refresh();
+        }
+        else if (xhr.status === 413) setTransfer(id, 100, 'Too large — 10 MB max', 'err');
+        else if (xhr.status === 409) { setTransfer(id, 100, 'Room storage full', 'err'); showBigFilePrompt(file, 'roomfull'); }
         else setTransfer(id, 100, 'Upload failed', 'err');
       };
       xhr.onerror = () => setTransfer(id, 100, 'Upload failed', 'err');
@@ -868,7 +1045,7 @@ const howToSchema = {
       try { session.pc.close(); } catch {}
       if (state.rtc === session) state.rtc = null;
       finishSend(); // release the P2P slot; the R2 upload runs independently
-      if (session.file.size > MAX_R2) { setTransfer(session.id, 100, 'Peer offline · file over 25 MB', 'err'); return; }
+      if (session.file.size > MAX_R2) { setTransfer(session.id, 100, 'Peer offline · file over 10 MB', 'err'); return; }
       setTransfer(session.id, 0, 'No direct route — storing…');
       sendFileR2(session.file, session.id); // reuse the same progress row
     }
@@ -903,9 +1080,18 @@ const howToSchema = {
     // ── Receiver: answer an incoming offer, assemble chunks, save ──
     function handleOffer(sig) {
       const pc = newPC();
-      const session = { pc, role: 'recv', peer: sig.from, done: false };
+      const session = { pc, role: 'recv', peer: sig.from, done: false, recvId: null };
       state.rtc = session;
       pc.ondatachannel = (e) => setupRecv(e.channel, session);
+      // If the direct path can't form (no TURN — common on mobile/carrier NAT),
+      // surface a failure instead of leaving the receiver stuck "Receiving…".
+      pc.onconnectionstatechange = () => {
+        if (['failed', 'disconnected', 'closed'].includes(pc.connectionState) && !session.done) {
+          session.done = true;
+          if (session.recvId) setTransfer(session.recvId, null, 'Direct connection failed', 'err');
+          if (state.rtc === session) state.rtc = null;
+        }
+      };
       pc.setRemoteDescription({ type: 'offer', sdp: sig.sdp })
         .then(() => pc.createAnswer())
         .then((ans) => pc.setLocalDescription(ans))
@@ -918,12 +1104,27 @@ const howToSchema = {
     }
     function setupRecv(dc, session) {
       dc.binaryType = 'arraybuffer';
-      const id = xid(); let meta = null; const buffers = []; let received = 0;
+      const id = xid(); session.recvId = id; let meta = null; const buffers = []; let received = 0;
+      addTransfer(id, 'Incoming file…', 'down', 'Direct'); setTransfer(id, 0, 'Connecting…');
+      // Stall watchdog: if no data arrives for a stretch, the peer path died —
+      // fail the row rather than spinning "Receiving…" forever. Re-armed on
+      // every message so a slow-but-alive transfer is never killed mid-stream.
+      let stall = null;
+      const arm = () => { if (stall) clearTimeout(stall); stall = setTimeout(() => {
+        if (session.done) return;
+        session.done = true; setTransfer(id, null, 'Stalled — no data from sender', 'err');
+        toast('Direct transfer stalled — ask the sender to retry.', 'trash');
+        try { session.pc.close(); } catch {}
+      }, 25000); };
+      arm();
       dc.onmessage = (e) => {
+        if (session.done) return;
+        arm();
         if (typeof e.data === 'string') {
           const m = JSON.parse(e.data);
-          if (m.type === 'meta') { meta = m; addTransfer(id, m.name, 'down', 'Direct'); setTransfer(id, 0, 'Receiving…'); }
+          if (m.type === 'meta') { meta = m; setTransfer(id, 0, 'Receiving…'); const r = state.xfers[id]; if (r) r.el.querySelector('.nm').textContent = m.name; }
           else if (m.type === 'done') {
+            if (stall) clearTimeout(stall);
             session.done = true;
             const blob = new Blob(buffers, { type: (meta && meta.mime) || 'application/octet-stream' });
             const rid = 'r' + id;
@@ -1002,7 +1203,8 @@ const howToSchema = {
     els.leaveBtn.addEventListener('click', leaveRoom);
     function leaveRoom() {
       stopLoops(); state.code = null; state.pin = null; state.room = null; state.lastData = null;
-      state.skew = 0; state.deletedIds = new Set(); state.optimistic = {}; state.received = {}; state.xfers = {}; state.sendQueue = []; state.sending = false;
+      state.skew = 0; state.deletedIds = new Set(); state.optimistic = {}; state.optimisticFiles = {}; state.received = {}; state.xfers = {}; state.sendQueue = []; state.sending = false;
+      hideBigFilePrompt();
       try { sessionStorage.removeItem('dropspot_room'); } catch {}
       try { if (state.rtc && state.rtc.pc) state.rtc.pc.close(); } catch {} state.rtc = null;
       const rc = document.getElementById('received'); if (rc) rc.innerHTML = '';

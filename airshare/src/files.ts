@@ -35,7 +35,7 @@ export async function uploadFile(request: Request, env: Env, code: string): Prom
   if (!filename) return errorResponse('filename_required', 400);
   if (!request.body) return errorResponse('empty_body', 400);
 
-  const maxBytes = envInt(env.MAX_FILE_BYTES, 26_214_400);
+  const maxBytes = envInt(env.MAX_FILE_BYTES, 10_485_760); // 10 MB instant-share cap
 
   // R2 needs a known length; require Content-Length and enforce the cap on it.
   const declared = Number(request.headers.get('Content-Length'));
@@ -45,10 +45,26 @@ export async function uploadFile(request: Request, env: Env, code: string): Prom
   if (declared > maxBytes) return errorResponse('file_too_large', 413);
 
   const now = nowSec();
+
+  // Per-room storage guard: bound how much any single room can hold so no room
+  // (or abuser) can eat the shared R2 free-tier budget. Checked against the
+  // declared length BEFORE the R2 put, so we never store then reject.
+  const liveFiles = (room.files || []).filter((f) => !isExpired(f, now));
+  if (liveFiles.length >= LIMITS.ROOM_FILE_COUNT_MAX) {
+    return errorResponse('room_file_limit', 409, `A room can hold at most ${LIMITS.ROOM_FILE_COUNT_MAX} files at once.`);
+  }
+  const usedBytes = liveFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+  if (usedBytes + declared > LIMITS.ROOM_BYTES_MAX) {
+    return errorResponse('room_storage_full', 409, 'This room is out of storage — delete a file or send this one directly.');
+  }
+
+  // Stored files are transient transfer artifacts: cap their lifetime SHORT and
+  // independent of the room TTL, so concurrent R2 usage tracks the hourly upload
+  // rate rather than a whole day of accumulation (keeps well within R2's 10 GB).
   const ttl = clamp(
-    envInt(url.searchParams.get('ttl') || undefined, room.default_ttl_seconds),
+    envInt(url.searchParams.get('ttl') || undefined, LIMITS.FILE_TTL_DEFAULT),
     60,
-    LIMITS.ITEM_TTL_MAX
+    LIMITS.FILE_TTL_MAX
   );
   const expiresAt = now + ttl;
   const fileId = generateId();
