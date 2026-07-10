@@ -407,6 +407,15 @@ export const tools = [
   { slug: 'vinyl-siding-calculator', title: 'Vinyl Siding Calculator', short: 'Squares and boxes of siding from wall area.', category: 'construction', sub: 'Materials', emoji: '🏘️', enabled: true, status: 'live' },
   { slug: 'grout-calculator', title: 'Tile Grout Calculator', short: 'Pounds and bags of grout by tile and joint size.', category: 'construction', sub: 'Materials', emoji: '🧽', enabled: true, status: 'live' },
   { slug: 'spiral-staircase-calculator', title: 'Spiral Staircase Calculator', short: 'Riser, tread angle, and depth for a spiral stair.', category: 'construction', sub: 'Materials', emoji: '🌀', enabled: true, status: 'live' },
+  // ── Construction Batch 3: Home & Garden ──
+  { slug: 'ac-size-calculator', title: 'AC Unit Size Calculator', short: 'AC tonnage from square footage and climate.', category: 'construction', sub: 'Home & Garden', emoji: '❄️', enabled: true, status: 'live' },
+  { slug: 'furnace-btu-calculator', title: 'Furnace BTU Calculator', short: 'Furnace size from square footage and insulation.', category: 'construction', sub: 'Home & Garden', emoji: '🔥', enabled: true, status: 'live' },
+  { slug: 'heat-loss-calculator', title: 'Home Heat Loss Estimator', short: 'Heat loss through a surface by R-value and ΔT.', category: 'construction', sub: 'Home & Garden', emoji: '🌡️', enabled: true, status: 'live' },
+  { slug: 'fence-post-spacing-calculator', title: 'Fence Post Spacing Calculator', short: 'Post count and hole depth below the frost line.', category: 'construction', sub: 'Home & Garden', emoji: '🚧', enabled: true, status: 'live' },
+  { slug: 'deck-stain-calculator', title: 'Deck Stain Calculator', short: 'Gallons of stain by deck area and railing.', category: 'construction', sub: 'Home & Garden', emoji: '🖌️', enabled: true, status: 'live' },
+  { slug: 'wallpaper-calculator', title: 'Wallpaper Roll Calculator', short: 'Rolls needed by wall size and pattern repeat.', category: 'construction', sub: 'Home & Garden', emoji: '🖼️', enabled: true, status: 'live' },
+  { slug: 'ramp-slope-calculator', title: 'ADA Ramp Slope Calculator', short: 'Ramp length and landings at the ADA 1:12 slope.', category: 'construction', sub: 'Home & Garden', emoji: '♿', enabled: true, status: 'live' },
+  { slug: 'chicken-coop-calculator', title: 'Chicken Coop Size Calculator', short: 'Coop and run space per bird for a flock.', category: 'construction', sub: 'Home & Garden', emoji: '🐔', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

@@ -1,0 +1,195 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'AC Unit Size Calculator';
+const description = 'Get a rule-of-thumb air conditioner size in BTUs and tons from your square footage and climate zone.';
+const intro = 'Estimate the air conditioner size you need, in BTUs and tons, from your square footage and climate zone.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'What size AC unit do I need for my house?', a: 'A common rule of thumb is about 20 BTUs of cooling per square foot in a moderate climate, adjusted up for hot, humid regions and down for cooler ones. A 2,000 square foot home in a hot climate often needs around 3 tons (36,000 BTUs), while the same home in a mild climate may need closer to 2.5 tons.' },
+  { q: 'How many BTUs are in a ton of air conditioning?', a: 'One ton of air conditioning capacity equals 12,000 BTUs per hour. So a 3-ton unit provides 36,000 BTUs per hour of cooling.' },
+  { q: 'Is this rule of thumb accurate enough to buy a unit?', a: 'It is a solid starting estimate, not a substitute for a proper sizing study. HVAC contractors use a detailed method called ACCA Manual J, which accounts for insulation, window area and orientation, ceiling height, and air leakage. Get a Manual J load calculation before buying equipment.' },
+  { q: 'What happens if my AC is the wrong size?', a: 'An oversized unit cools fast but shuts off before it removes enough humidity, leaving a clammy house. An undersized unit runs constantly and still struggles to keep up on the hottest days. Correct sizing matters as much as the equipment quality itself.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Area to cool (sq ft)</span>
+        <input id="area" type="number" step="any" placeholder="2000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Climate zone</span>
+        <select id="zone" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="18">Cool (e.g. northern states)</option>
+          <option value="20" selected>Moderate (most of the US)</option>
+          <option value="22">Warm</option>
+          <option value="25">Hot & humid (e.g. Gulf Coast, FL, TX)</option>
+        </select></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Ceiling height</span>
+        <select id="ceil" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1">8 ft (standard)</option>
+          <option value="1.15">9-10 ft</option>
+          <option value="1.3">11-12 ft or vaulted</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Sun exposure</span>
+        <select id="sun" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1">Typical</option>
+          <option value="1.1">Sunny room / lots of glass</option>
+          <option value="0.9">Heavily shaded</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Estimated AC size</div>
+        <div id="r-tons" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-btu" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Round to nearest</div><div id="r-nearest" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">BTU per sq ft</div><div id="r-perft" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ac-title ac-desc">
+      <title id="ac-title">AC sizing rule of thumb</title>
+      <desc id="ac-desc">A house floor plan with the BTU per square foot and tons conversion formula</desc>
+      <rect x="90" y="80" width="260" height="150" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+      <text x="220" y="160" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">sq ft &times; BTU/ft&sup2;</text>
+      <rect x="420" y="90" width="300" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Sizing formula</text>
+      <text x="440" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">BTU/hr = area &times; BTU/ft&sup2; &times; factors</text>
+      <text x="440" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">tons = BTU/hr &divide; 12,000</text>
+      <text x="440" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">18-25 BTU/ft&sup2; by climate</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">AC sizing scales with floor area, climate, ceiling height, and sun exposure.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the AC size calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Cooling load scales roughly with floor area, so a common shortcut multiplies square footage by a BTU-per-square-foot factor set by climate. Cooler regions need less capacity per square foot, around 18 BTU, while hot, humid regions need more, around 25 BTU, because the AC has to remove more heat and moisture from the same size room.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator multiplies your area by the climate factor, then adjusts for ceiling height and sun exposure, since a room with a vaulted ceiling or lots of west-facing glass has more volume or heat gain to manage than a standard room. Dividing the final BTU-per-hour figure by 12,000 converts it to tons, the unit AC equipment is sold in.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This mirrors the simplified square-footage approach many online calculators use, built on the same BTU-per-square-foot logic behind ACCA's professional Manual J load calculation. It is a solid starting point, but Manual J accounts for insulation levels, air leakage, window count and orientation room by room — get a proper load calculation before buying equipment.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter square footage</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the conditioned area you are cooling, and pick your climate zone.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Adjust for the room</h3>
+        <p class="mt-1 text-sm text-slate-600">Account for tall ceilings and heavy sun exposure, which raise the load.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read tons and BTUs</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the result as a shopping starting point, then confirm with a Manual J.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Base BTU load</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">BTU = area &times; BTU&frasl;ft&sup2;</span>. 2000 ft&sup2; in a hot climate (25): 2000 &times; 25 = <strong>50,000 BTU/hr</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Tons</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">tons = BTU &divide; 12,000</span>. 50,000 &divide; 12,000 = <strong>4.17 tons</strong> &rarr; round to a 4-ton unit.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Moderate climate comparison</p>
+        <p class="mt-1 text-slate-600">
+          The same 2000 ft&sup2; at 20 BTU/ft&sup2;: 2000 &times; 20 &divide; 12,000 = <strong>3.33 tons</strong> — noticeably less capacity.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 1500 ft&sup2; ranch, moderate climate, standard ceilings, typical sun.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Base:</span> <span class="text-slate-600">1500 &times; 20 = 30,000 BTU/hr</span></div>
+        <div><span class="font-medium text-slate-700">Tons:</span> <span class="text-slate-600">30,000 &divide; 12,000 = 2.5</span></div>
+        <div><span class="font-medium text-slate-700">Round to:</span> <span class="text-slate-600"><strong>2.5-ton unit</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Getting sizing right</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📏</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Manual J is the real answer</h3>
+        <p class="mt-1 text-sm text-slate-600">A licensed contractor's Manual J load calculation accounts for your actual insulation, windows, and construction, and is the professional standard for sizing equipment correctly.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌡️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bigger is not better</h3>
+        <p class="mt-1 text-sm text-slate-600">An oversized AC cools the air quickly but shuts off before it wrings out the humidity, leaving the house feeling clammy even though the thermostat is satisfied.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏠</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Insulation changes everything</h3>
+        <p class="mt-1 text-sm text-slate-600">A well-insulated, tightly sealed home can need a noticeably smaller unit than this square-footage estimate, while an older, leaky home may need more.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔄</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Ducted systems lose capacity</h3>
+        <p class="mt-1 text-sm text-slate-600">Leaky or poorly sealed ductwork can waste a meaningful share of delivered cooling, so sealing ducts sometimes solves a comfort problem cheaper than upsizing equipment.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/furnace-btu-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Furnace BTU Calculator</a>
+      <a href="/tools/heat-loss-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Home Heat Loss Estimator</a>
+      <a href="/tools/insulation-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Insulation Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const area = parseFloat(el('area').value);
+      const zone = parseFloat(el('zone').value);
+      const ceil = parseFloat(el('ceil').value);
+      const sun = parseFloat(el('sun').value);
+      if (!area || area <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const perFt = zone * ceil * sun;
+      const btu = area * perFt;
+      const tons = btu / 12000;
+      const nearest = Math.round(tons * 2) / 2; // nearest half-ton
+
+      el('r-tons').textContent = tons.toFixed(2) + ' tons';
+      el('r-btu').textContent = Math.round(btu).toLocaleString() + ' BTU/hr';
+      el('r-nearest').textContent = nearest.toFixed(1) + ' ton unit';
+      el('r-perft').textContent = perFt.toFixed(1) + ' BTU/ft²';
+      el('results').classList.remove('hidden');
+    }
+
+    ['area'].forEach((id) => el(id).addEventListener('input', update));
+    ['zone', 'ceil', 'sun'].forEach((id) => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>
