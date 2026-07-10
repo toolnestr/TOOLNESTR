@@ -1,0 +1,153 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Beam Load Calculator';
+const description = 'Estimate the maximum uniform load a simply supported rectangular beam can carry from its span, section size, material and allowable bending stress.';
+const intro = 'Estimate the maximum load a simply supported beam can carry, from its span, section and material.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate the maximum load a beam can hold?', a: 'Using the flexure formula in reverse: max moment = allowable stress × section modulus, then max uniform load = 8 × max moment ÷ span. A 2×10 (1.5×9.25 in) at 900 psi allowable stress over a 10 ft span can carry roughly 1,665 pounds total, distributed evenly.' },
+  { q: 'What is section modulus?', a: 'Section modulus (S) measures how well a cross-section resists bending, combining shape and size into one number. For a solid rectangle, S = width × depth² ÷ 6. A deeper beam has a much higher section modulus than a wider one of the same area, since depth is squared.' },
+  { q: 'What allowable stress should I use?', a: 'Allowable bending stress (Fb) depends on the wood species and grade, or steel grade, and is published in reference tables like the NDS Supplement for lumber. Common softwood dimensional lumber often uses around 700-1,000 psi; always use the value for your actual material.' },
+  { q: 'Does this calculator check deflection too?', a: 'No — this only checks bending strength (whether the beam breaks), not deflection (whether it sags too much for comfort). A beam can pass a strength check and still deflect more than the L/360 serviceability limit; check deflection separately.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Span (ft)</span>
+        <input id="span" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section width b (in)</span>
+        <input id="b" type="number" step="any" placeholder="1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section depth d (in)</span>
+        <input id="d" type="number" step="any" placeholder="9.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Allowable stress Fb (psi)</span>
+        <input id="fb" type="number" step="any" placeholder="900" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Max uniform load (strength limit)</div>
+        <div id="r-load" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Section modulus</div><div id="r-s" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Max moment</div><div id="r-moment" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bl-title bl-desc">
+      <title id="bl-title">Beam load capacity from allowable stress</title>
+      <desc id="bl-desc">A loaded beam on two supports with the load capacity formula</desc>
+      <path d="M60 90 L60 70 M100 90 L100 70 M140 90 L140 70 M180 90 L180 70 M220 90 L220 70 M260 90 L260 70 M300 90 L300 70" stroke="#ef4444" stroke-width="2" />
+      <line x1="60" y1="90" x2="300" y2="90" stroke="#6366f1" stroke-width="5" />
+      <polygon points="52,90 68,90 60,106" fill="#475569" /><polygon points="292,90 308,90 300,106" fill="#475569" />
+      <text x="180" y="130" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">uniform load across the span</text>
+      <rect x="420" y="55" width="330" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Max load (strength)</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">M&#8339; = Fb &times; S</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">w&#8339; = 8 &times; M&#8339; &divide; L&sup2;</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">This checks bending strength only — deflection must be checked separately.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the beam load calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      This tool runs the flexure formula in reverse to find capacity instead of stress. Normally, σ = M ÷ S tells you the stress a given moment produces; rearranged, the maximum moment a beam can safely resist is the allowable bending stress (Fb) times its section modulus (S). For a simply supported beam under a uniform load, that maximum moment relates to the maximum total load by the standard beam equation M = wL² ÷ 8, which rearranges to w = 8M ÷ L².
+    </p>
+    <p class="mt-3 text-slate-600">
+      Section modulus for a solid rectangular beam is width times depth squared, divided by 6 — depth matters far more than width because it's squared, which is why a beam standing on edge carries much more load than the same lumber laid flat. Allowable bending stress (Fb) is a published, material-specific value: for lumber it comes from the NDS Supplement based on species and grade, and for steel it comes from the material's yield strength with an appropriate safety factor applied.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This calculator checks bending strength only — whether the beam would break under load. It does not check deflection, the amount the beam sags under a load that may be safely below its breaking point but still excessive for comfort or code (commonly limited to span/360). A beam can pass this strength check and still fail a deflection check, so both need to be verified independently, and any real load-bearing beam needs full engineering verification beyond this estimate.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter span &amp; section</h3>
+        <p class="mt-1 text-sm text-slate-600">Span in feet, width and depth in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set allowable stress</h3>
+        <p class="mt-1 text-sm text-slate-600">From your material's published Fb value.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check deflection too</h3>
+        <p class="mt-1 text-sm text-slate-600">This is a strength check only, not the full design.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Section modulus</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">S = b·d&sup2; &divide; 6</span>. A 1.5×9.25 in section: 1.5×9.25² ÷ 6 = <strong>21.39 in³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Max moment</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">M&#8339; = Fb &times; S</span>. At 900 psi: 900 × 21.39 = <strong>19,251 lb·in</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Max uniform load</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">w&#8339; = 8·M&#8339; &divide; L&sup2;</span> (L in inches) = 8×19,251 ÷ 120² ≈ <strong>10.7 lb/in → 1,283 lb total</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 2×10 (1.5×9.25 in), 10 ft span, Fb = 900 psi.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">S:</span> <span class="text-slate-600">1.5×9.25² ÷ 6 = 21.39 in³</span></div>
+        <div><span class="font-medium text-slate-700">Max moment:</span> <span class="text-slate-600">900 × 21.39 = 19,251 lb·in</span></div>
+        <div><span class="font-medium text-slate-700">Span:</span> <span class="text-slate-600">10 ft = 120 in</span></div>
+        <div><span class="font-medium text-slate-700">Max load:</span> <span class="text-slate-600">8×19,251 ÷ 14,400 = <strong>1,283 lb total</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/wood-beam-span-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Wood Beam Span Calculator</a>
+      <a href="/tools/beam-deflection-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Beam Deflection Calculator</a>
+      <a href="/tools/bending-stress-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Bending Stress Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const spanFt = parseFloat(el('span').value);
+      const b = parseFloat(el('b').value);
+      const d = parseFloat(el('d').value);
+      const fb = parseFloat(el('fb').value);
+      if (!(spanFt > 0 && b > 0 && d > 0 && fb > 0)) { el('results').classList.add('hidden'); return; }
+      const L = spanFt * 12;
+      const S = b * d * d / 6;
+      const maxMoment = fb * S;
+      const wMaxPerIn = 8 * maxMoment / (L * L);
+      const totalLoad = wMaxPerIn * L;
+
+      el('r-load').textContent = Math.round(totalLoad).toLocaleString() + ' lb';
+      el('r-note').textContent = 'total uniform load over ' + spanFt + ' ft, strength limit only';
+      el('r-s').textContent = S.toFixed(2) + ' in³';
+      el('r-moment').textContent = Math.round(maxMoment).toLocaleString() + ' lb·in';
+      el('results').classList.remove('hidden');
+    }
+
+    ['span', 'b', 'd', 'fb'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

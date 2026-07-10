@@ -474,6 +474,17 @@ export const tools = [
   { slug: 'plywood-calculator', title: 'Plywood Sheet Calculator', short: 'Plywood sheets needed to cover an area.', category: 'construction', sub: 'Home & Garden', emoji: '📚', enabled: true, status: 'live' },
   { slug: 'shiplap-calculator', title: 'Shiplap Calculator', short: 'Shiplap boards needed, accounting for overlap.', category: 'construction', sub: 'Home & Garden', emoji: '🎋', enabled: true, status: 'live' },
   { slug: 'wainscoting-calculator', title: 'Wainscoting Calculator', short: 'Panels and trim needed for a wainscoted wall.', category: 'construction', sub: 'Home & Garden', emoji: '🪞', enabled: true, status: 'live' },
+  // ── Construction Batch 10 (final): Driveway/Roofing/Water + Structural gaps ──
+  { slug: 'birdsmouth-cut-calculator', title: 'Birdsmouth Cut Calculator', short: 'Rafter seat cut depth from pitch and plate width.', category: 'construction', sub: 'Structural', emoji: '🪛', enabled: true, status: 'live' },
+  { slug: 'concrete-driveway-cost-calculator', title: 'Concrete Driveway Cost Calculator', short: 'Cost to pour a concrete driveway by size and finish.', category: 'construction', sub: 'Driveway', emoji: '🛻', enabled: true, status: 'live' },
+  { slug: 'gravel-driveway-calculator', title: 'Gravel Driveway Calculator', short: 'Surface gravel tonnage for a driveway top layer.', category: 'construction', sub: 'Driveway', emoji: '🛞', enabled: true, status: 'live' },
+  { slug: 'liters-per-minute-calculator', title: 'Liters Per Minute Calculator', short: 'Flow rate in liters per minute, GPM or timed fill.', category: 'construction', sub: 'Water & Vessels', emoji: '💦', enabled: true, status: 'live' },
+  { slug: 'beam-load-calculator', title: 'Beam Load Calculator', short: 'Max uniform load a beam can carry, strength limit.', category: 'construction', sub: 'Structural', emoji: '🏋️‍♂️', enabled: true, status: 'live' },
+  { slug: 'wood-beam-span-calculator', title: 'Wood Beam Span Calculator', short: 'Max beam span from section, load and tributary width.', category: 'construction', sub: 'Structural', emoji: '🌲', enabled: true, status: 'live' },
+  { slug: 'carbon-equivalent-calculator', title: 'Carbon Equivalent (CE) Calculator', short: 'Steel weldability from chemical composition (IIW).', category: 'construction', sub: 'Structural', emoji: '🧬', enabled: true, status: 'live' },
+  { slug: 'thread-pitch-calculator', title: 'Thread Pitch Calculator', short: 'Thread pitch, TPI and pitch diameter reference.', category: 'construction', sub: 'Structural', emoji: '📌', enabled: true, status: 'live' },
+  { slug: 'rivet-size-calculator', title: 'Rivet Size Calculator', short: 'Rivet diameter and grip length from material stack.', category: 'construction', sub: 'Structural', emoji: '⚙️', enabled: true, status: 'live' },
+  { slug: 'cfm-airflow-calculator', title: 'CFM Airflow Calculator', short: 'Airflow from room ACH or duct size and velocity.', category: 'construction', sub: 'Structural', emoji: '🍃', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

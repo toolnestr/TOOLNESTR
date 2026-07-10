@@ -1,0 +1,172 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'CFM Airflow Calculator';
+const description = 'Calculate required airflow in cubic feet per minute (CFM) for a room from its volume and target air changes per hour, or from duct size and air velocity.';
+const intro = 'Find the CFM airflow a room needs, from its volume and target air changes, or from duct size and velocity.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate required CFM from room size?', a: 'CFM = (room volume × target ACH) ÷ 60. A 1,200 cubic foot room targeting 6 air changes per hour: (1,200 × 6) ÷ 60 = 120 CFM.' },
+  { q: 'How do I calculate CFM from duct size and velocity?', a: 'CFM = duct cross-sectional area (in square feet) × air velocity (in feet per minute). A round 8-inch duct (0.349 ft²) at 700 FPM: 0.349 × 700 ≈ 244 CFM.' },
+  { q: 'What air velocity is typical in HVAC ductwork?', a: 'Supply ducts commonly run 600 to 900 feet per minute, and return ducts a bit slower to reduce noise. Velocities much higher than this range tend to generate excessive noise and pressure drop; much lower requires oversized, costly ductwork.' },
+  { q: 'Why does CFM matter for HVAC design?', a: 'CFM is the fundamental sizing unit for fans, ducts, and registers — undersized CFM leaves a room poorly heated, cooled, or ventilated, while a duct sized for far more CFM than needed wastes material and can be noisy or inefficient at low speed.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block max-w-xs"><span class="text-sm font-medium text-slate-700">Method</span>
+      <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="room" selected>From room size &amp; target ACH</option>
+        <option value="duct">From duct size &amp; velocity</option>
+      </select></label>
+    <div id="g-room" class="mt-4 grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="15" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Ceiling height (ft)</span>
+        <input id="height" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-3"><span class="text-sm font-medium text-slate-700">Target air changes per hour (ACH)</span>
+        <input id="ach" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="g-duct" class="mt-4 hidden grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Duct diameter (in)</span>
+        <input id="ductdia" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Air velocity (FPM)</span>
+        <input id="velocity" type="number" step="any" placeholder="700" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Airflow</div>
+        <div id="r-cfm" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cfm-title cfm-desc">
+      <title id="cfm-title">CFM from room size or duct velocity</title>
+      <desc id="cfm-desc">A room with a supply duct and the two CFM calculation methods</desc>
+      <rect x="80" y="70" width="140" height="90" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5" />
+      <rect x="240" y="95" width="70" height="30" fill="#93c5fd" stroke="#2563eb" stroke-width="1.5" />
+      <path d="M310 110 L340 110" stroke="#2563eb" stroke-width="2" />
+      <text x="150" y="180" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">room volume</text>
+      <rect x="420" y="55" width="330" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Two CFM methods</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">room: CFM = volume &times; ACH &divide; 60</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">duct: CFM = area(ft&sup2;) &times; velocity(FPM)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Both methods answer the same question — how much air moves per minute.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the CFM airflow calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Cubic feet per minute (CFM) is the standard unit for how much air an HVAC system, fan, or duct moves, and it can be found two different ways depending on what you're solving for. Starting from a room's needs, CFM equals the room's volume times a target number of air changes per hour, divided by 60 to convert from an hourly to a per-minute rate — this tells you how much airflow a fan or vent needs to deliver to hit a ventilation target.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Starting from an existing or planned duct instead, CFM equals the duct's cross-sectional area in square feet times the air velocity moving through it in feet per minute (FPM) — the same continuity relationship used for water flow in pipes, applied to air in ducts. Supply ductwork is commonly designed for 600 to 900 feet per minute; much faster generates excessive noise and pressure drop, while much slower requires oversized, more expensive ductwork to move the same air volume.
+    </p>
+    <p class="mt-3 text-slate-600">
+      CFM is the fundamental sizing number behind fan selection, duct sizing, and register placement throughout an HVAC system. Getting it right in either direction — sizing a duct to deliver a room's required CFM, or checking what CFM an existing duct and blower combination can actually deliver — is central to a system performing as designed rather than leaving rooms under-ventilated or wastefully over-sized.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick a method</h3>
+        <p class="mt-1 text-sm text-slate-600">Room size and target ACH, or duct and velocity.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the values</h3>
+        <p class="mt-1 text-sm text-slate-600">Room dimensions and ACH, or duct size and FPM.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the CFM</h3>
+        <p class="mt-1 text-sm text-slate-600">Use it to size a fan, vent, or duct run.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">From room and ACH</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">CFM = (volume &times; ACH) &divide; 60</span>. A 15×12×8 ft room (1,440 ft³), 6 ACH: (1,440×6)÷60 = <strong>144 CFM</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">From duct and velocity</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">CFM = area(ft&sup2;) &times; FPM</span>. An 8 in duct (0.349 ft²) at 700 FPM: 0.349 × 700 ≈ <strong>244 CFM</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Duct area</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= &pi; &times; (dia&frasl;24)&sup2;</span>. An 8 in duct: π × (8/24)² = <strong>0.349 ft²</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 10 in round duct at 800 FPM.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Duct area:</span> <span class="text-slate-600">π × (10/24)² = 0.545 ft²</span></div>
+        <div><span class="font-medium text-slate-700">CFM:</span> <span class="text-slate-600">0.545 × 800 = <strong>436 CFM</strong></span></div>
+        <div><span class="font-medium text-slate-700">Compare:</span> <span class="text-slate-600">a 1,440 ft³ room at 6 ACH needs 144 CFM</span></div>
+        <div><span class="font-medium text-slate-700">Result:</span> <span class="text-slate-600">this duct has ample capacity</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/air-changes-per-hour-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Air Changes Per Hour Calculator</a>
+      <a href="/tools/ac-size-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">AC Unit Size Calculator</a>
+      <a href="/tools/gpm-flow-rate-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">GPM Flow Rate Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function sync() {
+      const duct = el('mode').value === 'duct';
+      el('g-room').classList.toggle('hidden', duct);
+      el('g-duct').classList.toggle('hidden', !duct);
+      update();
+    }
+
+    function update() {
+      let cfm;
+      if (el('mode').value === 'duct') {
+        const dia = parseFloat(el('ductdia').value);
+        const vel = parseFloat(el('velocity').value);
+        if (!(dia > 0 && vel > 0)) return hide();
+        const area = Math.PI * Math.pow(dia / 24, 2);
+        cfm = area * vel;
+        el('r-note').textContent = dia + ' in duct at ' + vel + ' FPM';
+      } else {
+        const L = parseFloat(el('len').value), W = parseFloat(el('width').value), H = parseFloat(el('height').value);
+        const ach = parseFloat(el('ach').value);
+        if (!(L > 0 && W > 0 && H > 0 && ach > 0)) return hide();
+        const vol = L * W * H;
+        cfm = (vol * ach) / 60;
+        el('r-note').textContent = vol.toFixed(0) + ' ft³ room at ' + ach + ' ACH';
+      }
+      el('r-cfm').textContent = cfm.toFixed(0) + ' CFM';
+      el('results').classList.remove('hidden');
+    }
+    function hide() { el('results').classList.add('hidden'); }
+
+    el('mode').addEventListener('change', sync);
+    ['len', 'width', 'height', 'ach', 'ductdia', 'velocity'].forEach((id) => el(id).addEventListener('input', update));
+    sync();
+  </script>
+</ToolLayout>

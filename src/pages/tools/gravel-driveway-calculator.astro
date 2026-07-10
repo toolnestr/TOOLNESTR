@@ -1,0 +1,157 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Gravel Driveway Calculator';
+const description = 'Find the tons of surface gravel needed for a driveway from its area and top layer depth, separate from the compacted base course underneath.';
+const intro = 'Find how many tons of surface gravel you need for a driveway, from its area and depth.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How much gravel do I need for a driveway surface?', a: 'Multiply the driveway area by the surface layer depth to get the volume, then multiply by gravel density (about 100-120 lb/ft³) and divide by 2000 to get tons. A 500 sq ft driveway with a 2-inch surface layer: 500 × (2/12) × 110 ÷ 2000 ≈ 4.6 tons.' },
+  { q: 'How is this different from the road base calculator?', a: 'A gravel driveway typically has two layers: a compacted base course (4-6 inches of crushed stone) for structural support, and a thinner surface layer (1-2 inches) of decorative or driving-surface gravel on top. This calculator estimates just the surface layer; use a base/road-base calculator separately for the structural base beneath it.' },
+  { q: 'What surface gravel size is best for a driveway?', a: 'Angular crushed stone in the 3/8 to 3/4 inch range (often labeled #57 or #8 stone) locks together and resists rutting better than smooth, rounded pea gravel, which tends to shift and scatter under vehicle tires.' },
+  { q: 'How often does a gravel driveway need topping up?', a: 'Surface gravel gradually scatters, sinks into the base, and washes away, so most gravel driveways need a fresh top-up layer every few years, more often in wet climates or with heavy traffic. Budget for periodic replenishment rather than a single one-time fill.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="60" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Surface depth (in)</span>
+        <input id="depth" type="number" step="any" placeholder="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Gravel density</span>
+        <select id="density" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="100">Light crushed stone (~100 lb/ft³)</option>
+          <option value="110" selected>Standard driveway gravel (~110 lb/ft³)</option>
+          <option value="120">Dense-graded gravel (~120 lb/ft³)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Surface gravel needed</div>
+        <div id="r-tons" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic yards</div><div id="r-cy" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gd-title gd-desc">
+      <title id="gd-title">Gravel driveway surface layer over a compacted base</title>
+      <desc id="gd-desc">A cross-section of surface gravel over a base course, with the tonnage formula</desc>
+      <rect x="90" y="120" width="240" height="14" fill="#a8a29e" stroke="#78716c" stroke-width="1" />
+      <rect x="90" y="134" width="240" height="30" fill="#78716c" stroke="#57534e" stroke-width="1" />
+      <text x="345" y="130" font-size="12" fill="#475569" font-family="system-ui,sans-serif">surface gravel (this calc)</text>
+      <text x="345" y="152" font-size="12" fill="#475569" font-family="system-ui,sans-serif">compacted base (separate calc)</text>
+      <rect x="420" y="55" width="330" height="100" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Surface gravel tonnage</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">tons = area &times; (depth&frasl;12) &times; density &divide; 2000</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">This estimates the thin driving surface layer, separate from the structural base beneath it.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the gravel driveway calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A gravel driveway typically has two distinct layers. Underneath is a compacted base course, usually 4 to 6 inches of crushed stone, that provides structural support and drainage. On top is a thinner surface layer, usually 1 to 2 inches, of the gravel you actually drive on. This calculator estimates just that surface layer — for the structural base beneath it, use a road base or crushed stone base calculator separately.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Sizing the surface gravel follows the same volume-to-weight logic as any bulk material: multiply the driveway's area by the surface depth to get cubic feet, then multiply by the gravel's density and divide by 2000 to convert pounds to tons. Angular crushed stone, often labeled #57 or #8 stone in the 3/8 to 3/4 inch range, is generally preferred over smooth, rounded pea gravel because its angular faces lock together under tire traffic instead of shifting and scattering.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Surface gravel isn't a one-time purchase. It gradually works its way into the base layer, scatters to the sides, and washes away in rain, so most gravel driveways need a fresh top-up layer every few years — more frequently in wet climates or under heavy vehicle traffic. Budgeting for periodic replenishment, rather than treating the initial fill as permanent, keeps the driveway surface in good shape long term.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the driveway</h3>
+        <p class="mt-1 text-sm text-slate-600">Length and width in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the surface depth</h3>
+        <p class="mt-1 text-sm text-slate-600">Usually 1-2 inches on top of the base.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Order gravel</h3>
+        <p class="mt-1 text-sm text-slate-600">And budget for future top-ups.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Volume</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= L &times; W &times; (depth&frasl;12)</span>. A 60×10 ft driveway, 2 in deep: 600 × (2/12) = <strong>100 ft³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Weight and tons</p>
+        <p class="mt-1 text-slate-600">
+          At 110 lb/ft³: 100 × 110 = 11,000 lb ÷ 2000 = <strong>5.5 tons</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cubic yards</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= ft&sup3; &divide; 27</span> = 100 ÷ 27 = <strong>3.7 yd³</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A long 100×12 ft driveway, 1.5 in deep, dense-graded gravel.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">100 × 12 = 1,200 ft²</span></div>
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">1,200 × (1.5/12) = 150 ft³</span></div>
+        <div><span class="font-medium text-slate-700">Weight:</span> <span class="text-slate-600">150 × 120 = 18,000 lb</span></div>
+        <div><span class="font-medium text-slate-700">Tons:</span> <span class="text-slate-600"><strong>9 tons</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/road-base-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Road Base Calculator</a>
+      <a href="/tools/gravel-sand-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Gravel &amp; Sand Calculator</a>
+      <a href="/tools/asphalt-driveway-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Asphalt Driveway Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('len').value);
+      const W = parseFloat(el('width').value);
+      const D = parseFloat(el('depth').value);
+      const density = parseFloat(el('density').value);
+      if (!(L > 0 && W > 0 && D > 0)) { el('results').classList.add('hidden'); return; }
+      const area = L * W;
+      const cf = area * (D / 12);
+      const lb = cf * density;
+      const tons = lb / 2000;
+      const cy = cf / 27;
+
+      el('r-tons').textContent = tons.toFixed(1) + ' tons';
+      el('r-note').textContent = 'at ' + D + ' in surface depth';
+      el('r-area').textContent = area.toFixed(0) + ' ft²';
+      el('r-cy').textContent = cy.toFixed(2) + ' yd³';
+      el('results').classList.remove('hidden');
+    }
+
+    ['len', 'width', 'depth'].forEach((id) => el(id).addEventListener('input', update));
+    el('density').addEventListener('change', update);
+  </script>
+</ToolLayout>

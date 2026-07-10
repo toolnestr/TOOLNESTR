@@ -1,0 +1,172 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Wood Beam Span Calculator';
+const description = 'Estimate the maximum span for a solid-sawn wood beam carrying a distributed load, from its section size, species grade and tributary load width.';
+const intro = 'Estimate the maximum span for a wood beam, from its section size and the load it carries.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How is a wood beam span estimated?', a: 'This tool combines a bending-strength check and a deflection check (at L/360) for a simply supported beam under uniform load, and reports the shorter (governing) span of the two. Beams often are limited by deflection before they reach their bending strength limit.' },
+  { q: 'What is tributary width?', a: 'Tributary width is the width of floor or roof area that transfers its load onto this particular beam — essentially half the distance to the next parallel beam or wall on each side. A wider tributary width means more load per foot of beam, which shortens its safe span.' },
+  { q: 'Why does this differ from a floor joist span table?', a: 'Joist span tables assume a fixed, standard residential live load (typically 40 psf) and standard joist spacing. This calculator lets you enter your own load and beam section directly, useful for girders and beams outside a standard joist table\'s scope, but it is still a simplified single-case estimate, not a full beam design.' },
+  { q: 'Should I use this to size a real structural beam?', a: 'No. Use it to compare options and build intuition about how span, section size, and load interact. Any load-bearing wood beam — especially a girder carrying multiple joists — needs sizing from the actual NDS span tables or an engineer\'s calculation for your species, grade, load combination, and local code.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section width b (in)</span>
+        <input id="b" type="number" step="any" placeholder="3.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section depth d (in)</span>
+        <input id="d" type="number" step="any" placeholder="9.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tributary width (ft)</span>
+        <input id="trib" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total load (psf)</span>
+        <input id="load" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Allowable stress Fb (psi)</span>
+        <input id="fb" type="number" step="any" placeholder="900" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Modulus of elasticity E (psi)</span>
+        <input id="emod" type="number" step="any" placeholder="1600000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Estimated max span</div>
+        <div id="r-span" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Strength-limited span</div><div id="r-strength" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Deflection-limited span</div><div id="r-defl" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="wb-title wb-desc">
+      <title id="wb-title">Wood beam span limited by strength or deflection</title>
+      <desc id="wb-desc">A beam carrying a tributary load, governed by whichever limit is shorter</desc>
+      <path d="M60 90 Q180 130 300 90" stroke="#6366f1" stroke-width="4" fill="none" />
+      <line x1="60" y1="90" x2="300" y2="90" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 3" />
+      <polygon points="52,90 68,90 60,106" fill="#475569" /><polygon points="292,90 308,90 300,106" fill="#475569" />
+      <text x="180" y="160" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">governing span = min(strength, deflection)</text>
+      <rect x="420" y="55" width="330" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Two checks, one answer</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">strength: from Fb &times; S</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">deflection: capped at L&frasl;360</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Which limit governs — strength or deflection — depends on the span, load and section, so both are checked.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the wood beam span calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A beam's real-world safe span is set by whichever of two separate limits is more restrictive: strength (whether it would break) or deflection (whether it sags too much for comfort and finishes). This calculator runs both checks and reports the shorter, governing span, because a beam is only as good as its weaker limit — passing strength alone doesn't mean the beam is adequate if it fails deflection at that same span.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The load on the beam is found from the tributary width — the strip of floor or roof that funnels its weight onto this beam, generally half the distance to the next parallel support on either side — multiplied by the load per square foot (accounting for both the structure's own dead weight and the live load it's designed to carry). That gives a load per linear foot of beam, which feeds into both the strength and deflection formulas.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This differs from a standard joist span table, which assumes a fixed, typical residential load and joist spacing. Here you enter your own load and beam section directly, which is useful for sizing a girder or beam outside a joist table's scope — but it remains a simplified single-load-case estimate. A real load-bearing beam, especially a girder carrying multiple joists or a significant point load, needs to be sized from the full NDS span tables or an engineer's calculation for the actual species, grade, load combination, and local code requirements.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the section</h3>
+        <p class="mt-1 text-sm text-slate-600">Beam width and depth in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Describe the load</h3>
+        <p class="mt-1 text-sm text-slate-600">Tributary width and total load in psf.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the governing span</h3>
+        <p class="mt-1 text-sm text-slate-600">The shorter of the strength and deflection limits.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Load per foot</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">w = tributary width &times; psf</span>. 12 ft trib, 50 psf: 12 × 50 = <strong>600 lb/ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Strength-limited span</p>
+        <p class="mt-1 text-slate-600">
+          From M&#8339; = Fb·S and M = wL²/8, solved for L. A 3.5×9.25 in beam, 900 psi, 600 lb/ft: <strong>≈ 7.1 ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Deflection-limited span (L/360)</p>
+        <p class="mt-1 text-slate-600">
+          From 5wL⁴/(384EI) = L/360, solved for L. Same beam, E = 1.6M psi: <strong>≈ 9.7 ft</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 3.5×9.25 in beam (a 4×10), 12 ft tributary width, 50 psf load, Fb=900 psi, E=1.6M psi.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Load:</span> <span class="text-slate-600">12 × 50 = 600 lb/ft</span></div>
+        <div><span class="font-medium text-slate-700">Strength span:</span> <span class="text-slate-600">≈ 7.1 ft</span></div>
+        <div><span class="font-medium text-slate-700">Deflection span:</span> <span class="text-slate-600">≈ 9.7 ft</span></div>
+        <div><span class="font-medium text-slate-700">Governing:</span> <span class="text-slate-600"><strong>7.1 ft (strength)</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/beam-load-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Beam Load Calculator</a>
+      <a href="/tools/beam-deflection-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Beam Deflection Calculator</a>
+      <a href="/tools/floor-joist-span-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Floor Joist Span Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const b = parseFloat(el('b').value);
+      const d = parseFloat(el('d').value);
+      const trib = parseFloat(el('trib').value);
+      const psf = parseFloat(el('load').value);
+      const fb = parseFloat(el('fb').value);
+      const E = parseFloat(el('emod').value);
+      if (!(b > 0 && d > 0 && trib > 0 && psf > 0 && fb > 0 && E > 0)) { el('results').classList.add('hidden'); return; }
+
+      const wPerFt = trib * psf; // lb/ft
+      const wPerIn = wPerFt / 12; // lb/in
+      const S = b * d * d / 6;
+      const I = b * Math.pow(d, 3) / 12;
+
+      // Strength: M_max = Fb*S = w*L^2/8 -> L(in) = sqrt(8*Fb*S/w)
+      const Lstrength_in = Math.sqrt((8 * fb * S) / wPerIn);
+      const Lstrength_ft = Lstrength_in / 12;
+
+      // Deflection: 5wL^4/(384EI) = L/360 -> L^3 = 384EI/(5*360*w) -> L = cbrt(...)
+      const Ldefl_in = Math.cbrt((384 * E * I) / (5 * 360 * wPerIn));
+      const Ldefl_ft = Ldefl_in / 12;
+
+      const governing = Math.min(Lstrength_ft, Ldefl_ft);
+      const which = Lstrength_ft < Ldefl_ft ? 'strength' : 'deflection';
+
+      el('r-span').textContent = governing.toFixed(1) + ' ft';
+      el('r-note').textContent = 'governed by ' + which + ', ' + wPerFt.toFixed(0) + ' lb/ft load';
+      el('r-strength').textContent = Lstrength_ft.toFixed(1) + ' ft';
+      el('r-defl').textContent = Ldefl_ft.toFixed(1) + ' ft';
+      el('results').classList.remove('hidden');
+    }
+
+    ['b', 'd', 'trib', 'load', 'fb', 'emod'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
