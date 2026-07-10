@@ -390,6 +390,14 @@ export const tools = [
   { slug: 'sod-calculator', title: 'Sod Calculator', short: 'Sod rolls needed for a lawn area.', category: 'construction', sub: 'Home & Garden', emoji: '🌱', enabled: true, status: 'live' },
   { slug: 'paver-calculator', title: 'Paver Calculator', short: 'Pavers needed for patio from area.', category: 'construction', sub: 'Home & Garden', emoji: '🟫', enabled: true, status: 'live' },
   { slug: 'stair-calculator', title: 'Stair Calculator', short: 'Number of steps, rise, and run from height.', category: 'construction', sub: 'Home & Garden', emoji: '🪜', enabled: true, status: 'live' },
+  // ── Construction Batch 1: Cement & Concrete ──
+  { slug: 'concrete-block-fill-calculator', title: 'Concrete Block Fill Calculator', short: 'Grout and concrete to core-fill a CMU block wall.', category: 'construction', sub: 'Cement & Concrete', emoji: '🧊', enabled: true, status: 'live' },
+  { slug: 'sonotube-calculator', title: 'Sonotube Concrete Calculator', short: 'Concrete for round tube and pier footings.', category: 'construction', sub: 'Cement & Concrete', emoji: '🛢️', enabled: true, status: 'live' },
+  { slug: 'concrete-footing-calculator', title: 'Concrete Footing Calculator', short: 'Concrete for strip, pad, and column footings.', category: 'construction', sub: 'Cement & Concrete', emoji: '🕳️', enabled: true, status: 'live' },
+  { slug: 'concrete-stairs-calculator', title: 'Concrete Stairs Calculator', short: 'Concrete to pour solid steps by rise and run.', category: 'construction', sub: 'Cement & Concrete', emoji: '🔻', enabled: true, status: 'live' },
+  { slug: 'mortar-mix-calculator', title: 'Mortar Mix Calculator', short: 'Bags of mortar and sand to lay block or brick.', category: 'construction', sub: 'Cement & Concrete', emoji: '🪣', enabled: true, status: 'live' },
+  { slug: 'thinset-coverage-calculator', title: 'Thinset Coverage Calculator', short: 'Bags of thinset by area and trowel notch size.', category: 'construction', sub: 'Cement & Concrete', emoji: '🔳', enabled: true, status: 'live' },
+  { slug: 'concrete-curing-time-calculator', title: 'Concrete Curing Time Calculator', short: 'Strength gained at any age from the curing curve.', category: 'construction', sub: 'Cement & Concrete', emoji: '⏲️', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

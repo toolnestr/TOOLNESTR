@@ -1,0 +1,233 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Sonotube Concrete Calculator';
+const description = 'Find how much concrete you need for a Sonotube or round column footing — cubic feet, cubic yards and bags per tube — from the tube diameter and depth.';
+const intro = 'Calculate the concrete needed to fill a round Sonotube form or pier footing, per tube and for the whole job, in cubic feet, cubic yards, and bags.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How much concrete do I need for a 12-inch Sonotube?', a: 'A 12-inch diameter tube holds about 0.79 cubic feet of concrete per foot of depth. At 4 feet deep that is about 3.14 cubic feet, or roughly six 80 lb bags once you add waste. Always round up to whole bags.' },
+  { q: 'What is the formula for concrete in a round tube?', a: 'Volume in cubic feet = 3.14159 x (diameter in inches / 24)^2 x depth in feet. Dividing the diameter by 24 converts it to a radius in feet, and squaring it and multiplying by pi and the depth gives the cylinder volume.' },
+  { q: 'How deep should a Sonotube footing be?', a: 'The bottom of the footing must sit below your local frost line so that freezing, expanding soil cannot heave it. Frost depth ranges from near zero in warm climates to 48 inches or more in cold regions. Check your local building department for the required depth.' },
+  { q: 'Should I add a wider footing at the base?', a: 'Many pier footings have a bell or a separate square pad at the bottom to spread the load. This calculator sizes the straight tube only. Estimate the base pad separately as a slab or box and add it to the total.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tube diameter (in)</span>
+        <input id="dia" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Depth / height (ft)</span>
+        <input id="depth" type="number" step="any" placeholder="4" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of tubes</span>
+        <input id="qty" type="number" step="1" placeholder="4" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Waste allowance</span>
+      <div class="mt-1 flex flex-wrap gap-2">
+        {['0%', '5%', '10%'].map((w) => (
+          <button data-waste={w} class="waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{w}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Total concrete needed</div>
+        <div id="r-cy" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-cf" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Per tube</div><div id="r-per" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">80 lb bags</div><div id="r-bags80" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">60 lb bags</div><div id="r-bags60" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="360" viewBox="0 0 800 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="sono-title sono-desc">
+      <title id="sono-title">Sonotube column footing diagram</title>
+      <desc id="sono-desc">A round concrete tube footing showing diameter and depth, with the cylinder volume formula</desc>
+      <ellipse cx="230" cy="90" rx="70" ry="20" fill="#c7d2fe" stroke="#6366f1" stroke-width="2" />
+      <path d="M160 90 L160 280 A70 20 0 0 0 300 280 L300 90" fill="#e0e7ff" stroke="#6366f1" stroke-width="2" />
+      <ellipse cx="230" cy="280" rx="70" ry="20" fill="#a5b4fc" stroke="#6366f1" stroke-width="2" />
+      <line x1="160" y1="70" x2="300" y2="70" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <polygon points="160,70 172,65 172,75" fill="#94a3b8" />
+      <polygon points="300,70 288,65 288,75" fill="#94a3b8" />
+      <text x="230" y="58" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif">Diameter (D)</text>
+      <line x1="330" y1="90" x2="330" y2="280" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 3" />
+      <polygon points="330,90 322,102 338,102" fill="#94a3b8" />
+      <polygon points="330,280 322,268 338,268" fill="#94a3b8" />
+      <text x="345" y="190" text-anchor="middle" font-size="14" fill="#475569" font-family="system-ui,sans-serif" transform="rotate(90 345 190)">Depth (H)</text>
+      <rect x="440" y="120" width="280" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="460" y="148" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Cylinder volume</text>
+      <text x="460" y="174" font-size="12" fill="#475569" font-family="system-ui,sans-serif">V = &pi; &times; (D&frasl;24)&sup2; &times; H</text>
+      <text x="460" y="196" font-size="12" fill="#475569" font-family="system-ui,sans-serif">D in inches, H in feet &rarr; ft&sup3;</text>
+      <text x="460" y="218" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Cu yd = V &divide; 27</text>
+      <text x="460" y="240" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Bags = V &divide; bag yield</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A Sonotube footing is a cylinder; its volume is pi times the radius squared times the depth.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the Sonotube calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A Sonotube is a waxed cardboard tube used as a one-time form for round concrete piers, deck footings, and column bases. Because the form is a simple cylinder, the concrete inside it is just the volume of that cylinder — pi times the radius squared times the height.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The one trick is units. The diameter is measured in inches but the depth in feet, so the calculator converts the diameter to a radius in feet by dividing by 24 (halve it to a radius, then divide by 12 to change inches to feet). It then squares that radius, multiplies by pi and the depth to get cubic feet, multiplies by the number of tubes, and adds your waste allowance. Cubic yards come from dividing by 27, and bag counts from the standard yields of 0.6 cubic feet for an 80 lb bag and 0.45 for a 60 lb bag.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This follows the standard cylinder-volume geometry used in ACI 318 concrete work. The result covers the straight tube only — if your footing flares out to a wider bell or sits on a square pad, estimate that base separately and add it in.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the tube size</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the tube diameter in inches (6, 8, 10, 12 are common) and the pour depth in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Count the tubes</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter how many identical tubes you are pouring so the total scales to the whole job.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add waste</h3>
+        <p class="mt-1 text-sm text-slate-600">Add 5-10% for spillage and an uneven hole bottom, then round bags up.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Volume per tube</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">V = &pi; &times; (D&frasl;24)&sup2; &times; H</span>. A 12-inch tube 4 ft deep: &pi; &times; (12&frasl;24)&sup2; &times; 4 = &pi; &times; 0.25 &times; 4 = <strong>3.14 ft&sup3;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Total volume</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Total = V &times; tubes &times; (1 + waste)</span>. Four such tubes with 10% waste: 3.14 &times; 4 &times; 1.10 = <strong>13.8 ft&sup3;</strong>, or 0.51 cubic yards.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Bag count</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Bags = total &divide; yield</span>. Using 80 lb bags (0.6 ft&sup3;): 13.8 &divide; 0.6 = <strong>23 bags</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Six 8-inch tubes for a deck, each 3.5 ft deep, with 5% waste.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Radius:</span> <span class="text-slate-600">8 &divide; 24 = 0.333 ft</span></div>
+        <div><span class="font-medium text-slate-700">Per tube:</span> <span class="text-slate-600">&pi; &times; 0.333&sup2; &times; 3.5 = 1.22 ft&sup3;</span></div>
+        <div><span class="font-medium text-slate-700">Six tubes:</span> <span class="text-slate-600">1.22 &times; 6 = 7.33 ft&sup3;</span></div>
+        <div><span class="font-medium text-slate-700">With 5% waste:</span> <span class="text-slate-600">7.33 &times; 1.05 = <strong>7.70 ft&sup3;</strong></span></div>
+        <div><span class="font-medium text-slate-700">80 lb bags:</span> <span class="text-slate-600">7.70 &divide; 0.6 = 13 bags</span></div>
+        <div><span class="font-medium text-slate-700">Cubic yards:</span> <span class="text-slate-600">7.70 &divide; 27 = 0.29 cu yd</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Where round tube footings are used</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🛖</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Deck and porch footings</h3>
+        <p class="mt-1 text-sm text-slate-600">Tube footings carry deck posts down to solid, below-frost soil. Most residential decks use 8 to 12 inch tubes spaced along the beam lines.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Pole barns and pergolas</h3>
+        <p class="mt-1 text-sm text-slate-600">Posts for pergolas, carports, and pole barns are set in tube footings so the column base stays dry and locked against uplift and frost.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚦</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Sign and fence posts</h3>
+        <p class="mt-1 text-sm text-slate-600">Large gate posts, mailbox clusters, and sign bases use small-diameter tubes to set a clean, straight concrete pier without a messy dug hole.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏡</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Cabin and shed piers</h3>
+        <p class="mt-1 text-sm text-slate-600">Small buildings on a pier foundation sit on a grid of tube footings instead of a full slab, which saves concrete on sloped or remote sites.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for pouring tube footings</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Go below the frost line</h3>
+        <p class="mt-1 text-sm text-slate-600">The whole point of a deep pier is to reach undisturbed soil below where the ground freezes. A footing that stops short of the frost line will heave in winter and rack the structure above it.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Brace the tube before you pour</h3>
+        <p class="mt-1 text-sm text-slate-600">Wet concrete is heavy and can float or tilt an unbraced tube. Backfill and brace each tube plumb, and pour in lifts so the form does not blow out at the bottom.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Order by the bag or the yard</h3>
+        <p class="mt-1 text-sm text-slate-600">A handful of small tubes is cheapest with bagged mix. Once your total passes roughly a cubic yard, compare the bag count against a short-load ready-mix delivery, which may cost less and pour faster.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/concrete-footing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Footing Calculator</a>
+      <a href="/tools/concrete-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Calculator</a>
+      <a href="/tools/cubic-yardage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Cubic Yardage Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let waste = 0.05;
+
+    function update() {
+      const D = parseFloat(el('dia').value);
+      const H = parseFloat(el('depth').value);
+      let n = parseInt(el('qty').value, 10);
+      if (!n || n < 1) n = 1;
+      if (!D || !H || D <= 0 || H <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const r = D / 24;
+      const perTube = Math.PI * r * r * H;
+      const cf = perTube * n * (1 + waste);
+      const cy = cf / 27;
+      const bags80 = Math.ceil(cf / 0.6);
+      const bags60 = Math.ceil(cf / 0.45);
+
+      el('r-cy').textContent = cy.toFixed(2) + ' cu yd';
+      el('r-cf').textContent = cf.toFixed(1) + ' cu ft total';
+      el('r-per').textContent = perTube.toFixed(2) + ' ft³';
+      el('r-bags80').textContent = bags80.toLocaleString();
+      el('r-bags60').textContent = bags60.toLocaleString();
+      el('results').classList.remove('hidden');
+    }
+
+    const idle = 'waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+    const active = 'waste-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+    document.querySelectorAll('.waste-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.waste-btn').forEach((b) => { b.className = idle; });
+        btn.className = active;
+        waste = parseFloat(btn.dataset.waste) / 100;
+        update();
+      });
+    });
+
+    ['dia', 'depth', 'qty'].forEach((id) => el(id).addEventListener('input', update));
+    document.querySelector('.waste-btn[data-waste="5%"]').click();
+  </script>
+</ToolLayout>

@@ -1,0 +1,221 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Thinset Coverage Calculator';
+const description = 'Work out how many bags of thinset mortar you need to set tile, based on the area and your trowel notch size.';
+const intro = 'Estimate how many bags of thinset mortar you need to set tile, based on the tiled area and the trowel notch size you are using.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How much thinset do I need per square foot?', a: 'It depends on the trowel notch. A small 1/4-inch square notch covers about 95 square feet per 50 lb bag, while a large 1/2-inch notch used for big tiles covers only about 45 square feet. Bigger tiles need a bigger notch and use more thinset.' },
+  { q: 'What size trowel notch should I use?', a: 'Match the notch to the tile size: roughly a 1/4-inch notch for mosaics and small tiles up to about 8 inches, a 1/4 by 3/8-inch notch for tiles up to 16 inches, and a 1/2-inch or larger notch for big-format tiles. The tile and thinset makers publish exact recommendations.' },
+  { q: 'Should I add extra thinset for uneven floors?', a: 'Yes. Wavy substrates, back-buttering large tiles, and heavy waste can raise usage well above the flat-surface estimate. Add 10 to 15 percent, and more if the floor is out of level.' },
+  { q: 'Is thinset the same as mortar?', a: 'Thinset is a specific cement-based mortar formulated to bond tile to a substrate in a thin layer. It is different from the mortar used to lay block or brick and from the grout used to fill joints between tiles.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Area to tile (sq ft)</span>
+        <input id="area" type="number" step="any" placeholder="120" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Waste allowance</span>
+        <select id="waste" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0">0% (flat, ideal)</option>
+          <option value="10" selected>10% (typical)</option>
+          <option value="15">15% (uneven floor)</option>
+        </select></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Trowel notch (tile size)</span>
+      <div class="mt-1 grid gap-2 sm:grid-cols-2">
+        {[
+          { k: '1/4 in square — small tile', c: '95' },
+          { k: '1/4 x 3/8 in — up to 16 in', c: '70' },
+          { k: '1/2 in square — large tile', c: '45' },
+          { k: '3/4 in — big-format', c: '30' },
+        ].map((n) => (
+          <button data-cov={n.c} class="notch-btn rounded-lg border border-slate-300 px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{n.k}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Thinset needed</div>
+        <div id="r-bags" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Coverage per 50 lb bag</div><div id="r-cov" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Area incl. waste</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="thin-title thin-desc">
+      <title id="thin-title">Trowel notch and thinset coverage</title>
+      <desc id="thin-desc">A notched trowel spreading ridges of thinset, with coverage decreasing as the notch grows</desc>
+      <path d="M120 200 h180 v-14 h-12 v14 h-24 v-14 h-12 v14 h-24 v-14 h-12 v14 h-24 v-14 h-12 v14 h-12 z" fill="#c7d2fe" stroke="#6366f1" stroke-width="2" />
+      <text x="210" y="230" text-anchor="middle" font-size="13" fill="#475569" font-family="system-ui,sans-serif">Notched thinset ridges</text>
+      <rect x="380" y="90" width="340" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="400" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Coverage per 50 lb bag</text>
+      <text x="400" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">1/4&Prime; notch &asymp; 95 ft&sup2;</text>
+      <text x="400" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">1/4 x 3/8&Prime; &asymp; 70 ft&sup2;</text>
+      <text x="400" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">1/2&Prime; notch &asymp; 45 ft&sup2;</text>
+      <text x="400" y="210" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Bags = area &divide; coverage</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A bigger trowel notch lays a thicker bed, so each bag covers less area.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the thinset coverage calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Thinset is spread with a notched trowel that leaves ridges of a set height. The bigger the notch, the thicker the bed of mortar and the more material each square foot uses — which is why the same bag covers far less area under big tiles than under mosaics. Tile and thinset manufacturers publish coverage figures for each notch size, and this calculator uses those industry norms.
+    </p>
+    <p class="mt-3 text-slate-600">
+      You enter the area to tile and pick the trowel notch that matches your tile size. The calculator divides the area, plus your waste allowance, by the coverage rate for that notch to get the number of 50 lb bags, rounded up. A small 1/4-inch square notch covers about 95 square feet per bag; a 1/2-inch notch for large tiles covers about 45; and a 3/4-inch notch for big-format tile covers only about 30.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Real coverage always runs a little below the ideal because floors are never perfectly flat, and large tiles are often back-buttered with a second layer of thinset. The waste allowance covers that. When in doubt, use the larger notch the tile maker recommends and buy an extra bag.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the area</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the total square footage you are tiling, floor or wall.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Match the notch</h3>
+        <p class="mt-1 text-sm text-slate-600">Pick the trowel notch for your tile size — bigger tile, bigger notch.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add waste</h3>
+        <p class="mt-1 text-sm text-slate-600">Bump the estimate for uneven floors and back-buttering, then round up.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Effective area</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">A = area &times; (1 + waste)</span>. 120 ft&sup2; with 10% waste: 120 &times; 1.10 = <strong>132 ft&sup2;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Bag count</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">Bags = A &divide; coverage</span>. With a 1/4 x 3/8&Prime; notch (70 ft&sup2;/bag): 132 &divide; 70 = 1.9 &rarr; <strong>2 bags</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Why the notch matters</p>
+        <p class="mt-1 text-slate-600">
+          The same 132 ft&sup2; under a 1/2&Prime; notch (45 ft&sup2;/bag) needs 132 &divide; 45 = <strong>3 bags</strong> — half again as much for larger tile.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 60 ft&sup2; shower wall in 12-inch tile, 1/4 x 3/8&Prime; notch, 15% waste for back-buttering.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Effective area:</span> <span class="text-slate-600">60 &times; 1.15 = 69 ft&sup2;</span></div>
+        <div><span class="font-medium text-slate-700">Coverage:</span> <span class="text-slate-600">70 ft&sup2; per 50 lb bag</span></div>
+        <div><span class="font-medium text-slate-700">Bags:</span> <span class="text-slate-600">69 &divide; 70 = 0.99 &rarr; <strong>1 bag</strong></span></div>
+        <div><span class="font-medium text-slate-700">Safety:</span> <span class="text-slate-600">keep a second bag on hand</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Matching trowel to tile</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔲</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Mosaics and small tile</h3>
+        <p class="mt-1 text-sm text-slate-600">Tiles up to about 8 inches use a 1/4-inch notch. The thin bed spreads far, so a single bag covers a large area of small tile or mosaic sheets.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⬛</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Standard floor tile</h3>
+        <p class="mt-1 text-sm text-slate-600">Common 12 and 16-inch tiles use a 1/4 by 3/8-inch notch, balancing bond strength against material use for most kitchen and bath floors.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⬜</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Large and big-format tile</h3>
+        <p class="mt-1 text-sm text-slate-600">Tiles 18 inches and up, and large-format planks, need a 1/2 to 3/4-inch notch and usually back-buttering to get full coverage under the tile.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📏</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Check for full coverage</h3>
+        <p class="mt-1 text-sm text-slate-600">Pull a tile now and then to confirm the back is at least 80 to 95 percent coated. Hollow spots mean the notch is too small or the thinset skinned over.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10 rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-xl font-bold text-slate-900">Tips for buying thinset</h2>
+    <div class="mt-4 space-y-5">
+      <div>
+        <h3 class="font-semibold text-slate-900">Match the thinset to the tile</h3>
+        <p class="mt-1 text-sm text-slate-600">Large, heavy, or glass and porcelain tiles often need a modified or large-format thinset, not the cheapest basic mix. The wrong thinset can fail to bond no matter how much you use.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Only mix what you can use</h3>
+        <p class="mt-1 text-sm text-slate-600">Thinset starts curing once mixed and cannot be re-tempered with more water. Mix in batches you can spread within its open time, usually about 30 minutes, so none goes to waste.</p>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900">Buy from one lot</h3>
+        <p class="mt-1 text-sm text-slate-600">Buy all your bags at once so they share a production lot and a consistent color, especially with white thinset under translucent glass or stone tile.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/tile-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Tile Calculator</a>
+      <a href="/tools/mortar-mix-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Mortar Mix Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let coverage = 70;
+
+    function update() {
+      const area = parseFloat(el('area').value);
+      const waste = parseFloat(el('waste').value) / 100;
+      if (!area || area <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const eff = area * (1 + waste);
+      const bags = Math.ceil(eff / coverage);
+
+      el('r-bags').textContent = bags.toLocaleString() + ' × 50 lb bags';
+      el('r-note').textContent = 'covers ' + eff.toFixed(0) + ' ft² at this notch';
+      el('r-cov').textContent = coverage + ' ft²';
+      el('r-area').textContent = eff.toFixed(0) + ' ft²';
+      el('results').classList.remove('hidden');
+    }
+
+    const idle = 'notch-btn rounded-lg border border-slate-300 px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+    const active = 'notch-btn rounded-lg border border-indigo-300 bg-indigo-100 px-3 py-2 text-left text-sm font-medium text-indigo-700 transition';
+    document.querySelectorAll('.notch-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.notch-btn').forEach((b) => { b.className = idle; });
+        btn.className = active;
+        coverage = parseFloat(btn.dataset.cov);
+        update();
+      });
+    });
+    el('area').addEventListener('input', update);
+    el('waste').addEventListener('change', update);
+    document.querySelector('.notch-btn[data-cov="70"]').click();
+  </script>
+</ToolLayout>
