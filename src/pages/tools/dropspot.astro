@@ -751,7 +751,12 @@ const howToSchema = {
         // rejection (bad PIN, full, expired) must not loop.
         if (joined) scheduleReconnect(code);
       };
-      ws.onerror = () => {}; // onclose handles recovery
+      ws.onerror = () => {
+        // A blocked/failed handshake (e.g. CSP connect-src) can fire `error`
+        // with NO following `close`, which would leave the join promise hanging
+        // forever ("Creating…"). Settle it here so the UI recovers instead.
+        if (!settled && handshake) done('reject', { status: 0, code: 'ws_error' });
+      };
     }
     function scheduleReconnect(code) {
       if (state.wsReconnect) return;
