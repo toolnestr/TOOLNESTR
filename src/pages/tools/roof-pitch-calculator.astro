@@ -1,0 +1,171 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Roof Pitch Calculator';
+const description = 'Find your roof pitch as an x-in-12 ratio, the roof angle in degrees, and the slope area multiplier from the rise and run.';
+const intro = 'Find your roof pitch as an x-in-12 ratio, the angle in degrees, and the slope factor that scales flat area to actual roof area.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How is roof pitch measured?', a: 'Roof pitch is written as "x in 12," meaning the roof rises x inches for every 12 inches of horizontal run. A "6 in 12" roof rises 6 inches for every foot it runs, giving a moderate slope; "12 in 12" is a steep 45-degree roof.' },
+  { q: 'How do I find my roof pitch without climbing on the roof?', a: 'Hold a level horizontally against the underside of the roof from inside the attic, measure 12 inches out from the wall along the level, and measure straight down to the rafter at that point. That vertical measurement in inches is the rise per 12, your pitch.' },
+  { q: 'What is a slope factor and why does it matter?', a: 'The slope factor converts the flat, "as-seen-from-above" roof area into the true sloped surface area, since materials are ordered for the actual roof surface, not its footprint. A steeper pitch has a larger slope factor and needs more material for the same footprint.' },
+  { q: 'What is considered a steep roof?', a: 'Roofs under about 4 in 12 are considered low-slope and often need special roofing materials and techniques. Roofs from 4 in 12 up to about 9 in 12 are standard slopes most shingles are rated for. Above about 9 in 12, a roof is considered steep and needs extra fall-protection during installation.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Rise (in, over 12" run)</span>
+        <input id="rise" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Flat (footprint) roof area (sq ft, optional)</span>
+        <input id="area" type="number" step="any" placeholder="1500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Roof pitch</div>
+        <div id="r-pitch" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-angle" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Slope factor</div><div id="r-factor" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Actual roof area</div><div id="r-actual" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Category</div><div id="r-cat" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="280" viewBox="0 0 800 280" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rp-title rp-desc">
+      <title id="rp-title">Roof pitch as rise over a 12-inch run</title>
+      <desc id="rp-desc">A roof triangle showing rise, a 12-inch run, and the resulting pitch and angle</desc>
+      <path d="M100 220 L400 220 L400 110 Z" fill="none" stroke="#6366f1" stroke-width="3" />
+      <line x1="100" y1="220" x2="220" y2="220" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" />
+      <text x="160" y="240" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">run = 12&Prime;</text>
+      <line x1="220" y1="220" x2="220" y2="170" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" />
+      <text x="235" y="200" font-size="12" fill="#475569" font-family="system-ui,sans-serif">rise</text>
+      <rect x="470" y="90" width="290" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="490" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Pitch formula</text>
+      <text x="490" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">pitch = rise &Prime; in 12&Prime;</text>
+      <text x="490" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">angle = atan(rise&frasl;12)</text>
+      <text x="490" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">slope factor = &radic;(rise&sup2;+12&sup2;)&frasl;12</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Pitch is the rise over a fixed 12-inch run; the slope factor scales flat area up to true roof area.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the roof pitch calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Roofers describe slope as "x in 12" — the number of inches the roof rises for every 12 inches it runs horizontally. Entering just the rise gives you that ratio directly, since the run is always fixed at 12. From the same rise and run, basic trigonometry gives the roof's angle from horizontal: the arctangent of rise divided by 12.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The slope factor answers a different, very practical question: how much bigger is the true roof surface than its flat footprint? By the Pythagorean theorem, the sloped length for every 12 inches of run is the square root of rise squared plus 12 squared. Dividing that by 12 gives a multiplier — apply it to your flat, birds-eye roof area to get the actual material-ordering area.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Pitch also sorts roofs into rough categories that follow IRC low-slope and steep-slope roofing definitions. Below about 4 in 12, a roof is considered low-slope and often needs different underlayment and materials than standard shingles. Above about 9 in 12, it is considered steep and typically needs fall protection during installation.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the rise</h3>
+        <p class="mt-1 text-sm text-slate-600">Find the vertical rise over a 12-inch horizontal run, with a level in the attic.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add your footprint area</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the flat roof area if you want the true sloped area calculated too.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read pitch and category</h3>
+        <p class="mt-1 text-sm text-slate-600">See the pitch, angle, slope factor, and whether it counts as low, standard, or steep slope.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Angle</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">angle = atan(rise&frasl;12)</span>. A 6 in 12 roof: atan(6&frasl;12) = atan(0.5) = <strong>26.57&deg;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Slope factor</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= &radic;(6&sup2;+12&sup2;)&frasl;12</span> = &radic;180&frasl;12 = 13.42&frasl;12 = <strong>1.118</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Actual roof area</p>
+        <p class="mt-1 text-slate-600">
+          A 1500 ft&sup2; footprint: 1500 &times; 1.118 = <strong>1677 ft&sup2;</strong> of true roof surface to cover.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A steep 10 in 12 roof over a 1200 ft&sup2; footprint.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Angle:</span> <span class="text-slate-600">atan(10/12) = 39.8°</span></div>
+        <div><span class="font-medium text-slate-700">Slope factor:</span> <span class="text-slate-600">&radic;(100+144)/12 = 1.302</span></div>
+        <div><span class="font-medium text-slate-700">Actual area:</span> <span class="text-slate-600">1200 &times; 1.302 = <strong>1562 ft²</strong></span></div>
+        <div><span class="font-medium text-slate-700">Category:</span> <span class="text-slate-600">steep slope</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common roof pitches</h2>
+    <div class="mt-3 overflow-x-auto">
+      <table class="min-w-full border border-slate-200 text-sm">
+        <thead class="bg-slate-50 text-slate-700">
+          <tr><th class="border border-slate-200 px-3 py-2 text-left">Pitch</th><th class="border border-slate-200 px-3 py-2 text-left">Angle</th><th class="border border-slate-200 px-3 py-2 text-left">Category</th><th class="border border-slate-200 px-3 py-2 text-left">Typical use</th></tr>
+        </thead>
+        <tbody class="text-slate-600">
+          <tr><td class="border border-slate-200 px-3 py-2">3 in 12</td><td class="border border-slate-200 px-3 py-2">14.0°</td><td class="border border-slate-200 px-3 py-2">Low slope</td><td class="border border-slate-200 px-3 py-2">Modern/ranch style</td></tr>
+          <tr><td class="border border-slate-200 px-3 py-2">6 in 12</td><td class="border border-slate-200 px-3 py-2">26.6°</td><td class="border border-slate-200 px-3 py-2">Standard</td><td class="border border-slate-200 px-3 py-2">Most homes</td></tr>
+          <tr><td class="border border-slate-200 px-3 py-2">9 in 12</td><td class="border border-slate-200 px-3 py-2">36.9°</td><td class="border border-slate-200 px-3 py-2">Standard/steep border</td><td class="border border-slate-200 px-3 py-2">Traditional, colonial</td></tr>
+          <tr><td class="border border-slate-200 px-3 py-2">12 in 12</td><td class="border border-slate-200 px-3 py-2">45.0°</td><td class="border border-slate-200 px-3 py-2">Steep</td><td class="border border-slate-200 px-3 py-2">Cottage, A-frame</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/rafter-length-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Rafter Length Calculator</a>
+      <a href="/tools/roofing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roofing Calculator</a>
+      <a href="/tools/snow-load-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Snow Load Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const rise = parseFloat(el('rise').value);
+      const area = parseFloat(el('area').value);
+      if (!rise || rise <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const angle = Math.atan(rise / 12) * (180 / Math.PI);
+      const factor = Math.sqrt(rise * rise + 144) / 12;
+      let cat = 'Standard slope';
+      if (rise < 4) cat = 'Low slope';
+      else if (rise > 9) cat = 'Steep slope';
+
+      el('r-pitch').textContent = rise.toFixed(2) + ' in 12';
+      el('r-angle').textContent = angle.toFixed(2) + '° from horizontal';
+      el('r-factor').textContent = factor.toFixed(3) + 'x';
+      el('r-actual').textContent = (area && area > 0) ? Math.round(area * factor).toLocaleString() + ' ft²' : 'enter footprint area';
+      el('r-cat').textContent = cat;
+      el('results').classList.remove('hidden');
+    }
+
+    ['rise', 'area'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

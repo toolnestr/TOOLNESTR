@@ -1,0 +1,164 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Metal Roofing Calculator';
+const description = 'Find how many metal roofing panels you need, and the total linear feet, from your roof area, panel coverage width and a waste allowance.';
+const intro = 'Estimate the metal roofing panels and linear feet you need, from your roof area, panel coverage width, and a waste allowance.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How many metal roofing panels do I need?', a: 'Divide the roof width by the panel\'s effective coverage width to get the number of panels across, then multiply by the number of panel lengths needed to cover the roof slope from eave to ridge.' },
+  { q: 'What is panel coverage width?', a: 'Metal panels overlap slightly at each seam, so the coverage width — the width one panel actually adds to the roof — is a little less than the panel\'s full manufactured width. A panel might be 3 feet wide but only cover 2.83 feet after the overlap, and that coverage figure is what you divide the roof width by.' },
+  { q: 'Should I order extra for waste?', a: 'Yes. Ridge caps, valleys, hips, and end cuts use extra material beyond the flat field area. Ten to fifteen percent is a common allowance, more for a complex roof with many hips and valleys.' },
+  { q: 'Can panels run the full roof slope in one piece?', a: 'Many residential metal roofs use panels cut to the exact slope length so each panel runs unbroken from eave to ridge, avoiding a horizontal seam. Confirm your panel\'s maximum manufactured length before ordering for a long roof slope.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Roof width (ft, along the eave)</span>
+        <input id="width" type="number" step="any" placeholder="40" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Slope length (ft, eave to ridge)</span>
+        <input id="slope" type="number" step="any" placeholder="18" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Panel coverage width (in)</span>
+        <input id="cov" type="number" step="any" placeholder="36" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Waste allowance</span>
+        <select id="waste" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="10" selected>10% (simple roof)</option>
+          <option value="15">15% (hips/valleys)</option>
+          <option value="5">5% (large simple roof)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Panels needed</div>
+        <div id="r-panels" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Roof area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Panel length needed</div><div id="r-panellen" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Total linear feet</div><div id="r-linft" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mr-title mr-desc">
+      <title id="mr-title">Metal roof panels with overlapping seams</title>
+      <desc id="mr-desc">A roof surface covered in vertical metal panels with seams, and the panel-count formula</desc>
+      <rect x="100" y="70" width="340" height="150" fill="#e2e8f0" stroke="#6366f1" stroke-width="2" />
+      <g stroke="#94a3b8" stroke-width="1.5">
+        <line x1="140" y1="70" x2="140" y2="220"/><line x1="180" y1="70" x2="180" y2="220"/><line x1="220" y1="70" x2="220" y2="220"/><line x1="260" y1="70" x2="260" y2="220"/><line x1="300" y1="70" x2="300" y2="220"/><line x1="340" y1="70" x2="340" y2="220"/><line x1="380" y1="70" x2="380" y2="220"/>
+      </g>
+      <text x="270" y="240" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">panels run eave to ridge, overlapping at seams</text>
+      <rect x="480" y="90" width="280" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="500" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Panel count</text>
+      <text x="500" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">panels = roof width &divide; coverage width</text>
+      <text x="500" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">linear ft = panels &times; slope length</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Panels overlap at each seam, so the effective coverage width is slightly less than the panel's full width.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the metal roofing calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Metal roofing goes up in long panels that run from the eave to the ridge, overlapping their edges at each seam for a weathertight fit. Because of that overlap, a panel's effective coverage — how much roof width it actually adds — is a little narrower than its full manufactured width. Dividing the roof width by that coverage figure gives the number of panels needed across the roof.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Multiplying the panel count by the slope length — the distance from eave to ridge along the roof surface — gives the total linear footage of panel material. Roof area is reported for reference as width times slope length, the true sloped area rather than the flat footprint.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The waste allowance accounts for trim at hips, valleys, and ridges, plus end cuts and any mistakes, following the same coverage-rate logic manufacturers publish for their panel systems. A simple gable roof needs less waste than a roof with several hips and valleys, since each of those features consumes extra panel length in angled cuts.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the roof</h3>
+        <p class="mt-1 text-sm text-slate-600">Width along the eave and slope length from eave to ridge, in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter panel coverage</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the effective coverage width from your panel's spec sheet, not the raw width.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read panels and linear feet</h3>
+        <p class="mt-1 text-sm text-slate-600">Get the panel count and total footage, with waste already added.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Panels across</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= ceil(width(in) &divide; coverage(in))</span>. A 40 ft (480&Prime;) roof, 36&Prime; coverage: 480&frasl;36 = 13.3 &rarr; <strong>14 panels</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">With waste</p>
+        <p class="mt-1 text-slate-600">
+          14 &times; 1.10 (10% waste) = 15.4 &rarr; <strong>16 panels</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Linear feet</p>
+        <p class="mt-1 text-slate-600">
+          16 panels &times; 18 ft slope = <strong>288 linear ft</strong> of panel to order.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 60 ft wide barn roof, 24 ft slope, 24&Prime; coverage panels, 15% waste for hips.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Panels across:</span> <span class="text-slate-600">720&frasl;24 = 30</span></div>
+        <div><span class="font-medium text-slate-700">With waste:</span> <span class="text-slate-600">30 &times; 1.15 = 34.5 &rarr; <strong>35 panels</strong></span></div>
+        <div><span class="font-medium text-slate-700">Linear feet:</span> <span class="text-slate-600">35 &times; 24 = 840 ft</span></div>
+        <div><span class="font-medium text-slate-700">Roof area:</span> <span class="text-slate-600">60 &times; 24 = 1440 ft²</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/roof-pitch-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roof Pitch Calculator</a>
+      <a href="/tools/roofing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roofing Calculator</a>
+      <a href="/tools/gambrel-roof-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Gambrel Roof Rafter Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const widthFt = parseFloat(el('width').value);
+      const slopeFt = parseFloat(el('slope').value);
+      const covIn = parseFloat(el('cov').value);
+      const waste = parseFloat(el('waste').value) / 100;
+      if (!widthFt || !slopeFt || !covIn || widthFt <= 0 || slopeFt <= 0 || covIn <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const widthIn = widthFt * 12;
+      const basePanels = Math.ceil(widthIn / covIn);
+      const panels = Math.ceil(basePanels * (1 + waste));
+      const linft = panels * slopeFt;
+      const area = widthFt * slopeFt;
+
+      el('r-panels').textContent = panels.toLocaleString();
+      el('r-note').textContent = basePanels + ' base panels + waste';
+      el('r-area').textContent = area.toFixed(0) + ' ft²';
+      el('r-panellen').textContent = slopeFt.toFixed(1) + ' ft each';
+      el('r-linft').textContent = linft.toFixed(0) + ' ft';
+      el('results').classList.remove('hidden');
+    }
+
+    ['width', 'slope', 'cov'].forEach((id) => el(id).addEventListener('input', update));
+    el('waste').addEventListener('change', update);
+  </script>
+</ToolLayout>

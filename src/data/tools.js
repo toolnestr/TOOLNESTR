@@ -416,6 +416,15 @@ export const tools = [
   { slug: 'wallpaper-calculator', title: 'Wallpaper Roll Calculator', short: 'Rolls needed by wall size and pattern repeat.', category: 'construction', sub: 'Home & Garden', emoji: '🖼️', enabled: true, status: 'live' },
   { slug: 'ramp-slope-calculator', title: 'ADA Ramp Slope Calculator', short: 'Ramp length and landings at the ADA 1:12 slope.', category: 'construction', sub: 'Home & Garden', emoji: '♿', enabled: true, status: 'live' },
   { slug: 'chicken-coop-calculator', title: 'Chicken Coop Size Calculator', short: 'Coop and run space per bird for a flock.', category: 'construction', sub: 'Home & Garden', emoji: '🐔', enabled: true, status: 'live' },
+  // ── Construction Batch 4: Roofing & Driveway ──
+  { slug: 'roof-pitch-calculator', title: 'Roof Pitch Calculator', short: 'Pitch ratio, angle, and slope area factor.', category: 'construction', sub: 'Roofing', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'rafter-length-calculator', title: 'Rafter Length Calculator', short: 'Rafter length from run, pitch, and overhang.', category: 'construction', sub: 'Roofing', emoji: '📏', enabled: true, status: 'live' },
+  { slug: 'truss-spacing-calculator', title: 'Roof Truss Spacing Calculator', short: 'Truss count from building length and spacing.', category: 'construction', sub: 'Roofing', emoji: '🏚️', enabled: true, status: 'live' },
+  { slug: 'snow-load-calculator', title: 'Snow Load Calculator', short: 'Roof snow load estimate from ground load & pitch.', category: 'construction', sub: 'Roofing', emoji: '❄️', enabled: true, status: 'live' },
+  { slug: 'metal-roofing-calculator', title: 'Metal Roofing Calculator', short: 'Panels and linear feet by roof size and coverage.', category: 'construction', sub: 'Roofing', emoji: '🏗️', enabled: true, status: 'live' },
+  { slug: 'gambrel-roof-calculator', title: 'Gambrel Roof Rafter Calculator', short: 'Upper and lower rafter lengths for a barn roof.', category: 'construction', sub: 'Roofing', emoji: '🛖', enabled: true, status: 'live' },
+  { slug: 'asphalt-driveway-calculator', title: 'Asphalt Driveway Calculator', short: 'Tons of asphalt from area and thickness.', category: 'construction', sub: 'Driveway', emoji: '🛣️', enabled: true, status: 'live' },
+  { slug: 'road-base-calculator', title: 'Road Base Calculator', short: 'Tons of crushed stone base under a driveway.', category: 'construction', sub: 'Driveway', emoji: '🪨', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

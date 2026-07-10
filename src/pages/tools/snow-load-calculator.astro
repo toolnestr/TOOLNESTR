@@ -1,0 +1,176 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Snow Load Calculator';
+const description = 'Get a simplified estimate of roof snow load in pounds per square foot from the ground snow load, roof pitch, exposure and roof warmth, based on ASCE 7 factors.';
+const intro = 'Estimate roof snow load in pounds per square foot, from the ground snow load, roof pitch, exposure, and how warm the roof runs, using simplified ASCE 7 factors.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How is roof snow load calculated?', a: 'ASCE 7 starts with the flat-roof snow load: 0.7 times an exposure factor, times a thermal factor, times an importance factor, times the ground snow load for your area. A slope reduction factor then reduces the load further on steeper roofs, since snow sheds more easily off a steep pitch.' },
+  { q: 'Where do I find my ground snow load?', a: 'Ground snow load is a location-specific value published in ASCE 7 snow load maps or provided by your local building department. It varies enormously by region and even by elevation within the same county, so use the figure that applies to your exact site, not a national average.' },
+  { q: 'Why does roof pitch reduce the snow load?', a: 'Snow slides off a steep roof more easily than a flat one, so codes apply a slope reduction: roofs under about 30 degrees see little to no reduction, while roofs over about 70 degrees are assumed to shed essentially all snow. A warm, slippery roof surface sheds snow more readily than a cold, rough one.' },
+  { q: 'Is this a substitute for an engineered snow load calculation?', a: 'No. This tool applies simplified ASCE 7 factors for a rough planning estimate only. Actual structural design must use the full ASCE 7 Minimum Design Loads standard, your jurisdiction\'s adopted ground snow load, and a licensed structural engineer\'s review — never use this estimate alone to size or evaluate a roof structure.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+    <strong>Structural safety note:</strong> this is a simplified educational estimate, not an engineered snow load calculation. Roof snow load affects structural safety directly — always use your jurisdiction's official ground snow load and a licensed structural engineer for any real design, permit, or safety decision.
+  </div>
+  <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Ground snow load (psf)</span>
+        <input id="pg" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Roof pitch (rise per 12")</span>
+        <input id="pitch" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Exposure</span>
+        <select id="ce" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0.9">Windy, exposed site</option>
+          <option value="1.0" selected>Typical suburban site</option>
+          <option value="1.2">Sheltered, wooded site</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Roof warmth</span>
+        <select id="ct" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1.0" selected>Heated building</option>
+          <option value="1.1">Unheated / minimally heated</option>
+          <option value="1.2">Open air structure</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Estimated roof snow load</div>
+        <div id="r-load" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Flat-roof load (before slope)</div><div id="r-flat" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Slope reduction factor</div><div id="r-cs" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="260" viewBox="0 0 800 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="sl-title sl-desc">
+      <title id="sl-title">Snow load on a sloped roof</title>
+      <desc id="sl-desc">A pitched roof with a snow layer, showing the flat-roof load reduced by the slope factor</desc>
+      <path d="M100 200 L400 200 L400 100 Z" fill="none" stroke="#6366f1" stroke-width="3" />
+      <path d="M100 200 L400 100" stroke="#e0f2fe" stroke-width="14" opacity="0.8" />
+      <text x="240" y="230" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">snow sheds more easily on steeper roofs</text>
+      <rect x="450" y="90" width="310" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="470" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Simplified ASCE 7 estimate</text>
+      <text x="470" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">flat load = 0.7 &times; Ce &times; Ct &times; Pg</text>
+      <text x="470" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">roof load = flat load &times; Cs (slope)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Steeper, warmer, more sheltered roofs generally carry lower design snow loads than flat, cold, exposed ones.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the snow load calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      ASCE 7, the Minimum Design Loads standard, starts from a location-specific "ground snow load" — how much snow, by weight, typically accumulates on the ground in your area — and adjusts it down through a series of factors to estimate the load a real roof carries. Roofs generally see less load than the open ground because wind scours snow off elevated surfaces and warmth from the building below can melt some of it.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This tool applies a simplified version of that method: the flat-roof snow load is 0.7 times an exposure factor, times a thermal factor, times your ground snow load. The exposure factor accounts for wind — exposed, windy sites lose more snow to drifting, while sheltered, wooded sites hold more. The thermal factor accounts for roof warmth — heated buildings melt snow faster than unheated structures or open-air roofs.
+    </p>
+    <p class="mt-3 text-slate-600">
+      A slope reduction factor is then applied on top, since steep roofs shed snow more readily than flat ones. Roofs under about 30 degrees see little to no reduction; the reduction grows through the 30 to 70 degree range and roofs steeper than about 70 degrees are assumed to shed essentially all their snow load. This mirrors ASCE 7's slope-factor concept in a simplified form and omits several real-code factors like importance category and drift loading — it is for rough estimation and education only.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Find your ground snow load</h3>
+        <p class="mt-1 text-sm text-slate-600">Get the official figure from your local building department or ASCE 7 maps.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set roof pitch and site</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter your pitch, exposure, and whether the roof is heated.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Treat as a rough estimate</h3>
+        <p class="mt-1 text-sm text-slate-600">Use this to understand the factors, then get a licensed engineer for any real design.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Flat-roof load</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= 0.7 &times; Ce &times; Ct &times; Pg</span>. 30 psf ground, typical exposure, heated: 0.7 &times; 1.0 &times; 1.0 &times; 30 = <strong>21 psf</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Slope factor</p>
+        <p class="mt-1 text-slate-600">
+          A 6 in 12 roof (26.6&deg;) is under the 30&deg; threshold where slope reduction begins, so <strong>Cs = 1.0</strong> — no reduction yet.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Roof snow load</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= flat load &times; Cs</span> = 21 &times; 1.0 = <strong>21 psf</strong>, unchanged from the flat-roof value at this pitch.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A cold-climate 50 psf ground load, steep 12 in 12 roof, exposed windy site, heated.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Flat load:</span> <span class="text-slate-600">0.7 &times; 0.9 &times; 1.0 &times; 50 = 31.5 psf</span></div>
+        <div><span class="font-medium text-slate-700">Pitch angle:</span> <span class="text-slate-600">45°</span></div>
+        <div><span class="font-medium text-slate-700">Slope factor:</span> <span class="text-slate-600">0.625 (steep, warm)</span></div>
+        <div><span class="font-medium text-slate-700">Roof load:</span> <span class="text-slate-600">31.5 &times; 0.625 = <strong>19.7 psf</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/roof-pitch-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roof Pitch Calculator</a>
+      <a href="/tools/truss-spacing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roof Truss Spacing Calculator</a>
+      <a href="/tools/roofing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roofing Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function slopeFactor(angleDeg, warm) {
+      // Simplified linear approximation of ASCE 7 slope-factor behavior.
+      if (angleDeg <= 30) return 1.0;
+      if (angleDeg >= 70) return warm ? 0.0 : 0.2;
+      const t = (angleDeg - 30) / (70 - 30);
+      const minCs = warm ? 0.0 : 0.2;
+      return 1.0 - t * (1.0 - minCs);
+    }
+
+    function update() {
+      const pg = parseFloat(el('pg').value);
+      const pitch = parseFloat(el('pitch').value);
+      const ce = parseFloat(el('ce').value);
+      const ct = parseFloat(el('ct').value);
+      if (!pg || pg <= 0 || !pitch || pitch <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const flat = 0.7 * ce * ct * pg;
+      const angleDeg = Math.atan(pitch / 12) * (180 / Math.PI);
+      const warm = ct <= 1.0;
+      const cs = slopeFactor(angleDeg, warm);
+      const roofLoad = flat * cs;
+
+      el('r-load').textContent = roofLoad.toFixed(1) + ' psf';
+      el('r-note').textContent = 'at ' + angleDeg.toFixed(1) + '° roof pitch — estimate only';
+      el('r-flat').textContent = flat.toFixed(1) + ' psf';
+      el('r-cs').textContent = cs.toFixed(2);
+      el('results').classList.remove('hidden');
+    }
+
+    ['pg', 'pitch'].forEach((id) => el(id).addEventListener('input', update));
+    ['ce', 'ct'].forEach((id) => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>
