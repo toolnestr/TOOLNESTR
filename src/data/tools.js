@@ -459,6 +459,14 @@ export const tools = [
   { slug: 'french-drain-calculator', title: 'French Drain Calculator', short: 'Gravel, pipe and fabric for a drainage trench.', category: 'construction', sub: 'Materials', emoji: '💧', enabled: true, status: 'live' },
   { slug: 'stone-weight-calculator', title: 'Stone Weight Calculator', short: 'Weight of a boulder or block by type and size.', category: 'construction', sub: 'Materials', emoji: '🗿', enabled: true, status: 'live' },
   { slug: 'steel-plate-weight-calculator', title: 'Steel Plate Weight Calculator', short: 'Plate weight from dimensions and material.', category: 'construction', sub: 'Materials', emoji: '🧮', enabled: true, status: 'live' },
+  // ── Construction Batch 9a: Omni-parity gaps — Home & Garden (part 1) ──
+  { slug: 'air-changes-per-hour-calculator', title: 'Air Changes Per Hour (ACH) Calculator', short: 'ACH ventilation rate from room size and CFM.', category: 'construction', sub: 'Home & Garden', emoji: '🌬️', enabled: true, status: 'live' },
+  { slug: 'arch-layout-calculator', title: 'Arch Layout Calculator', short: 'Radius and arc length for a curved arch opening.', category: 'construction', sub: 'Home & Garden', emoji: '⛩️', enabled: true, status: 'live' },
+  { slug: 'boiler-size-calculator', title: 'Boiler Size Calculator', short: 'Boiler BTU output by square footage and climate.', category: 'construction', sub: 'Home & Garden', emoji: '🔆', enabled: true, status: 'live' },
+  { slug: 'carpet-calculator', title: 'Carpet Calculator', short: 'Square yards of carpet needed, plus cost.', category: 'construction', sub: 'Home & Garden', emoji: '🧶', enabled: true, status: 'live' },
+  { slug: 'diy-shed-cost-calculator', title: 'DIY Shed Cost Calculator', short: 'Material cost to build a shed by size and tier.', category: 'construction', sub: 'Home & Garden', emoji: '🧾', enabled: true, status: 'live' },
+  { slug: 'epoxy-resin-calculator', title: 'Epoxy Resin Calculator', short: 'Epoxy needed for a pour by area and depth.', category: 'construction', sub: 'Home & Garden', emoji: '🧪', enabled: true, status: 'live' },
+  { slug: 'floor-area-ratio-calculator', title: 'Floor Area Ratio (FAR) Calculator', short: 'Zoning FAR and max buildable floor area.', category: 'construction', sub: 'Home & Garden', emoji: '🗺️', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

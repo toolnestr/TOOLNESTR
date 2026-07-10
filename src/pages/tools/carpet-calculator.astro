@@ -1,0 +1,157 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Carpet Calculator';
+const description = 'Find how many square yards of carpet you need for a room, plus the estimated cost, from the room dimensions, standard 12-foot roll width and a waste allowance.';
+const intro = 'Find how many square yards of carpet you need for a room, plus the estimated cost.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate how much carpet I need?', a: 'Carpet is sold by the square yard, so find the room area in square feet and divide by 9 to convert. A 12×15 ft room (180 sq ft) needs 180 ÷ 9 = 20 square yards, before adding a waste allowance for seams and pattern matching.' },
+  { q: 'Why is carpet sold by 12-foot rolls?', a: 'Broadloom carpet is manufactured in standard roll widths, most commonly 12 feet (also available in 13\'6" and 15\'). Because carpet can only be cut lengthwise off the roll, a room wider than 12 feet needs a seam, which increases the actual material needed beyond the raw square footage.' },
+  { q: 'How much waste allowance should I add for carpet?', a: 'A common allowance is 10 to 15% for cutting, pattern matching, and irregular room shapes. Rooms with lots of closets, offsets, or a repeating pattern that must be matched at seams need more waste than a simple rectangular room.' },
+  { q: 'How is carpet cost calculated?', a: 'Multiply the total square yards (including waste) by the price per square yard for both the carpet and, separately, the padding underneath it if it is priced separately. Installation labor is usually quoted separately by the installer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="15" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Room width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Waste (%)</span>
+        <input id="waste" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Price per sq yd ($) — optional</span>
+        <input id="price" type="number" step="any" placeholder="35" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Carpet to order</div>
+        <div id="r-sqyd" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Room area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Seam needed?</div><div id="r-seam" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Estimated cost</div><div id="r-cost" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cp-title cp-desc">
+      <title id="cp-title">Room area to square yards of carpet</title>
+      <desc id="cp-desc">A room floor plan with the carpet square-yard conversion</desc>
+      <rect x="80" y="60" width="220" height="120" fill="#fde68a" stroke="#a16207" stroke-width="1.5" />
+      <line x1="80" y1="60" x2="300" y2="60" stroke="#a16207" stroke-width="1" stroke-dasharray="3 3" />
+      <text x="190" y="195" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">length × width</text>
+      <rect x="420" y="55" width="330" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Carpet in square yards</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">sq yd = (L &times; W) &divide; 9</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">rooms over 12 ft wide need a seam</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Carpet is sold in 12-foot-wide rolls, so wider rooms need a seam.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the carpet calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Carpet is priced and sold by the square yard, not the square foot, so the first step is finding the room's area in square feet and dividing by 9 (the number of square feet in a square yard). A 15×12 foot room, 180 square feet, needs 20 square yards of carpet before accounting for any waste.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Broadloom carpet comes off the roll in a standard width, most commonly 12 feet. Because carpet can only be cut along its length, not pieced together sideways without a seam, any room wider than the roll width needs at least one seam, and the actual material ordered has to account for that layout rather than just the raw square footage — this calculator flags when your room's width exceeds the standard 12-foot roll.
+    </p>
+    <p class="mt-3 text-slate-600">
+      A waste allowance of 10 to 15% is standard practice to cover trimming at the edges, closets and offsets in the room shape, and pattern matching if the carpet has a repeat. Multiplying the total square yards (with waste) by the price per square yard gives a material cost estimate; padding, if priced separately, and installation labor are typically quoted on top of that material cost.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the room</h3>
+        <p class="mt-1 text-sm text-slate-600">Length and width in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the waste</h3>
+        <p class="mt-1 text-sm text-slate-600">10-15% for cuts, pattern matching, offsets.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Order and estimate cost</h3>
+        <p class="mt-1 text-sm text-slate-600">Square yards, plus a rough material cost.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Room area to sq yd</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= (L &times; W) &divide; 9</span>. A 15×12 ft room: (15×12) ÷ 9 = <strong>20 sq yd</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">With waste</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">&times; 1.10</span> = 20 × 1.10 = <strong>22 sq yd</strong> to order.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Estimated cost</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= sq yd &times; price</span>. At $35/sq yd: 22 × 35 = <strong>$770</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A large 20×14 ft family room, 15% waste, $28/sq yd carpet.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Area:</span> <span class="text-slate-600">(20×14) ÷ 9 = 31.1 sq yd</span></div>
+        <div><span class="font-medium text-slate-700">With waste:</span> <span class="text-slate-600">31.1 × 1.15 = 35.8 sq yd</span></div>
+        <div><span class="font-medium text-slate-700">Seam:</span> <span class="text-slate-600">room is 14 ft wide — needs a seam</span></div>
+        <div><span class="font-medium text-slate-700">Cost:</span> <span class="text-slate-600">35.8 × $28 ≈ <strong>$1,002</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/flooring-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Flooring Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/wallpaper-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Wallpaper Roll Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('len').value);
+      const W = parseFloat(el('width').value);
+      let waste = parseFloat(el('waste').value); if (!(waste >= 0)) waste = 0;
+      const price = parseFloat(el('price').value);
+      if (!(L > 0 && W > 0)) { el('results').classList.add('hidden'); return; }
+      const area = L * W;
+      const sqydRaw = area / 9;
+      const sqyd = sqydRaw * (1 + waste / 100);
+      const needsSeam = Math.max(L, W) > 12;
+
+      el('r-sqyd').textContent = sqyd.toFixed(1) + ' sq yd';
+      el('r-note').textContent = area.toFixed(0) + ' sq ft room, ' + waste + '% waste';
+      el('r-area').textContent = area.toFixed(0) + ' ft²';
+      el('r-seam').textContent = needsSeam ? 'Yes — over 12 ft' : 'No';
+      if (price > 0) {
+        el('r-cost').textContent = '$' + (sqyd * price).toFixed(0);
+      } else {
+        el('r-cost').textContent = '—';
+      }
+      el('results').classList.remove('hidden');
+    }
+
+    ['len', 'width', 'waste', 'price'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

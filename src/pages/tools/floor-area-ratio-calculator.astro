@@ -1,0 +1,166 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Floor Area Ratio (FAR) Calculator';
+const description = 'Calculate the Floor Area Ratio (FAR) of a building from its total floor area and lot size, and find the maximum buildable floor area allowed under a zoning FAR limit.';
+const intro = 'Calculate a building’s Floor Area Ratio, and the maximum floor area a zoning FAR limit allows.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'What is Floor Area Ratio (FAR)?', a: 'FAR is the ratio of a building\'s total floor area (summed across all stories) to the size of the lot it sits on. FAR = total floor area ÷ lot area. A FAR of 1.0 means the building\'s combined floor area equals the lot size — for example, a two-story building covering half the lot.' },
+  { q: 'How do I calculate maximum buildable floor area from a FAR limit?', a: 'Multiply the lot area by the zoning\'s maximum allowed FAR. A 5,000 sq ft lot with a zoning FAR limit of 0.5 allows a maximum of 5,000 × 0.5 = 2,500 total square feet of floor area, which can be arranged across one or more stories.' },
+  { q: 'Does FAR include garages, basements, or attics?', a: 'It depends on the local zoning code — many jurisdictions exclude unfinished basements, attics with low ceiling height, and sometimes garages from the FAR calculation, while others count them. Always check your specific municipal code\'s definition of "floor area" for FAR purposes.' },
+  { q: 'Why do cities regulate FAR?', a: 'FAR controls the overall bulk and density of development relative to lot size, independent of building height or lot coverage rules. It\'s a zoning tool used to manage neighborhood density, sunlight and privacy between buildings, and infrastructure load, and it varies significantly by zoning district within the same city.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block max-w-xs"><span class="text-sm font-medium text-slate-700">Mode</span>
+      <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="calc" selected>Calculate FAR</option>
+        <option value="max">Find max buildable area</option>
+      </select></label>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Lot area (sq ft)</span>
+        <input id="lot" type="number" step="any" placeholder="5000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-floor" class="block"><span class="text-sm font-medium text-slate-700">Total floor area (sq ft)</span>
+        <input id="floor" type="number" step="any" placeholder="2500" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-far" class="hidden"><span class="text-sm font-medium text-slate-700">Zoning FAR limit</span>
+        <input id="far" type="number" step="any" placeholder="0.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div id="r-label" class="text-sm opacity-80">Floor Area Ratio</div>
+        <div id="r-main" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="far-title far-desc">
+      <title id="far-title">Floor area ratio across building stories</title>
+      <desc id="far-desc">A lot with a multi-story building and the FAR formula</desc>
+      <rect x="70" y="150" width="200" height="20" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5" />
+      <rect x="100" y="110" width="90" height="40" fill="#c7d2fe" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="100" y="70" width="90" height="40" fill="#a5b4fc" stroke="#6366f1" stroke-width="1.5" />
+      <text x="145" y="188" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">lot area</text>
+      <text x="230" y="95" font-size="11" fill="#475569" font-family="system-ui,sans-serif">2 floors of area</text>
+      <rect x="420" y="55" width="330" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">FAR formula</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">FAR = total floor area &divide; lot area</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">max area = lot area &times; FAR limit</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">FAR sums floor area across every story, not just the building's footprint.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the floor area ratio calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Floor Area Ratio (FAR) is a zoning measurement that compares a building's total floor area — summed across every story, not just its ground footprint — to the size of the lot it sits on. FAR = total floor area ÷ lot area. A FAR of 1.0 means the building's combined floor space equals the lot's area, which could be a single-story building covering the whole lot, or a two-story building covering half of it with the same total square footage.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Cities and counties set a maximum allowed FAR for each zoning district as a way to control overall development density and bulk, independent of separate rules on building height or lot coverage. Given a lot size and a zoning FAR limit, the maximum buildable floor area is simply the lot area times that limit — a 5,000 square foot lot with a 0.5 FAR limit allows up to 2,500 total square feet of floor area, distributed however the design calls for across one or more stories, subject to other zoning constraints like height and setbacks.
+    </p>
+    <p class="mt-3 text-slate-600">
+      What counts toward "floor area" for FAR purposes is defined by local code and varies significantly between jurisdictions — many exclude unfinished basements, low-ceiling attics, or sometimes garages, while others count everything under roof. Always confirm your specific municipal zoning code's definition before using a FAR calculation to plan an actual project, since local exclusions can meaningfully change how much buildable area you actually have.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick a mode</h3>
+        <p class="mt-1 text-sm text-slate-600">Calculate an existing FAR, or find max buildable area.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter lot &amp; floor area</h3>
+        <p class="mt-1 text-sm text-slate-600">Or the lot area and your zoning's FAR limit.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Confirm with your code</h3>
+        <p class="mt-1 text-sm text-slate-600">Check what counts as floor area locally.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">FAR</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= total floor area &divide; lot area</span>. 2,500 sq ft on a 5,000 sq ft lot: 2,500 ÷ 5,000 = <strong>0.5 FAR</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Max buildable area</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= lot area &times; FAR limit</span>. Same lot at a 0.5 limit: 5,000 × 0.5 = <strong>2,500 sq ft</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Distributing floors</p>
+        <p class="mt-1 text-slate-600">
+          2,500 sq ft could be one 2,500 sq ft story, or two 1,250 sq ft stories — FAR doesn't dictate the layout.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">An 8,000 sq ft lot zoned with a 0.35 FAR limit.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Lot area:</span> <span class="text-slate-600">8,000 ft²</span></div>
+        <div><span class="font-medium text-slate-700">FAR limit:</span> <span class="text-slate-600">0.35</span></div>
+        <div><span class="font-medium text-slate-700">Max floor area:</span> <span class="text-slate-600">8,000 × 0.35 = <strong>2,800 ft²</strong></span></div>
+        <div><span class="font-medium text-slate-700">Example split:</span> <span class="text-slate-600">1,400 ft² over 2 stories</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+      <a href="/tools/door-header-size-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Door Header Size Calculator</a>
+      <a href="/tools/diy-shed-cost-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">DIY Shed Cost Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function sync() {
+      const maxMode = el('mode').value === 'max';
+      el('w-floor').classList.toggle('hidden', maxMode);
+      el('w-far').classList.toggle('hidden', !maxMode);
+      update();
+    }
+
+    function update() {
+      const lot = parseFloat(el('lot').value);
+      const maxMode = el('mode').value === 'max';
+      if (!(lot > 0)) { el('results').classList.add('hidden'); return; }
+      if (maxMode) {
+        const farLimit = parseFloat(el('far').value);
+        if (!(farLimit > 0)) return hide();
+        const maxArea = lot * farLimit;
+        el('r-label').textContent = 'Maximum buildable floor area';
+        el('r-main').textContent = maxArea.toLocaleString() + ' ft²';
+        el('r-note').textContent = 'at a ' + farLimit + ' FAR limit on a ' + lot.toLocaleString() + ' ft² lot';
+      } else {
+        const floor = parseFloat(el('floor').value);
+        if (!(floor > 0)) return hide();
+        const far = floor / lot;
+        el('r-label').textContent = 'Floor Area Ratio';
+        el('r-main').textContent = far.toFixed(2);
+        el('r-note').textContent = floor.toLocaleString() + ' ft² floor area on a ' + lot.toLocaleString() + ' ft² lot';
+      }
+      el('results').classList.remove('hidden');
+    }
+    function hide() { el('results').classList.add('hidden'); }
+
+    el('mode').addEventListener('change', sync);
+    ['lot', 'floor', 'far'].forEach((id) => el(id).addEventListener('input', update));
+    sync();
+  </script>
+</ToolLayout>
