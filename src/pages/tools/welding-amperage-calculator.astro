@@ -1,0 +1,152 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Welding Amperage Calculator';
+const description = 'Estimate the welding amperage and electrode size for stick (SMAW) welding from base metal thickness, following the common 1 amp per 0.001 inch guideline.';
+const intro = 'Estimate a starting amperage and electrode size for stick welding a given metal thickness.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate welding amperage from metal thickness?', a: 'A common shop rule for stick (SMAW) welding is about 1 amp for every 0.001 inch (1 mil) of base metal thickness. A quarter-inch (0.25 in) plate is roughly 250 amps as a starting point, then fine-tuned by the actual joint, position and electrode.' },
+  { q: 'What electrode size should I use?', a: 'Electrode diameter is generally matched to thickness: 1/8 in (3.2 mm) electrodes suit thin material up to about 3/16 in, 5/32 in (4 mm) suits 1/4 to 3/8 in stock, and 3/16 in (4.8 mm) and larger suit thicker plate. Always check the electrode manufacturer’s amperage range on the box.' },
+  { q: 'Is this the same as AWS D1.1 procedure qualification?', a: 'No. This is a quick shop estimate, not a qualified welding procedure specification. AWS D1.1 and similar codes require a documented, tested procedure (WPS) with amperage ranges validated for the specific joint, position, and electrode — required for structural and code work.' },
+  { q: 'Why is amperage only a starting point?', a: 'Position (flat vs. overhead), joint type, electrode brand, and desired bead appearance all shift the ideal amperage from the thickness-based estimate. Run a test bead on scrap and adjust before welding the actual joint.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Base metal thickness (in)</span>
+        <input id="thick" type="number" step="any" placeholder="0.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Process</span>
+        <select id="process" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1" selected>Stick (SMAW) — 1 A per 0.001 in</option>
+          <option value="1.1">MIG (GMAW), similar joint — approx. +10%</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Starting amperage</div>
+        <div id="r-amps" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Suggested electrode</div><div id="r-elec" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Amp range to test</div><div id="r-range" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="wa-title wa-desc">
+      <title id="wa-title">Welding amperage from thickness</title>
+      <desc id="wa-desc">A weld bead joining two plates with the amperage rule of thumb</desc>
+      <rect x="70" y="100" width="140" height="20" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" />
+      <rect x="210" y="100" width="140" height="20" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" />
+      <path d="M195 95 Q210 80 225 95 Q210 110 195 95" fill="#f97316" stroke="#c2410c" stroke-width="1" />
+      <text x="210" y="150" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">weld bead</text>
+      <rect x="420" y="55" width="330" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Amperage rule</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">amps &approx; thickness (mils) &times; 1</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">1 mil = 0.001 in</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A quick shop starting point — always confirm with a test bead on scrap.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the welding amperage calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A widely used shop rule for stick (SMAW) welding is to allow roughly one amp for every 0.001 inch (one mil) of base metal thickness. A quarter-inch plate, at 250 mils, calls for about 250 amps as a starting point. This rule scales with material thickness because thicker steel needs more heat input to achieve full penetration and proper fusion at the joint.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Electrode diameter tracks the same thickness. Thin material up to roughly 3/16 inch generally uses a 1/8-inch (3.2 mm) electrode, medium plate from about 1/4 to 3/8 inch steps up to 5/32 inch (4 mm), and heavier stock moves to 3/16 inch (4.8 mm) or larger. Every electrode box also lists a manufacturer amperage range for that diameter and coating — that printed range should always be checked alongside this estimate.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This is a fast estimate for shop use, not a qualified welding procedure. AWS D1.1 and similar structural codes require an actual, tested Welding Procedure Specification (WPS) with amperage validated for the specific joint, position, and electrode combination — required wherever code-governed structural welding is involved. Even for non-code work, position, joint fit-up, and desired bead shape all shift the ideal amperage, so always run a test bead on scrap before welding the real joint.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Measure the metal</h3>
+        <p class="mt-1 text-sm text-slate-600">Base metal thickness in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the estimate</h3>
+        <p class="mt-1 text-sm text-slate-600">Starting amperage and electrode size.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Test and adjust</h3>
+        <p class="mt-1 text-sm text-slate-600">Run a bead on scrap before the real joint.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Amperage rule</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">amps &approx; thickness(in) &times; 1000</span>. A 0.25 in plate: 0.25 × 1000 = <strong>250 A</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Working range</p>
+        <p class="mt-1 text-slate-600">
+          Treat the estimate as the middle of a ±15% test window: 250 A → test roughly <strong>213–288 A</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Electrode match</p>
+        <p class="mt-1 text-slate-600">
+          Thickness bands roughly to electrode diameter: thin → 1/8 in, medium → 5/32 in, thick → 3/16 in and up.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Stick welding a 3/8 in (0.375 in) steel plate.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Thickness:</span> <span class="text-slate-600">0.375 in = 375 mils</span></div>
+        <div><span class="font-medium text-slate-700">Amperage:</span> <span class="text-slate-600"><strong>≈ 375 A</strong> starting point</span></div>
+        <div><span class="font-medium text-slate-700">Test range:</span> <span class="text-slate-600">≈ 319–431 A</span></div>
+        <div><span class="font-medium text-slate-700">Electrode:</span> <span class="text-slate-600">3/16 in (4.8 mm) or larger</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/carbon-equivalent-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Carbon Equivalent Calculator</a>
+      <a href="/tools/bolt-torque-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Bolt Torque Calculator</a>
+      <a href="/tools/metal-weight-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Metal Weight Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const t = parseFloat(el('thick').value);
+      const mult = parseFloat(el('process').value);
+      if (!(t > 0)) { el('results').classList.add('hidden'); return; }
+      const amps = t * 1000 * mult;
+      const low = amps * 0.85, high = amps * 1.15;
+      let elec;
+      if (t <= 0.1875) elec = '1/8 in (3.2 mm)';
+      else if (t <= 0.375) elec = '5/32 in (4 mm)';
+      else elec = '3/16 in (4.8 mm) or larger';
+
+      el('r-amps').textContent = Math.round(amps) + ' A';
+      el('r-note').textContent = t + ' in base metal, starting point';
+      el('r-elec').textContent = elec;
+      el('r-range').textContent = Math.round(low) + '–' + Math.round(high) + ' A';
+      el('results').classList.remove('hidden');
+    }
+
+    el('thick').addEventListener('input', update);
+    el('process').addEventListener('change', update);
+  </script>
+</ToolLayout>

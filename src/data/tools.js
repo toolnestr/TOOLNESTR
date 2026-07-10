@@ -444,6 +444,12 @@ export const tools = [
   // ── Construction Batch 7: Structural (highest liability — stronger disclaimer) ──
   { slug: 'beam-deflection-calculator', title: 'Beam Deflection Calculator', short: 'Beam sag under load, checked against L/360.', category: 'construction', sub: 'Structural', emoji: '🌉', enabled: true, status: 'live' },
   { slug: 'bending-stress-calculator', title: 'Bending Stress Calculator', short: 'Peak bending stress via the flexure formula.', category: 'construction', sub: 'Structural', emoji: '💠', enabled: true, status: 'live' },
+  { slug: 'bolt-torque-calculator', title: 'Bolt Torque Calculator', short: 'Tightening torque for a target bolt clamp load.', category: 'construction', sub: 'Structural', emoji: '🔧', enabled: true, status: 'live' },
+  { slug: 'welding-amperage-calculator', title: 'Welding Amperage Calculator', short: 'Starting amperage and electrode size by thickness.', category: 'construction', sub: 'Structural', emoji: '⚡', enabled: true, status: 'live' },
+  { slug: 'electrical-box-fill-calculator', title: 'Electrical Box Fill Calculator', short: 'NEC box-fill volume check for wires and devices.', category: 'construction', sub: 'Structural', emoji: '🗳️', enabled: true, status: 'live' },
+  { slug: 'door-header-size-calculator', title: 'Door Header Size Calculator', short: 'Header size for a load-bearing opening by span.', category: 'construction', sub: 'Structural', emoji: '🚪', enabled: true, status: 'live' },
+  { slug: 'floor-joist-span-calculator', title: 'Floor Joist Span Calculator', short: 'Max joist span by size and on-center spacing.', category: 'construction', sub: 'Structural', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'insulation-r-value-calculator', title: 'Insulation R-Value Calculator', short: 'Recommended R-value by climate zone and area.', category: 'construction', sub: 'Structural', emoji: '🧥', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

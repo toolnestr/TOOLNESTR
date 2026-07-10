@@ -1,0 +1,163 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Insulation R-Value Calculator';
+const description = 'Find the recommended attic, wall and floor insulation R-value for your DOE/IECC climate zone, and how many inches of common insulation types reach it.';
+const intro = 'Find the recommended insulation R-value for your climate zone, and how thick a layer reaches it.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'What R-value do I need for my attic?', a: 'DOE and IECC recommendations scale with climate zone: cold northern zones (6–8) call for R-49 to R-60 in attics, moderate zones (4–5) call for R-38 to R-49, and warm southern zones (1–3) call for R-30 to R-38. Wall and floor targets are lower than attic targets in every zone.' },
+  { q: 'How many inches of insulation do I need?', a: 'Divide the target R-value by the R-value per inch of your chosen material. Fiberglass batts run about R-3.2 per inch, blown cellulose about R-3.7 per inch, and closed-cell spray foam about R-6.5 per inch. For R-49 in cellulose: 49 ÷ 3.7 ≈ 13.2 inches.' },
+  { q: 'What are the DOE climate zones?', a: 'The Department of Energy divides the US into eight climate zones from 1 (hottest, like southern Florida) to 8 (coldest, like northern Alaska), based on heating and cooling degree days. The IECC adopts the same zone map for its energy-code insulation and building-envelope requirements.' },
+  { q: 'Does adding more insulation always help proportionally?', a: 'No — each added layer gives a smaller improvement, because R-value adds while heat loss is roughly inversely proportional to total R-value. Going from R-0 to R-19 blocks far more heat loss than going from R-38 to R-57, even though both add 19. Diminishing returns mean there is a practical point where more insulation stops being cost-effective.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">DOE climate zone</span>
+        <select id="zone" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1-3">1–3 (hot, e.g. FL, TX gulf)</option>
+          <option value="4-5" selected>4–5 (mixed, e.g. mid-Atlantic)</option>
+          <option value="6-8">6–8 (cold, e.g. northern states)</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Area</span>
+        <select id="area" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="attic" selected>Attic / ceiling</option>
+          <option value="wall">Wall cavity</option>
+          <option value="floor">Floor over unheated space</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Insulation type</span>
+        <select id="material" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="3.2" selected>Fiberglass batt (R-3.2/in)</option>
+          <option value="3.7">Blown cellulose (R-3.7/in)</option>
+          <option value="3.8">Blown fiberglass (R-3.8/in)</option>
+          <option value="6.5">Closed-cell spray foam (R-6.5/in)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Recommended R-value</div>
+        <div id="r-target" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Thickness needed</div><div id="r-thick" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rv-title rv-desc">
+      <title id="rv-title">Insulation R-value and thickness</title>
+      <desc id="rv-desc">An attic with insulation and the R-value per inch formula</desc>
+      <polygon points="80,140 180,70 280,140" fill="none" stroke="#94a3b8" stroke-width="2" />
+      <rect x="90" y="120" width="180" height="20" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" />
+      <rect x="95" y="105" width="170" height="14" fill="#fde68a" stroke="#d97706" stroke-width="1" />
+      <text x="180" y="165" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">attic insulation depth</text>
+      <rect x="400" y="55" width="350" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="420" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">R-value &amp; thickness</text>
+      <text x="420" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">thickness(in) = target R &divide; R-per-inch</text>
+      <text x="420" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">colder zones need a higher target R</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">The same R-value target needs a thinner layer with a higher-performance material.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the insulation R-value calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      R-value measures a material's resistance to heat flow — the higher the number, the better it insulates. The Department of Energy and the IECC recommend different target R-values by climate zone and by area of the house, because a colder climate loses more heat through the same surface and needs a thicker thermal barrier. Attics generally need the highest R-value of any area, since heat naturally rises and a poorly insulated attic is often a home's single biggest source of heat loss.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Once you know the target R-value, converting it to a physical thickness is simple division: thickness in inches equals the target R-value divided by the material's R-value per inch. Fiberglass batts perform around R-3.2 per inch, blown cellulose and blown fiberglass run slightly higher near R-3.7 to R-3.8, and closed-cell spray foam is far denser at roughly R-6.5 per inch — which is why spray foam reaches a high R-value in a much shallower cavity than batt insulation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      It's worth remembering that R-value adds linearly while its benefit does not: heat loss falls roughly in proportion to 1 divided by the total R-value, so each additional inch helps less than the one before it. Going from no insulation to a modest R-value blocks far more heat loss than adding the same R-value on top of an already well-insulated space. These figures are general DOE/IECC guidance — always check your specific zone's requirement and local energy code before buying material.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Find your zone</h3>
+        <p class="mt-1 text-sm text-slate-600">DOE climate zone for your location.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick the area</h3>
+        <p class="mt-1 text-sm text-slate-600">Attic, wall, or floor — each has its own target.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Get the thickness</h3>
+        <p class="mt-1 text-sm text-slate-600">See how deep a layer of your material needs to be.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Target R-value</p>
+        <p class="mt-1 text-slate-600">
+          Zones 4–5, attic: <strong>R-49</strong> recommended (DOE/IECC general guidance).
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Thickness</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= target R &divide; R-per-inch</span>. In cellulose (R-3.7/in): 49 ÷ 3.7 = <strong>13.2 in</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Material comparison</p>
+        <p class="mt-1 text-slate-600">
+          Same 49 target in spray foam: 49 ÷ 6.5 = <strong>7.5 in</strong>, much shallower.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A cold zone 6–8 attic, insulated with fiberglass batts (R-3.2/in).</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Target:</span> <span class="text-slate-600">R-60 (cold-zone attic guidance)</span></div>
+        <div><span class="font-medium text-slate-700">Thickness:</span> <span class="text-slate-600">60 ÷ 3.2 = <strong>18.75 in</strong></span></div>
+        <div><span class="font-medium text-slate-700">In cellulose instead:</span> <span class="text-slate-600">60 ÷ 3.7 = 16.2 in</span></div>
+        <div><span class="font-medium text-slate-700">Note:</span> <span class="text-slate-600">check local code for the exact required value</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/insulation-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Insulation Coverage Calculator</a>
+      <a href="/tools/heat-loss-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Home Heat Loss Estimator</a>
+      <a href="/tools/furnace-btu-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Furnace BTU Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    // [attic, wall, floor] target R-values by zone band
+    const targets = {
+      '1-3': { attic: 30, wall: 13, floor: 13 },
+      '4-5': { attic: 49, wall: 15, floor: 19 },
+      '6-8': { attic: 60, wall: 21, floor: 30 },
+    };
+
+    function update() {
+      const zone = el('zone').value;
+      const area = el('area').value;
+      const perInch = parseFloat(el('material').value);
+      const target = targets[zone][area];
+      const thickness = target / perInch;
+
+      el('r-target').textContent = 'R-' + target;
+      el('r-note').textContent = area + ', zone ' + zone;
+      el('r-thick').textContent = thickness.toFixed(1) + ' in';
+      el('results').classList.remove('hidden');
+    }
+
+    ['zone', 'area', 'material'].forEach((id) => el(id).addEventListener('change', update));
+    update();
+  </script>
+</ToolLayout>

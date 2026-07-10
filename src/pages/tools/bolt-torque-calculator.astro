@@ -1,0 +1,154 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Bolt Torque Calculator';
+const description = 'Estimate the tightening torque for a bolt from its diameter, thread pitch, friction coefficient and target clamp load, using the standard torque-tension formula.';
+const intro = 'Estimate the tightening torque needed to reach a target clamp load on a bolt.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How is bolt torque calculated from clamp load?', a: 'The standard approximation is T = K · D · F, where T is torque, K is the friction (nut factor) coefficient, D is the nominal bolt diameter, and F is the target clamp (preload) force. A typical K of 0.2 covers plain steel bolts with light lubrication.' },
+  { q: 'What is the K factor (nut factor)?', a: 'K bundles together thread friction, bearing-surface friction, and thread geometry into one number. Dry steel-on-steel runs around 0.2, cadmium-plated or waxed bolts can drop to 0.15, and rusty or galled threads can push K above 0.3 — small changes in K swing torque significantly for the same clamp load.' },
+  { q: 'What clamp load should I use?', a: 'A common starting point is 75% of a bolt’s proof load or yield strength, per SAE/ASTM guidance, though the exact target depends on the joint, bolt grade, and application. Always use the torque spec from the equipment manual or design drawing when one exists — this calculator is for estimating when no spec is given.' },
+  { q: 'Why does torque accuracy matter?', a: 'Under-torquing leaves a joint loose and prone to fatigue or vibration loosening; over-torquing can yield or snap the bolt, or crush a gasket. Because friction dominates the torque-tension relationship, a torque wrench alone is only an approximation — critical joints often use angle-of-turn or bolt-stretch methods instead.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Bolt diameter (in)</span>
+        <input id="dia" type="number" step="any" placeholder="0.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Target clamp load (lb)</span>
+        <input id="load" type="number" step="any" placeholder="8000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Condition (K factor)</span>
+        <select id="k" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0.15">Waxed / cadmium-plated (K≈0.15)</option>
+          <option value="0.2" selected>Plain steel, lightly lubricated (K≈0.2)</option>
+          <option value="0.3">Dry / as-received (K≈0.3)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Tightening torque</div>
+        <div id="r-torque" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">In Newton-meters</div><div id="r-nm" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">K factor used</div><div id="r-k" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bt-title bt-desc">
+      <title id="bt-title">Bolt torque and clamp load</title>
+      <desc id="bt-desc">A wrench turning a bolt to reach a target clamp load, with the torque formula</desc>
+      <rect x="100" y="90" width="24" height="70" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" />
+      <polygon points="112,90 96,60 128,60" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" />
+      <path d="M60 70 A70 70 0 0 1 180 70" stroke="#6366f1" stroke-width="4" fill="none" />
+      <polygon points="180,70 168,58 168,82" fill="#6366f1" />
+      <text x="120" y="185" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">torque turns the bolt</text>
+      <rect x="330" y="55" width="420" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="350" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Torque-tension formula</text>
+      <text x="350" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">T = K &times; D &times; F</text>
+      <text x="350" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">K = nut factor, D = diameter, F = clamp load</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Most of the torque overcomes friction, not stretch — K captures that friction.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the bolt torque calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Turning a bolt with a wrench converts rotational torque into a straight-line clamping force, but most of that torque is lost to friction — under the bolt head, under the nut, and in the threads themselves — rather than stretching the bolt. The widely used short-form torque-tension formula bundles all of that friction into one coefficient K, so that torque T equals K times the nominal diameter D times the target clamp load F.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The K factor, often called the nut factor, depends heavily on surface condition. A plain steel bolt with light lubrication runs around K = 0.2 — this is the number quoted in most general torque charts (SAE J1701 and similar references). Waxed, cadmium-plated, or otherwise low-friction fasteners can drop closer to 0.15, while dry, rusty, or galled threads can push K above 0.3. Because K multiplies directly into the answer, a bolt that looks identical but has different surface friction needs meaningfully different torque for the same clamp load.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Clamp load itself is usually set as a fraction of the bolt's proof load or yield strength — commonly around 75%, per SAE and ASTM guidance — but the right target always depends on the joint design, bolt grade, and application. Because torque is only an indirect proxy for clamp load, critical or safety-related joints often specify torque-plus-angle or direct bolt-stretch methods instead of torque alone. Always follow a manufacturer's or engineer's torque spec when one exists; use this tool only to estimate when no spec is given.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the bolt size</h3>
+        <p class="mt-1 text-sm text-slate-600">Nominal diameter in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the clamp load</h3>
+        <p class="mt-1 text-sm text-slate-600">Your target preload, in pounds.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Match the condition</h3>
+        <p class="mt-1 text-sm text-slate-600">Pick the K factor that fits the fastener finish.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Torque-tension formula</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">T = K &times; D &times; F</span>. A 0.5 in bolt, 8,000 lb clamp load, K = 0.2: 0.2 × 0.5 × 8000 = <strong>800 lb·in</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Convert to foot-pounds</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">&divide; 12</span> = 800 ÷ 12 = <strong>66.7 lb·ft</strong>, the usual torque wrench unit.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Metric conversion</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">N&middot;m = lb&middot;ft &times; 1.3558</span> = 66.7 × 1.3558 ≈ <strong>90.4 N·m</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A dry, as-received 0.375 in bolt targeting 5,000 lb clamp load, K = 0.3.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Torque:</span> <span class="text-slate-600">0.3 × 0.375 × 5000 = 562.5 lb·in</span></div>
+        <div><span class="font-medium text-slate-700">Feet:</span> <span class="text-slate-600">562.5 ÷ 12 = <strong>46.9 lb·ft</strong></span></div>
+        <div><span class="font-medium text-slate-700">N·m:</span> <span class="text-slate-600">46.9 × 1.3558 ≈ 63.6 N·m</span></div>
+        <div><span class="font-medium text-slate-700">Note:</span> <span class="text-slate-600">dry threads need more torque for the same load</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/welding-amperage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Welding Amperage Calculator</a>
+      <a href="/tools/bolt-circle-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Bolt Circle Calculator</a>
+      <a href="/tools/countersink-depth-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Countersink Depth Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const D = parseFloat(el('dia').value);
+      const F = parseFloat(el('load').value);
+      const K = parseFloat(el('k').value);
+      if (!(D > 0 && F > 0 && K > 0)) { el('results').classList.add('hidden'); return; }
+      const Tlbin = K * D * F;
+      const Tlbft = Tlbin / 12;
+      const Tnm = Tlbft * 1.35582;
+
+      el('r-torque').textContent = Tlbft.toFixed(1) + ' lb·ft';
+      el('r-note').textContent = D + ' in bolt at ' + F.toLocaleString() + ' lb clamp load';
+      el('r-nm').textContent = Tnm.toFixed(1) + ' N·m';
+      el('r-k').textContent = K.toFixed(2);
+      el('results').classList.remove('hidden');
+    }
+
+    ['dia', 'load'].forEach((id) => el(id).addEventListener('input', update));
+    el('k').addEventListener('change', update);
+  </script>
+</ToolLayout>
