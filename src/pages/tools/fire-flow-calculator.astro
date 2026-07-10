@@ -1,0 +1,159 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Fire Flow Calculator';
+const description = 'Estimate the needed fire flow in gallons per minute for a building using the National Fire Academy fireground formula, with floors, percent involvement and exposures.';
+const intro = 'Estimate the needed fire flow for a building with the National Fire Academy fireground formula.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'What is the National Fire Academy fire flow formula?', a: 'Needed fire flow in gallons per minute equals the floor area (length × width) divided by 3, multiplied by the number of floors involved and the fraction of the building on fire. Exposures — adjacent buildings at risk — each add 25% of that subtotal.' },
+  { q: 'Is this the same as the ISO needed fire flow?', a: 'No. This is the National Fire Academy fireground formula, a quick size-up estimate an incident commander uses at a working fire. The ISO/AWWA needed-fire-flow calculation for water-system and hydrant planning is a separate, more detailed method based on construction type, occupancy and area.' },
+  { q: 'What counts as an exposure?', a: 'An exposure is a nearby structure or combustible feature close enough to catch fire from the burning building — typically within roughly 30 to 50 feet. Each exposed side raises the required flow because crews must protect those buildings while fighting the main fire.' },
+  { q: 'Why estimate fire flow?', a: 'It tells the incident commander roughly how much water, and therefore how many engines and hydrants, are needed to control a fire. It is a training and size-up tool for education and pre-planning, not a substitute for department protocol or a fire protection engineer.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Floors involved</span>
+        <input id="floors" type="number" step="1" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Percent involved (%)</span>
+        <input id="pct" type="number" step="any" placeholder="50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Exposed sides</span>
+        <input id="exp" type="number" step="1" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Needed fire flow</div>
+        <div id="r-nff" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Base flow</div><div id="r-base" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Exposure add</div><div id="r-expadd" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Engines (≈250 GPM)</div><div id="r-eng" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ff-title ff-desc">
+      <title id="ff-title">Fireground fire-flow formula</title>
+      <desc id="ff-desc">A burning building footprint with the National Fire Academy fire-flow formula</desc>
+      <rect x="80" y="80" width="130" height="90" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" />
+      <path d="M110 80 q10 -20 20 0 q10 -18 22 0 q12 -16 20 4" stroke="#f97316" stroke-width="3" fill="none" />
+      <text x="145" y="195" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">length × width</text>
+      <rect x="300" y="55" width="440" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="320" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">NFA fireground formula</text>
+      <text x="320" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">NFF = (L &times; W &divide; 3) &times; floors &times; (% &divide; 100)</text>
+      <text x="320" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">each exposed side adds 25% of the base flow</text>
+      <text x="320" y="154" font-size="12" fill="#475569" font-family="system-ui,sans-serif">result rounded to the nearest 50 GPM</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A rapid size-up estimate of the water needed to control a working fire.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the fire flow calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      This tool uses the National Fire Academy (NFA) fireground formula, a quick size-up method an incident commander can do in their head at a working fire. The base flow is the floor area — length times width — divided by 3. That gives the gallons per minute needed to knock down a fully involved single floor. Multiply by the number of floors on fire and by the fraction of the building actually burning to scale it to the real situation.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Exposures then raise the total. An exposure is a neighboring structure close enough to ignite from the main fire, and each exposed side that must be protected adds 25% of the base flow. The final number is rounded to the nearest 50 gallons per minute, because water is delivered in whole hoselines and engine companies, not exact decimals.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Dividing the needed flow by a typical single-engine supply of about 250 gallons per minute gives a rough count of how many engines are required. This is deliberately a fast, conservative estimate for training, size-up practice, and pre-incident planning. It is not the ISO needed-fire-flow method used to design water mains and rate hydrant systems, and it does not replace department protocol or a fire protection engineer's analysis.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Estimate the footprint</h3>
+        <p class="mt-1 text-sm text-slate-600">Length and width of the involved building.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Judge the fire</h3>
+        <p class="mt-1 text-sm text-slate-600">Floors involved and percent of the structure burning.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add exposures</h3>
+        <p class="mt-1 text-sm text-slate-600">Count nearby buildings that need protecting.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Base flow</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= (L &times; W &divide; 3) &times; floors &times; (% &divide; 100)</span>. A 50 × 30 ft building, 1 floor, 50% involved: (1500 ÷ 3) × 1 × 0.5 = <strong>250 GPM</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Exposure charge</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= base &times; 0.25 &times; exposed sides</span>. With one exposure: 250 × 0.25 × 1 = <strong>63 GPM</strong> added.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Needed fire flow</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= base + exposures</span>, rounded to the nearest 50: 250 + 63 = 313 → <strong>300 GPM</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 60 × 40 ft, 2-story building, fully involved (100%), with 2 exposures.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Base:</span> <span class="text-slate-600">(2400 ÷ 3) × 2 × 1.0 = 1,600 GPM</span></div>
+        <div><span class="font-medium text-slate-700">Exposures:</span> <span class="text-slate-600">1,600 × 0.25 × 2 = 800 GPM</span></div>
+        <div><span class="font-medium text-slate-700">Total:</span> <span class="text-slate-600">2,400 GPM</span></div>
+        <div><span class="font-medium text-slate-700">Engines:</span> <span class="text-slate-600"><strong>≈ 10 engines</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/gpm-flow-rate-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">GPM Flow Rate Calculator</a>
+      <a href="/tools/pipe-volume-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Pipe Volume Calculator</a>
+      <a href="/tools/water-tank-volume-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Water Tank Volume Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('len').value);
+      const W = parseFloat(el('width').value);
+      let floors = parseFloat(el('floors').value); if (!(floors > 0)) floors = 1;
+      let pct = parseFloat(el('pct').value); if (!(pct > 0)) pct = 100;
+      let exp = parseFloat(el('exp').value); if (!(exp >= 0)) exp = 0;
+      if (!(L > 0 && W > 0)) { el('results').classList.add('hidden'); return; }
+      pct = Math.min(pct, 100);
+
+      const base = (L * W / 3) * floors * (pct / 100);
+      const expAdd = base * 0.25 * exp;
+      const nff = Math.round((base + expAdd) / 50) * 50;
+      const engines = Math.ceil(nff / 250);
+
+      el('r-nff').textContent = nff.toLocaleString() + ' GPM';
+      el('r-note').textContent = pct + '% involved over ' + floors + ' floor' + (floors > 1 ? 's' : '');
+      el('r-base').textContent = Math.round(base).toLocaleString() + ' GPM';
+      el('r-expadd').textContent = Math.round(expAdd).toLocaleString() + ' GPM';
+      el('r-eng').textContent = engines + (engines === 1 ? ' engine' : ' engines');
+      el('results').classList.remove('hidden');
+    }
+
+    ['len', 'width', 'floors', 'pct', 'exp'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

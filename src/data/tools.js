@@ -425,6 +425,15 @@ export const tools = [
   { slug: 'gambrel-roof-calculator', title: 'Gambrel Roof Rafter Calculator', short: 'Upper and lower rafter lengths for a barn roof.', category: 'construction', sub: 'Roofing', emoji: '🛖', enabled: true, status: 'live' },
   { slug: 'asphalt-driveway-calculator', title: 'Asphalt Driveway Calculator', short: 'Tons of asphalt from area and thickness.', category: 'construction', sub: 'Driveway', emoji: '🛣️', enabled: true, status: 'live' },
   { slug: 'road-base-calculator', title: 'Road Base Calculator', short: 'Tons of crushed stone base under a driveway.', category: 'construction', sub: 'Driveway', emoji: '🪨', enabled: true, status: 'live' },
+  // ── Construction Batch 5: Water & Vessels + Converters ──
+  { slug: 'water-tank-volume-calculator', title: 'Water Tank Volume Calculator', short: 'Gallons a tank holds by shape and dimensions.', category: 'construction', sub: 'Water & Vessels', emoji: '🛁', enabled: true, status: 'live' },
+  { slug: 'pond-volume-calculator', title: 'Pond Volume Calculator', short: 'Gallons in a pond from size and average depth.', category: 'construction', sub: 'Water & Vessels', emoji: '🪷', enabled: true, status: 'live' },
+  { slug: 'gpm-flow-rate-calculator', title: 'GPM Flow Rate Calculator', short: 'Water flow in gallons per minute, two methods.', category: 'construction', sub: 'Water & Vessels', emoji: '🚿', enabled: true, status: 'live' },
+  { slug: 'pipe-volume-calculator', title: 'Pipe Volume Calculator', short: 'Water a pipe holds by bore and length.', category: 'construction', sub: 'Water & Vessels', emoji: '🫗', enabled: true, status: 'live' },
+  { slug: 'fire-flow-calculator', title: 'Fire Flow Calculator', short: 'Needed fire flow via the NFA fireground formula.', category: 'construction', sub: 'Water & Vessels', emoji: '🚒', enabled: true, status: 'live' },
+  { slug: 'square-feet-to-cubic-yards-calculator', title: 'Square Feet to Cubic Yards Calculator', short: 'Area and depth into cubic yards of material.', category: 'construction', sub: 'Converters', emoji: '🔄', enabled: true, status: 'live' },
+  { slug: 'gallons-per-square-foot-calculator', title: 'Gallons per Square Foot Calculator', short: 'Gallons to cover an area at a coverage rate.', category: 'construction', sub: 'Converters', emoji: '🧴', enabled: true, status: 'live' },
+  { slug: 'box-weight-calculator', title: 'Box Weight Calculator', short: 'Box weight and dimensional shipping weight.', category: 'construction', sub: 'Converters', emoji: '📤', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

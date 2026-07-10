@@ -1,0 +1,165 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Square Feet to Cubic Yards Calculator';
+const description = 'Convert a square-foot area and a spread depth into the cubic yards of mulch, gravel, soil or concrete you need to order. Includes a tons estimate.';
+const intro = 'Convert an area in square feet plus a spread depth into the cubic yards of material to order.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I convert square feet to cubic yards?', a: 'You cannot convert area to volume without a depth. Multiply the square footage by the depth in feet (inches ÷ 12) to get cubic feet, then divide by 27 to get cubic yards. For 300 sq ft at 3 inches deep: 300 × 0.25 = 75 ft³ ÷ 27 = 2.78 cubic yards.' },
+  { q: 'How many square feet does a cubic yard cover?', a: 'One cubic yard is 27 cubic feet, so at 3 inches (0.25 ft) deep it covers 27 ÷ 0.25 = 108 square feet. At 2 inches it covers 162 sq ft, and at 1 inch it covers 324 sq ft. Deeper spreads cover less area per yard.' },
+  { q: 'What spread depth should I use?', a: 'Mulch is usually spread 2 to 3 inches deep, decorative gravel about 2 inches over a base, topsoil for a lawn 4 to 6 inches, and a concrete slab 4 inches. Use the depth your project actually calls for, since it changes the volume directly.' },
+  { q: 'Why do suppliers sell by the cubic yard?', a: 'Bulk landscape and construction materials — mulch, gravel, sand, soil, and ready-mix concrete — are priced and delivered by volume in cubic yards because that is how truck beds and mixers are measured. Converting your area and depth to yards lets you order the right amount.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Area (sq ft)</span>
+        <input id="area" type="number" step="any" placeholder="300" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Depth (in)</span>
+        <input id="depth" type="number" step="any" placeholder="3" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Waste (%)</span>
+        <input id="waste" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Material</span>
+        <select id="density" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0">— skip tons —</option>
+          <option value="0.5">Mulch (~0.5 t/yd³)</option>
+          <option value="1.35" selected>Gravel / sand (~1.35 t/yd³)</option>
+          <option value="1.1">Topsoil (~1.1 t/yd³)</option>
+          <option value="2.03">Concrete (~2.03 t/yd³)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Material to order</div>
+        <div id="r-cy" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic feet</div><div id="r-cf" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">With waste</div><div id="r-cyw" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Weight</div><div id="r-tons" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="sc-title sc-desc">
+      <title id="sc-title">Area and depth into cubic yards</title>
+      <desc id="sc-desc">A flat area with a spread depth and the cubic-yard formula</desc>
+      <polygon points="80,150 300,150 250,90 30,90" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5" />
+      <polygon points="80,150 300,150 300,170 80,170" fill="#a16207" stroke="#854d0e" stroke-width="1.5" />
+      <text x="165" y="140" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">area (sq ft)</text>
+      <text x="315" y="164" font-size="11" fill="#475569" font-family="system-ui,sans-serif">depth</text>
+      <rect x="420" y="60" width="330" height="100" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="88" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Cubic yards</text>
+      <text x="440" y="114" font-size="12" fill="#475569" font-family="system-ui,sans-serif">ft&sup3; = area &times; (depth&frasl;12)</text>
+      <text x="440" y="136" font-size="12" fill="#475569" font-family="system-ui,sans-serif">yd&sup3; = ft&sup3; &divide; 27</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Area alone is not enough — the depth turns square feet into a volume.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the square feet to cubic yards calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Square feet measure area and cubic yards measure volume, so the two cannot be converted directly — you need a depth to bridge them. Once you know how thick the material will be spread, the volume in cubic feet is the area times the depth in feet, and dividing that by 27 (the number of cubic feet in a cubic yard) gives the order in cubic yards.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Because depth is usually given in inches, convert it to feet by dividing by 12. A 3-inch spread is 0.25 feet, a 2-inch spread is 0.167 feet, and so on. This is why the same area needs very different amounts of material at different depths: doubling the depth doubles the cubic yards. Adding a waste allowance — commonly around 10% for landscape materials that settle, spill, or grade unevenly — gives a realistic amount to actually order.
+    </p>
+    <p class="mt-3 text-slate-600">
+      If your supplier sells by weight instead of volume, the tool multiplies the cubic yards by a typical material density in tons per cubic yard. Mulch is light at roughly half a ton per yard, topsoil around 1.1 tons, gravel and sand near 1.35 tons, and concrete about 2 tons. These are approximate — moisture and gradation shift them — so treat the tonnage as an estimate for ordering.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the area</h3>
+        <p class="mt-1 text-sm text-slate-600">Total square footage you are covering.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set the depth</h3>
+        <p class="mt-1 text-sm text-slate-600">How thick the material is spread, in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Order in yards</h3>
+        <p class="mt-1 text-sm text-slate-600">Get cubic yards, plus tons if selling by weight.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cubic feet</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= area &times; (depth&frasl;12)</span>. 300 sq ft at 3 in: 300 × 0.25 = <strong>75 ft³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cubic yards</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= ft&sup3; &divide; 27</span> = 75 ÷ 27 = <strong>2.78 yd³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">With waste</p>
+        <p class="mt-1 text-slate-600">
+          Add 10%: 2.78 × 1.10 = <strong>3.06 yd³</strong> to order.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 500 sq ft driveway getting 4 inches of gravel, 10% waste.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Cubic feet:</span> <span class="text-slate-600">500 × (4/12) = 166.7 ft³</span></div>
+        <div><span class="font-medium text-slate-700">Cubic yards:</span> <span class="text-slate-600">166.7 ÷ 27 = 6.17 yd³</span></div>
+        <div><span class="font-medium text-slate-700">With waste:</span> <span class="text-slate-600"><strong>6.79 yd³</strong></span></div>
+        <div><span class="font-medium text-slate-700">Weight:</span> <span class="text-slate-600">6.79 × 1.35 ≈ 9.2 tons</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/cubic-yardage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Cubic Yardage Calculator</a>
+      <a href="/tools/gravel-sand-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Gravel &amp; Sand Calculator</a>
+      <a href="/tools/mulch-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Mulch Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const area = parseFloat(el('area').value);
+      const depth = parseFloat(el('depth').value);
+      let waste = parseFloat(el('waste').value); if (!(waste >= 0)) waste = 0;
+      const density = parseFloat(el('density').value);
+      if (!(area > 0 && depth > 0)) { el('results').classList.add('hidden'); return; }
+
+      const cf = area * (depth / 12);
+      const cy = cf / 27;
+      const cyw = cy * (1 + waste / 100);
+
+      el('r-cy').textContent = cyw.toFixed(2) + ' cubic yards';
+      el('r-note').textContent = area + ' sq ft × ' + depth + ' in deep';
+      el('r-cf').textContent = cf.toFixed(1) + ' ft³';
+      el('r-cyw').textContent = cyw.toFixed(2) + ' yd³';
+      if (density > 0) {
+        el('r-tons').textContent = (cyw * density).toFixed(1) + ' tons';
+      } else {
+        el('r-tons').textContent = '—';
+      }
+      el('results').classList.remove('hidden');
+    }
+
+    ['area', 'depth', 'waste'].forEach((id) => el(id).addEventListener('input', update));
+    el('density').addEventListener('change', update);
+  </script>
+</ToolLayout>
