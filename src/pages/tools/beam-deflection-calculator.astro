@@ -1,0 +1,180 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Beam Deflection Calculator';
+const description = 'Estimate the maximum deflection of a simply supported beam under a uniform or center point load, from its span, rectangular section and material stiffness.';
+const intro = 'Estimate how much a simply supported beam sags under load, and check it against the L/360 limit.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How is beam deflection calculated?', a: 'For a simply supported beam with a uniform load, maximum deflection = 5·w·L⁴ ÷ (384·E·I), where w is load per unit length, L is span, E is the material modulus, and I is the moment of inertia. A center point load uses P·L³ ÷ (48·E·I) instead.' },
+  { q: 'What is the L/360 deflection limit?', a: 'Building codes commonly limit live-load deflection to the span divided by 360 — about 0.4 inch over a 12-foot span. Plastered ceilings use L/360, floors often L/480, and less critical members L/240. Staying under the limit prevents cracked finishes and a bouncy feel.' },
+  { q: 'What is the moment of inertia?', a: 'The moment of inertia measures how a cross-section resists bending. For a solid rectangle it is width × depth³ ÷ 12, so depth matters far more than width — doubling the depth increases stiffness eightfold, while doubling the width only doubles it.' },
+  { q: 'Is this calculator enough to size a real beam?', a: 'No. It estimates deflection for one simple load case and does not check bending stress, shear, bearing, connections, or code load combinations. Use it for learning and rough comparison only; a licensed engineer must size any load-bearing beam.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Load type</span>
+        <select id="ltype" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="udl" selected>Uniform load (total)</option>
+          <option value="point">Center point load</option>
+        </select></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Load (lb)</span>
+        <input id="load" type="number" step="any" placeholder="1000" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Span (ft)</span>
+        <input id="span" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section width b (in)</span>
+        <input id="b" type="number" step="any" placeholder="1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section depth d (in)</span>
+        <input id="d" type="number" step="any" placeholder="7.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Material</span>
+        <select id="mat" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="1600000" selected>Softwood lumber (E≈1.6M psi)</option>
+          <option value="1900000">Dense softwood / LVL (E≈1.9M psi)</option>
+          <option value="10000000">Aluminum (E≈10M psi)</option>
+          <option value="29000000">Steel (E≈29M psi)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Maximum deflection</div>
+        <div id="r-defl" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Moment of inertia I</div><div id="r-i" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Deflection ratio</div><div id="r-ratio" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl p-3 text-center" id="r-check-box"><div class="text-sm text-slate-500">vs L/360 limit</div><div id="r-check" class="mt-1 text-lg font-bold">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bd-title bd-desc">
+      <title id="bd-title">Simply supported beam deflection</title>
+      <desc id="bd-desc">A beam sagging under load between two supports with the deflection formula</desc>
+      <path d="M60 80 Q230 140 400 80" stroke="#6366f1" stroke-width="4" fill="none" />
+      <line x1="60" y1="80" x2="400" y2="80" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 3" />
+      <polygon points="52,80 68,80 60,96" fill="#475569" /><polygon points="392,80 408,80 400,96" fill="#475569" />
+      <line x1="120" y1="55" x2="120" y2="75" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#a)" /><line x1="230" y1="55" x2="230" y2="75" stroke="#94a3b8" stroke-width="1.5" /><line x1="340" y1="55" x2="340" y2="75" stroke="#94a3b8" stroke-width="1.5" />
+      <text x="230" y="175" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">deflection at midspan</text>
+      <rect x="450" y="50" width="300" height="100" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="470" y="78" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Deflection</text>
+      <text x="470" y="104" font-size="12" fill="#475569" font-family="system-ui,sans-serif">uniform: 5wL⁴ &divide; (384 E I)</text>
+      <text x="470" y="126" font-size="12" fill="#475569" font-family="system-ui,sans-serif">point: P L³ &divide; (48 E I)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Deflection grows with the fourth power of span, so length dominates the result.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the beam deflection calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Deflection is how far a loaded beam sags at its worst point. For a beam resting on two supports with a load spread evenly along it, the maximum deflection at midspan is 5·w·L⁴ ÷ (384·E·I). Here w is the load per unit length, L is the span, E is the material's modulus of elasticity (its stiffness), and I is the moment of inertia of the cross-section. A single load at the center uses P·L³ ÷ (48·E·I) instead.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Two things dominate the result. Span enters to the fourth power for a uniform load, so doubling the length makes the beam sag sixteen times as much — length is the single biggest factor. The section's depth matters far more than its width, because the moment of inertia of a rectangle is b·d³ ÷ 12: depth is cubed. This is why joists are installed on edge, tall and thin, rather than laid flat.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator compares the result to the common L/360 serviceability limit — the span divided by 360 — which keeps finishes from cracking and floors from feeling bouncy. Passing that check does not mean the beam is adequately sized: bending stress, shear, bearing, connections, and code load combinations all have to be checked separately. Treat this as an educational estimate for one simple load case, not a design.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Describe the load</h3>
+        <p class="mt-1 text-sm text-slate-600">Uniform or center point load, in pounds, and the span.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the section</h3>
+        <p class="mt-1 text-sm text-slate-600">Rectangular width and depth, plus the material.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check the limit</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare the deflection to L/360.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Moment of inertia</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">I = b·d³ &divide; 12</span>. A 1.5 × 7.25 in section: 1.5 × 7.25³ ÷ 12 = <strong>47.6 in⁴</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Uniform-load deflection</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= 5wL⁴ &divide; (384 E I)</span> with L in inches and w = total load ÷ span.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Serviceability check</p>
+        <p class="mt-1 text-slate-600">
+          Compare deflection to <span class="font-mono">L &divide; 360</span>; report the actual ratio as L/n.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 2×8 softwood joist (1.5 × 7.25 in), 12 ft span, 1,000 lb uniform load, E = 1.6M psi.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">I:</span> <span class="text-slate-600">1.5 × 7.25³ ÷ 12 = 47.63 in⁴</span></div>
+        <div><span class="font-medium text-slate-700">w:</span> <span class="text-slate-600">1000 ÷ 144 in = 6.94 lb/in</span></div>
+        <div><span class="font-medium text-slate-700">Deflection:</span> <span class="text-slate-600">5×6.94×144⁴ ÷ (384×1.6e6×47.63) = <strong>0.510 in</strong></span></div>
+        <div><span class="font-medium text-slate-700">L/360:</span> <span class="text-slate-600">144 ÷ 360 = 0.40 in → over the limit</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/bending-stress-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Bending Stress Calculator</a>
+      <a href="/tools/metal-weight-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Metal Weight Calculator</a>
+      <a href="/tools/grade-slope-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Grade &amp; Slope Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const type = el('ltype').value;
+      const load = parseFloat(el('load').value);
+      const spanFt = parseFloat(el('span').value);
+      const b = parseFloat(el('b').value);
+      const d = parseFloat(el('d').value);
+      const E = parseFloat(el('mat').value);
+      if (!(load > 0 && spanFt > 0 && b > 0 && d > 0 && E > 0)) { el('results').classList.add('hidden'); return; }
+      const L = spanFt * 12;
+      const I = b * Math.pow(d, 3) / 12;
+      let defl;
+      if (type === 'udl') {
+        const w = load / L;
+        defl = 5 * w * Math.pow(L, 4) / (384 * E * I);
+      } else {
+        defl = load * Math.pow(L, 3) / (48 * E * I);
+      }
+      const limit = L / 360;
+      const nRatio = defl > 0 ? L / defl : Infinity;
+      const pass = defl <= limit;
+
+      el('r-defl').textContent = defl.toFixed(3) + ' in';
+      el('r-note').textContent = (type === 'udl' ? 'uniform load' : 'center point load') + ' over ' + spanFt + ' ft';
+      el('r-i').textContent = I.toFixed(2) + ' in⁴';
+      el('r-ratio').textContent = isFinite(nRatio) ? 'L/' + nRatio.toFixed(0) : '—';
+      el('r-check').textContent = pass ? '✓ within limit' : '✗ exceeds';
+      el('r-check').className = 'mt-1 text-lg font-bold ' + (pass ? 'text-green-600' : 'text-red-600');
+      el('r-check-box').className = 'rounded-xl p-3 text-center ' + (pass ? 'bg-green-50' : 'bg-red-50');
+      el('results').classList.remove('hidden');
+    }
+
+    ['load', 'span', 'b', 'd'].forEach((id) => el(id).addEventListener('input', update));
+    ['ltype', 'mat'].forEach((id) => el(id).addEventListener('change', update));
+  </script>
+</ToolLayout>

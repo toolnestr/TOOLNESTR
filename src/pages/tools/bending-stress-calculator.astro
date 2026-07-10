@@ -1,0 +1,166 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Bending Stress Calculator';
+const description = 'Calculate the maximum bending stress in a beam from the bending moment and a rectangular cross-section using the flexure formula σ = M·c ÷ I.';
+const intro = 'Calculate the peak bending stress in a beam from its bending moment and rectangular section.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'What is the bending stress formula?', a: 'The flexure formula is σ = M·c ÷ I, where M is the bending moment, c is the distance from the neutral axis to the outermost fiber, and I is the moment of inertia. Using the section modulus S = I ÷ c, it simplifies to σ = M ÷ S.' },
+  { q: 'What is the section modulus?', a: 'The section modulus S combines shape and size into one number that resists bending. For a solid rectangle it is width × depth² ÷ 6. A larger S means lower stress for the same moment, which is why beams are made deep rather than wide.' },
+  { q: 'How do I find the bending moment?', a: 'For a simply supported beam with a uniform load, the maximum moment is w·L² ÷ 8; for a center point load it is P·L ÷ 4. The moment must be in consistent units — pound-inches when the section is in inches — before dividing by the section modulus.' },
+  { q: 'How do I know if the stress is safe?', a: 'Compare the calculated stress to the material’s allowable bending stress (Fb) with its safety factor applied. If σ exceeds the allowable value the section is overstressed. This tool computes the stress only; a licensed engineer must confirm allowable values and the full design.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} structural={true}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Bending moment M (lb·ft)</span>
+        <input id="moment" type="number" step="any" placeholder="1800" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section width b (in)</span>
+        <input id="b" type="number" step="any" placeholder="1.5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Section depth d (in)</span>
+        <input id="d" type="number" step="any" placeholder="7.25" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2 lg:col-span-3"><span class="text-sm font-medium text-slate-700">Allowable bending stress Fb (psi) — optional</span>
+        <input id="fb" type="number" step="any" placeholder="900" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Maximum bending stress</div>
+        <div id="r-stress" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Section modulus S</div><div id="r-s" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Moment of inertia I</div><div id="r-i" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl p-3 text-center" id="r-check-box"><div class="text-sm text-slate-500">vs allowable</div><div id="r-check" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bs-title bs-desc">
+      <title id="bs-title">Bending stress distribution</title>
+      <desc id="bs-desc">A beam section showing tension and compression with the flexure formula</desc>
+      <rect x="90" y="60" width="60" height="90" fill="#e0e7ff" stroke="#6366f1" stroke-width="1.5" />
+      <line x1="70" y1="105" x2="170" y2="105" stroke="#4338ca" stroke-width="1.5" stroke-dasharray="4 3" />
+      <polygon points="150,60 210,60 150,105" fill="#fca5a5" opacity="0.7" />
+      <polygon points="150,105 210,150 150,150" fill="#93c5fd" opacity="0.7" />
+      <text x="220" y="72" font-size="11" fill="#b91c1c" font-family="system-ui,sans-serif">compression</text>
+      <text x="220" y="148" font-size="11" fill="#1d4ed8" font-family="system-ui,sans-serif">tension</text>
+      <text x="120" y="170" font-size="11" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">neutral axis</text>
+      <rect x="400" y="55" width="350" height="100" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="420" y="83" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Flexure formula</text>
+      <text x="420" y="109" font-size="12" fill="#475569" font-family="system-ui,sans-serif">&sigma; = M·c &divide; I = M &divide; S</text>
+      <text x="420" y="131" font-size="12" fill="#475569" font-family="system-ui,sans-serif">S = b·d² &divide; 6 &nbsp; (rectangle)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Stress is zero at the neutral axis and peaks at the top and bottom fibers.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the bending stress calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      When a beam bends, one face is squeezed in compression and the opposite face is stretched in tension, with a neutral axis of zero stress in between. The flexure formula gives the peak stress at the outer fiber: σ = M·c ÷ I, where M is the bending moment, c is the distance from the neutral axis to the extreme fiber, and I is the moment of inertia. Because the section modulus S equals I ÷ c, the formula reduces to the simpler σ = M ÷ S.
+    </p>
+    <p class="mt-3 text-slate-600">
+      For a solid rectangle, the section modulus is width × depth² ÷ 6. Depth is squared here, so a deep, narrow beam carries a given moment at much lower stress than a shallow, wide one of the same area — the reason floor joists and rafters stand tall on edge. The calculator computes S and I from the width and depth you enter, then divides the moment by S to return the stress.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Moment is entered in pound-feet and converted to pound-inches (×12) so the units match a section measured in inches, giving stress in pounds per square inch. If you enter an allowable bending stress (Fb) for your material, the tool flags whether the section is within it. This is a single-equation estimate — it does not check shear, deflection, buckling, or load combinations, and allowable stresses must come from the governing code and a qualified engineer.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the moment</h3>
+        <p class="mt-1 text-sm text-slate-600">The maximum bending moment on the beam.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Give the section</h3>
+        <p class="mt-1 text-sm text-slate-600">Rectangular width and depth in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the stress</h3>
+        <p class="mt-1 text-sm text-slate-600">Compare it to your allowable Fb if entered.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Section modulus</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">S = b·d² &divide; 6</span>. A 1.5 × 7.25 in section: 1.5 × 7.25² ÷ 6 = <strong>13.14 in³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Bending stress</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">&sigma; = M &divide; S</span> with M in lb·in (lb·ft × 12).
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Moment of inertia</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">I = b·d³ &divide; 12</span>, and c = d ÷ 2, so S = I ÷ c as expected.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 2×8 (1.5 × 7.25 in) carrying a 1,800 lb·ft moment, Fb = 900 psi.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Moment:</span> <span class="text-slate-600">1,800 × 12 = 21,600 lb·in</span></div>
+        <div><span class="font-medium text-slate-700">S:</span> <span class="text-slate-600">1.5 × 7.25² ÷ 6 = 13.14 in³</span></div>
+        <div><span class="font-medium text-slate-700">Stress:</span> <span class="text-slate-600">21,600 ÷ 13.14 = <strong>1,644 psi</strong></span></div>
+        <div><span class="font-medium text-slate-700">Check:</span> <span class="text-slate-600">1,644 &gt; 900 → overstressed</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/beam-deflection-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Beam Deflection Calculator</a>
+      <a href="/tools/metal-weight-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Metal Weight Calculator</a>
+      <a href="/tools/carbon-equivalent-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Carbon Equivalent Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const Mft = parseFloat(el('moment').value);
+      const b = parseFloat(el('b').value);
+      const d = parseFloat(el('d').value);
+      const fb = parseFloat(el('fb').value);
+      if (!(Mft > 0 && b > 0 && d > 0)) { el('results').classList.add('hidden'); return; }
+      const M = Mft * 12; // lb·in
+      const S = b * d * d / 6;
+      const I = b * Math.pow(d, 3) / 12;
+      const stress = M / S;
+
+      el('r-stress').textContent = stress.toFixed(0) + ' psi';
+      el('r-note').textContent = 'peak fiber stress from a ' + Mft.toLocaleString() + ' lb·ft moment';
+      el('r-s').textContent = S.toFixed(2) + ' in³';
+      el('r-i').textContent = I.toFixed(2) + ' in⁴';
+      if (fb > 0) {
+        const pass = stress <= fb;
+        el('r-check').textContent = pass ? '✓ within Fb' : '✗ exceeds Fb';
+        el('r-check').className = 'mt-1 text-lg font-bold ' + (pass ? 'text-green-600' : 'text-red-600');
+        el('r-check-box').className = 'rounded-xl p-3 text-center ' + (pass ? 'bg-green-50' : 'bg-red-50');
+      } else {
+        el('r-check').textContent = '—';
+        el('r-check').className = 'mt-1 text-lg font-bold text-slate-800';
+        el('r-check-box').className = 'rounded-xl bg-slate-50 p-3 text-center';
+      }
+      el('results').classList.remove('hidden');
+    }
+
+    ['moment', 'b', 'd', 'fb'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

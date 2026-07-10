@@ -441,6 +441,9 @@ export const tools = [
   { slug: 'bolt-circle-calculator', title: 'Bolt Circle Calculator', short: 'Hole spacing and X-Y coordinates on a bolt circle.', category: 'construction', sub: 'Practical & Layout', emoji: '⭕', enabled: true, status: 'live' },
   { slug: 'round-pen-calculator', title: 'Round Pen Calculator', short: 'Fence panels for a round pen by diameter.', category: 'construction', sub: 'Practical & Layout', emoji: '🐎', enabled: true, status: 'live' },
   { slug: 'countersink-depth-calculator', title: 'Countersink Depth Calculator', short: 'How deep to countersink a flat-head screw flush.', category: 'construction', sub: 'Practical & Layout', emoji: '🔩', enabled: true, status: 'live' },
+  // ── Construction Batch 7: Structural (highest liability — stronger disclaimer) ──
+  { slug: 'beam-deflection-calculator', title: 'Beam Deflection Calculator', short: 'Beam sag under load, checked against L/360.', category: 'construction', sub: 'Structural', emoji: '🌉', enabled: true, status: 'live' },
+  { slug: 'bending-stress-calculator', title: 'Bending Stress Calculator', short: 'Peak bending stress via the flexure formula.', category: 'construction', sub: 'Structural', emoji: '💠', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },
