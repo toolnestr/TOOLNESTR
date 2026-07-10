@@ -434,6 +434,13 @@ export const tools = [
   { slug: 'square-feet-to-cubic-yards-calculator', title: 'Square Feet to Cubic Yards Calculator', short: 'Area and depth into cubic yards of material.', category: 'construction', sub: 'Converters', emoji: '🔄', enabled: true, status: 'live' },
   { slug: 'gallons-per-square-foot-calculator', title: 'Gallons per Square Foot Calculator', short: 'Gallons to cover an area at a coverage rate.', category: 'construction', sub: 'Converters', emoji: '🧴', enabled: true, status: 'live' },
   { slug: 'box-weight-calculator', title: 'Box Weight Calculator', short: 'Box weight and dimensional shipping weight.', category: 'construction', sub: 'Converters', emoji: '📤', enabled: true, status: 'live' },
+  // ── Construction Batch 6: Practical / Layout ──
+  { slug: 'miter-angle-calculator', title: 'Miter Angle Calculator', short: 'Miter saw angle for corners and frames.', category: 'construction', sub: 'Practical & Layout', emoji: '🪚', enabled: true, status: 'live' },
+  { slug: 'compound-angle-calculator', title: 'Compound Angle Calculator', short: 'Miter and bevel for crown molding and slopes.', category: 'construction', sub: 'Practical & Layout', emoji: '🔺', enabled: true, status: 'live' },
+  { slug: 'grade-slope-calculator', title: 'Grade & Slope Calculator', short: 'Grade %, angle, and ratio from rise and run.', category: 'construction', sub: 'Practical & Layout', emoji: '📉', enabled: true, status: 'live' },
+  { slug: 'bolt-circle-calculator', title: 'Bolt Circle Calculator', short: 'Hole spacing and X-Y coordinates on a bolt circle.', category: 'construction', sub: 'Practical & Layout', emoji: '⭕', enabled: true, status: 'live' },
+  { slug: 'round-pen-calculator', title: 'Round Pen Calculator', short: 'Fence panels for a round pen by diameter.', category: 'construction', sub: 'Practical & Layout', emoji: '🐎', enabled: true, status: 'live' },
+  { slug: 'countersink-depth-calculator', title: 'Countersink Depth Calculator', short: 'How deep to countersink a flat-head screw flush.', category: 'construction', sub: 'Practical & Layout', emoji: '🔩', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },

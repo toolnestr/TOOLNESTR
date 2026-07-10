@@ -1,0 +1,186 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Grade & Slope Calculator';
+const description = 'Convert between grade percent, slope angle in degrees and rise-over-run ratio for driveways, ramps, drainage and land — from rise and run or from an angle.';
+const intro = 'Convert between grade percent, slope angle, and rise-over-run ratio for grading, ramps, and drainage.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate grade percent from rise and run?', a: 'Grade percent equals the rise divided by the run, multiplied by 100. A 2-foot rise over a 40-foot run is 2 ÷ 40 × 100 = 5% grade. Rise and run must be in the same units.' },
+  { q: 'What is the difference between grade percent and slope angle?', a: 'Grade percent is rise over run as a percentage, while the slope angle is the actual angle in degrees, found with arctangent of rise ÷ run. A 100% grade is a 45° angle — they are not the same number, which is a common mix-up.' },
+  { q: 'What grade is too steep for a driveway?', a: 'Most codes and guidelines keep driveways under about 15%, with steeper short sections needing transition zones to avoid scraping. Wheelchair ramps under the ADA must not exceed 8.3% (a 1:12 ratio), and roads are typically held below 6 to 8%.' },
+  { q: 'What does a slope ratio like 1:12 mean?', a: 'A ratio of 1:12 means one unit of rise for every twelve units of run — a rise-over-run of 1 ÷ 12, which is about 8.3% grade. Landscapers often state slope as a ratio, while engineers use percent and surveyors use degrees.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block max-w-xs"><span class="text-sm font-medium text-slate-700">Input</span>
+      <select id="mode" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="riserun" selected>Rise &amp; run</option>
+        <option value="angle">Slope angle</option>
+        <option value="pct">Grade percent</option>
+      </select></label>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <label id="w-rise" class="block"><span class="text-sm font-medium text-slate-700">Rise (ft)</span>
+        <input id="rise" type="number" step="any" placeholder="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-run" class="block"><span class="text-sm font-medium text-slate-700">Run (ft)</span>
+        <input id="run" type="number" step="any" placeholder="40" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-angle" class="hidden"><span class="text-sm font-medium text-slate-700">Angle (°)</span>
+        <input id="angle" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-pct" class="hidden"><span class="text-sm font-medium text-slate-700">Grade (%)</span>
+        <input id="pct" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Grade</div>
+        <div id="r-pct" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Slope angle</div><div id="r-angle" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Ratio (1:x)</div><div id="r-ratio" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Slope length</div><div id="r-len" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gs-title gs-desc">
+      <title id="gs-title">Rise, run, and slope with the grade formula</title>
+      <desc id="gs-desc">A right triangle of rise over run with the grade and angle formulas</desc>
+      <polygon points="80,170 340,170 340,90" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5" />
+      <line x1="340" y1="90" x2="340" y2="170" stroke="#16a34a" stroke-width="2" />
+      <text x="352" y="135" font-size="12" fill="#475569" font-family="system-ui,sans-serif">rise</text>
+      <text x="200" y="188" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">run</text>
+      <rect x="430" y="55" width="320" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="450" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Grade &amp; angle</text>
+      <text x="450" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">grade % = rise &divide; run &times; 100</text>
+      <text x="450" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">angle = atan( rise &divide; run )</text>
+      <text x="450" y="154" font-size="12" fill="#475569" font-family="system-ui,sans-serif">100% grade = 45°</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Grade is a percentage; the angle is degrees — a 100% grade equals 45°, not 90°.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the grade &amp; slope calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Slope describes how steeply ground or a surface rises over a horizontal distance, and three trades state it three ways. Grade percent is the rise divided by the run, times 100. The slope angle is the actual angle in degrees, found with the arctangent of rise ÷ run. The ratio form, like 1:12, reads as one unit of rise for every twelve of run. All three describe the same steepness.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The most common mistake is treating grade percent and angle as the same number. They are not: a 100% grade is a 45° angle, because a rise equal to the run makes a half-square triangle. Grade percent climbs toward infinity as the surface nears vertical, while the angle simply approaches 90°. This calculator converts freely among all three, and also reports the true slope length — the along-the-slope distance — using the Pythagorean theorem on rise and run.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Knowing the grade matters for real limits. Wheelchair ramps under the ADA cannot exceed 8.3%, the 1:12 ratio. Driveways are usually kept under about 15% to avoid vehicles scraping, and roads below 6 to 8% for safe stopping. Site drainage often targets a gentle 1 to 2% so water runs off without pooling or eroding. Enter what you know — rise and run, an angle, or a percent — and read the rest.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick what you know</h3>
+        <p class="mt-1 text-sm text-slate-600">Rise and run, a slope angle, or a grade percent.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the values</h3>
+        <p class="mt-1 text-sm text-slate-600">Keep rise and run in the same units.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read all forms</h3>
+        <p class="mt-1 text-sm text-slate-600">Percent, degrees, ratio, and slope length.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Grade percent</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= rise &divide; run &times; 100</span>. A 2 ft rise over 40 ft: 2 ÷ 40 × 100 = <strong>5%</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Slope angle</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= atan( rise &divide; run )</span> = atan(0.05) = <strong>2.86°</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Slope length</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= &radic;(rise&sup2; + run&sup2;)</span> = √(4 + 1600) = <strong>40.05 ft</strong> along the slope.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A driveway climbing 3 ft over a 25 ft run.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Grade:</span> <span class="text-slate-600">3 ÷ 25 × 100 = 12%</span></div>
+        <div><span class="font-medium text-slate-700">Angle:</span> <span class="text-slate-600">atan(0.12) = 6.84°</span></div>
+        <div><span class="font-medium text-slate-700">Ratio:</span> <span class="text-slate-600">1 : 8.3</span></div>
+        <div><span class="font-medium text-slate-700">Slope length:</span> <span class="text-slate-600"><strong>25.18 ft</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/ramp-slope-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">ADA Ramp Slope Calculator</a>
+      <a href="/tools/roof-pitch-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Roof Pitch Calculator</a>
+      <a href="/tools/stair-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Stair Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const rad = (d) => d * Math.PI / 180;
+    const deg = (r) => r * 180 / Math.PI;
+
+    function sync() {
+      const m = el('mode').value;
+      el('w-rise').classList.toggle('hidden', m !== 'riserun');
+      el('w-run').classList.toggle('hidden', m !== 'riserun');
+      el('w-angle').classList.toggle('hidden', m !== 'angle');
+      el('w-pct').classList.toggle('hidden', m !== 'pct');
+      update();
+    }
+
+    function update() {
+      const m = el('mode').value;
+      let rise, run, pct, angle;
+      if (m === 'riserun') {
+        rise = parseFloat(el('rise').value); run = parseFloat(el('run').value);
+        if (!(run > 0) || isNaN(rise)) return hide();
+        pct = rise / run * 100;
+        angle = deg(Math.atan(rise / run));
+      } else if (m === 'angle') {
+        angle = parseFloat(el('angle').value);
+        if (isNaN(angle) || angle <= -90 || angle >= 90) return hide();
+        pct = Math.tan(rad(angle)) * 100;
+        run = 100; rise = pct;
+      } else {
+        pct = parseFloat(el('pct').value);
+        if (isNaN(pct)) return hide();
+        angle = deg(Math.atan(pct / 100));
+        run = 100; rise = pct;
+      }
+      const ratio = pct !== 0 ? (100 / pct) : Infinity;
+      const slopeLen = Math.sqrt(rise * rise + run * run);
+
+      el('r-pct').textContent = pct.toFixed(2) + '%';
+      el('r-note').textContent = 'rise over run, as a percentage';
+      el('r-angle').textContent = angle.toFixed(2) + '°';
+      el('r-ratio').textContent = isFinite(ratio) ? '1 : ' + ratio.toFixed(1) : '—';
+      el('r-len').textContent = (m === 'riserun') ? slopeLen.toFixed(2) + ' ft' : '—';
+      el('results').classList.remove('hidden');
+    }
+    function hide() { el('results').classList.add('hidden'); }
+
+    el('mode').addEventListener('change', sync);
+    ['rise', 'run', 'angle', 'pct'].forEach((id) => el(id).addEventListener('input', update));
+    sync();
+  </script>
+</ToolLayout>

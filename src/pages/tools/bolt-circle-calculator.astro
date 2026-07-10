@@ -1,0 +1,171 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Bolt Circle Calculator';
+const description = 'Calculate the spacing between holes and the X-Y coordinates of each hole on a bolt circle from the bolt circle diameter and number of holes.';
+const intro = 'Find the hole-to-hole spacing and X-Y coordinates for any bolt circle, from its diameter and hole count.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate bolt circle hole spacing?', a: 'The straight-line distance between two adjacent holes (the chord) equals the bolt circle diameter times the sine of 180 divided by the number of holes. For a 5-inch circle with 6 holes: 5 × sin(30°) = 2.5 inches between holes.' },
+  { q: 'How do I find the coordinates of each hole?', a: 'Place the center at the origin. Each hole sits at X = radius × cos(angle) and Y = radius × sin(angle), where the angle steps by 360 ÷ number of holes around the circle. This calculator lists the coordinates for every hole.' },
+  { q: 'What is a bolt circle diameter?', a: 'The bolt circle diameter (BCD) is the diameter of the imaginary circle that passes through the center of every bolt hole in a pattern — on a wheel, flange, or hub. It sets where the holes are placed, independent of the bolt size.' },
+  { q: 'Why lay out holes by coordinates instead of measuring around the circle?', a: 'Marking X-Y coordinates from a common origin avoids the compounding error of stepping a divider hole-to-hole around a circle. On a mill or drill press with a coordinate table, plotting each hole position gives a far more accurate pattern.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Bolt circle diameter</span>
+        <input id="bcd" type="number" step="any" placeholder="5" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of holes</span>
+        <input id="holes" type="number" step="1" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Start angle (°)</span>
+        <input id="start" type="number" step="any" placeholder="0" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Hole-to-hole spacing (chord)</div>
+        <div id="r-chord" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Radius</div><div id="r-radius" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Angle step</div><div id="r-step" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Holes</div><div id="r-count" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+      <div class="overflow-x-auto rounded-xl border border-slate-200">
+        <table class="w-full text-sm">
+          <thead><tr class="bg-slate-50 text-slate-600"><th class="p-2 text-left">Hole</th><th class="p-2 text-left">Angle</th><th class="p-2 text-left">X</th><th class="p-2 text-left">Y</th></tr></thead>
+          <tbody id="coords"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="240" viewBox="0 0 800 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="bc-title bc-desc">
+      <title id="bc-title">Bolt circle layout and formulas</title>
+      <desc id="bc-desc">A bolt circle with six holes and the chord and coordinate formulas</desc>
+      <circle cx="140" cy="120" r="80" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5 4" />
+      <circle cx="140" cy="40" r="8" fill="#c7d2fe" stroke="#4338ca" /><circle cx="209" cy="80" r="8" fill="#c7d2fe" stroke="#4338ca" />
+      <circle cx="209" cy="160" r="8" fill="#c7d2fe" stroke="#4338ca" /><circle cx="140" cy="200" r="8" fill="#c7d2fe" stroke="#4338ca" />
+      <circle cx="71" cy="160" r="8" fill="#c7d2fe" stroke="#4338ca" /><circle cx="71" cy="80" r="8" fill="#c7d2fe" stroke="#4338ca" />
+      <circle cx="140" cy="120" r="3" fill="#4338ca" />
+      <rect x="330" y="55" width="420" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="350" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Bolt circle</text>
+      <text x="350" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">chord = BCD &times; sin(180 &divide; holes)</text>
+      <text x="350" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">X = radius &times; cos(angle)</text>
+      <text x="350" y="154" font-size="12" fill="#475569" font-family="system-ui,sans-serif">Y = radius &times; sin(angle)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Holes sit evenly on the circle; coordinates come from the radius and each hole's angle.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the bolt circle calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A bolt circle is a set of holes spaced evenly around an imaginary circle — on a wheel hub, a pipe flange, or a machined plate. The bolt circle diameter (BCD) is the diameter of that circle through the hole centers. Two things follow from the BCD and the number of holes: the straight-line spacing between neighboring holes, and the exact position of each hole.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The spacing between adjacent holes is the chord of the arc between them. It equals the BCD times the sine of 180 divided by the number of holes. For a 5-inch circle with six holes, that is 5 × sin(30°) = 2.5 inches. This chord is what you would measure with calipers straight across from one hole center to the next, and it is a quick way to check a pattern.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To lay the pattern out precisely, work in coordinates from the circle's center. Each hole's angle steps by 360 ÷ number of holes, starting from whatever start angle you choose, and its position is X = radius × cos(angle), Y = radius × sin(angle). Plotting coordinates from one origin avoids the error that builds up when you step a divider around the circle hole by hole, which is why machinists prefer it on a coordinate table.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the circle</h3>
+        <p class="mt-1 text-sm text-slate-600">Bolt circle diameter and number of holes.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set a start angle</h3>
+        <p class="mt-1 text-sm text-slate-600">Where the first hole sits, often 0°.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read spacing &amp; XY</h3>
+        <p class="mt-1 text-sm text-slate-600">Chord distance plus each hole's coordinates.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Chord spacing</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= BCD &times; sin(180 &divide; N)</span>. A 5 in circle, 6 holes: 5 × sin(30°) = <strong>2.5 in</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Angle step</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= 360 &divide; N</span> = 360 ÷ 6 = <strong>60°</strong> between holes.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Coordinates</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">X = r&nbsp;cos&theta;, Y = r&nbsp;sin&theta;</span> with r = BCD ÷ 2 and θ stepping from the start angle.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 4-hole flange on a 4 in bolt circle, first hole at 45°.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Radius:</span> <span class="text-slate-600">4 ÷ 2 = 2 in</span></div>
+        <div><span class="font-medium text-slate-700">Chord:</span> <span class="text-slate-600">4 × sin(45°) = 2.83 in</span></div>
+        <div><span class="font-medium text-slate-700">Step:</span> <span class="text-slate-600">360 ÷ 4 = 90°</span></div>
+        <div><span class="font-medium text-slate-700">Hole 1:</span> <span class="text-slate-600">X = 1.41, Y = 1.41 in</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/round-pen-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Round Pen Calculator</a>
+      <a href="/tools/miter-angle-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Miter Angle Calculator</a>
+      <a href="/tools/perimeter-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Perimeter Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const rad = (d) => d * Math.PI / 180;
+
+    function update() {
+      const bcd = parseFloat(el('bcd').value);
+      const n = parseInt(el('holes').value, 10);
+      let start = parseFloat(el('start').value); if (isNaN(start)) start = 0;
+      if (!(bcd > 0 && n >= 2)) { el('results').classList.add('hidden'); return; }
+      const r = bcd / 2;
+      const step = 360 / n;
+      const chord = bcd * Math.sin(rad(180 / n));
+
+      el('r-chord').textContent = chord.toFixed(3);
+      el('r-note').textContent = 'straight-line distance between adjacent holes';
+      el('r-radius').textContent = r.toFixed(3);
+      el('r-step').textContent = step.toFixed(2) + '°';
+      el('r-count').textContent = n;
+
+      const rows = [];
+      const max = Math.min(n, 24);
+      for (let i = 0; i < max; i++) {
+        const ang = start + i * step;
+        const x = r * Math.cos(rad(ang));
+        const y = r * Math.sin(rad(ang));
+        const clean = (v) => (Math.abs(v) < 1e-9 ? 0 : v).toFixed(3);
+        rows.push('<tr class="border-t border-slate-100"><td class="p-2">' + (i + 1) + '</td><td class="p-2">' + ang.toFixed(1) + '°</td><td class="p-2">' + clean(x) + '</td><td class="p-2">' + clean(y) + '</td></tr>');
+      }
+      if (n > max) rows.push('<tr class="border-t border-slate-100"><td class="p-2 text-slate-400" colspan="4">… ' + (n - max) + ' more holes</td></tr>');
+      el('coords').innerHTML = rows.join('');
+      el('results').classList.remove('hidden');
+    }
+
+    ['bcd', 'holes', 'start'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
