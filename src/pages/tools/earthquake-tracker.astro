@@ -315,6 +315,12 @@ const howToSchema = {
     .leaflet-popup-content-wrapper { background: #161921 !important; border: 1px solid #1e2230 !important; border-radius: 10px !important; color: #eceef4 !important; box-shadow: 0 8px 30px rgba(0,0,0,0.6) !important; font-family: 'Space Grotesk', sans-serif !important; font-size: 0.82rem !important; }
     .leaflet-popup-tip { background: #161921 !important; }
     .leaflet-popup-close-button { color: #5a6278 !important; font-size: 18px !important; }
+    /* Selected-earthquake pin — makes the clicked event stand out among clustered markers */
+    .eq-sel-pin { position: relative; width: 28px; height: 40px; pointer-events: none; }
+    .eq-sel-pin .eq-pin-head { position: absolute; left: 0; top: 0; width: 28px; height: 28px; background: var(--pc, #f0b429); border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(45deg); box-shadow: 0 3px 9px rgba(0,0,0,0.6); }
+    .eq-sel-pin .eq-pin-dot { position: absolute; left: 9px; top: 9px; width: 10px; height: 10px; background: #fff; border-radius: 50%; z-index: 2; }
+    .eq-sel-pin .eq-pin-pulse { position: absolute; left: 14px; top: 14px; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: var(--pc, #f0b429); opacity: 0.4; animation: eqSelPulse 1.7s ease-out infinite; }
+    @keyframes eqSelPulse { 0% { transform: scale(0.5); opacity: 0.55; } 100% { transform: scale(2.8); opacity: 0; } }
 
     /* ══ RESPONSIVE ══ */
     @media (max-width: 680px) {
@@ -585,6 +591,7 @@ const howToSchema = {
   let eqAllQuakes = [], eqMarkers = [], eqSelectedId = null, eqHeatMode = false;
   let eqCurrentTab = 'map';
   let eqMap = null;
+  let eqSelMarker = null;   // highlighted pin for the currently-selected earthquake
   let eqLastFetchTime = null;
 
   // ══ HELPERS ══
@@ -774,6 +781,9 @@ const howToSchema = {
   function eqSelectQuake(id) {
     const q = eqAllQuakes.find(x=>x.id===id);
     if(!q) return;
+    // On mobile, switch to the map FIRST — eqSwitchTab('map') closes any open sheet
+    // and clears selection, so it must run before we set selection + open the sheet.
+    if(window.innerWidth<=680 && eqCurrentTab==='list') eqSwitchTab('map');
     eqSelectedId = id;
     document.querySelectorAll('.eq-quake-item').forEach(el=>el.classList.toggle('active', el.dataset.id===id));
 
@@ -810,7 +820,8 @@ const howToSchema = {
     document.getElementById('eqSUsgs').onclick  = ()=>window.open(p.url,'_blank');
     document.getElementById('eqSCenter').onclick= ()=>{eqMap.setView([lat,lng],6);eqSwitchTab('map');};
 
-    if(window.innerWidth<=680){ eqOpenSheet(); if(eqCurrentTab==='list') eqSwitchTab('map'); }
+    if(window.innerWidth<=680){ eqOpenSheet(); }
+    eqSetSelPin(lat, lng, col);
     eqMap.setView([lat,lng], Math.max(eqMap.getZoom(),4));
 
     if(p.mag>=5.5){
@@ -822,7 +833,24 @@ const howToSchema = {
   function eqCloseDetail() {
     document.getElementById('eqDetailPanel').classList.remove('show');
     eqSelectedId = null;
+    eqClearSelPin();
     document.querySelectorAll('.eq-quake-item').forEach(e=>e.classList.remove('active'));
+  }
+
+  // Drop a distinct highlighted pin on the selected quake so it's easy to tell
+  // apart from nearby markers. Replaces any previous selection pin.
+  function eqSetSelPin(lat, lng, col) {
+    eqClearSelPin();
+    if(!eqMap) return;
+    const icon = L.divIcon({
+      className: 'eq-sel-pin-wrap',
+      html: '<div class="eq-sel-pin" style="--pc:'+col+'"><div class="eq-pin-pulse"></div><div class="eq-pin-head"></div><div class="eq-pin-dot"></div></div>',
+      iconSize: [28, 40], iconAnchor: [14, 38],
+    });
+    eqSelMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000, interactive: false, keyboard: false }).addTo(eqMap);
+  }
+  function eqClearSelPin() {
+    if(eqSelMarker){ eqMap.removeLayer(eqSelMarker); eqSelMarker = null; }
   }
 
   function eqOpenSheet() {
@@ -836,6 +864,7 @@ const howToSchema = {
     bd.classList.remove('show');
     bd.style.display='none';
     eqSelectedId = null;
+    eqClearSelPin();
     document.querySelectorAll('.eq-quake-item').forEach(e=>e.classList.remove('active'));
   }
 
