@@ -467,6 +467,13 @@ export const tools = [
   { slug: 'diy-shed-cost-calculator', title: 'DIY Shed Cost Calculator', short: 'Material cost to build a shed by size and tier.', category: 'construction', sub: 'Home & Garden', emoji: '🧾', enabled: true, status: 'live' },
   { slug: 'epoxy-resin-calculator', title: 'Epoxy Resin Calculator', short: 'Epoxy needed for a pour by area and depth.', category: 'construction', sub: 'Home & Garden', emoji: '🧪', enabled: true, status: 'live' },
   { slug: 'floor-area-ratio-calculator', title: 'Floor Area Ratio (FAR) Calculator', short: 'Zoning FAR and max buildable floor area.', category: 'construction', sub: 'Home & Garden', emoji: '🗺️', enabled: true, status: 'live' },
+  // ── Construction Batch 9b: Omni-parity gaps — Home & Garden (part 2) ──
+  { slug: 'hoop-house-calculator', title: 'Hoop House Calculator', short: 'Hoops and plastic sheeting for a greenhouse tunnel.', category: 'construction', sub: 'Home & Garden', emoji: '🏕️', enabled: true, status: 'live' },
+  { slug: 'ladder-angle-calculator', title: 'Ladder Angle Calculator', short: 'Safe ladder base distance using the 4-to-1 rule.', category: 'construction', sub: 'Home & Garden', emoji: '📶', enabled: true, status: 'live' },
+  { slug: 'paver-sand-calculator', title: 'Paver Sand Calculator', short: 'Bedding and jointing sand for a paver patio.', category: 'construction', sub: 'Home & Garden', emoji: '🏖️', enabled: true, status: 'live' },
+  { slug: 'plywood-calculator', title: 'Plywood Sheet Calculator', short: 'Plywood sheets needed to cover an area.', category: 'construction', sub: 'Home & Garden', emoji: '📚', enabled: true, status: 'live' },
+  { slug: 'shiplap-calculator', title: 'Shiplap Calculator', short: 'Shiplap boards needed, accounting for overlap.', category: 'construction', sub: 'Home & Garden', emoji: '🎋', enabled: true, status: 'live' },
+  { slug: 'wainscoting-calculator', title: 'Wainscoting Calculator', short: 'Panels and trim needed for a wainscoted wall.', category: 'construction', sub: 'Home & Garden', emoji: '🪞', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },
