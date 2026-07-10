@@ -1,0 +1,179 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Concrete Column Calculator';
+const description = 'Calculate the concrete volume needed for a round or square column from its diameter or side length and height, in cubic feet, cubic yards and bags.';
+const intro = 'Find the concrete volume for a round or square column, from its size and height.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate concrete for a round column?', a: 'Volume = π × radius² × height. A 12-inch (1 ft) diameter column, 8 feet tall: π × 0.5² × 8 = 6.28 cubic feet, which is about 0.23 cubic yards.' },
+  { q: 'How do I calculate concrete for a square column?', a: 'Volume = side × side × height, all in the same units. A 12 in (1 ft) square column, 8 ft tall: 1 × 1 × 8 = 8 cubic feet, more than a round column of the same width because a square fills its bounding box completely.' },
+  { q: 'How many bags of concrete does a column need?', a: 'An 80 lb bag yields about 0.6 cubic feet of concrete, and a 60 lb bag about 0.45 cubic feet. Divide the column\'s cubic feet by the bag yield to estimate the bag count, then round up.' },
+  { q: 'Do I need rebar in a concrete column?', a: 'Most structural columns need vertical rebar and ties per ACI 318 to resist bending and buckling, especially for anything supporting a roof, deck, or upper floor. This calculator estimates concrete volume only — reinforcement design should follow the applicable code and a qualified professional.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <label class="block max-w-xs"><span class="text-sm font-medium text-slate-700">Column shape</span>
+      <select id="shape" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+        <option value="round" selected>Round</option>
+        <option value="square">Square</option>
+      </select></label>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label id="w-dia" class="block"><span class="text-sm font-medium text-slate-700">Diameter (in)</span>
+        <input id="dia" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label id="w-side" class="hidden"><span class="text-sm font-medium text-slate-700">Side length (in)</span>
+        <input id="side" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Height (ft)</span>
+        <input id="height" type="number" step="any" placeholder="8" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of columns</span>
+        <input id="count" type="number" step="1" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Concrete needed</div>
+        <div id="r-cy" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cubic feet</div><div id="r-cf" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">80 lb bags</div><div id="r-bags80" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">60 lb bags</div><div id="r-bags60" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="220" viewBox="0 0 800 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cc-title cc-desc">
+      <title id="cc-title">Round and square concrete columns</title>
+      <desc id="cc-desc">A round column and a square column with the volume formulas</desc>
+      <ellipse cx="130" cy="70" rx="35" ry="14" fill="#e2e8f0" stroke="#64748b" stroke-width="1.5" />
+      <rect x="95" y="70" width="70" height="100" fill="#cbd5e1" stroke="#64748b" stroke-width="1.5" />
+      <ellipse cx="130" cy="170" rx="35" ry="14" fill="#94a3b8" stroke="#64748b" stroke-width="1.5" />
+      <rect x="260" y="60" width="70" height="110" fill="#cbd5e1" stroke="#64748b" stroke-width="1.5" />
+      <text x="130" y="200" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">round</text>
+      <text x="295" y="200" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">square</text>
+      <rect x="420" y="55" width="330" height="120" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Column volume</text>
+      <text x="440" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">round: &pi; &times; r&sup2; &times; height</text>
+      <text x="440" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">square: side &times; side &times; height</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A square column holds about 27% more concrete than a round one of the same width.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the concrete column calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A concrete column's volume depends on its cross-section shape and its height. A round column is a cylinder, so its volume is π times the radius squared times the height. A square column is a rectangular prism, so its volume is simply side times side times height. Because a circle inscribed in a square only fills about 78.5% of the square's area, a round column always uses noticeably less concrete than a square one of the same width — about 27% less, in fact.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Working in mixed units is common on the job site — diameter or side length in inches, height in feet — so the calculator converts the cross-section dimension to feet before multiplying, keeping everything in cubic feet before converting to cubic yards for ordering ready-mix, or to bag counts for smaller pours. A standard 80-pound bag of concrete mix yields about 0.6 cubic feet once mixed, and a 60-pound bag about 0.45 cubic feet.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This tool estimates concrete volume only. Most structural columns — anything supporting a roof, deck, or floor above — need vertical rebar and horizontal ties sized per ACI 318 to resist bending, buckling, and the loads coming down through them. Reinforcement, footing size, and column spacing should be verified against your local building code and, for anything load-bearing, a licensed engineer.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick the shape</h3>
+        <p class="mt-1 text-sm text-slate-600">Round or square cross-section.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter size &amp; height</h3>
+        <p class="mt-1 text-sm text-slate-600">Diameter or side in inches, height in feet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Order concrete</h3>
+        <p class="mt-1 text-sm text-slate-600">Cubic yards for ready-mix, or bags for a small pour.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Round column</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= &pi; &times; (dia&frasl;24)&sup2; &times; height</span>. A 12 in dia, 8 ft column: π × 0.5² × 8 = <strong>6.28 ft³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Square column</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= (side&frasl;12)&sup2; &times; height</span>. A 12 in side, 8 ft column: 1² × 8 = <strong>8 ft³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Cubic yards &amp; bags</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">yd&sup3; = ft&sup3; &divide; 27</span>; <span class="font-mono">80 lb bags = ft&sup3; &divide; 0.6</span>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">Four round 16 in diameter porch columns, each 9 ft tall.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Radius:</span> <span class="text-slate-600">16 ÷ 24 = 0.667 ft</span></div>
+        <div><span class="font-medium text-slate-700">Each column:</span> <span class="text-slate-600">π × 0.667² × 9 = 12.57 ft³</span></div>
+        <div><span class="font-medium text-slate-700">Four columns:</span> <span class="text-slate-600">12.57 × 4 = 50.3 ft³</span></div>
+        <div><span class="font-medium text-slate-700">Cubic yards:</span> <span class="text-slate-600"><strong>1.86 yd³</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/sonotube-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Sonotube Concrete Calculator</a>
+      <a href="/tools/concrete-footing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Footing Calculator</a>
+      <a href="/tools/concrete-weight-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Weight Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function sync() {
+      const round = el('shape').value === 'round';
+      el('w-dia').classList.toggle('hidden', !round);
+      el('w-side').classList.toggle('hidden', round);
+      update();
+    }
+
+    function update() {
+      const round = el('shape').value === 'round';
+      const H = parseFloat(el('height').value);
+      let count = parseFloat(el('count').value); if (!(count > 0)) count = 1;
+      let cfEach;
+      if (round) {
+        const d = parseFloat(el('dia').value);
+        if (!(d > 0 && H > 0)) return hide();
+        cfEach = Math.PI * Math.pow(d / 24, 2) * H;
+      } else {
+        const s = parseFloat(el('side').value);
+        if (!(s > 0 && H > 0)) return hide();
+        cfEach = Math.pow(s / 12, 2) * H;
+      }
+      const cf = cfEach * count;
+      const cy = cf / 27;
+      const bags80 = Math.ceil(cf / 0.6);
+      const bags60 = Math.ceil(cf / 0.45);
+
+      el('r-cy').textContent = cy.toFixed(2) + ' yd³';
+      el('r-note').textContent = count + ' column' + (count > 1 ? 's' : '') + ', ' + (round ? 'round' : 'square');
+      el('r-cf').textContent = cf.toFixed(1) + ' ft³';
+      el('r-bags80').textContent = bags80;
+      el('r-bags60').textContent = bags60;
+      el('results').classList.remove('hidden');
+    }
+    function hide() { el('results').classList.add('hidden'); }
+
+    el('shape').addEventListener('change', sync);
+    ['dia', 'side', 'height', 'count'].forEach((id) => el(id).addEventListener('input', update));
+    sync();
+  </script>
+</ToolLayout>

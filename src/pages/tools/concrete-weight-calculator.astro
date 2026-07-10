@@ -1,0 +1,157 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Concrete Weight Calculator';
+const description = 'Find the total weight of a poured concrete slab, footing or column from its volume, using standard normal-weight or lightweight concrete density.';
+const intro = 'Find the total weight of a concrete pour, from its volume and density.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How much does concrete weigh?', a: 'Standard normal-weight concrete weighs about 150 pounds per cubic foot (roughly 4,050 pounds per cubic yard). Lightweight concrete, made with a lighter aggregate, runs closer to 100 to 115 pounds per cubic foot.' },
+  { q: 'How do I calculate the weight of a slab?', a: 'Find the slab volume in cubic feet (length × width × thickness in feet), then multiply by the concrete density. A 10×10 ft slab, 4 inches thick, at 150 lb/ft³: 10 × 10 × 0.333 × 150 ≈ 5,000 pounds.' },
+  { q: 'Why does concrete weight matter?', a: 'It sets the load on the formwork, the subgrade or supporting structure below the pour, and what a crane, truck, or lift needs to be rated for when moving precast pieces. Elevated slabs on a wood or steel-framed floor must also be checked against the structure\'s load capacity.' },
+  { q: 'Does the weight include rebar?', a: 'No — this calculates the weight of the concrete itself. Rebar adds a relatively small amount of additional weight (a typical reinforced slab might add 1-3% of the concrete weight in steel), so for precise structural load calculations, add the rebar weight separately.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Width (ft)</span>
+        <input id="width" type="number" step="any" placeholder="10" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Thickness (in)</span>
+        <input id="thick" type="number" step="any" placeholder="4" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block sm:col-span-2 lg:col-span-3"><span class="text-sm font-medium text-slate-700">Concrete type</span>
+        <select id="density" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="150" selected>Normal-weight concrete (~150 lb/ft³)</option>
+          <option value="110">Lightweight concrete (~110 lb/ft³)</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Total weight</div>
+        <div id="r-weight" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Volume</div><div id="r-vol" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">In tons</div><div id="r-tons" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Per sq ft</div><div id="r-psf" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cw-title cw-desc">
+      <title id="cw-title">Concrete slab weight formula</title>
+      <desc id="cw-desc">A concrete slab with the weight-from-volume formula</desc>
+      <rect x="80" y="100" width="220" height="30" fill="#cbd5e1" stroke="#64748b" stroke-width="1.5" />
+      <rect x="90" y="130" width="200" height="10" fill="#94a3b8" />
+      <text x="190" y="160" font-size="12" fill="#475569" text-anchor="middle" font-family="system-ui,sans-serif">L × W × thickness</text>
+      <rect x="400" y="55" width="350" height="100" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="420" y="84" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Weight</text>
+      <text x="420" y="110" font-size="12" fill="#475569" font-family="system-ui,sans-serif">weight = volume(ft&sup3;) &times; density</text>
+      <text x="420" y="132" font-size="12" fill="#475569" font-family="system-ui,sans-serif">normal-weight &approx; 150 lb&frasl;ft&sup3;</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A typical 4-inch slab weighs about 50 pounds per square foot.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the concrete weight calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Concrete weight follows directly from its volume and density. Normal-weight concrete — the standard mix used in slabs, footings, and columns — weighs about 150 pounds per cubic foot, or roughly 4,050 pounds per cubic yard. Lightweight concrete, made with a lighter aggregate like expanded shale instead of gravel, is noticeably lighter at around 100 to 115 pounds per cubic foot, often chosen for elevated slabs where reducing structural dead load matters.
+    </p>
+    <p class="mt-3 text-slate-600">
+      To find the weight of a slab, first find its volume in cubic feet — length times width times thickness, all in feet — then multiply by the density. Because slab thickness is usually given in inches, it needs converting to feet (divide by 12) before multiplying. The calculator also reports the weight per square foot, a handy number for checking against a floor system's load rating.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This weight is for the plain concrete only; it does not include rebar, which typically adds a modest 1 to 3% on top for a standard reinforced slab. Knowing total weight matters for sizing formwork and shoring, checking that an elevated wood or steel floor structure can carry a new slab poured on top of it, and confirming that lifting or transport equipment for precast concrete elements is rated for the load. For any load-bearing or elevated application, verify against your structural design and a qualified engineer.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter dimensions</h3>
+        <p class="mt-1 text-sm text-slate-600">Length, width in feet, thickness in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick the concrete type</h3>
+        <p class="mt-1 text-sm text-slate-600">Normal-weight or lightweight mix.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the weight</h3>
+        <p class="mt-1 text-sm text-slate-600">Total pounds, tons, and weight per square foot.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Volume</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= L &times; W &times; (thickness&frasl;12)</span>. A 10×10 ft slab, 4 in thick: 10×10×0.333 = <strong>33.3 ft³</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Weight</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= volume &times; density</span> = 33.3 × 150 = <strong>5,000 lb</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Per square foot</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= weight &divide; area</span> = 5,000 ÷ 100 = <strong>50 lb/ft²</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 20×15 ft driveway slab, 6 inches thick, normal-weight concrete.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">20×15×0.5 = 150 ft³</span></div>
+        <div><span class="font-medium text-slate-700">Weight:</span> <span class="text-slate-600">150 × 150 = 22,500 lb</span></div>
+        <div><span class="font-medium text-slate-700">Tons:</span> <span class="text-slate-600"><strong>11.25 tons</strong></span></div>
+        <div><span class="font-medium text-slate-700">Per sq ft:</span> <span class="text-slate-600">75 lb/ft²</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/concrete-slab-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Slab Calculator</a>
+      <a href="/tools/concrete-column-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Column Calculator</a>
+      <a href="/tools/rebar-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Rebar Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('len').value);
+      const W = parseFloat(el('width').value);
+      const T = parseFloat(el('thick').value);
+      const density = parseFloat(el('density').value);
+      if (!(L > 0 && W > 0 && T > 0)) { el('results').classList.add('hidden'); return; }
+      const vol = L * W * (T / 12);
+      const weight = vol * density;
+      const tons = weight / 2000;
+      const psf = weight / (L * W);
+
+      el('r-weight').textContent = Math.round(weight).toLocaleString() + ' lb';
+      el('r-note').textContent = vol.toFixed(1) + ' ft³ at ' + density + ' lb/ft³';
+      el('r-vol').textContent = vol.toFixed(1) + ' ft³';
+      el('r-tons').textContent = tons.toFixed(2) + ' tons';
+      el('r-psf').textContent = psf.toFixed(1) + ' lb/ft²';
+      el('results').classList.remove('hidden');
+    }
+
+    ['len', 'width', 'thick'].forEach((id) => el(id).addEventListener('input', update));
+    el('density').addEventListener('change', update);
+  </script>
+</ToolLayout>

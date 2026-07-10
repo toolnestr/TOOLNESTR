@@ -450,6 +450,15 @@ export const tools = [
   { slug: 'door-header-size-calculator', title: 'Door Header Size Calculator', short: 'Header size for a load-bearing opening by span.', category: 'construction', sub: 'Structural', emoji: '🚪', enabled: true, status: 'live' },
   { slug: 'floor-joist-span-calculator', title: 'Floor Joist Span Calculator', short: 'Max joist span by size and on-center spacing.', category: 'construction', sub: 'Structural', emoji: '📊', enabled: true, status: 'live' },
   { slug: 'insulation-r-value-calculator', title: 'Insulation R-Value Calculator', short: 'Recommended R-value by climate zone and area.', category: 'construction', sub: 'Structural', emoji: '🧥', enabled: true, status: 'live' },
+  // ── Construction Batch 8: Omni-parity gaps — Cement & Materials ──
+  { slug: 'concrete-block-count-calculator', title: 'Concrete Block (CMU) Count Calculator', short: 'Blocks needed for a wall from length and height.', category: 'construction', sub: 'Cement & Concrete', emoji: '🟦', enabled: true, status: 'live' },
+  { slug: 'concrete-column-calculator', title: 'Concrete Column Calculator', short: 'Concrete volume for round or square columns.', category: 'construction', sub: 'Cement & Concrete', emoji: '🏛️', enabled: true, status: 'live' },
+  { slug: 'concrete-weight-calculator', title: 'Concrete Weight Calculator', short: 'Total weight of a concrete pour by volume.', category: 'construction', sub: 'Cement & Concrete', emoji: '⚖️', enabled: true, status: 'live' },
+  { slug: 'post-hole-concrete-calculator', title: 'Post Hole Concrete Calculator', short: 'Bags of concrete to set a fence or deck post.', category: 'construction', sub: 'Cement & Concrete', emoji: '🔘', enabled: true, status: 'live' },
+  { slug: 'board-and-batten-calculator', title: 'Board and Batten Calculator', short: 'Battens and boards needed for a wall by spacing.', category: 'construction', sub: 'Materials', emoji: '🪟', enabled: true, status: 'live' },
+  { slug: 'french-drain-calculator', title: 'French Drain Calculator', short: 'Gravel, pipe and fabric for a drainage trench.', category: 'construction', sub: 'Materials', emoji: '💧', enabled: true, status: 'live' },
+  { slug: 'stone-weight-calculator', title: 'Stone Weight Calculator', short: 'Weight of a boulder or block by type and size.', category: 'construction', sub: 'Materials', emoji: '🗿', enabled: true, status: 'live' },
+  { slug: 'steel-plate-weight-calculator', title: 'Steel Plate Weight Calculator', short: 'Plate weight from dimensions and material.', category: 'construction', sub: 'Materials', emoji: '🧮', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },
