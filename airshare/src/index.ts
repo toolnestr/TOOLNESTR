@@ -1,18 +1,69 @@
 // ─────────────────────────────────────────────────────────────
-//  AirShare Worker — entry point & router
-//  Phase 2: rooms, presence, items. File upload/download (Phase 3),
-//  WebRTC signaling (Phase 4) and the Cron reaper (Phase 4) land next.
+//  Dropspot Worker — thin router in front of the RoomDO
+//
+//  There is no KV and no Cron. The Worker only:
+//   • POST /api/room            → pick a code, initialise a RoomDO (RPC)
+//   • /api/room/:code/ws        → forward the WebSocket upgrade to that room's DO
+//   • /api/room/:code/file[...] → forward file upload/download to the DO (R2)
+//  All room state, presence and expiry live inside the Durable Object.
 // ─────────────────────────────────────────────────────────────
 
-import type { Env } from './types';
-import { CORS_HEADERS, errorResponse } from './util';
-import { createRoom, getRoom, heartbeat, addItem, deleteItem } from './rooms';
-import { uploadFile, downloadFile } from './files';
-import { runReaper } from './reaper';
+import type { Env, RoomConfig } from './types';
+import { RoomDO } from './room-do';
+import {
+  CORS_HEADERS,
+  json,
+  errorResponse,
+  readJson,
+  isValidRoomCode,
+  generateRoomCode,
+  LIMITS,
+} from './util';
+
+export { RoomDO };
 
 /** Split a normalized pathname into segments (no leading/trailing slash). */
 function segments(pathname: string): string[] {
   return pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+}
+
+interface CreateRoomBody {
+  pin?: string;
+  code?: string;
+  max_devices?: number;
+  ttl_seconds?: number;
+  default_ttl_seconds?: number;
+}
+
+// POST /api/room — pick a code and initialise its Durable Object.
+async function createRoom(request: Request, env: Env): Promise<Response> {
+  const body = (await readJson<CreateRoomBody>(request)) || {};
+  const cfg: Omit<RoomConfig, 'code'> = {
+    pin: body.pin || null,
+    ttl_seconds: body.ttl_seconds,
+    default_ttl_seconds: body.default_ttl_seconds,
+    max_devices: body.max_devices,
+  };
+
+  // Custom code path.
+  if (body.code != null && body.code !== '') {
+    const custom = String(body.code).toUpperCase();
+    if (!isValidRoomCode(custom)) {
+      return errorResponse('invalid_code', 400, 'Codes are 6–12 uppercase alphanumeric chars.');
+    }
+    const res = await env.ROOM.getByName(custom).initRoom({ ...cfg, code: custom });
+    if (!res.ok) return errorResponse(res.error, 409);
+    return json({ room: res.room }, 201);
+  }
+
+  // Random code with a few collision retries (each code maps to its own DO,
+  // and initRoom is atomic within that DO — so this is race-free).
+  for (let attempt = 0; attempt < LIMITS.CODE_UNIQUE_RETRIES; attempt++) {
+    const candidate = generateRoomCode();
+    const res = await env.ROOM.getByName(candidate).initRoom({ ...cfg, code: candidate });
+    if (res.ok) return json({ room: res.room }, 201);
+  }
+  return errorResponse('code_generation_failed', 503);
 }
 
 async function route(request: Request, env: Env): Promise<Response> {
@@ -20,7 +71,6 @@ async function route(request: Request, env: Env): Promise<Response> {
   const seg = segments(url.pathname);
   const method = request.method;
 
-  // All routes live under /api/…
   if (seg[0] !== 'api') return errorResponse('not_found', 404);
 
   // POST /api/room
@@ -28,38 +78,14 @@ async function route(request: Request, env: Env): Promise<Response> {
     return createRoom(request, env);
   }
 
-  // /api/room/:code…
-  if (seg.length >= 3 && seg[1] === 'room') {
+  // /api/room/:code/…  → forward to the room's Durable Object.
+  if (seg.length >= 4 && seg[1] === 'room') {
     const code = decodeURIComponent(seg[2]!).toUpperCase();
-
-    // GET /api/room/:code
-    if (seg.length === 3 && method === 'GET') {
-      return getRoom(request, env, code);
-    }
-
-    // POST /api/room/:code/heartbeat
-    if (seg.length === 4 && seg[3] === 'heartbeat' && method === 'POST') {
-      return heartbeat(request, env, code);
-    }
-
-    // POST /api/room/:code/item
-    if (seg.length === 4 && seg[3] === 'item' && method === 'POST') {
-      return addItem(request, env, code);
-    }
-
-    // DELETE /api/room/:code/item/:id
-    if (seg.length === 5 && seg[3] === 'item' && method === 'DELETE') {
-      return deleteItem(request, env, code, decodeURIComponent(seg[4]!));
-    }
-
-    // POST /api/room/:code/file  (stream upload → R2)
-    if (seg.length === 4 && seg[3] === 'file' && method === 'POST') {
-      return uploadFile(request, env, code);
-    }
-
-    // GET /api/room/:code/file/:id  (stream download ← R2)
-    if (seg.length === 5 && seg[3] === 'file' && method === 'GET') {
-      return downloadFile(request, env, code, decodeURIComponent(seg[4]!));
+    if (!isValidRoomCode(code)) return errorResponse('room_not_found', 404);
+    const tail = seg[3];
+    // ws (upgrade), or file upload/download — the DO owns all of these.
+    if (tail === 'ws' || tail === 'file') {
+      return env.ROOM.getByName(code).fetch(request);
     }
   }
 
@@ -74,14 +100,8 @@ export default {
     try {
       return await route(request, env);
     } catch (err) {
-      // Never leak internals; log for observability.
-      console.error('airshare_error', err);
+      console.error('dropspot_error', err);
       return errorResponse('internal_error', 500);
     }
-  },
-
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    // Every 15 minutes: reap expired R2 blobs + KV records (Fix A).
-    ctx.waitUntil(runReaper(env));
   },
 } satisfies ExportedHandler<Env>;

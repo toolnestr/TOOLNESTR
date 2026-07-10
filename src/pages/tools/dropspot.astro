@@ -11,7 +11,7 @@ const faqs = [
   { q: 'How are files transferred?', a: 'Files up to 50 MB each are uploaded to fast, secure temporary storage — they appear for everyone in the room to download, work across any network, survive a page refresh, and are kept for about an hour. Each room can hold up to 100 MB of files at a time. Just drag a file onto the drop zone or click to choose one.' },
   { q: 'Is my data private?', a: 'Text, links and files are stored only for the lifetime you choose and are then permanently deleted. Uploads go to private storage that is only reachable through the room and are auto-deleted on expiry. You can also protect any room with a PIN and delete any item manually at any time.' },
   { q: 'How long does content stay available?', a: 'You choose when you create the room: from 10 minutes up to 8 hours. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
-  { q: 'Why does it warn me about backgrounding the tab?', a: 'Browsers pause or throttle background tabs to save battery. Dropspot sends a small heartbeat every few seconds so others can see you are online in the room. If you switch tabs or minimise, that heartbeat pauses and you will drop off the live device list — so keep the tab visible to stay shown as present.' },
+  { q: 'Why does it warn me about backgrounding the tab?', a: 'Dropspot keeps a live connection open to the room so everyone can see who is present in real time. Some browsers suspend background tabs to save battery, which can pause that connection and briefly drop you from the live device list. Keep the tab visible during a transfer to stay shown as present.' },
   { q: 'Is there a file size limit?', a: 'Each file can be up to 50 MB, and a single room can hold up to 100 MB of files at a time. Uploads use secure temporary storage — fast, reliable, downloadable by everyone in the room, and kept for about an hour before they auto-expire.' },
 ];
 
@@ -619,7 +619,9 @@ const howToSchema = {
 
     // ── Config ──
     const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    const API = (isLocal ? 'http://127.0.0.1:8799' : 'https://toolnestr-dropspot.toolnestr.workers.dev') + '/api';
+    const ORIGIN = isLocal ? '127.0.0.1:8799' : 'toolnestr-dropspot.toolnestr.workers.dev';
+    const API = (isLocal ? 'http://' : 'https://') + ORIGIN + '/api';
+    const WS = (isLocal ? 'ws://' : 'wss://') + ORIGIN + '/api';
 
     function uid() { try { return crypto.randomUUID().replace(/-/g, ''); } catch { return String(Math.random()).slice(2) + Date.now(); } }
     const DEVICE_ID = (() => { let v = localStorage.getItem('dropspot_device_id'); if (!v) { v = uid(); localStorage.setItem('dropspot_device_id', v); } return v; })();
@@ -629,7 +631,7 @@ const howToSchema = {
       return v;
     })();
 
-    const state = { code: null, pin: null, room: null, lastData: null, hbTimer: null, pollTimer: null, cdTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], xfers: {}, skew: 0, deletedIds: new Set(), optimistic: {}, optimisticFiles: {}, selectedFiles: new Set(), lastFiles: [] };
+    const state = { code: null, pin: null, room: null, lastData: null, ws: null, wsReconnect: null, reconnectAttempts: 0, intentionalClose: false, cdTimer: null, wasHidden: false, expiresAt: 0, presenceList: [], xfers: {}, skew: 0, deletedIds: new Set(), optimistic: {}, optimisticFiles: {}, selectedFiles: new Set(), lastFiles: [] };
     const $ = (id) => document.getElementById(id);
     const els = {
       landing: $('landing'), room: $('room'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
@@ -680,9 +682,9 @@ const howToSchema = {
         if (els.pinToggle.checked && els.createPin.value) body.pin = els.createPin.value;
         const data = await api('/room', { method: 'POST', body: JSON.stringify(body) });
         state.pin = body.pin || null;
-        // Use the create response directly — a GET here would race KV's
-        // read-after-write lag and 404 on a room that definitely exists.
-        await enterRoom(data.room.code, { room: data.room, items: [], files: [], presence: [], server_time: data.room.created_at });
+        // The room's Durable Object already exists (strongly consistent) — just
+        // open the socket; the DO sends the initial `state` on join.
+        await enterRoom(data.room.code);
       } catch { toast('Could not create room. Is the service reachable?', 'trash'); }
       finally { els.createBtn.disabled = false; els.createBtn.textContent = 'Create room'; }
     });
@@ -703,23 +705,75 @@ const howToSchema = {
         else toast('Could not join room.', 'trash');
       } finally { els.joinBtn.disabled = false; els.joinBtn.textContent = 'Join room'; }
     }
-    async function enterRoom(code, initialData) {
-      state.code = code;
-      let data = initialData;
-      if (!data) {
-        // Cloudflare KV is eventually consistent: a room GET right after its
-        // creation can hit a replica without the write yet (404). Retry a few
-        // times before giving up so create/rejoin don't spuriously fail.
-        for (let i = 0; i < 4; i++) {
-          try { data = await api('/room/' + code); break; }
-          catch (e) { if (e.status === 404 && i < 3) { await new Promise((r) => setTimeout(r, 600)); continue; } throw e; }
+    // ── WebSocket connection (replaces the heartbeat + poll loops) ──
+    // One socket per room. The server pushes a full `state` snapshot on join and
+    // after every change, so the client just re-renders whatever it last got.
+    const CLOSE_MSG = {
+      room_not_found: 'Room not found or expired.',
+      pin_required: 'This room needs a PIN.',
+      rate_limited: 'Too many attempts — wait a minute.',
+      room_full: 'Room is full.',
+    };
+    const CLOSE_STATUS = { room_not_found: 404, pin_required: 401, rate_limited: 429, room_full: 403 };
+
+    function wsSend(obj) {
+      if (state.ws && state.ws.readyState === 1) { state.ws.send(JSON.stringify(obj)); return true; }
+      return false;
+    }
+    // Opens a socket for `code`. `handshake` (resolve/reject) is set only for the
+    // first connect so join errors surface; reconnects pass none (silent resync).
+    function openSocket(code, handshake) {
+      let settled = false, joined = false;
+      const done = (fn, arg) => { if (!settled && handshake) { settled = true; handshake[fn](arg); } };
+      let ws;
+      try { ws = new WebSocket(WS + '/room/' + code + '/ws'); }
+      catch { done('reject', { status: 0 }); return; }
+      state.ws = ws;
+      ws.onopen = () => {
+        state.reconnectAttempts = 0;
+        wsSend({ type: 'hello', device_id: DEVICE_ID, label: DEVICE_LABEL, pin: state.pin || null, foreground: !document.hidden });
+      };
+      ws.onmessage = (ev) => {
+        let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+        if (msg.type === 'state') { joined = true; done('resolve', msg.data); applyState(msg.data); }
+        else if (msg.type === 'error') {
+          if (!settled && handshake) done('reject', { status: CLOSE_STATUS[msg.code] || 0, code: msg.code });
+          else if (msg.code === 'content_too_long') toast('That is too long.', 'trash');
+          else if (msg.code === 'room_full') toast('Room is full.', 'trash');
         }
-      }
+        else if (msg.type === 'closed') { state.intentionalClose = true; toast('Room expired.', 'trash'); leaveRoom(); }
+      };
+      ws.onclose = () => {
+        if (state.ws === ws) state.ws = null;
+        if (!settled && handshake) { done('reject', { status: 0, code: 'disconnected' }); return; }
+        if (state.intentionalClose || state.code !== code) return;
+        // Only auto-reconnect a socket that actually joined — a handshake
+        // rejection (bad PIN, full, expired) must not loop.
+        if (joined) scheduleReconnect(code);
+      };
+      ws.onerror = () => {}; // onclose handles recovery
+    }
+    function scheduleReconnect(code) {
+      if (state.wsReconnect) return;
+      const delay = Math.min(15000, 800 * Math.pow(2, state.reconnectAttempts++));
+      if (state.reconnectAttempts === 1) toast('Reconnecting…', 'up');
+      state.wsReconnect = setTimeout(() => { state.wsReconnect = null; if (state.code === code) openSocket(code); }, delay);
+    }
+    function closeSocket() {
+      state.intentionalClose = true;
+      if (state.wsReconnect) { clearTimeout(state.wsReconnect); state.wsReconnect = null; }
+      if (state.ws) { try { state.ws.close(1000, 'leave'); } catch {} state.ws = null; }
+    }
+
+    async function enterRoom(code) {
+      state.code = code;
+      state.intentionalClose = false; state.reconnectAttempts = 0;
+      const data = await new Promise((resolve, reject) => openSocket(code, { resolve, reject }));
       state.room = data;
       els.landing.classList.add('ds-hidden');
       els.room.classList.add('active');
       els.roomCode.textContent = code;
-      renderQR(code); applyState(data); startLoops();
+      renderQR(code); startCountdown();
       const url = new URL(location.href); url.searchParams.set('room', code); history.replaceState({}, '', url);
       // Persist so a refresh rejoins the same room instead of dropping to landing.
       try { sessionStorage.setItem('dropspot_room', JSON.stringify({ code, pin: state.pin || null })); } catch {}
@@ -985,17 +1039,13 @@ const howToSchema = {
         else setTransfer(id, 100, 'Download failed', 'err');
       }
     }
-    async function deleteItem(kind, id) {
-      // Optimistic: hide immediately, then confirm with the server. The DELETE
-      // route removes from BOTH the items and files arrays (and the R2 object),
-      // so the same call works for text, links and stored files.
+    function deleteItem(kind, id) {
+      // Optimistic: hide immediately. The server `delete` removes a text/link
+      // item OR a stored file (and its R2 blob) by id, then broadcasts the new
+      // state — so the same message works for all three.
+      if (!wsSend({ type: 'delete', id })) { toast('Not connected — reconnecting…', 'trash'); return; }
       state.deletedIds.add(id); delete state.optimistic[id]; delete state.optimisticFiles[id]; renderMerged();
-      try {
-        await api('/room/' + state.code + '/item/' + id, { method: 'DELETE' });
-        toast('Deleted'); refresh();
-      } catch {
-        state.deletedIds.delete(id); renderMerged(); toast('Could not delete', 'trash');
-      }
+      toast('Deleted');
     }
 
     // ── Composer ──
@@ -1015,17 +1065,18 @@ const howToSchema = {
       const content = (kind === 'link' ? els.linkInput.value : els.textInput.value).trim();
       if (!content) { toast('Nothing to share.', 'trash'); return; }
       if (kind === 'link' && !/^https?:\/\//i.test(content)) { toast('Links must start with http:// or https://', 'trash'); return; }
-      const body = { kind, content, device_id: DEVICE_ID };
-      if (els.itemTtl.value) body.ttl_seconds = Number(els.itemTtl.value);
-      els.shareBtn.disabled = true;
-      try {
-        const resp = await api('/room/' + state.code + '/item', { method: 'POST', body: JSON.stringify(body) });
-        els.textInput.value = ''; els.linkInput.value = '';
-        if (resp && resp.item) { state.optimistic[resp.item.id] = resp.item; renderMerged(); } // instant
-        toast('Shared'); refresh();
+      // Client-chosen id so our optimistic render reconciles with the server's
+      // echo (the DO reuses this id). The socket broadcast confirms shortly.
+      const id = uid();
+      const now = serverNow();
+      const ttl = els.itemTtl.value ? Number(els.itemTtl.value) : ((state.lastData && state.lastData.room && state.lastData.room.default_ttl_seconds) || 3600);
+      if (!wsSend({ type: 'item.add', id, kind, content, ttl_seconds: ttl, device_id: DEVICE_ID })) {
+        toast('Not connected — reconnecting…', 'trash'); return;
       }
-      catch (e) { toast(e.data && e.data.error === 'content_too_long' ? 'That is too long.' : 'Could not share.', 'trash'); }
-      finally { els.shareBtn.disabled = false; }
+      els.textInput.value = ''; els.linkInput.value = '';
+      state.optimistic[id] = { id, kind, content, created_at: now, expires_at: now + ttl, author: DEVICE_ID };
+      renderMerged(); // instant
+      toast('Shared');
     }
     els.drop.addEventListener('click', () => els.fileInput.click());
     ['dragover','dragenter'].forEach((ev) => els.drop.addEventListener(ev, (e) => { e.preventDefault(); els.drop.classList.add('hot'); }));
@@ -1109,10 +1160,9 @@ const howToSchema = {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           setTransfer(id, 100, 'Stored', 'ok');
-          // Show the file in "Shared in this room" immediately — KV can lag a
-          // few seconds behind this write, so don't wait for the next poll.
+          // Show the file immediately; the DO also broadcasts `state` to every
+          // socket (including ours), which reconciles this optimistic entry.
           try { const r = JSON.parse(xhr.responseText); if (r && r.file) { state.optimisticFiles[r.file.id] = r.file; renderMerged(); } } catch {}
-          refresh();
         }
         else if (xhr.status === 413) setTransfer(id, 100, 'Too large — 50 MB max', 'err');
         else if (xhr.status === 409) { setTransfer(id, 100, 'Room storage full', 'err'); toast('Room is full — delete a file to free space.', 'trash'); }
@@ -1127,7 +1177,8 @@ const howToSchema = {
     els.copyLinkBtn.addEventListener('click', () => { navigator.clipboard.writeText(location.origin + location.pathname + '?room=' + state.code); toast('Join link copied'); });
     els.leaveBtn.addEventListener('click', leaveRoom);
     function leaveRoom() {
-      stopLoops(); state.code = null; state.pin = null; state.room = null; state.lastData = null;
+      closeSocket(); if (state.cdTimer) { clearInterval(state.cdTimer); state.cdTimer = null; }
+      state.code = null; state.pin = null; state.room = null; state.lastData = null;
       state.skew = 0; state.deletedIds = new Set(); state.optimistic = {}; state.optimisticFiles = {}; state.xfers = {}; state.selectedFiles = new Set(); state.lastFiles = [];
       try { sessionStorage.removeItem('dropspot_room'); } catch {}
       const tf = document.getElementById('transfers'); if (tf) tf.innerHTML = '';
@@ -1136,30 +1187,21 @@ const howToSchema = {
       const url = new URL(location.href); url.searchParams.delete('room'); history.replaceState({}, '', url);
     }
 
-    // ── Heartbeat + polling (Page Visibility aware) ──
-    async function heartbeat() {
-      if (document.hidden || !state.code) return;
-      try {
-        const data = await api('/room/' + state.code + '/heartbeat', { method: 'POST', body: JSON.stringify({ device_id: DEVICE_ID, label: DEVICE_LABEL, foreground: !document.hidden }) });
-        if (data && data.presence) { renderPresence(data.presence); els.metaDevices.textContent = String(data.presence.length); }
-      } catch (e) { if (e.status === 403) toast('Room is full.', 'trash'); }
-    }
-    async function refresh() {
-      if (document.hidden || !state.code) return;
-      try { applyState(await api('/room/' + state.code)); } catch (e) { if (e.status === 404) { toast('Room expired.', 'trash'); leaveRoom(); } }
-    }
-    // Intervals tuned for KV free-tier budgets (writes 1k/day, reads 100k/day):
-    // heartbeat (a write) is the scarcest, so it runs least often.
-    function startLoops() { stopLoops(); heartbeat(); state.hbTimer = setInterval(heartbeat, 8000); state.pollTimer = setInterval(refresh, 4000); state.cdTimer = setInterval(updateCountdown, 1000); }
-    function stopLoops() { [state.hbTimer, state.pollTimer, state.cdTimer].forEach((t) => t && clearInterval(t)); state.hbTimer = state.pollTimer = state.cdTimer = null; }
+    // ── Local countdown only (presence + content now arrive over the socket) ──
+    // The room's expiry ticks down client-side using the server clock offset; the
+    // server also pushes a `closed` frame when the room actually expires.
+    function startCountdown() { if (state.cdTimer) clearInterval(state.cdTimer); state.cdTimer = setInterval(updateCountdown, 1000); }
     function updateCountdown() { if (!state.expiresAt) return; const left = state.expiresAt - serverNow(); els.metaExpiry.textContent = fmtDuration(left); if (left <= 0) { toast('Room expired.', 'trash'); leaveRoom(); } }
 
+    // Backgrounding no longer pauses a heartbeat write — the socket stays open, so
+    // presence persists. We just tell the room our foreground flag for the UI.
     document.addEventListener('visibilitychange', () => {
       if (!state.code) return;
+      wsSend({ type: 'foreground', on: !document.hidden });
       if (document.hidden) { state.wasHidden = true; els.bgWarn.classList.add('show'); }
-      else { els.bgWarn.classList.remove('show'); if (state.wasHidden) { state.wasHidden = false; heartbeat(); refresh(); toast('Presence resumed'); } }
+      else { els.bgWarn.classList.remove('show'); if (state.wasHidden) { state.wasHidden = false; } }
     });
-    window.addEventListener('beforeunload', () => stopLoops());
+    window.addEventListener('beforeunload', () => closeSocket());
 
     // On load, rejoin the room from the URL (?room=) or the persisted session,
     // so a refresh restores the room + its server-side content instead of

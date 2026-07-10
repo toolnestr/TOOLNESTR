@@ -1,7 +1,9 @@
 {
   // ─────────────────────────────────────────────────────────────
-  //  AirShare Worker — Cross-Network File & Text Sharing Module
-  //  Separate, isolated TypeScript Worker (does NOT touch worker.js).
+  //  Dropspot Worker — Cross-Network File & Text Sharing Module
+  //  Real-time over WebSockets on a per-room Durable Object (RoomDO).
+  //  NO KV, NO Cron: presence is connection-based and expiry is handled by
+  //  the DO's alarm. R2 still stores file blobs.
   //  Deploy with:  npx wrangler deploy --config wrangler-airshare.jsonc
   // ─────────────────────────────────────────────────────────────
   "name": "toolnestr-dropspot",
@@ -9,22 +11,12 @@
   "compatibility_date": "2026-06-24",
   "compatibility_flags": ["nodejs_compat"],
 
-  // ── Cron: cleanup sweep every 15 minutes (Fix A: KV/R2 orphan reaper) ──
-  "triggers": {
-    "crons": ["*/15 * * * *"]
+  // ── Durable Object: one instance per room code (rooms, items, files, sockets) ──
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "RoomDO" }]
   },
-
-  // ── KV: room metadata, text/links, presence heartbeats, WebRTC signaling ──
-  // NOTE: create the namespace first, then paste its id here:
-  //   npx wrangler kv namespace create AIRSHARE_KV
-  //   npx wrangler kv namespace create AIRSHARE_KV --preview
-  "kv_namespaces": [
-    {
-      "binding": "AIRSHARE_KV",
-      "id": "612b92f0eb8549e7ad4b68ddb3c5973f",
-      "preview_id": "7b915110b0914dcc8a391b2bb2782550"
-    }
-  ],
+  // SQLite-backed DO (available on the Workers Free plan).
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RoomDO"] }],
 
   // ── R2: file storage — 50 MB per file, 100 MB per room ──
   // NOTE: create the bucket first:
@@ -37,11 +29,10 @@
     }
   ],
 
-  // ── Tunable runtime config surfaced to the Worker as env vars ──
+  // ── Tunable runtime config surfaced to the Worker/DO as env vars ──
   "vars": {
     "MAX_FILE_BYTES": "52428800", // 50 MB per-file cap (room total capped at 100 MB)
-    "PRESENCE_TTL_SECONDS": "15", // a device is "online" if seen within this window
-    "RATE_LIMIT_MAX_FAILS": "10", // max failed room joins ...
-    "RATE_LIMIT_WINDOW_SECONDS": "60" // ... per IP within this window
+    "RATE_LIMIT_MAX_FAILS": "10", // max failed PIN attempts ...
+    "RATE_LIMIT_WINDOW_SECONDS": "60" // ... per room within this window
   }
 }

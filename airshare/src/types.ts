@@ -1,39 +1,39 @@
 // ─────────────────────────────────────────────────────────────
-//  AirShare — Type definitions for KV values, R2 metadata & Env
-//  Phase 1: Infrastructure & Configuration
+//  AirShare / Dropspot — Type definitions
+//
+//  State lives in a per-room Durable Object (RoomDO): SQLite holds the room
+//  row + items + file metadata, live WebSockets provide presence, and R2 holds
+//  the file blobs. There is NO KV — presence is connection-based (zero writes)
+//  and rooms are strongly consistent (no read-after-write lag to work around).
 // ─────────────────────────────────────────────────────────────
 
+import type { RoomDO } from './room-do';
+
 /**
- * Worker runtime bindings, declared in wrangler-airshare.jsonc.
- * `AIRSHARE_KV`  → room metadata, text/links, presence, WebRTC signaling.
- * `AIRSHARE_R2`  → fallback file blobs (≤ 25 MB) when no peer is online.
+ * Worker + Durable Object runtime bindings (see wrangler-airshare.jsonc).
+ * `ROOM`         → the RoomDO namespace (one instance per room code).
+ * `AIRSHARE_R2`  → file blobs (≤ 50 MB each, 100 MB per room).
  */
 export interface Env {
-  AIRSHARE_KV: KVNamespace;
+  ROOM: DurableObjectNamespace<RoomDO>;
   AIRSHARE_R2: R2Bucket;
 
   // String-typed vars (Cloudflare passes all `vars` as strings).
   MAX_FILE_BYTES: string;
-  PRESENCE_TTL_SECONDS: string;
   RATE_LIMIT_MAX_FAILS: string;
   RATE_LIMIT_WINDOW_SECONDS: string;
 }
 
-/** Every persisted value carries an absolute expiry (Fix A: no native KV TTL). */
+/** Every persisted record carries an absolute expiry (Unix epoch seconds). */
 export interface Expirable {
-  /** Unix epoch **seconds** after which this record is considered dead. */
   expires_at: number;
 }
 
 // ── Rooms ──────────────────────────────────────────────────────
 
-/**
- * KV key: `room:{code}` — the authoritative room descriptor.
- * Codes are 6+ uppercase alphanumeric chars (Fix D).
- */
+/** The authoritative room descriptor (one row in the DO's SQLite `room` table). */
 export interface RoomRecord extends Expirable {
   code: string;
-  /** Unix epoch seconds the room was created. */
   created_at: number;
   /** SHA-256 hex of the optional join PIN, or null when the room is open. */
   pin_hash: string | null;
@@ -41,33 +41,42 @@ export interface RoomRecord extends Expirable {
   max_devices: number;
   /** Default expiry window (seconds) applied to new items posted here. */
   default_ttl_seconds: number;
-  /**
-   * Text/link items and file metadata live INLINE in the room record — a
-   * single KV `get` reads the whole room, so hot-path reads never call
-   * `KV.list` (which is capped at 1,000/day on the free plan). Presence is the
-   * only sub-key (`room:{code}:presence`), a single map, also read via `get`.
-   */
-  items: ItemRecord[];
-  files: FileRecord[];
 }
 
-/** KV key `room:{code}:presence` — one map of device_id → presence. */
-export type PresenceMap = Record<string, PresenceRecord>;
+/** Config passed from the router to RoomDO.initRoom() when creating a room. */
+export interface RoomConfig {
+  code: string;
+  pin?: string | null;
+  ttl_seconds?: number;
+  default_ttl_seconds?: number;
+  max_devices?: number;
+}
 
-// ── Presence ───────────────────────────────────────────────────
+/** Public room shape returned to clients (never leaks the PIN hash). */
+export interface PublicRoom {
+  code: string;
+  created_at: number;
+  expires_at: number;
+  max_devices: number;
+  default_ttl_seconds: number;
+  has_pin: boolean;
+}
 
-/**
- * KV key: `room:{code}:presence:{device_id}`.
- * Written on every 5-second heartbeat; considered stale once
- * `now - last_seen > PRESENCE_TTL_SECONDS`.
- */
+// ── Presence (derived from live WebSocket attachments) ─────────
+
 export interface PresenceRecord {
   device_id: string;
-  /** Human-friendly label shown in the live device list. */
   label: string;
-  /** Unix epoch seconds of the most recent heartbeat. */
+  /** Unix epoch seconds of the snapshot (all live sockets are "now"). */
   last_seen: number;
-  /** True while the tab is foregrounded (Page Visibility API). */
+  /** True while the peer's tab is foregrounded (Page Visibility API). */
+  foreground: boolean;
+}
+
+/** Per-socket attachment stored via ws.serializeAttachment() (hibernation-safe). */
+export interface SocketAttachment {
+  device_id: string;
+  label: string;
   foreground: boolean;
 }
 
@@ -75,10 +84,6 @@ export interface PresenceRecord {
 
 export type ItemKind = 'text' | 'link';
 
-/**
- * KV key: `room:{code}:item:{id}`.
- * User-generated text or a link, persisted with an absolute expiry.
- */
 export interface ItemRecord extends Expirable {
   id: string;
   kind: ItemKind;
@@ -89,82 +94,36 @@ export interface ItemRecord extends Expirable {
   author: string;
 }
 
-// ── Files (R2 fallback path) ───────────────────────────────────
+// ── Files (metadata in the DO; blob in R2) ─────────────────────
 
-/**
- * KV key: `room:{code}:file:{id}` — metadata only; the blob lives in R2.
- * The KV record is written **after** the R2 upload completes, so an aborted
- * upload never leaves orphaned metadata (Final Audit edge case).
- */
 export interface FileRecord extends Expirable {
   id: string;
   filename: string;
-  /** MIME type reported by the client, used for Content-Disposition on download. */
   content_type: string;
-  /** Byte length; enforced ≤ MAX_FILE_BYTES. */
   size: number;
-  /** R2 object key — MUST follow buildR2Key() (Fix A). */
+  /** R2 object key — MUST follow buildR2Key(). */
   r2_key: string;
   created_at: number;
-  /** device_id of the uploader. */
   uploader: string;
 }
 
-// ── WebRTC signaling (non-trickle ICE) ─────────────────────────
-
-export type SignalKind = 'offer' | 'answer';
-
-/**
- * KV key: `room:{code}:signal:{to_device}`.
- * Holds a single complete SDP blob (ICE already gathered — Fix B), so the
- * whole exchange is 2 KV writes + 2 KV reads, never per-candidate polling.
- */
-export interface SignalRecord extends Expirable {
-  kind: SignalKind;
-  /** device_id of the sender. */
-  from: string;
-  /** device_id of the intended recipient. */
-  to: string;
-  /** Complete SDP with all ICE candidates already embedded. */
-  sdp: string;
-  created_at: number;
-}
-
-// ── Rate limiting (Fix D: brute-force protection) ──────────────
-
-/**
- * KV key: `ratelimit:{ip}` — sliding-ish window of failed join attempts.
- * Uses an absolute `expires_at` rather than native TTL for consistency.
- */
-export interface RateLimitRecord extends Expirable {
-  /** Count of failed join attempts inside the current window. */
-  fails: number;
-  /** Unix epoch seconds when the current window started. */
-  window_start: number;
-}
+/** File shape returned to clients — omits the internal R2 key. */
+export type PublicFile = Omit<FileRecord, 'r2_key'>;
 
 // ── Constants & key builders ───────────────────────────────────
 
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 export const ROOM_CODE_LENGTH = 6;
 
-/** Namespaced KV key builders — single source of truth for the key scheme. */
-export const kvKey = {
-  room: (code: string): string => `room:${code}`,
-  presence: (code: string): string => `room:${code}:presence`,
-  rateLimit: (ip: string): string => `ratelimit:${ip}`,
-} as const;
-
 /**
- * R2 object key (Fix A): `rooms/{room_code}/{expires_at}/{file_id}`.
- * Embedding `expires_at` lets the Cron reaper list objects and delete the
- * expired ones by parsing the key — without reading KV first.
+ * R2 object key: `rooms/{room_code}/{expires_at}/{file_id}`.
+ * Embedding `expires_at` lets any sweep parse expiry straight from the key.
  */
 export function buildR2Key(roomCode: string, expiresAt: number, fileId: string): string {
   return `rooms/${roomCode}/${expiresAt}/${fileId}`;
 }
 
-/** Inverse of buildR2Key — parses an R2 key back into its parts (Cron reaper). */
+/** Inverse of buildR2Key. */
 export function parseR2Key(
   key: string
 ): { roomCode: string; expiresAt: number; fileId: string } | null {
