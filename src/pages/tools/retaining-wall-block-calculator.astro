@@ -1,0 +1,191 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Retaining Wall Block Calculator';
+const description = 'Count the blocks, courses and cap blocks for a segmental retaining wall from the wall length, height and your block face size.';
+const intro = 'Count the wall blocks, courses, and cap blocks for a segmental retaining wall from the wall length, height, and block face size.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How many blocks do I need for a retaining wall?', a: 'Divide the wall length by the block face length to get the blocks per course, then divide the wall height by the block height to get the number of courses. Multiply the two together for the wall blocks, and add one course of cap blocks on top.' },
+  { q: 'What size are retaining wall blocks?', a: 'Segmental retaining wall (SRW) blocks vary by brand, but common face sizes are about 12 or 18 inches long and 4, 6, or 8 inches high. Check the box or spec sheet for your exact block and enter those dimensions.' },
+  { q: 'Do I need a buried base course?', a: 'Yes. Standard practice buries the bottom course about one-tenth of the wall height, or at least a few inches, on a compacted gravel base. Include that buried course in your height so it is counted.' },
+  { q: 'When does a retaining wall need engineering?', a: 'Many codes require an engineered design and a permit for walls over about 4 feet, or for any wall holding back a slope or surcharge. Taller walls also need geogrid reinforcement. Always confirm with your local building department.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wall length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="30" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wall height (in)</span>
+        <input id="height" type="number" step="any" placeholder="36" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Block face length (in)</span>
+        <input id="blen" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Block height (in)</span>
+        <input id="bhgt" type="number" step="any" placeholder="6" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <label class="mt-4 flex items-center gap-2 text-sm text-slate-700"><input id="caps" type="checkbox" checked class="h-4 w-4 rounded border-slate-300" /> Include a cap course on top</label>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Total blocks needed</div>
+        <div id="r-total" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-split" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Blocks / course</div><div id="r-perc" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Courses</div><div id="r-courses" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Cap blocks</div><div id="r-caps" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rw-title rw-desc">
+      <title id="rw-title">Retaining wall block courses</title>
+      <desc id="rw-desc">A stepped retaining wall of stacked blocks with a cap course and the block-count formula</desc>
+      <g stroke="#6366f1" stroke-width="1.5">
+        <g fill="#c7d2fe"><rect x="100" y="200" width="60" height="26"/><rect x="162" y="200" width="60" height="26"/><rect x="224" y="200" width="60" height="26"/><rect x="286" y="200" width="60" height="26"/></g>
+        <g fill="#a5b4fc"><rect x="115" y="172" width="60" height="26"/><rect x="177" y="172" width="60" height="26"/><rect x="239" y="172" width="60" height="26"/></g>
+        <g fill="#818cf8"><rect x="130" y="144" width="60" height="26"/><rect x="192" y="144" width="60" height="26"/></g>
+        <g fill="#6366f1"><rect x="145" y="120" width="90" height="20"/></g>
+      </g>
+      <text x="220" y="250" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">stacked courses + cap on top</text>
+      <rect x="420" y="90" width="300" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Block count</text>
+      <text x="440" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">per course = wall length &frasl; block length</text>
+      <text x="440" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">courses = wall height &frasl; block height</text>
+      <text x="440" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">total = per course &times; courses</text>
+      <text x="440" y="210" font-size="12" fill="#475569" font-family="system-ui,sans-serif">caps = one extra course</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Blocks stack in courses; the wall count is blocks per course times the number of courses.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the retaining wall block calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A segmental retaining wall is built from interlocking blocks stacked in level rows called courses. The calculator works out how many blocks fit in one course by dividing the wall length by the block's face length, rounding up so the ends are covered. It then divides the wall height by the block height to find how many courses tall the wall is.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Multiplying blocks per course by the number of courses gives the wall blocks. Most walls finish with a separate cap course — flat capstones bonded on top — so the calculator adds one more course of caps when you leave that option checked. The result is split into wall blocks and cap blocks because they are often different products ordered separately.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Remember to bury the bottom course. Good practice sets the base course below grade, roughly one-tenth of the wall height, on compacted gravel, so include that buried height in your input. This tool counts blocks only; base gravel, drainage stone, and geogrid reinforcement for taller walls are ordered separately.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter wall size</h3>
+        <p class="mt-1 text-sm text-slate-600">Wall length in feet and total height in inches, including the buried base course.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter block size</h3>
+        <p class="mt-1 text-sm text-slate-600">Use your block's face length and height from the box or spec sheet.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the counts</h3>
+        <p class="mt-1 text-sm text-slate-600">Get wall blocks and cap blocks, plus blocks per course and course count.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Blocks per course</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= wall length &divide; block length</span>. A 30 ft wall with 12&Prime; blocks: 360&frasl;12 = <strong>30 blocks</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Courses</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= wall height &divide; block height</span>. A 36&Prime; wall with 6&Prime; blocks: 36&frasl;6 = <strong>6 courses</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Totals</p>
+        <p class="mt-1 text-slate-600">
+          Wall blocks = 30 &times; 6 = <strong>180</strong>; caps = 30; grand total = <strong>210 blocks</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 45 ft garden wall, 24&Prime; tall, using 18&Prime; long &times; 8&Prime; high blocks, with caps.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Per course:</span> <span class="text-slate-600">540&frasl;18 = 30 blocks</span></div>
+        <div><span class="font-medium text-slate-700">Courses:</span> <span class="text-slate-600">24&frasl;8 = 3</span></div>
+        <div><span class="font-medium text-slate-700">Wall blocks:</span> <span class="text-slate-600">30 &times; 3 = 90</span></div>
+        <div><span class="font-medium text-slate-700">With caps:</span> <span class="text-slate-600">90 + 30 = <strong>120 blocks</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Building tips</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🪨</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Start with a solid base</h3>
+        <p class="mt-1 text-sm text-slate-600">The whole wall rides on the base course. Set it dead level on a compacted gravel pad; a base that is out of level multiplies its error all the way up the wall.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💧</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Drain behind the wall</h3>
+        <p class="mt-1 text-sm text-slate-600">Water pressure topples retaining walls. Backfill with drainage stone and run a perforated pipe at the base so water escapes instead of building up behind the blocks.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📐</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Set back and reinforce</h3>
+        <p class="mt-1 text-sm text-slate-600">Most SRW systems step each course back slightly to lean into the slope. Walls over about 4 feet usually need geogrid layers tied into the backfill.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📋</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Check permits</h3>
+        <p class="mt-1 text-sm text-slate-600">Taller walls and walls holding a slope commonly need a permit and an engineered design. Confirm the threshold locally before you start stacking.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/paver-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Paver Calculator</a>
+      <a href="/tools/gravel-sand-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Gravel &amp; Sand Calculator</a>
+      <a href="/tools/brick-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Brick Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const H = parseFloat(el('height').value);
+      const bl = parseFloat(el('blen').value);
+      const bh = parseFloat(el('bhgt').value);
+      if (!L || !H || !bl || !bh || L <= 0 || H <= 0 || bl <= 0 || bh <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const perCourse = Math.ceil((L * 12) / bl);
+      const courses = Math.ceil(H / bh);
+      const wallBlocks = perCourse * courses;
+      const capBlocks = el('caps').checked ? perCourse : 0;
+      const total = wallBlocks + capBlocks;
+
+      el('r-total').textContent = total.toLocaleString() + ' blocks';
+      el('r-split').textContent = wallBlocks.toLocaleString() + ' wall + ' + capBlocks.toLocaleString() + ' cap';
+      el('r-perc').textContent = perCourse.toLocaleString();
+      el('r-courses').textContent = courses.toLocaleString();
+      el('r-caps').textContent = capBlocks.toLocaleString();
+      el('results').classList.remove('hidden');
+    }
+
+    ['length', 'height', 'blen', 'bhgt'].forEach((id) => el(id).addEventListener('input', update));
+    el('caps').addEventListener('change', update);
+  </script>
+</ToolLayout>

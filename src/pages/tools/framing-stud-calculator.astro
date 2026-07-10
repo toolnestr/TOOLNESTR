@@ -1,0 +1,212 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Framing Stud Calculator';
+const description = 'Count the studs and plate lumber for a wall from its length, the stud spacing (16 or 24 on center) and the number of door and window openings.';
+const intro = 'Count the studs and plate lumber for a framed wall from its length, the on-center spacing, and how many openings it has.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How many studs do I need for a wall?', a: 'Take the wall length in inches, divide by the spacing (16 or 24), and add one for the starting stud. Then add extra studs for each corner and for the king, jack, and cripple studs around every door and window. A common rule of thumb is one stud per foot of wall for 16-inch spacing, before openings.' },
+  { q: 'What is 16 on center versus 24 on center?', a: 'On center means the spacing measured from the center of one stud to the center of the next. 16 inches on center is the standard for most load-bearing walls; 24 inches on center uses fewer studs and is common for non-load-bearing and some modern energy-framed walls.' },
+  { q: 'How much plate lumber do I need?', a: 'A standard wall has a single bottom plate and a double top plate, so plan on about three times the wall length in plate lumber. This calculator reports that plate length so you can order it alongside the studs.' },
+  { q: 'Why add a waste allowance?', a: 'Crooked, split, or crowned studs get culled, and openings need cripples and blocking that are easy to under-count. Adding 10 to 15 percent keeps you from running short in the middle of framing.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wall length (ft)</span>
+        <input id="length" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Openings (doors/windows)</span>
+        <input id="openings" type="number" step="1" placeholder="2" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Corners</span>
+        <input id="corners" type="number" step="1" placeholder="1" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Spacing</span>
+        <select id="spacing" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="16">16" on center</option>
+          <option value="24">24" on center</option>
+          <option value="12">12" on center</option>
+        </select></label>
+    </div>
+    <div class="mt-4">
+      <span class="text-sm font-medium text-slate-700">Waste allowance</span>
+      <div class="mt-1 flex flex-wrap gap-2">
+        {['0%', '10%', '15%'].map((w) => (
+          <button data-waste={w} class="waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">{w}</button>
+        ))}
+      </div>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Studs needed</div>
+        <div id="r-studs" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-note" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">On-center studs</div><div id="r-base" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Plate lumber</div><div id="r-plate" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Extra (corners+openings)</div><div id="r-extra" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fs-title fs-desc">
+      <title id="fs-title">Wall framing with studs and plates</title>
+      <desc id="fs-desc">A framed wall showing evenly spaced studs between a bottom plate and double top plate</desc>
+      <rect x="90" y="80" width="330" height="14" fill="#a5b4fc" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="90" y="94" width="330" height="14" fill="#a5b4fc" stroke="#6366f1" stroke-width="1.5" />
+      <rect x="90" y="216" width="330" height="14" fill="#a5b4fc" stroke="#6366f1" stroke-width="1.5" />
+      <g fill="#c7d2fe" stroke="#6366f1" stroke-width="1.5">
+        <rect x="94" y="108" width="12" height="108" /><rect x="140" y="108" width="12" height="108" /><rect x="186" y="108" width="12" height="108" /><rect x="232" y="108" width="12" height="108" /><rect x="278" y="108" width="12" height="108" /><rect x="324" y="108" width="12" height="108" /><rect x="370" y="108" width="12" height="108" /><rect x="404" y="108" width="12" height="108" />
+      </g>
+      <text x="255" y="255" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">studs at set spacing between plates</text>
+      <rect x="470" y="90" width="290" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="490" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Stud count</text>
+      <text x="490" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">base = length&frasl;spacing + 1</text>
+      <text x="490" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">+ 2 per corner, + 2 per opening</text>
+      <text x="490" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">plates = 3 &times; wall length</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Studs run at even spacing between a bottom plate and a double top plate, with extras at corners and openings.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the framing stud calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A framed wall is a row of vertical studs at even spacing, capped by plates top and bottom. The number of evenly spaced studs is the wall length in inches divided by the spacing, plus one for the stud that starts the row. At 16 inches on center that works out to roughly one stud per foot of wall, which is where the common rule of thumb comes from.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Openings and corners need more than the regular studs. Each corner takes a couple of extra studs to form the corner post and give the drywall something to fasten to, and each door or window adds king and jack studs on the sides plus cripples above and below. The calculator adds two extra studs per corner and two per opening as a practical average, then applies your waste allowance.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Plate lumber is figured separately. A standard wall has one bottom plate and a doubled top plate, so the plate length is about three times the wall length. These counts follow common IRC wall-framing practice; your actual layout, header sizes, and blocking may shift the numbers a little.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the wall</h3>
+        <p class="mt-1 text-sm text-slate-600">Wall length in feet and the on-center spacing you are framing to.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Add corners and openings</h3>
+        <p class="mt-1 text-sm text-slate-600">Count the corners and the doors and windows so the extras get added.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read studs and plates</h3>
+        <p class="mt-1 text-sm text-slate-600">Get the stud count with waste and the plate lumber to order.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">On-center studs</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">base = length&frasl;spacing + 1</span>. A 20 ft wall at 16&Prime;: 240&frasl;16 + 1 = 15 + 1 = <strong>16 studs</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Extras</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">+2 per corner, +2 per opening</span>. One corner and two openings: 2 + 4 = <strong>6 extra studs</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Total with waste</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">(16 + 6) &times; 1.10</span> = 24.2 &rarr; <strong>25 studs</strong>; plate lumber = 3 &times; 20 = 60 ft.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 32 ft garage wall at 24&Prime; on center, 2 corners, 1 opening, 10% waste.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Base:</span> <span class="text-slate-600">384&frasl;24 + 1 = 17</span></div>
+        <div><span class="font-medium text-slate-700">Extras:</span> <span class="text-slate-600">2&times;2 + 1&times;2 = 6</span></div>
+        <div><span class="font-medium text-slate-700">With waste:</span> <span class="text-slate-600">(17+6) &times; 1.10 = <strong>26 studs</strong></span></div>
+        <div><span class="font-medium text-slate-700">Plates:</span> <span class="text-slate-600">3 &times; 32 = 96 ft</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Framing tips</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📐</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Keep the layout on module</h3>
+        <p class="mt-1 text-sm text-slate-600">Marking studs at a true 16 or 24 inches on center keeps sheet goods landing on a stud, saving cuts on drywall and sheathing later.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚪</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Do not forget headers</h3>
+        <p class="mt-1 text-sm text-slate-600">Openings need a header sized to the span and load. This tool counts studs and plates, not headers — size those separately with a header calculator.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🪵</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Buy a few extra</h3>
+        <p class="mt-1 text-sm text-slate-600">Every bundle has some bowed or split pieces you will set aside. The waste allowance covers this so you are not short at the last wall.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">⚡</span>
+        <h3 class="mt-2 font-semibold text-slate-900">24 on center saves lumber</h3>
+        <p class="mt-1 text-sm text-slate-600">Where code and load allow, 24-inch spacing uses noticeably fewer studs and leaves more room for insulation — a common energy-framing choice.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/drywall-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Drywall Calculator</a>
+      <a href="/tools/board-foot-lumber-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Board Foot Calculator</a>
+      <a href="/tools/insulation-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Insulation Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    let waste = 0.10;
+
+    function update() {
+      const L = parseFloat(el('length').value);
+      const sp = parseFloat(el('spacing').value);
+      let openings = parseInt(el('openings').value, 10); if (!openings || openings < 0) openings = 0;
+      let corners = parseInt(el('corners').value, 10); if (!corners || corners < 0) corners = 0;
+      if (!L || L <= 0 || !sp || sp <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const base = Math.floor((L * 12) / sp) + 1;
+      const extra = corners * 2 + openings * 2;
+      const studs = Math.ceil((base + extra) * (1 + waste));
+      const plate = L * 3;
+
+      el('r-studs').textContent = studs.toLocaleString() + ' studs';
+      el('r-note').textContent = 'incl. ' + Math.round(waste * 100) + '% waste';
+      el('r-base').textContent = base.toLocaleString();
+      el('r-plate').textContent = plate.toFixed(0) + ' ft';
+      el('r-extra').textContent = extra.toLocaleString();
+      el('results').classList.remove('hidden');
+    }
+
+    const idle = 'waste-btn rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50';
+    const active = 'waste-btn rounded-lg border border-indigo-300 bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700 transition';
+    document.querySelectorAll('.waste-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.waste-btn').forEach((b) => { b.className = idle; });
+        btn.className = active;
+        waste = parseFloat(btn.dataset.waste) / 100;
+        update();
+      });
+    });
+    ['length', 'openings', 'corners'].forEach((id) => el(id).addEventListener('input', update));
+    el('spacing').addEventListener('change', update);
+    document.querySelector('.waste-btn[data-waste="10%"]').click();
+  </script>
+</ToolLayout>

@@ -1,0 +1,200 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Spiral Staircase Calculator';
+const description = 'Work out the riser height, tread angle and walkline tread depth of a spiral staircase from the floor height, diameter, number of treads and total rotation.';
+const intro = 'Design a spiral staircase: find the riser height, tread angle, and walkline tread depth from the floor-to-floor height, diameter, tread count, and rotation.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate a spiral staircase?', a: 'Divide the floor-to-floor height by the number of risers (one more than the number of treads) to get the riser height. Divide the total rotation by the number of treads to get the angle between treads. The walkline tread depth is the arc length of that angle at about 12 inches in from the outer edge.' },
+  { q: 'What are the code rules for spiral stairs?', a: 'Under the IRC, spiral stairs allow a riser up to 9.5 inches, need a minimum tread depth of 6.75 inches measured 12 inches from the narrow edge, a clear width of at least 26 inches, and 6 feet 6 inches of headroom. Local codes can be stricter, so always confirm.' },
+  { q: 'How many treads do I need?', a: 'Pick the number of treads so the riser height lands in a comfortable range, ideally 7 to 9 inches. Divide the floor height by a target riser near 8 inches to get a starting tread count, then adjust so it divides evenly.' },
+  { q: 'What diameter should a spiral stair be?', a: 'Larger diameters give deeper, safer treads but take more floor space. A 60-inch diameter is a common residential size; compact stairs go down to about 42 to 48 inches but have tighter treads and steeper feel.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Floor-to-floor height (in)</span>
+        <input id="height" type="number" step="any" placeholder="108" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Outside diameter (in)</span>
+        <input id="dia" type="number" step="any" placeholder="60" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Number of treads</span>
+        <input id="treads" type="number" step="1" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Total rotation (°)</span>
+        <input id="rot" type="number" step="any" placeholder="270" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+    </div>
+    <div id="warn" class="mt-3 hidden rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"></div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Riser height</div>
+        <div id="r-riser" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-risers" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Tread angle</div><div id="r-angle" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Walkline tread depth</div><div id="r-depth" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Walkline radius</div><div id="r-width" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="320" viewBox="0 0 800 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ss-title ss-desc">
+      <title id="ss-title">Spiral staircase plan view</title>
+      <desc id="ss-desc">A top view of pie-shaped treads around a center column with the walkline and tread angle</desc>
+      <g transform="translate(200,160)">
+        <circle r="120" fill="#eef2ff" stroke="#6366f1" stroke-width="2" />
+        <circle r="72" fill="none" stroke="#4f46e5" stroke-width="1" stroke-dasharray="4 3" />
+        <circle r="16" fill="#a5b4fc" stroke="#6366f1" stroke-width="2" />
+        <g stroke="#6366f1" stroke-width="1.5">
+          <line x1="0" y1="0" x2="120" y2="0"/><line x1="0" y1="0" x2="85" y2="-85"/><line x1="0" y1="0" x2="0" y2="-120"/><line x1="0" y1="0" x2="-85" y2="-85"/><line x1="0" y1="0" x2="-120" y2="0"/>
+        </g>
+        <text x="70" y="-30" font-size="11" fill="#4f46e5" font-family="system-ui,sans-serif">walkline</text>
+      </g>
+      <rect x="420" y="90" width="320" height="150" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="440" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Spiral geometry</text>
+      <text x="440" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">riser = height &frasl; (treads + 1)</text>
+      <text x="440" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">tread angle = rotation &frasl; treads</text>
+      <text x="440" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">walk radius = OD&frasl;2 &minus; 12&Prime;</text>
+      <text x="440" y="210" font-size="12" fill="#475569" font-family="system-ui,sans-serif">depth = walk radius &times; angle(rad)</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Treads are pie slices around a center column; depth is measured along the walkline about 12 inches in.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the spiral staircase calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A spiral stair winds around a central column, with each tread a pie-shaped slice. Two numbers set the climb: the riser height and the angle between treads. The riser height is the floor-to-floor height divided by the number of risers, which is always one more than the number of treads because the top landing counts as the last step up.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The tread angle is the total rotation divided by the number of treads — for a 270-degree stair with 12 treads, each tread turns 22.5 degrees. Because a spiral tread is wedge-shaped, its usable depth is measured along the walkline, the path a person actually walks about 12 inches in from the outer edge. That depth is the arc length of the tread angle at the walkline radius.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator checks the result against common IRC spiral-stair limits: a riser no taller than 9.5 inches, a walkline tread depth of at least 6.75 inches, and a clear walking width of at least 26 inches. It flags any value that falls outside those limits. Spiral stairs have their own code section that is more permissive than straight stairs, but local rules can be stricter, so confirm before building.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter height and size</h3>
+        <p class="mt-1 text-sm text-slate-600">Floor-to-floor height and the outside diameter of the stair, in inches.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set treads and rotation</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose how many treads and the total turn, often 270 or 360 degrees.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Check the geometry</h3>
+        <p class="mt-1 text-sm text-slate-600">Read riser, tread angle, and walkline depth, and watch for code flags.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Riser height</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= height &frasl; (treads + 1)</span>. 108&Prime; over 12 treads (13 risers): 108&frasl;13 = <strong>8.31&Prime;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Tread angle</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= rotation &frasl; treads</span>. 270&deg; over 12 treads: 270&frasl;12 = <strong>22.5&deg;</strong> per tread.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Walkline depth</p>
+        <p class="mt-1 text-slate-600">
+          At a 60&Prime; diameter, walk radius = 30 &minus; 12 = 18&Prime;. Depth = 18 &times; (22.5&deg; in radians) = <strong>7.07&Prime;</strong>, above the 6.75&Prime; minimum.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 120&Prime; height, 64&Prime; diameter, 14 treads, 360&deg; full turn.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Risers:</span> <span class="text-slate-600">14 + 1 = 15</span></div>
+        <div><span class="font-medium text-slate-700">Riser height:</span> <span class="text-slate-600">120&frasl;15 = 8.0&Prime;</span></div>
+        <div><span class="font-medium text-slate-700">Tread angle:</span> <span class="text-slate-600">360&frasl;14 = 25.7&deg;</span></div>
+        <div><span class="font-medium text-slate-700">Walkline depth:</span> <span class="text-slate-600">20 &times; 0.449 = <strong>8.98&Prime;</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Designing a comfortable spiral</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📏</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Aim for an even riser</h3>
+        <p class="mt-1 text-sm text-slate-600">Adjust the tread count so the riser lands between 7 and 9 inches. All risers must be equal within 3/8 inch, so a height that divides evenly makes for a safer, easier climb.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🌀</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Match rotation to the opening</h3>
+        <p class="mt-1 text-sm text-slate-600">The total rotation places the top tread at your landing. A 270-degree turn is common; use 360 for a full wrap to line up with a specific wall or opening above.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">📐</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Bigger diameter, deeper tread</h3>
+        <p class="mt-1 text-sm text-slate-600">The walkline depth grows with the diameter. If the tread depth flags as too shallow, increase the diameter or the tread count rather than the rotation.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚧</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Mind the headroom</h3>
+        <p class="mt-1 text-sm text-slate-600">Code requires 6 feet 6 inches of clear headroom on a spiral. Check the height from each tread to the floor or ceiling opening above as the stair winds up.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/stair-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Stair Calculator</a>
+      <a href="/tools/concrete-stairs-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Concrete Stairs Calculator</a>
+      <a href="/tools/perimeter-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Perimeter Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const H = parseFloat(el('height').value);
+      const D = parseFloat(el('dia').value);
+      let n = parseInt(el('treads').value, 10);
+      const rot = parseFloat(el('rot').value);
+      if (!H || !D || !n || !rot || H <= 0 || D <= 0 || n < 1 || rot <= 0) {
+        el('results').classList.add('hidden');
+        el('warn').classList.add('hidden');
+        return;
+      }
+      const risers = n + 1;
+      const riser = H / risers;
+      const angle = rot / n;
+      const walkR = D / 2 - 12;
+      const depth = walkR > 0 ? walkR * (angle * Math.PI / 180) : 0;
+
+      el('r-riser').textContent = riser.toFixed(2) + ' in';
+      el('r-risers').textContent = risers + ' risers over ' + n + ' treads';
+      el('r-angle').textContent = angle.toFixed(1) + '°';
+      el('r-depth').textContent = depth > 0 ? depth.toFixed(2) + ' in' : 'n/a';
+      el('r-width').textContent = walkR > 0 ? walkR.toFixed(1) + ' in' : 'n/a';
+      el('results').classList.remove('hidden');
+
+      const msgs = [];
+      if (riser > 9.5) msgs.push('Riser over 9.5 in exceeds the IRC spiral limit — add treads.');
+      if (walkR <= 0) msgs.push('Diameter too small to measure a walkline 12 in from the edge.');
+      else if (depth < 6.75) msgs.push('Walkline tread depth under 6.75 in — increase diameter or treads.');
+      if (msgs.length) { el('warn').textContent = '⚠ ' + msgs.join(' '); el('warn').classList.remove('hidden'); }
+      else el('warn').classList.add('hidden');
+    }
+
+    ['height', 'dia', 'treads', 'rot'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>

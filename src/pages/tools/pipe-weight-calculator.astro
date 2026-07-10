@@ -1,0 +1,205 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Pipe Weight Calculator';
+const description = 'Calculate the weight per foot and total weight of steel, stainless, copper, aluminum, cast iron or PVC pipe from its outside diameter and wall thickness.';
+const intro = 'Find the weight per foot and total weight of a pipe from its outside diameter, wall thickness, length, and material.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How do I calculate pipe weight per foot?', a: 'Find the metal cross-section by subtracting the inside area from the outside area: pi/4 times (OD squared minus ID squared), where ID is the outside diameter minus twice the wall thickness. Multiply that by 12 inches and by the material density to get pounds per foot.' },
+  { q: 'What outside diameter should I enter?', a: 'Use the actual measured outside diameter, not the nominal pipe size. For example, "2-inch" steel pipe (NPS 2) actually has a 2.375-inch outside diameter. Nominal sizes below 14 inches do not match the real OD.' },
+  { q: 'Does schedule matter?', a: 'Schedule just sets the wall thickness for a given pipe size — a higher schedule means a thicker wall and more weight. Enter the wall thickness for your schedule and the calculator does the rest.' },
+  { q: 'Can I use this for PVC or copper?', a: 'Yes. Pick the material and its density is applied automatically. The same geometry works for any round pipe; only the density changes between steel, stainless, copper, aluminum, cast iron, and PVC.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Outside diameter (in)</span>
+        <input id="od" type="number" step="any" placeholder="2.375" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Wall thickness (in)</span>
+        <input id="wall" type="number" step="any" placeholder="0.154" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Length (ft)</span>
+        <input id="len" type="number" step="any" placeholder="20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Material</span>
+        <select id="mat" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="0.2836">Carbon steel</option>
+          <option value="0.2890">Stainless steel</option>
+          <option value="0.2600">Cast iron</option>
+          <option value="0.3230">Copper</option>
+          <option value="0.0975">Aluminum</option>
+          <option value="0.0491">PVC</option>
+        </select></label>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">Tip: use the true outside diameter. NPS 2" steel pipe is 2.375" OD; NPS 1" is 1.315" OD.</p>
+    <div id="warn" class="mt-3 hidden rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800"></div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Weight per foot</div>
+        <div id="r-perft" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-total" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Inside diameter</div><div id="r-id" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Metal area</div><div id="r-area" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Total (kg)</div><div id="r-kg" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pw-title pw-desc">
+      <title id="pw-title">Pipe wall cross-section</title>
+      <desc id="pw-desc">A pipe end view showing outside diameter, inside diameter, and wall, with the weight formula</desc>
+      <circle cx="160" cy="150" r="80" fill="#c7d2fe" stroke="#6366f1" stroke-width="2" />
+      <circle cx="160" cy="150" r="52" fill="#ffffff" stroke="#6366f1" stroke-width="2" />
+      <line x1="80" y1="150" x2="240" y2="150" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" />
+      <text x="160" y="120" text-anchor="middle" font-size="11" fill="#4f46e5" font-family="system-ui,sans-serif">OD</text>
+      <text x="160" y="158" text-anchor="middle" font-size="11" fill="#475569" font-family="system-ui,sans-serif">ID</text>
+      <rect x="300" y="90" width="420" height="130" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="320" y="118" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Weight per foot</text>
+      <text x="320" y="144" font-size="12" fill="#475569" font-family="system-ui,sans-serif">ID = OD &minus; 2 &times; wall</text>
+      <text x="320" y="166" font-size="12" fill="#475569" font-family="system-ui,sans-serif">area = &pi;&frasl;4 &times; (OD&sup2; &minus; ID&sup2;)</text>
+      <text x="320" y="188" font-size="12" fill="#475569" font-family="system-ui,sans-serif">lb/ft = area &times; 12 &times; density</text>
+      <text x="320" y="210" font-size="12" fill="#475569" font-family="system-ui,sans-serif">steel density = 0.2836 lb/in&sup3;</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">A pipe's weight comes from the ring of metal between the outside and inside diameters.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the pipe weight calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      A pipe is a hollow cylinder, so its weight comes only from the ring of metal in the wall. The calculator finds the inside diameter by subtracting twice the wall thickness from the outside diameter, then takes the outside circle area minus the inside circle area to get the cross-section of that ring in square inches.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Multiplying the ring area by 12 inches gives the volume of metal in one foot of pipe, and multiplying that by the material density gives the weight per foot. The total is simply the weight per foot times the length. Because only the density changes between materials, a copper pipe weighs more than the same steel pipe, and a PVC pipe far less.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The one thing to get right is the outside diameter: use the true measured OD, not the nominal pipe size. Standard steel pipe up to 12 inches is named by an old nominal bore that no longer matches the real dimension — NPS 2 pipe is actually 2.375 inches across the outside. Enter the real OD and the standard densities do the rest.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter OD and wall</h3>
+        <p class="mt-1 text-sm text-slate-600">Use the true outside diameter and the wall thickness for your schedule.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Pick material and length</h3>
+        <p class="mt-1 text-sm text-slate-600">Choose the pipe material and enter how many feet you have.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read the weight</h3>
+        <p class="mt-1 text-sm text-slate-600">See weight per foot and total weight in pounds and kilograms.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Inside diameter and area</p>
+        <p class="mt-1 text-slate-600">
+          For 2.375&Prime; OD, 0.154&Prime; wall: ID = 2.375 &minus; 0.308 = 2.067&Prime;. Ring area = &pi;&frasl;4 &times; (2.375&sup2; &minus; 2.067&sup2;) = <strong>1.074 in&sup2;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Weight per foot</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= area &times; 12 &times; density</span> = 1.074 &times; 12 &times; 0.2836 = <strong>3.66 lb/ft</strong> — matching schedule 40 2&Prime; steel pipe.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Total weight</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= lb/ft &times; length</span>. A 20 ft length: 3.66 &times; 20 = <strong>73 lb</strong>.
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 4&Prime; steel pipe (4.5&Prime; OD, 0.237&Prime; wall) 40 ft long.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">ID:</span> <span class="text-slate-600">4.5 &minus; 0.474 = 4.026&Prime;</span></div>
+        <div><span class="font-medium text-slate-700">Ring area:</span> <span class="text-slate-600">&pi;&frasl;4 (20.25 &minus; 16.21) = 3.17 in&sup2;</span></div>
+        <div><span class="font-medium text-slate-700">Per foot:</span> <span class="text-slate-600">3.17 &times; 12 &times; 0.2836 = <strong>10.8 lb/ft</strong></span></div>
+        <div><span class="font-medium text-slate-700">Total:</span> <span class="text-slate-600">10.8 &times; 40 = 432 lb</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Where pipe weight matters</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🏗️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Supports and hangers</h3>
+        <p class="mt-1 text-sm text-slate-600">Pipe hangers, racks, and structural supports are sized to the filled pipe weight. The per-foot figure sets the spacing and the load each hanger carries.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🚚</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Shipping and handling</h3>
+        <p class="mt-1 text-sm text-slate-600">Pipe is heavy and sold by weight. Knowing the total lets you plan freight, choose lifting gear, and check a delivery against the packing list.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🔧</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Fabrication</h3>
+        <p class="mt-1 text-sm text-slate-600">Weld shops and fabricators quote and schedule work partly by material weight, and heavier schedules take more heat and time to weld.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">♻️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Scrap and salvage</h3>
+        <p class="mt-1 text-sm text-slate-600">Old pipe sold as scrap is paid by weight and metal type, so an accurate estimate tells you what a load is worth before you haul it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/metal-weight-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Metal Weight Calculator</a>
+      <a href="/tools/pool-volume-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Pool Volume Calculator</a>
+      <a href="/tools/rebar-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Rebar Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const OD = parseFloat(el('od').value);
+      const t = parseFloat(el('wall').value);
+      const L = parseFloat(el('len').value);
+      const density = parseFloat(el('mat').value);
+      if (!OD || !t || OD <= 0 || t <= 0) {
+        el('results').classList.add('hidden');
+        el('warn').classList.add('hidden');
+        return;
+      }
+      const ID = OD - 2 * t;
+      if (ID <= 0) {
+        el('results').classList.add('hidden');
+        el('warn').textContent = '⚠ Wall thickness is too large for this diameter (inside diameter would be zero or negative).';
+        el('warn').classList.remove('hidden');
+        return;
+      }
+      el('warn').classList.add('hidden');
+      const area = Math.PI / 4 * (OD * OD - ID * ID);
+      const perFt = area * 12 * density;
+      const len = (!L || L <= 0) ? 0 : L;
+      const total = perFt * len;
+
+      el('r-perft').textContent = perFt.toFixed(2) + ' lb/ft';
+      el('r-total').textContent = len ? ('total ' + total.toFixed(1) + ' lb over ' + len + ' ft') : 'enter a length for the total';
+      el('r-id').textContent = ID.toFixed(3) + ' in';
+      el('r-area').textContent = area.toFixed(3) + ' in²';
+      el('r-kg').textContent = len ? (total * 0.453592).toFixed(1) + ' kg' : '—';
+      el('results').classList.remove('hidden');
+    }
+
+    ['od', 'wall', 'len'].forEach((id) => el(id).addEventListener('input', update));
+    el('mat').addEventListener('change', update);
+  </script>
+</ToolLayout>

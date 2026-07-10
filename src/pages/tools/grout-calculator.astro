@@ -1,0 +1,197 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Tile Grout Calculator';
+const description = 'Estimate how much tile grout you need in pounds and bags from your tile size, joint width, tile thickness and the area being tiled.';
+const intro = 'Estimate the tile grout you need, in pounds and bags, from the tile size, joint width, tile thickness, and the area you are tiling.';
+const category = { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' };
+const faqs = [
+  { q: 'How much grout do I need?', a: 'Grout fills the joints between tiles, so the amount depends on the tile size, joint width, and tile thickness. Smaller tiles have more joint per square foot and use much more grout than large tiles. This calculator estimates the pounds and bags from those inputs.' },
+  { q: 'Why do small tiles use more grout?', a: 'Grout usage scales with total joint length, and small tiles pack far more joints into each square foot. A mosaic can use several times the grout of a large-format tile at the same joint width.' },
+  { q: 'What joint width should I use?', a: 'Typical joints run from 1/16 inch for rectified large-format tile up to 1/4 inch or more for rustic and floor tile. Use the width your tile and layout call for; wider joints use proportionally more grout.' },
+  { q: 'Should I buy extra grout?', a: 'Yes. This is an estimate; uneven joints, waste in mixing, and partial bags mean real usage runs higher. Buy at least one extra bag, and keep some in reserve for future repairs so the color matches.' },
+];
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tile length (in)</span>
+        <input id="tl" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tile width (in)</span>
+        <input id="tw" type="number" step="any" placeholder="12" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Tile thickness (in)</span>
+        <input id="tt" type="number" step="any" placeholder="0.375" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Joint width (in)</span>
+        <input id="jw" type="number" step="any" placeholder="0.125" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Area (sq ft)</span>
+        <input id="area" type="number" step="any" placeholder="200" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Bag size (lb)</span>
+        <select id="bag" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+          <option value="25">25 lb bag</option>
+          <option value="10">10 lb bag</option>
+        </select></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-indigo-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Grout needed (estimate)</div>
+        <div id="r-bags" class="mt-1 text-2xl font-bold">—</div>
+        <div id="r-lb" class="text-sm opacity-80"></div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Grout per 100 ft²</div><div id="r-per100" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Total pounds</div><div id="r-totlb" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="300" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gr-title gr-desc">
+      <title id="gr-title">Grout fills the joints between tiles</title>
+      <desc id="gr-desc">A tile grid with grout joints and the grout-volume formula</desc>
+      <rect x="90" y="80" width="330" height="160" fill="#4f46e5" />
+      <g fill="#c7d2fe">
+        <rect x="96" y="86" width="70" height="70"/><rect x="172" y="86" width="70" height="70"/><rect x="248" y="86" width="70" height="70"/><rect x="324" y="86" width="70" height="70"/>
+        <rect x="96" y="162" width="70" height="70"/><rect x="172" y="162" width="70" height="70"/><rect x="248" y="162" width="70" height="70"/><rect x="324" y="162" width="70" height="70"/>
+      </g>
+      <text x="255" y="262" text-anchor="middle" font-size="12" fill="#475569" font-family="system-ui,sans-serif">grout = the gaps between tiles</text>
+      <rect x="440" y="80" width="300" height="150" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <text x="460" y="108" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Grout volume per ft&sup2;</text>
+      <text x="460" y="134" font-size="12" fill="#475569" font-family="system-ui,sans-serif">joint fraction = (L+W)&times;j &frasl; (L&times;W)</text>
+      <text x="460" y="156" font-size="12" fill="#475569" font-family="system-ui,sans-serif">V = fraction &times; depth &times; 144</text>
+      <text x="460" y="178" font-size="12" fill="#475569" font-family="system-ui,sans-serif">lb = V &times; grout density</text>
+      <text x="460" y="200" font-size="12" fill="#475569" font-family="system-ui,sans-serif">smaller tile &rarr; more joint &rarr; more grout</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Grout fills the joint gaps; the smaller the tile, the more joint length per square foot.</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How the grout calculator works</h2>
+    <p class="mt-2 text-slate-600">
+      Grout fills the gaps between tiles, so the amount you need is really the volume of those joints. For a given tile, the share of each square foot taken up by joints is the joint width times the tile perimeter, divided by the tile face area. Multiplying that fraction by the joint depth — the tile thickness — and by the area gives the volume of grout.
+    </p>
+    <p class="mt-3 text-slate-600">
+      The calculator turns that volume into weight using a typical grout density of about 110 pounds per cubic foot, then divides by your bag size for the number of bags. The key insight the math shows is that small tiles use far more grout than large ones: a mosaic packs many more joints into each square foot than a big-format tile, so it can use several times the grout at the same joint width.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This is an estimate. Real usage depends on how full the joints are packed, waste in mixing, and irregular tile edges, so it always runs a little higher than the theoretical figure. Treat the result as a solid starting point and buy an extra bag, keeping some in reserve so future repairs match the color.
+    </p>
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">1</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Enter the tile</h3>
+        <p class="mt-1 text-sm text-slate-600">Tile length, width, and thickness in inches from the box.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">2</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Set joint and area</h3>
+        <p class="mt-1 text-sm text-slate-600">Enter the grout joint width and the total area you are tiling.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4 text-center">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-lg font-bold text-indigo-700">3</span>
+        <h3 class="mt-3 font-semibold text-slate-900">Read bags</h3>
+        <p class="mt-1 text-sm text-slate-600">Get the estimated pounds and bags, then buy one extra to be safe.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">The formula explained</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Joint fraction</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= (L + W) &times; j &frasl; (L &times; W)</span>. A 12&Prime; tile at 1/8&Prime; joint: 24 &times; 0.125 &frasl; 144 = <strong>0.0208</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Volume per square foot</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= fraction &times; thickness &times; 144</span>. With 3/8&Prime; tile: 0.0208 &times; 0.375 &times; 144 = <strong>1.13 in&sup3;/ft&sup2;</strong>.
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="font-semibold text-slate-900">Weight</p>
+        <p class="mt-1 text-slate-600">
+          <span class="font-mono">= V &times; density</span> (0.0637 lb/in&sup3;): 1.13 &times; 0.0637 = 0.072 lb/ft&sup2;, so 200 ft&sup2; needs about <strong>14 lb</strong> (one 25 lb bag).
+        </p>
+      </div>
+    </div>
+    <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <h3 class="font-semibold text-slate-900">Worked example</h3>
+      <p class="mt-1 text-sm text-slate-600">A 50 ft&sup2; mosaic backsplash, 2&Prime; tiles, 1/8&Prime; joint, 1/4&Prime; thick.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Joint fraction:</span> <span class="text-slate-600">4 &times; 0.125 &frasl; 4 = 0.125</span></div>
+        <div><span class="font-medium text-slate-700">Volume:</span> <span class="text-slate-600">0.125 &times; 0.25 &times; 144 = 4.5 in³/ft²</span></div>
+        <div><span class="font-medium text-slate-700">Per ft²:</span> <span class="text-slate-600">4.5 &times; 0.0637 = 0.287 lb</span></div>
+        <div><span class="font-medium text-slate-700">Total:</span> <span class="text-slate-600">0.287 &times; 50 = <strong>14.3 lb (1 bag)</strong></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Grout tips</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🎨</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Sanded versus unsanded</h3>
+        <p class="mt-1 text-sm text-slate-600">Use sanded grout for joints 1/8 inch and wider, and unsanded for tight joints and polished stone that sand could scratch. The type does not change the quantity much, but it must match the joint.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🧴</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Mix in batches</h3>
+        <p class="mt-1 text-sm text-slate-600">Grout starts to set once mixed. Mix only what you can spread and clean within its working time so none goes to waste, especially with fast-setting formulas.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">💧</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Keep the consistency even</h3>
+        <p class="mt-1 text-sm text-slate-600">Adding extra water to loosen a stiffening batch weakens the grout and can shift the color. Follow the water ratio on the bag for consistent strength and shade.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5">
+        <span class="text-2xl">🗄️</span>
+        <h3 class="mt-2 font-semibold text-slate-900">Save a little for repairs</h3>
+        <p class="mt-1 text-sm text-slate-600">Grout color is hard to match later. Keep a labeled bit of leftover from the same lot so a future patch blends in instead of standing out.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related calculators</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/tile-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Tile Calculator</a>
+      <a href="/tools/thinset-coverage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Thinset Coverage Calculator</a>
+      <a href="/tools/square-footage-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50">Square Footage Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+    const DENSITY = 0.0637; // lb per in3, ~110 lb/ft3 grout
+
+    function update() {
+      const L = parseFloat(el('tl').value);
+      const W = parseFloat(el('tw').value);
+      const T = parseFloat(el('tt').value);
+      const j = parseFloat(el('jw').value);
+      const area = parseFloat(el('area').value);
+      const bag = parseFloat(el('bag').value);
+      if (!L || !W || !T || !j || !area || L <= 0 || W <= 0 || T <= 0 || j <= 0 || area <= 0) {
+        el('results').classList.add('hidden');
+        return;
+      }
+      const fraction = ((L + W) * j) / (L * W);
+      const volPerFt2 = fraction * T * 144; // in3 per ft2
+      const lbPerFt2 = volPerFt2 * DENSITY;
+      const totalLb = lbPerFt2 * area;
+      const bags = Math.ceil(totalLb / bag);
+
+      el('r-bags').textContent = bags.toLocaleString() + ' × ' + bag + ' lb bags';
+      el('r-lb').textContent = 'about ' + totalLb.toFixed(1) + ' lb of grout';
+      el('r-per100').textContent = (lbPerFt2 * 100).toFixed(1) + ' lb';
+      el('r-totlb').textContent = totalLb.toFixed(1) + ' lb';
+      el('results').classList.remove('hidden');
+    }
+
+    ['tl', 'tw', 'tt', 'jw', 'area'].forEach((id) => el(id).addEventListener('input', update));
+    el('bag').addEventListener('change', update);
+  </script>
+</ToolLayout>

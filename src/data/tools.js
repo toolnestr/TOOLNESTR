@@ -398,6 +398,15 @@ export const tools = [
   { slug: 'mortar-mix-calculator', title: 'Mortar Mix Calculator', short: 'Bags of mortar and sand to lay block or brick.', category: 'construction', sub: 'Cement & Concrete', emoji: '🪣', enabled: true, status: 'live' },
   { slug: 'thinset-coverage-calculator', title: 'Thinset Coverage Calculator', short: 'Bags of thinset by area and trowel notch size.', category: 'construction', sub: 'Cement & Concrete', emoji: '🔳', enabled: true, status: 'live' },
   { slug: 'concrete-curing-time-calculator', title: 'Concrete Curing Time Calculator', short: 'Strength gained at any age from the curing curve.', category: 'construction', sub: 'Cement & Concrete', emoji: '⏲️', enabled: true, status: 'live' },
+  // ── Construction Batch 2: Materials & Weight ──
+  { slug: 'metal-weight-calculator', title: 'Metal Weight Calculator', short: 'Weight of steel, aluminum, and more by shape.', category: 'construction', sub: 'Materials', emoji: '🏋️', enabled: true, status: 'live' },
+  { slug: 'rebar-calculator', title: 'Rebar Calculator', short: 'Rebar bars, length, and weight for a slab grid.', category: 'construction', sub: 'Materials', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'framing-stud-calculator', title: 'Framing Stud Calculator', short: 'Studs and plate lumber for a wall by spacing.', category: 'construction', sub: 'Materials', emoji: '🔨', enabled: true, status: 'live' },
+  { slug: 'pipe-weight-calculator', title: 'Pipe Weight Calculator', short: 'Weight per foot of pipe by size and material.', category: 'construction', sub: 'Materials', emoji: '🚰', enabled: true, status: 'live' },
+  { slug: 'retaining-wall-block-calculator', title: 'Retaining Wall Block Calculator', short: 'Blocks, courses, and caps for a retaining wall.', category: 'construction', sub: 'Materials', emoji: '🔲', enabled: true, status: 'live' },
+  { slug: 'vinyl-siding-calculator', title: 'Vinyl Siding Calculator', short: 'Squares and boxes of siding from wall area.', category: 'construction', sub: 'Materials', emoji: '🏘️', enabled: true, status: 'live' },
+  { slug: 'grout-calculator', title: 'Tile Grout Calculator', short: 'Pounds and bags of grout by tile and joint size.', category: 'construction', sub: 'Materials', emoji: '🧽', enabled: true, status: 'live' },
+  { slug: 'spiral-staircase-calculator', title: 'Spiral Staircase Calculator', short: 'Riser, tread angle, and depth for a spiral stair.', category: 'construction', sub: 'Materials', emoji: '🌀', enabled: true, status: 'live' },
   // ── Part 6: Science & Engineering ──
   { slug: 'density-calculator', title: 'Density Calculator', short: 'ρ = m/V — solve density, mass, or volume from any two.', category: 'physics', emoji: '⚖️', enabled: true, status: 'live' },
   { slug: 'force-calculator', title: 'Force Calculator (F=ma)', short: 'Solve for force, mass, or acceleration.', category: 'physics', emoji: '💥', enabled: true, status: 'live' },
