@@ -245,7 +245,7 @@ const howToSchema = {
     /* ══ MOBILE BOTTOM SHEET ══ */
     .eq-sheet-backdrop { display: none; position: fixed; inset: 0; z-index: 800; background: rgba(0,0,0,0.22); opacity: 0; transition: opacity 0.3s; }
     .eq-sheet-backdrop.show { opacity: 1; }
-    .eq-bottom-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; background: var(--eq-surface); border-top: 1px solid var(--eq-border); border-radius: 20px 20px 0 0; padding: 0 0 32px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); max-height: 82vh; overflow-y: auto; touch-action: pan-y; }
+    .eq-bottom-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; background: var(--eq-surface); border-top: 1px solid var(--eq-border); border-radius: 20px 20px 0 0; padding: 0 0 32px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32,0.72,0,1); max-height: min(80svh, calc(100svh - 250px)); overflow-y: auto; touch-action: pan-y; }
     .eq-bottom-sheet.show { transform: translateY(0); }
     .eq-sheet-top-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 4px; flex-shrink: 0; }
     .eq-sheet-handle-inline { width: 40px; height: 4px; background: var(--eq-border); border-radius: 2px; }
@@ -824,10 +824,16 @@ const howToSchema = {
     eqSetSelPin(lat, lng, col);
     const eqZ = Math.max(eqMap.getZoom(), 4);
     if(window.innerWidth<=680){
-      // Reserve the bottom-sheet area as padding so the pin lands in the visible
-      // strip above the sheet (fitBounds with padding — direction-proof).
-      const sheetH = document.getElementById('eqBottomSheet').offsetHeight || Math.round(window.innerHeight * 0.55);
-      eqMap.fitBounds(L.latLngBounds([lat,lng],[lat,lng]), { paddingTopLeft:[0,24], paddingBottomRight:[0, sheetH + 20], maxZoom: eqZ });
+      // Centre on the quake, then lift it so the pin sits just above the bottom
+      // sheet. (fitBounds was fragile: when the sheet nearly filled the map the
+      // available area shrank to a few px and the pin's bulb clipped off the top.)
+      eqMap.setView([lat,lng], eqZ, {animate:false});
+      const mapTop = document.getElementById('eq-map').getBoundingClientRect().top;
+      const sheetH = document.getElementById('eqBottomSheet').offsetHeight || Math.round(window.innerHeight * 0.5);
+      const sz = eqMap.getSize();
+      const stripBottom = (window.innerHeight - sheetH) - mapTop;   // sheet's top edge, in map-local px
+      const targetY = Math.max(48, Math.min(stripBottom - 14, sz.y - 14)); // pin tip: just above the sheet, bulb never clipped
+      eqMap.panBy([0, (sz.y / 2) - targetY], {animate:false});
     } else {
       eqMap.setView([lat,lng], eqZ);
     }
