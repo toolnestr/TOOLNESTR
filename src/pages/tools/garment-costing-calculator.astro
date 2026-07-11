@@ -1,0 +1,147 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+const title = 'Garment Manufacturing/Costing Calculator';
+const description = 'Build a full garment cost sheet from fabric cost, trims, cut-make (CM) labor, overhead, and margin to find your factory-gate and wholesale price.';
+const intro = 'Add up fabric, trims, CM labor, overhead, and margin to price a garment for manufacturing.';
+const category = { id: 'clothing', name: 'Clothing & Garment Tools' };
+const faqs = [
+  { q: 'What goes into a garment cost sheet?', a: 'The standard build-up is: fabric cost + trims/accessories cost + CM (cut-make, i.e. labor) cost + overhead (a percentage covering factory operations) + profit margin. Each layer is added on top of the running subtotal to reach the final factory-gate price.' },
+  { q: 'What is CM (cut-make) cost?', a: 'CM is the labor cost to physically cut and sew the garment, usually calculated as SMV (standard minutes to make the garment) × cost-per-minute for the factory\'s labor rate. It excludes materials — those are costed separately as fabric and trims.' },
+  { q: 'How much overhead should I add?', a: 'Overhead percentages vary widely by factory size and country, but 15-30% of the fabric+trims+CM subtotal is a common working range for covering rent, utilities, admin, and equipment depreciation — get an exact figure from your specific factory or costing team where possible.' },
+  { q: 'Is this the same as the wholesale or retail price?', a: 'No — this calculates the factory-gate (FOB) cost, what the manufacturer charges. Brands typically apply their own markup on top of this figure to reach a wholesale price, and retailers apply a further markup (often keystone, 2x) to reach the shelf price.' },
+];
+const howTo = {
+  name: 'How to build a garment cost sheet',
+  steps: [
+    { name: 'Enter fabric and trims cost', text: 'The total material cost per garment, fabric plus buttons, zippers, labels, etc.' },
+    { name: 'Enter CM labor cost', text: 'The per-unit cut-make labor cost from your factory or SMV calculation.' },
+    { name: 'Set overhead percentage', text: 'Applied to the fabric+trims+CM subtotal to cover factory operating costs.' },
+    { name: 'Set profit margin percentage', text: 'The manufacturer\'s or brand\'s target profit on top of the loaded cost.' },
+  ],
+};
+---
+
+<ToolLayout title={title} description={description} intro={intro} category={category} faqs={faqs} howTo={howTo}>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block"><span class="text-sm font-medium text-slate-700">Fabric cost per unit ($)</span>
+        <input id="fabric" type="number" step="any" placeholder="e.g. 6.50" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Trims cost per unit ($)</span>
+        <input id="trims" type="number" step="any" placeholder="e.g. 1.20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">CM (labor) cost per unit ($)</span>
+        <input id="cm" type="number" step="any" placeholder="e.g. 3.00" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" /></label>
+      <label class="block"><span class="text-sm font-medium text-slate-700">Overhead (%)</span>
+        <input id="overhead" type="number" step="any" placeholder="e.g. 20" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" /></label>
+      <label class="block sm:col-span-2"><span class="text-sm font-medium text-slate-700">Profit margin (%)</span>
+        <input id="margin" type="number" step="any" placeholder="e.g. 15" class="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" /></label>
+    </div>
+    <div id="results" class="mt-6 hidden space-y-3">
+      <div class="rounded-xl bg-rose-600 p-5 text-center text-white">
+        <div class="text-sm opacity-80">Factory-gate (FOB) price</div>
+        <div id="r-fob" class="mt-1 text-2xl font-bold">—</div>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Materials + CM</div><div id="r-sub" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Loaded cost</div><div id="r-loaded" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+        <div class="rounded-xl bg-slate-50 p-3 text-center"><div class="text-sm text-slate-500">Profit added</div><div id="r-profit" class="mt-1 text-lg font-bold text-slate-800">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <figure class="mt-10">
+    <svg width="800" height="200" viewBox="0 0 800 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gc-title gc-desc">
+      <title id="gc-title">Garment cost build-up stack</title>
+      <desc id="gc-desc">A stacked bar showing fabric, trims, CM, overhead, and margin layers building to the final FOB price</desc>
+      <rect x="80" y="150" width="640" height="30" fill="#fecdd3" /><text x="400" y="170" text-anchor="middle" font-size="12" fill="#881337" font-family="system-ui,sans-serif">Fabric + Trims</text>
+      <rect x="80" y="120" width="640" height="26" fill="#fda4af" /><text x="400" y="138" text-anchor="middle" font-size="12" fill="#881337" font-family="system-ui,sans-serif">CM (labor)</text>
+      <rect x="80" y="90" width="640" height="26" fill="#fb7185" /><text x="400" y="108" text-anchor="middle" font-size="12" fill="white" font-family="system-ui,sans-serif">Overhead %</text>
+      <rect x="80" y="60" width="640" height="26" fill="#e11d48" /><text x="400" y="78" text-anchor="middle" font-size="12" fill="white" font-family="system-ui,sans-serif">Profit margin %</text>
+      <text x="400" y="40" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b" font-family="system-ui,sans-serif">Factory-gate (FOB) price</text>
+    </svg>
+    <figcaption class="mt-2 text-center text-sm text-slate-500">Each layer builds on the running subtotal below it</figcaption>
+  </figure>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">How garment costing works</h2>
+    <p class="mt-2 text-slate-600">
+      Standard apparel-costing methodology builds a garment's price in layers, each one applied to the running subtotal rather than the original base cost. Fabric and trims are summed first to get total materials cost per unit; CM (cut-make) labor cost is added to that for a materials+labor subtotal; overhead — a percentage covering rent, utilities, equipment, and factory administration — is applied to that subtotal; and finally profit margin is applied on top of the fully loaded cost to reach the factory-gate, or FOB (Free On Board), price.
+    </p>
+    <p class="mt-3 text-slate-600">
+      CM cost itself is usually derived separately from SMV (Standard Allowed Minutes — how many minutes it takes a trained operator to sew the garment) multiplied by the factory's cost-per-minute labor rate, though this calculator accepts CM as a direct dollar input if that figure is already known from a factory quote.
+    </p>
+    <p class="mt-3 text-slate-600">
+      This FOB price is what the manufacturer charges the brand — it is not the wholesale price a retailer pays the brand, nor the retail price a consumer pays. Both of those add further markup layers on top of this figure, which is why a garment that costs a few dollars to manufacture can retail for many times that amount by the time it reaches a store shelf.
+    </p>
+    <p class="mt-3 text-xs text-slate-400">Layered fabric + trims + CM + overhead + margin cost-sheet structure follows standard apparel-industry costing methodology.</p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Worked example</h2>
+    <div class="rounded-xl border border-slate-200 bg-slate-50 p-5">
+      <p class="text-sm text-slate-600">A basic t-shirt: $6.50 fabric, $1.20 trims, $3.00 CM, 20% overhead, 15% margin.</p>
+      <div class="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+        <div><span class="font-medium text-slate-700">Materials + CM:</span> <span class="text-slate-600">6.50 + 1.20 + 3.00 = $10.70</span></div>
+        <div><span class="font-medium text-slate-700">+ 20% overhead:</span> <span class="text-slate-600">10.70 × 1.20 = $12.84</span></div>
+        <div><span class="font-medium text-slate-700">+ 15% margin:</span> <span class="text-slate-600">12.84 × 1.15 ≈ <strong>$14.77</strong></span></div>
+        <div><span class="font-medium text-slate-700">FOB price:</span> <span class="text-slate-600"><strong>$14.77</strong> per unit</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Real-world context</h2>
+    <p class="mt-2 text-slate-600">
+      This layered structure is exactly why a t-shirt that costs a factory around $14 to produce can end up costing a consumer $40-60 in a retail store: the brand buys at FOB, adds its own wholesale markup to cover design, marketing, and distribution, and the retailer adds a further keystone-or-higher markup on top of that wholesale price.
+    </p>
+    <p class="mt-3 text-slate-600">
+      Small, independent apparel brands sourcing from a single small-batch factory often see much higher overhead percentages than large brands running huge production volumes through efficient factories, since overhead costs get spread across far fewer units — this is a major reason small-batch, ethically-produced clothing tends to carry a higher price tag for a comparable garment.
+    </p>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Common misconceptions</h2>
+    <div class="mt-3 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="text-slate-600">"The FOB price is what I should sell the garment for." <strong class="text-slate-900">No — it's the manufacturing cost only.</strong> The brand still needs to add its own wholesale markup, and any retailer buying from the brand adds another markup layer before it reaches a shelf price.</p>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-4">
+        <p class="text-slate-600">"Overhead and profit margin are the same thing." <strong class="text-slate-900">Different purposes.</strong> Overhead covers the real, ongoing cost of running the factory (rent, utilities, admin); profit margin is what's left over as actual profit after all real costs, including overhead, are covered.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mt-10">
+    <h2 class="text-xl font-bold text-slate-900">Related tools</h2>
+    <div class="mt-3 flex flex-wrap gap-3">
+      <a href="/tools/cm-cost-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-rose-300 hover:bg-rose-50">CM (Cut-Make) Cost Calculator</a>
+      <a href="/tools/garment-cost-sheet-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-rose-300 hover:bg-rose-50">Quick Cost Sheet Calculator</a>
+      <a href="/tools/wholesale-to-retail-pricing-calculator" class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-rose-300 hover:bg-rose-50">Wholesale-to-Retail Pricing Calculator</a>
+    </div>
+  </section>
+
+  <script is:inline>
+    const el = (id) => document.getElementById(id);
+
+    function update() {
+      const fabric = parseFloat(el('fabric').value) || 0;
+      const trims = parseFloat(el('trims').value) || 0;
+      const cm = parseFloat(el('cm').value) || 0;
+      const overhead = parseFloat(el('overhead').value);
+      const margin = parseFloat(el('margin').value);
+      if (!((fabric + trims + cm) > 0 && overhead >= 0 && margin >= 0)) { el('results').classList.add('hidden'); return; }
+
+      const sub = fabric + trims + cm;
+      const loaded = sub * (1 + overhead / 100);
+      const fob = loaded * (1 + margin / 100);
+      const profit = fob - loaded;
+
+      el('r-sub').textContent = '$' + sub.toFixed(2);
+      el('r-loaded').textContent = '$' + loaded.toFixed(2);
+      el('r-profit').textContent = '$' + profit.toFixed(2);
+      el('r-fob').textContent = '$' + fob.toFixed(2);
+      el('results').classList.remove('hidden');
+    }
+
+    ['fabric', 'trims', 'cm', 'overhead', 'margin'].forEach((id) => el(id).addEventListener('input', update));
+  </script>
+</ToolLayout>
