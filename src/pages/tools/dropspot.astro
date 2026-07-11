@@ -8,11 +8,11 @@ const description =
 const faqs = [
   { q: 'Do I need an account to use Dropspot?', a: 'No. Dropspot is completely login-free. You create a room, get a 6-character code, and share that code (or the QR) with anyone. They join instantly — no sign-up, no app install, nothing to download. The room and its contents automatically expire after the time you choose.' },
   { q: 'Does it work across different networks?', a: 'Yes. Unlike local-only tools that need everyone on the same Wi-Fi, Dropspot works across any network using room codes. One person can be on home Wi-Fi and another on mobile data on the other side of the world — as long as both have the room code, they share the same room. Text, links and files all sync through secure cloud storage, so everyone in the room can grab them on any network.' },
-  { q: 'How are files transferred?', a: 'Files up to 50 MB each are uploaded to fast, secure temporary storage — they appear for everyone in the room to download, work across any network, survive a page refresh, and are kept for about an hour. Each room can hold up to 100 MB of files at a time. Just drag a file onto the drop zone or click to choose one.' },
+  { q: 'How are files transferred?', a: 'Files up to 50 MB each are uploaded to fast, secure temporary storage — they appear for everyone in the room to download, work across any network, survive a page refresh, and stay for as long as the room lives. Each room can hold up to 100 MB of files at a time. Just drag a file onto the drop zone or click to choose one.' },
   { q: 'Is my data private?', a: 'Text, links and files are stored only for the lifetime you choose and are then permanently deleted. Uploads go to private storage that is only reachable through the room and are auto-deleted on expiry. You can also protect any room with a PIN and delete any item manually at any time.' },
-  { q: 'How long does content stay available?', a: 'You choose when you create the room: from 10 minutes up to 8 hours. Every item carries its own expiry, and a background cleanup permanently removes expired text, links and files. Nothing lingers longer than you asked for.' },
+  { q: 'How long does content stay available?', a: 'You choose when you create the room: from 10 minutes up to 8 hours. Everything you share — text, links and files — lives for the room\'s lifetime and is permanently deleted the moment the room expires. There are no separate per-item timers, and nothing lingers longer than you asked for.' },
   { q: 'Why does it warn me about backgrounding the tab?', a: 'Dropspot keeps a live connection open to the room so everyone can see who is present in real time. Some browsers suspend background tabs to save battery, which can pause that connection and briefly drop you from the live device list. Keep the tab visible during a transfer to stay shown as present.' },
-  { q: 'Is there a file size limit?', a: 'Each file can be up to 50 MB, and a single room can hold up to 100 MB of files at a time. Uploads use secure temporary storage — fast, reliable, downloadable by everyone in the room, and kept for about an hour before they auto-expire.' },
+  { q: 'Is there a file size limit?', a: 'Each file can be up to 50 MB, and a single room can hold up to 100 MB of files at a time. Uploads use secure temporary storage — fast, reliable, downloadable by everyone in the room, and kept until the room expires, when they are deleted automatically.' },
 ];
 
 const faqSchema = {
@@ -497,18 +497,12 @@ const howToSchema = {
             <div class="ds-drop" id="drop">
               <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 8l5-5 5 5M12 3v12"/></svg>
               <div id="dropLabel">Drag a file here or click to choose</div>
-              <div class="hint">Up to 50 MB per file (100 MB per room) — shared with everyone in the room and kept ~1 hour.</div>
+              <div class="hint">Up to 50 MB per file (100 MB per room) — shared with everyone in the room until it expires.</div>
               <input type="file" id="fileInput" class="ds-hidden" />
             </div>
           </div>
 
           <div class="ds-foot" id="composerFoot">
-            <select class="ds-select" id="itemTtl" title="How long this item lasts">
-              <option value="">Room default</option>
-              <option value="600">10 min</option>
-              <option value="3600">1 hour</option>
-              <option value="28800">8 hours</option>
-            </select>
             <button class="ds-btn" id="shareBtn">Share</button>
           </div>
         </div>
@@ -549,10 +543,11 @@ const howToSchema = {
 
         <h3>How files, text and links are shared</h3>
         <p>
-          Text and links you post appear in the room for everyone almost immediately and stay until
-          they expire. Files are uploaded to fast, secure temporary storage and then show up in the
-          room for every device to download — they work across every network, survive a page refresh,
-          and are kept for about an hour. Each file can be up to <strong>50&nbsp;MB</strong>, and a
+          Text and links you post appear in the room for everyone almost immediately. Files are
+          uploaded to fast, secure temporary storage and then show up in the room for every device to
+          download — they work across every network and survive a page refresh. Everything you share
+          lives for the room's lifetime and is deleted together when the room expires — there are no
+          separate per-item timers. Each file can be up to <strong>50&nbsp;MB</strong>, and a
           single room can hold up to <strong>100&nbsp;MB</strong> of files at a time. A live capacity
           bar shows how much room storage is left, and you can select several files and download them
           together as one ZIP.
@@ -641,7 +636,7 @@ const howToSchema = {
       roomCode: $('roomCode'), qr: $('qr'), copyCodeBtn: $('copyCodeBtn'), copyLinkBtn: $('copyLinkBtn'), leaveBtn: $('leaveBtn'),
       metaPin: $('metaPin'), metaExpiry: $('metaExpiry'), metaDevices: $('metaDevices'),
       bgWarn: $('bgWarn'), presence: $('presence'), items: $('items'),
-      textInput: $('textInput'), linkInput: $('linkInput'), itemTtl: $('itemTtl'),
+      textInput: $('textInput'), linkInput: $('linkInput'),
       shareBtn: $('shareBtn'), toasts: $('toasts'), drop: $('drop'), fileInput: $('fileInput'), dropLabel: $('dropLabel'),
     };
     let activeTab = 'text';
@@ -930,7 +925,7 @@ const howToSchema = {
         const ic = document.createElement('span'); ic.className = 'fic'; ic.innerHTML = iconSvg('file');
         const meta = document.createElement('div'); meta.className = 'fmeta';
         const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = f.filename;
-        const sz = document.createElement('div'); sz.className = 'sz'; sz.textContent = fmtSize(f.size) + ' · expires ' + fmtDuration(f.expires_at - serverNow());
+        const sz = document.createElement('div'); sz.className = 'sz'; sz.textContent = fmtSize(f.size);
         meta.appendChild(nm); meta.appendChild(sz); fh.appendChild(cb); fh.appendChild(ic); fh.appendChild(meta);
         const btns = document.createElement('div'); btns.className = 'fbtns';
         const dl = document.createElement('button'); dl.className = 'ds-btn sm'; dl.innerHTML = iconSvg('download') + '<span>Download</span>';
@@ -952,8 +947,6 @@ const howToSchema = {
         const body = document.createElement('div'); body.className = 'tbody';
         if (kind === 'link') { const a = document.createElement('a'); a.className = 'txt'; a.href = i.content; a.target = '_blank'; a.rel = 'noopener nofollow'; a.textContent = i.content; body.appendChild(a); }
         else { const p = document.createElement('div'); p.className = 'txt'; p.textContent = i.content; body.appendChild(p); }
-        const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = 'expires ' + fmtDuration(i.expires_at - serverNow());
-        body.appendChild(sub);
         const acts = document.createElement('div'); acts.className = 'acts';
         acts.appendChild(iconBtn('copy', 'Copy', () => { navigator.clipboard.writeText(i.content); toast('Copied'); }));
         acts.appendChild(iconBtn('trash', 'Delete', () => deleteItem('item', i.id), true));
@@ -1074,12 +1067,14 @@ const howToSchema = {
       // echo (the DO reuses this id). The socket broadcast confirms shortly.
       const id = uid();
       const now = serverNow();
-      const ttl = els.itemTtl.value ? Number(els.itemTtl.value) : ((state.lastData && state.lastData.room && state.lastData.room.default_ttl_seconds) || 3600);
-      if (!wsSend({ type: 'item.add', id, kind, content, ttl_seconds: ttl, device_id: DEVICE_ID })) {
+      // No per-item TTL — content lives for the room's lifetime and is deleted
+      // when the room expires. Optimistic expiry just mirrors the room's.
+      const roomExpiry = (state.lastData && state.lastData.room && state.lastData.room.expires_at) || (now + 3600);
+      if (!wsSend({ type: 'item.add', id, kind, content, device_id: DEVICE_ID })) {
         toast('Not connected — reconnecting…', 'trash'); return;
       }
       els.textInput.value = ''; els.linkInput.value = '';
-      state.optimistic[id] = { id, kind, content, created_at: now, expires_at: now + ttl, author: DEVICE_ID };
+      state.optimistic[id] = { id, kind, content, created_at: now, expires_at: roomExpiry, author: DEVICE_ID };
       renderMerged(); // instant
       toast('Shared');
     }

@@ -307,25 +307,21 @@ export class RoomDO extends DurableObject<Env> {
       this.sendTo(ws, { type: 'error', code: 'invalid_link' });
       return;
     }
-    const ttl = clamp(envInt(msg.ttl_seconds as unknown as string, room.default_ttl_seconds), 60, LIMITS.ITEM_TTL_MAX);
     // The client may propose the id so its optimistic render reconciles cleanly.
     const proposed = typeof msg.id === 'string' && /^[a-z0-9]{8,64}$/i.test(msg.id) ? msg.id : generateId();
-    const expiresAt = now + ttl;
 
+    // Items live for the room's lifetime — they carry the room's expiry, not
+    // their own. The room timer is fixed at creation and never moves when
+    // content is added; everything is deleted together when the room expires.
     this.sql.exec(
       'INSERT OR REPLACE INTO items (id, kind, content, created_at, expires_at, author) VALUES (?, ?, ?, ?, ?, ?)',
       proposed,
       kind,
       content,
       now,
-      expiresAt,
+      room.expires_at,
       att.device_id
     );
-    // Keep the room alive at least as long as its newest item (parity with old behaviour).
-    if (expiresAt > room.expires_at) {
-      this.sql.exec('UPDATE room SET expires_at = ? WHERE code = ?', expiresAt, room.code);
-    }
-    void this.scheduleAlarm();
     this.broadcast();
   }
 
@@ -366,8 +362,9 @@ export class RoomDO extends DurableObject<Env> {
       return errorResponse('room_storage_full', 409, 'This room is out of storage — delete a file or send this one directly.');
     }
 
-    const ttl = clamp(envInt(url.searchParams.get('ttl') || undefined, LIMITS.FILE_TTL_DEFAULT), 60, LIMITS.FILE_TTL_MAX);
-    const expiresAt = now + ttl;
+    // Files live for the room's lifetime — expiry tracks the room, not a
+    // separate per-file timer. The room timer never moves on upload.
+    const expiresAt = room.expires_at;
     const fileId = generateId();
     const r2Key = buildR2Key(room.code, expiresAt, fileId);
     const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
@@ -397,10 +394,6 @@ export class RoomDO extends DurableObject<Env> {
       expiresAt,
       uploader
     );
-    if (expiresAt > room.expires_at) {
-      this.sql.exec('UPDATE room SET expires_at = ? WHERE code = ?', expiresAt, room.code);
-    }
-    await this.scheduleAlarm();
     this.broadcast();
 
     const record: FileRow = {
