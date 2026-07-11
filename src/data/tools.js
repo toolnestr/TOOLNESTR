@@ -23,6 +23,7 @@ export const categories = [
   { id: 'chemistry', name: 'Chemistry', emoji: '🧪' },
   { id: 'biology', name: 'Biology', emoji: '🧬' },
   { id: 'construction', name: 'Construction & Home Improvement', emoji: '🏠' },
+  { id: 'clothing', name: 'Clothing & Garment Tools', emoji: '👗' },
   { id: 'cooking', name: 'Cooking & Baking', emoji: '🍳' },
   { id: 'automotive', name: 'Automotive', emoji: '🚗' },
   { id: 'images', name: 'Image Tools', emoji: '🖼️' },
@@ -37,6 +38,70 @@ export const categories = [
 
 export const tools = [
   // ── Everyday & Students ──
+  // ── Clothing & Garment: Size Converters ──
+  { slug: 'clothing-size-converter', title: 'Clothing Size Converter (US/UK/EU/Asia)', short: 'Convert women\'s and men\'s clothing sizes across US, UK, EU, and Asia.', category: 'clothing', sub: 'Size Converters', emoji: '👗', enabled: true, status: 'live' },
+  { slug: 'shoe-size-converter', title: 'Shoe Size Converter', short: 'Convert shoe sizes between US, UK, EU, and centimeters.', category: 'clothing', sub: 'Size Converters', emoji: '👟', enabled: true, status: 'live' },
+  { slug: 'ring-size-calculator', title: 'Ring Size Calculator', short: 'Find your ring size from finger circumference or diameter.', category: 'clothing', sub: 'Size Converters', emoji: '💍', enabled: true, status: 'live' },
+  { slug: 'hat-size-calculator', title: 'Hat Size Calculator', short: 'Find your hat size in US fitted, alpha, and centimeters.', category: 'clothing', sub: 'Size Converters', emoji: '🎩', enabled: true, status: 'live' },
+  { slug: 'belt-size-calculator', title: 'Belt Size Calculator', short: 'Find the right belt size from your pants waist size.', category: 'clothing', sub: 'Size Converters', emoji: '🪢', enabled: true, status: 'live' },
+  { slug: 'glove-size-calculator', title: 'Glove Size Calculator', short: 'Find your glove size in numeric and alpha sizing.', category: 'clothing', sub: 'Size Converters', emoji: '🧤', enabled: true, status: 'live' },
+  { slug: 'sock-size-calculator', title: 'Sock Size Calculator', short: 'Find your sock size from your US shoe size.', category: 'clothing', sub: 'Size Converters', emoji: '🧦', enabled: true, status: 'live' },
+  { slug: 'sunglasses-size-calculator', title: 'Sunglasses Size Calculator', short: 'Find the right sunglasses frame size from face width.', category: 'clothing', sub: 'Size Converters', emoji: '🕶️', enabled: true, status: 'live' },
+  { slug: 'kids-clothing-size-calculator', title: 'Kids\' Clothing Size by Age Calculator', short: 'Find a child\'s clothing size from age, height, and weight.', category: 'clothing', sub: 'Size Converters', emoji: '👶', enabled: true, status: 'live' },
+  { slug: 'bra-size-calculator', title: 'Bra Size Calculator', short: 'Find your band and cup size from underbust and bust measurements.', category: 'clothing', sub: 'Size Converters', emoji: '📏', enabled: true, status: 'live' },
+
+  // ── Clothing & Garment: Fit & Measurement ──
+  { slug: 'dress-size-calculator', title: 'Dress Size Calculator', short: 'Find your US dress size from bust, waist, and hip measurements.', category: 'clothing', sub: 'Fit & Measurement', emoji: '👚', enabled: true, status: 'live' },
+  { slug: 'jacket-suit-size-calculator', title: 'Jacket/Suit Size Calculator', short: 'Find your suit size — chest number plus Short/Regular/Long.', category: 'clothing', sub: 'Fit & Measurement', emoji: '🧥', enabled: true, status: 'live' },
+  { slug: 'body-shape-calculator', title: 'Body Shape Calculator', short: 'Find your body shape category from bust, waist, and hip.', category: 'clothing', sub: 'Fit & Measurement', emoji: '⏳', enabled: true, status: 'live' },
+  { slug: 'inseam-length-calculator', title: 'Inseam Length Calculator', short: 'Estimate or convert inseam length to a pant length category.', category: 'clothing', sub: 'Fit & Measurement', emoji: '📐', enabled: true, status: 'live' },
+  { slug: 'ease-calculator', title: 'Ease Calculator (Wearing & Design Ease)', short: 'Add standard sewing ease to a body measurement for pattern fit.', category: 'clothing', sub: 'Fit & Measurement', emoji: '🪡', enabled: true, status: 'live' },
+
+  // ── Clothing & Garment: Fabric & Yardage ──
+  { slug: 'fabric-yardage-calculator', title: 'Fabric Yardage Calculator', short: 'Calculate fabric needed from piece size, quantity, and fabric width.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🧵', enabled: true, status: 'live' },
+  { slug: 'fabric-cost-calculator', title: 'Fabric Cost Calculator', short: 'Calculate total fabric cost from yardage, price, and tax.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '💵', enabled: true, status: 'live' },
+  { slug: 'fabric-weight-gsm-calculator', title: 'GSM / Fabric Weight Calculator', short: 'Convert fabric weight between GSM and ounces per square yard.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '⚖️', enabled: true, status: 'live' },
+  { slug: 'fabric-shrinkage-calculator', title: 'Fabric Shrinkage Calculator', short: 'Calculate shrinkage percentage and how much extra fabric to buy.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🔥', enabled: true, status: 'live' },
+  { slug: 'lining-fabric-calculator', title: 'Lining Fabric Calculator', short: 'Estimate lining fabric needed for a jacket, dress, skirt, or vest.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🎽', enabled: true, status: 'live' },
+  { slug: 'interfacing-stabilizer-yardage-calculator', title: 'Interfacing/Stabilizer Yardage Calculator', short: 'Estimate interfacing needed for collars, cuffs, and facings.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '📋', enabled: true, status: 'live' },
+  { slug: 'curtain-panel-calculator', title: 'Curtain Panel Calculator', short: 'Calculate fabric and panel widths needed for gathered curtains.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🪟', enabled: true, status: 'live' },
+  { slug: 'quilt-binding-calculator', title: 'Quilt Binding Calculator', short: 'Calculate binding strips and fabric needed from quilt dimensions.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🧶', enabled: true, status: 'live' },
+  { slug: 'fabric-unit-converter', title: 'Fabric Unit Converter', short: 'Convert fabric length between yards, meters, inches, and cm.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '📏', enabled: true, status: 'live' },
+  { slug: 'garment-fabric-estimator', title: 'Garment Fabric Estimator', short: 'Estimate fabric needed for a specific garment style and width.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '👕', enabled: true, status: 'live' },
+  { slug: 'denier-tex-dtex-converter', title: 'Denier / Tex / Dtex Converter', short: 'Convert yarn thickness between denier, tex, and decitex.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🧬', enabled: true, status: 'live' },
+  { slug: 'yarn-count-converter', title: 'Yarn Count Converter (Ne ↔ Denier)', short: 'Convert yarn thickness between English cotton count and denier.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🧿', enabled: true, status: 'live' },
+  { slug: 'tablecloth-fabric-calculator', title: 'Tablecloth Fabric Calculator', short: 'Calculate fabric for a rectangular or round tablecloth.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🍽️', enabled: true, status: 'live' },
+  { slug: 'pillow-box-cushion-fabric-calculator', title: 'Pillow Cover / Box Cushion Fabric Calculator', short: 'Calculate fabric for a flat pillow cover or a box cushion.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🛋️', enabled: true, status: 'live' },
+  { slug: 'roman-blind-fabric-calculator', title: 'Roman Blind Fabric Calculator', short: 'Calculate fabric needed for a Roman blind from window size.', category: 'clothing', sub: 'Fabric & Yardage', emoji: '🎗️', enabled: true, status: 'live' },
+
+  // ── Clothing & Garment: Pattern & Sewing ──
+  { slug: 'seam-allowance-calculator', title: 'Seam Allowance Calculator', short: 'Calculate cut size from finished size and seam allowance.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '✂️', enabled: true, status: 'live' },
+  { slug: 'bias-tape-calculator', title: 'Bias Tape Calculator', short: 'Calculate continuous bias tape length from a fabric square.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '➰', enabled: true, status: 'live' },
+  { slug: 'elastic-length-calculator', title: 'Elastic Length Calculator', short: 'Calculate elastic cut length from a body measurement.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🔗', enabled: true, status: 'live' },
+  { slug: 'zipper-length-calculator', title: 'Zipper Length Calculator', short: 'Calculate zipper length needed for a garment opening.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🤐', enabled: true, status: 'live' },
+  { slug: 'pattern-grading-calculator', title: 'Pattern Grading Calculator', short: 'Scale a pattern piece measurement between sizes.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '📈', enabled: true, status: 'live' },
+  { slug: 'circle-skirt-calculator', title: 'Circle Skirt Calculator', short: 'Calculate waist radius and fabric for a circle skirt.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '⭕', enabled: true, status: 'live' },
+  { slug: 'pleated-skirt-calculator', title: 'Pleated Skirt Calculator', short: 'Calculate fabric width needed for a pleated skirt waist.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🎏', enabled: true, status: 'live' },
+  { slug: 'thread-consumption-calculator', title: 'Thread Consumption Calculator', short: 'Estimate thread length needed from seam length and stitch type.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🪱', enabled: true, status: 'live' },
+  { slug: 'stitch-length-calculator', title: 'Stitch Length Calculator', short: 'Convert stitch length between millimeters and stitches per inch.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '📉', enabled: true, status: 'live' },
+  { slug: 'needle-size-calculator', title: 'Needle Size Calculator', short: 'Convert needle size between European and American numbering.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '📌', enabled: true, status: 'live' },
+  { slug: 'buttonhole-spacing-calculator', title: 'Buttonhole Spacing Calculator', short: 'Calculate even buttonhole spacing along a placket.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🔘', enabled: true, status: 'live' },
+  { slug: 'buttonhole-length-calculator', title: 'Buttonhole Length Calculator', short: 'Calculate buttonhole length from button diameter and thickness.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🕳️', enabled: true, status: 'live' },
+  { slug: 'gathering-ratio-calculator', title: 'Gathering Ratio Calculator', short: 'Calculate flat fabric needed for a gathered ruffle or waistband.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🌊', enabled: true, status: 'live' },
+  { slug: 'pleat-allowance-calculator', title: 'Pleat Allowance Calculator', short: 'Calculate extra fabric needed for pleats on any project.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '📁', enabled: true, status: 'live' },
+  { slug: 'knit-stretch-test-calculator', title: 'Knit Stretch % Test Calculator', short: 'Calculate knit fabric stretch percentage from a 4-inch test.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🧪', enabled: true, status: 'live' },
+  { slug: 'fba-sba-bust-adjustment-calculator', title: 'FBA/SBA Bust Adjustment Calculator', short: 'Calculate a full or small bust pattern adjustment amount.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '📊', enabled: true, status: 'live' },
+  { slug: 'trim-elastic-consumption-calculator', title: 'Trim/Elastic Consumption Calculator', short: 'Calculate total trim needed for a production run.', category: 'clothing', sub: 'Pattern & Sewing', emoji: '🏭', enabled: true, status: 'live' },
+
+  // ── Clothing & Garment: Care ──
+  { slug: 'laundry-symbol-decoder', title: 'Laundry Symbol Decoder', short: 'Look up what a washing, bleaching, drying, or ironing symbol means.', category: 'clothing', sub: 'Care', emoji: '🧺', enabled: true, status: 'live' },
+  { slug: 'fabric-care-wash-temperature-guide', title: 'Fabric Care / Wash Temperature Guide', short: 'Find the recommended wash, dry, and iron settings for any fabric.', category: 'clothing', sub: 'Care', emoji: '🌡️', enabled: true, status: 'live' },
+
+  // ── Clothing & Garment: Accessories ──
+  { slug: 'shoelace-length-calculator', title: 'Shoelace Length Calculator', short: 'Find the recommended shoelace length from eyelet pair count.', category: 'clothing', sub: 'Accessories', emoji: '👟', enabled: true, status: 'live' },
+  { slug: 'cross-stitch-calculator', title: 'Cross-Stitch Calculator', short: 'Calculate finished design size and fabric from stitch count.', category: 'clothing', sub: 'Accessories', emoji: '✖️', enabled: true, status: 'live' },
+  { slug: 'tote-bag-fabric-calculator', title: 'Tote/Bag Size & Fabric Calculator', short: 'Calculate fabric needed for a tote bag with gusset and handles.', category: 'clothing', sub: 'Accessories', emoji: '👜', enabled: true, status: 'live' },
+
   { slug: 'word-counter', title: 'Word & Character Counter', short: 'Count words, characters, sentences & reading time.', category: 'everyday', emoji: '🔤', enabled: true, status: 'live' },
   { slug: 'case-converter', title: 'Case Converter', short: 'UPPERCASE, lowercase, Title Case, Sentence case & more.', category: 'everyday', emoji: '🔠', enabled: true, status: 'live' },
   { slug: 'age-calculator', title: 'Age Calculator', short: 'Your exact age in years, months, weeks and days.', category: 'everyday', emoji: '🎂', enabled: true, status: 'live' },
