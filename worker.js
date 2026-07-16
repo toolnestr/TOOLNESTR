@@ -88,6 +88,15 @@ export default {
       const path = url.pathname.replace(/\/+$/, '');
       const method = request.method;
 
+      // All /api/gsc-* routes expose private Search Console data and are
+      // admin-only (no public tool page calls them). Gate them behind a
+      // bearer token so the endpoints can't be scraped by anyone who finds
+      // the worker URL. Fails closed if GSC_API_TOKEN is not configured.
+      if (path.startsWith('/api/gsc-')) {
+        const denied = requireGscAuth(request, env);
+        if (denied) return denied;
+      }
+
       // ── Route: GSC — list verified sites ──
       if (path === '/api/gsc-sites' && method === 'GET') {
         return handleGscSites(env);
@@ -1283,6 +1292,40 @@ function pemToArrayBuffer(pem) {
   var view = new Uint8Array(buf);
   for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
   return buf;
+}
+
+// Constant-time string compare to avoid leaking the token via timing.
+function timingSafeEqualStr(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  // Compare against a fixed-length digest so lengths don't short-circuit.
+  if (ba.length !== bb.length) {
+    // Still walk b to keep timing roughly constant, then fail.
+    let acc = 1;
+    for (let i = 0; i < bb.length; i++) acc |= bb[i];
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < ba.length; i++) diff |= ba[i] ^ bb[i];
+  return diff === 0;
+}
+
+// Returns a Response (401/503) if the request may NOT access GSC routes,
+// or null if it's authorized. Fails closed when GSC_API_TOKEN is unset.
+function requireGscAuth(request, env) {
+  const expected = env && env.GSC_API_TOKEN;
+  if (!expected) {
+    return jsonResponse({ error: 'GSC endpoints are disabled (no GSC_API_TOKEN configured)' }, 503);
+  }
+  const header = request.headers.get('Authorization') || '';
+  const m = header.match(/^Bearer\s+(.+)$/i);
+  const provided = m ? m[1].trim() : '';
+  if (!provided || !timingSafeEqualStr(provided, expected)) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+  return null;
 }
 
 var gscTokenCache = { token: null, expiresAt: 0 };
