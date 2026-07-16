@@ -954,6 +954,12 @@ export const liveTools = tools.filter((t) => t.enabled && t.status === 'live');
 export const toolsByCategory = (catId) => tools.filter((t) => t.category === catId);
 export const getTool = (slug) => tools.find((t) => t.slug === slug);
 
+/** Flagship tools — the standout, interactive tools we spotlight on the
+ *  landing page. Order follows their listing order in `tools` above. */
+export const flagshipTools = tools.filter(
+  (t) => t.flagship && t.enabled && t.status === 'live'
+);
+
 /** Return the top N tools in a category, sorted by search priority descending. */
 export const featuredTools = (catId, count = 4) =>
   tools
