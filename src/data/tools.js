@@ -228,7 +228,6 @@ export const tools = [
   // ── Electrical Engineering ──
   { slug: 'ohms-law-calculator', title: 'Ohm\'s Law Calculator', short: 'Calculate voltage, current, resistance & power using V=IR.', category: 'physics', emoji: '🎚️', enabled: true, status: 'live' },
   { slug: 'voltage-drop-calculator', title: 'Voltage Drop Calculator', short: 'Voltage drop across wires based on material, length & gauge.', category: 'engineering', emoji: '📉', enabled: true, status: 'live' },
-  { slug: 'power-calculator', title: 'Power Calculator', short: 'Calculate electrical power from voltage, current & resistance.', category: 'physics', emoji: '📶', enabled: true, status: 'live' },
   { slug: 'led-resistor-calculator', title: 'LED Resistor Calculator', short: 'Find the right resistor value for any LED circuit.', category: 'engineering', emoji: '🔴', enabled: true, status: 'live' },
   { slug: 'wire-gauge-calculator', title: 'Wire Gauge / AWG Calculator', short: 'Ampacity, resistance & diameter for standard wire gauges.', category: 'engineering', emoji: '🔌', enabled: true, status: 'live' },
   { slug: 'voltage-divider-calculator', title: 'Voltage Divider Calculator', short: 'Calculate output voltage from two resistors in series.', category: 'engineering', emoji: '🔽', enabled: true, status: 'live' },
@@ -610,7 +609,6 @@ export const tools = [
   { slug: 'specific-heat-calculator', title: 'Specific Heat Calculator', short: 'c = Q/(mΔT) — find specific heat and identify unknown materials.', category: 'physics', emoji: '🧯', enabled: true, status: 'live' },
   { slug: 'capacitance-calculator', title: 'Capacitance Calculator', short: 'C = Q/V and C = ε₀εᵣA/d — solve capacitance, charge, voltage, or energy.', category: 'physics', emoji: '🪫', enabled: true, status: 'live' },
   { slug: 'electric-field-calculator', title: 'Electric Field Calculator', short: 'E = F/q and E = kQ/r² — solve field, force, charge, or distance.', category: 'physics', emoji: '📡', enabled: true, status: 'live' },
-  { slug: 'wave-speed-calculator', title: 'Wave Speed Calculator', short: 'v = f×λ — solve for wave speed, frequency, or wavelength.', category: 'physics', emoji: '🌊', enabled: true, status: 'live' },
   { slug: 'doppler-effect-calculator', title: 'Doppler Effect Calculator', short: 'f_obs = f_source×v_sound/(v_sound∓v_source) — approaching or receding source.', category: 'physics', emoji: '🚨', enabled: true, status: 'live' },
   { slug: 'orbital-velocity-calculator', title: 'Orbital Velocity Calculator', short: 'v = √(GM/r) — circular orbital speed for LEO, GEO, Moon, and Mars.', category: 'physics', emoji: '🛸', enabled: true, status: 'live' },
   { slug: 'magnetic-force-calculator', title: 'Magnetic Force Calculator', short: 'F = qvB sinθ and F = BIL sinθ — force on a charge or current-carrying wire.', category: 'physics', emoji: '🌀', enabled: true, status: 'live' },
@@ -906,7 +904,7 @@ const priorities = {
   'color-converter': 60, 'timestamp-converter': 60, 'temporary-email': 50,
   'number-base-converter': 40,
   // ── Engineering ──
-  'ohms-law-calculator': 100, 'resistor-color-code': 90, 'power-calculator': 80, 'voltage-drop-calculator': 70,
+  'ohms-law-calculator': 100, 'resistor-color-code': 90, 'electric-power-calculator': 80, 'voltage-drop-calculator': 70,
   'solar-panel-output-calculator': 60, 'led-resistor-calculator': 50, 'wire-gauge-calculator': 50,
   'conduit-fill-calculator': 40,
   // ── Automotive ──
