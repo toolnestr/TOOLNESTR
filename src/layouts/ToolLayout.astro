@@ -17,7 +17,29 @@ const {
   structural = false, // opt-in stronger disclaimer for load-bearing/structural tools
   howTo, // optional { name, steps: [{name, text}] } — emits HowTo schema (GEO/AEO)
   ogImage, // optional per-tool social card; forwarded to BaseLayout
+  sources = [], // optional [{ html }] authoritative citations (E-E-A-T) — rendered + strengthens YMYL trust
+  sourcesNote, // optional small-print string under the sources list
+  reviewed, // optional per-page ISO date (YYYY-MM-DD); falls back to site.lastReviewed
 } = Astro.props;
+
+// Honest review date: a real per-page or site-wide "last audited" date, never
+// the build timestamp. Formatted as "Month YYYY" for the visible byline.
+const reviewedDate = reviewed ?? site.lastReviewed;
+const reviewedLabel = new Date(reviewedDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+  year: 'numeric', month: 'long', timeZone: 'UTC',
+});
+
+// Named editorial team + any real credentialed reviewers → Person entities for
+// the WebPage `reviewedBy` (E-E-A-T). Empty reviewers => attribute to the team.
+const team = site.editorialTeam;
+const reviewerPersons = (team?.reviewers ?? []).map((r) => ({
+  '@type': 'Person',
+  name: r.name,
+  ...(r.jobTitle ? { jobTitle: r.jobTitle } : {}),
+  ...(r.knowsAbout?.length ? { knowsAbout: r.knowsAbout } : {}),
+  ...(r.sameAs?.length ? { sameAs: r.sameAs } : {}),
+  ...(r.bioSlug ? { url: `${site.url}/about/team/${r.bioSlug}` } : {}),
+}));
 // Structural tools opt in (structural=true) to a stronger, more prominent
 // disclaimer, shown in place of the standard category one — see markup below.
 
@@ -93,9 +115,18 @@ const jsonLd = {
       url: pageUrl,
       name: `${title} — ${site.name}`,
       isPartOf: { '@id': `${site.url}/#organization` },
+      lastReviewed: reviewedDate,
+      // Attribute the review to real credentialed reviewers when present,
+      // otherwise to the named editorial team (an OrganizationRole) — honest
+      // E-E-A-T without fabricated individuals.
+      reviewedBy: reviewerPersons.length
+        ? reviewerPersons
+        : { '@type': 'Organization', name: team?.name ?? site.name, ...(team?.description ? { description: team.description } : {}) },
+      // Speakable: the intro definition + FAQ answers are the citation-friendly
+      // parts AI answer engines lift into spoken/summarised results.
       speakable: {
         '@type': 'SpeakableSpecification',
-        cssSelector: ['h1', '.faq-a'],
+        cssSelector: ['h1', '.tool-intro', '.faq-a'],
       },
     },
   ],
@@ -113,9 +144,9 @@ const jsonLd = {
     </nav>
 
     <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
-    {intro && <p class="mt-2 text-slate-600">{intro}</p>}
+    {intro && <p class="tool-intro mt-2 text-slate-600">{intro}</p>}
 
-    <p class="mt-3 text-xs text-slate-400">Reviewed by the <a href="/about/" class="text-indigo-500 hover:text-indigo-600">ToolNestr Team</a> &mdash; {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</p>
+    <p class="mt-3 text-xs text-slate-400">Reviewed by the <a href="/about/" class="text-indigo-500 hover:text-indigo-600">{team?.name ?? 'ToolNestr Team'}</a> &mdash; {reviewedLabel}</p>
 
     {disclaimer && (
       <div class="mt-4 flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200" role="note">
@@ -145,6 +176,17 @@ const jsonLd = {
             </div>
           ))}
         </div>
+      </section>
+    )}
+
+    {sources.length > 0 && (
+      <section class="mt-10">
+        <h2 class="text-xl font-bold text-slate-900">Sources &amp; references</h2>
+        <p class="mt-2 text-sm text-slate-500">This tool uses standard formulas and reference values from:</p>
+        <ul class="mt-3 space-y-2 text-sm text-slate-600">
+          {sources.map((s) => <li set:html={'&bull; ' + s.html} />)}
+        </ul>
+        {sourcesNote && <p class="mt-3 text-xs text-slate-400" set:html={sourcesNote} />}
       </section>
     )}
 

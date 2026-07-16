@@ -222,13 +222,11 @@ export const tools = [
   { slug: 'number-base-converter', title: 'Number Base Converter', short: 'Binary, octal, decimal & hex conversions.', category: 'developers', emoji: '🔢', enabled: true, status: 'live' },
   { slug: 'timestamp-converter', title: 'Unix Timestamp Converter', short: 'Epoch ↔ human date, local and UTC.', category: 'developers', emoji: '⏱️', enabled: true, status: 'live' },
   { slug: 'base64', title: 'Base64 Encode / Decode', short: 'Convert text to and from Base64.', category: 'developers', emoji: '🔁', enabled: true, status: 'live' },
-  { slug: 'qr-generator', title: 'QR Code Generator', short: 'Make QR codes for links, text and Wi-Fi.', category: 'developers', emoji: '📱', enabled: true, status: 'live' },
   { slug: 'password-generator', title: 'Password Generator', short: 'Create strong, random, secure passwords.', category: 'developers', emoji: '🔒', enabled: true, status: 'live' },
   { slug: 'temporary-email', title: 'Temporary Email', short: 'Disposable temp email inbox — receive messages instantly.', category: 'developers', emoji: '📧', enabled: true, status: 'live' },
 
   // ── Electrical Engineering ──
   { slug: 'ohms-law-calculator', title: 'Ohm\'s Law Calculator', short: 'Calculate voltage, current, resistance & power using V=IR.', category: 'physics', emoji: '🎚️', enabled: true, status: 'live' },
-  { slug: 'resistor-color-code', title: 'Resistor Color Code Calculator', short: 'Decode 4, 5 and 6 band resistor values & tolerance.', category: 'engineering', emoji: '🌈', enabled: true, status: 'live' },
   { slug: 'voltage-drop-calculator', title: 'Voltage Drop Calculator', short: 'Voltage drop across wires based on material, length & gauge.', category: 'engineering', emoji: '📉', enabled: true, status: 'live' },
   { slug: 'power-calculator', title: 'Power Calculator', short: 'Calculate electrical power from voltage, current & resistance.', category: 'physics', emoji: '📶', enabled: true, status: 'live' },
   { slug: 'led-resistor-calculator', title: 'LED Resistor Calculator', short: 'Find the right resistor value for any LED circuit.', category: 'engineering', emoji: '🔴', enabled: true, status: 'live' },
