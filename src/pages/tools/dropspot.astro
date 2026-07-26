@@ -957,12 +957,28 @@ const howToSchema = {
       const b = document.createElement('button'); b.className = 'ds-iconbtn' + (danger ? ' danger' : ''); b.title = title;
       b.setAttribute('aria-label', title); b.innerHTML = iconSvg(name); b.addEventListener('click', onClick); return b;
     }
-    function downloadFile(f) {
-      const a = document.createElement('a');
-      fetch(API + '/room/' + state.code + '/file/' + f.id, { headers: state.pin ? { 'X-Room-Pin': state.pin } : {} })
-        .then((r) => r.blob())
-        .then((blob) => { const u = URL.createObjectURL(blob); a.href = u; a.download = f.filename; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); })
-        .catch(() => toast('Download failed', 'trash'));
+    // Single-file download with a live progress row (same UI the zip download
+    // uses) so the user can watch the transfer instead of staring at a frozen
+    // browser while a large file streams down.
+    async function downloadFile(f) {
+      const id = xid();
+      const ctrl = new AbortController(); let cancelled = false;
+      addTransfer(id, f.filename, 'down', 'File', () => { cancelled = true; ctrl.abort(); });
+      setTransfer(id, 0, 'Downloading…');
+      try {
+        const total = f.size || 0;
+        let downloaded = 0, lastPct = -1;
+        const blob = await fetchBlobWithProgress(f, (n) => {
+          downloaded += n;
+          const pct = total ? Math.min(99, Math.round((downloaded / total) * 100)) : 50;
+          if (pct !== lastPct) { lastPct = pct; setTransfer(id, pct, total ? 'Downloading ' + fmtSize(downloaded) + ' / ' + fmtSize(total) : 'Downloading ' + fmtSize(downloaded)); }
+        }, ctrl.signal);
+        setTransfer(id, 100, 'Downloaded', 'ok');
+        triggerDownload(blob, f.filename);
+      } catch {
+        if (cancelled) { removeTransfer(id); toast('Download cancelled', 'trash'); }
+        else setTransfer(id, 100, 'Download failed', 'err');
+      }
     }
     // Fetch a file's bytes while streaming the response body so we can report
     // real download progress (calling onBytes as chunks arrive) instead of only
