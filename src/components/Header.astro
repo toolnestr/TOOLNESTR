@@ -74,15 +74,11 @@ import { categories, liveTools } from '../data/tools.js';
         <svg class="theme-moon hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
       </button>
       <button id="menu-btn" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu" class="press relative h-10 w-10 rounded-lg p-2 text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800">
-        <span class="ham-line ham-top absolute left-1/2 top-[13px] block h-0.5 w-5 -translate-x-1/2 rounded-full bg-current"></span>
-        <span class="ham-line ham-mid absolute left-1/2 top-[19px] block h-0.5 w-5 -translate-x-1/2 rounded-full bg-current"></span>
-        <span class="ham-line ham-bottom absolute left-1/2 top-[25px] block h-0.5 w-5 -translate-x-1/2 rounded-full bg-current"></span>
+        <svg class="menu-icon-open h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" /></svg>
+        <svg class="menu-icon-close hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>
     </div>
   </div>
-
-  <!-- Scrim behind the mobile menu -->
-  <div id="menu-scrim" class="xl:hidden" aria-hidden="true"></div>
 
   <!-- Mobile slide-in menu -->
   <nav id="mobile-menu" class="absolute inset-x-0 top-full z-40 max-h-[80vh] overflow-y-auto rounded-b-2xl border-t border-slate-200 bg-white/95 px-3 py-3 shadow-xl shadow-slate-900/10 backdrop-blur-lg dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-black/40 xl:hidden">
@@ -97,8 +93,21 @@ import { categories, liveTools } from '../data/tools.js';
     <a href="/about/" style={`animation-delay:${40 + categories.length * 28}ms`} class="mobile-link mt-1.5 flex items-center gap-3 border-t border-slate-100 px-3 pt-3.5 pb-2 text-sm font-semibold text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200">About ToolNestr</a>
   </nav>
 
-  <!-- Site-wide tool search (command-palette style) -->
-  <div id="search-overlay" class="fixed inset-0 z-50 hidden items-start justify-center bg-slate-900/50 px-4 pt-[10vh] backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search tools">
+</header>
+
+{/*
+  These two overlays are position:fixed and MUST stay siblings of the header, not
+  children of it. The header carries backdrop-blur, and backdrop-filter (like
+  transform/filter/will-change) makes an element the containing block for its
+  fixed descendants — nested inside, the scrim resolved against the 64px header
+  box instead of the viewport (measured 375x64 on a 375x812 screen), so
+  tap-outside-to-close silently did nothing and the search overlay was clipped to
+  81px tall.
+*/}
+<div id="menu-scrim" class="xl:hidden" aria-hidden="true"></div>
+
+<!-- Site-wide tool search (command-palette style) -->
+<div id="search-overlay" class="fixed inset-0 z-50 hidden items-start justify-center bg-slate-900/50 px-4 pt-[10vh] backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search tools">
     <div id="search-panel" class="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/40">
       <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -123,8 +132,7 @@ import { categories, liveTools } from '../data/tools.js';
         <span><kbd class="rounded border border-slate-300 px-1 dark:border-slate-600">Esc</kbd> close</span>
       </div>
     </div>
-  </div>
-</header>
+</div>
 
 <style>
   #search-overlay {
@@ -179,6 +187,11 @@ import { categories, liveTools } from '../data/tools.js';
     if (scrim) scrim.classList.toggle('show', open);
     menuBtn.setAttribute('aria-expanded', String(open));
     menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    // Swap hamburger ↔ X by display, not by transform: the old bar-morph relied
+    // on transform transitions repainting inside the sticky header's compositing
+    // layer, which iOS Safari skipped — leaving no visible close button.
+    menuBtn.querySelector('.menu-icon-open')?.classList.toggle('hidden', open);
+    menuBtn.querySelector('.menu-icon-close')?.classList.toggle('hidden', !open);
     document.body.style.overflow = open ? 'hidden' : '';
   }
   function closeMenu() { setMenu(false); }

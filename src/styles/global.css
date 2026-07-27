@@ -511,14 +511,17 @@ output {
 #mobile-menu.open .mobile-link {
   animation: fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-/* Animated hamburger → X */
-#menu-btn .ham-line {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-  transform-origin: center;
+/* Menu button icon swap.
+   This was previously three <span> bars morphed into an X with transitioned
+   transforms. That depended on transform transitions repainting inside the
+   sticky header's compositing layer, which iOS Safari did not do — the icon
+   stayed a hamburger with no visible way to close the menu, while Chrome/Android
+   animated it fine. It is now two plain SVGs toggled with `hidden` (the same
+   idiom syncThemeIcons() uses), so the close affordance depends on nothing more
+   exotic than `display`. Keep it that way. */
+#menu-btn svg {
+  transition: opacity 0.15s ease;
 }
-#menu-btn[aria-expanded='true'] .ham-top    { transform: translateY(6px) rotate(45deg); }
-#menu-btn[aria-expanded='true'] .ham-mid    { opacity: 0; transform: scaleX(0.4); }
-#menu-btn[aria-expanded='true'] .ham-bottom { transform: translateY(-6px) rotate(-45deg); }
 
 /* Animated underline for desktop nav links */
 .nav-underline {
@@ -569,8 +572,16 @@ output {
   .animate-float {
     animation: none !important;
   }
-  /* Hint the compositor to keep the sticky header on its own layer */
-  header.sticky { transform: translateZ(0); will-change: transform; }
+  /* NO transform / will-change on the sticky header.
+     A transformed element becomes the containing block for its `position: fixed`
+     descendants — and #menu-scrim (fixed, inset:0) lives inside <header>, so
+     `translateZ(0)` shrank the scrim to the header strip and killed
+     tap-outside-to-close. A permanent `will-change: transform` also promotes the
+     header to its own compositing layer, which on iOS Safari commonly stops
+     child transform transitions from repainting: the hamburger never visually
+     became an X, while Chrome/Android repainted it fine.
+     The jank this was added for came from backdrop-filter, which is already
+     disabled for coarse pointers above. */
 }
 
 /* ───────────────────────────────────────────────────────────────
