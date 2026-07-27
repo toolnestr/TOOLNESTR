@@ -618,6 +618,7 @@ async function handleSslCheck(url) {
     await fetchSslLabs(domain, false);
     return jsonResponse({ scanning: true, message: 'Scan started for this domain. This takes 60-90 seconds on a first check; please try again shortly.' }, 202);
   } catch (e) {
+    if (e.rateLimited) return jsonResponse({ error: e.message, rateLimited: true }, 429);
     return jsonResponse({ error: 'Certificate lookup failed: ' + e.message }, 502);
   }
 }
@@ -625,6 +626,14 @@ async function handleSslCheck(url) {
 async function fetchSslLabs(domain, fromCache) {
   const qs = fromCache ? '&fromCache=on&maxAge=24' : '';
   const res = await fetch('https://api.ssllabs.com/api/v3/analyze?host=' + encodeURIComponent(domain) + qs + '&all=done', { signal: AbortSignal.timeout(15000) });
+  // SSL Labs rate-limits hard (429/503). Returning null for those made the caller
+  // fall through to "scanning", so a throttled worker showed a spinner that never
+  // resolved. Surface it instead so the UI can say what actually happened.
+  if (res.status === 429 || res.status === 503) {
+    const err = new Error('SSL Labs is rate-limiting requests right now. Please try again in a few minutes.');
+    err.rateLimited = true;
+    throw err;
+  }
   if (!res.ok) return null;
   return res.json();
 }

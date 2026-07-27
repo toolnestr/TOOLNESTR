@@ -502,6 +502,19 @@ const howToSchema = {
         const res  = await fetch(`${API}/api/ssl-check?domain=${encodeURIComponent(domain)}`);
         const data = await res.json();
 
+        // Show a real reason rather than spinning forever. SSL Labs rate-limits,
+        // and the worker used to report that as "scanning".
+        if (data.error) {
+          scores.ssl = 0; updateScoreBanner();
+          setPill('pillSsl', '⚠ Unavailable', 'fail');
+          setCard('cardSsl', 'fail');
+          setBody('bodySsl',
+            row('Status', data.rateLimited ? 'SSL Labs rate-limited' : 'Certificate lookup failed', 'fail') +
+            row('Detail', data.error, '')
+          );
+          return;
+        }
+
         if (data.scanning || res.status === 202) {
           scores.ssl = 0; updateScoreBanner();
           setPill('pillSsl', '🔄 Scanning…', 'scan');
