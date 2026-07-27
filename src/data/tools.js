@@ -223,7 +223,7 @@ export const tools = [
   { slug: 'timestamp-converter', title: 'Unix Timestamp Converter', short: 'Epoch ↔ human date, local and UTC.', category: 'developers', emoji: '⏱️', enabled: true, status: 'live' },
   { slug: 'base64', title: 'Base64 Encode / Decode', short: 'Convert text to and from Base64.', category: 'developers', emoji: '🔁', enabled: true, status: 'live' },
   { slug: 'password-generator', title: 'Password Generator', short: 'Create strong, random, secure passwords.', category: 'developers', emoji: '🔒', enabled: true, status: 'live' },
-  { slug: 'temporary-email', title: 'Temporary Email', short: 'Disposable temp email inbox — receive messages instantly.', category: 'developers', emoji: '📧', enabled: true, status: 'live' },
+  { slug: 'temporary-email', title: 'Temporary Email', short: 'Disposable temp email inbox — receive messages instantly.', category: 'developers', emoji: '📧', enabled: true, status: 'live', flagship: true },
 
   // ── Electrical Engineering ──
   { slug: 'ohms-law-calculator', title: 'Ohm\'s Law Calculator', short: 'Calculate voltage, current, resistance & power using V=IR.', category: 'physics', emoji: '🎚️', enabled: true, status: 'live' },
