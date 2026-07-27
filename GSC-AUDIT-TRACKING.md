@@ -135,6 +135,53 @@ failure mode that commit was written for.
 Redirecting an unrelated path to `/` is a soft-404 pattern Google penalises — a genuine 404 is
 the correct signal here.
 
+---
+
+## Sitemap-filtered view (2026-07-24) — the real coverage picture
+
+Filtering Page indexing to `sitemap-index.xml` gives the honest number, and it
+**contradicts the "All known pages" read**:
+
+| | All known pages | **Sitemap only** |
+|---|---|---|
+| Indexed | 892 | **322** |
+| Not indexed | 993 | **446** |
+| Total | 1,885 | **768** ✓ matches sitemap exactly |
+
+Only **322 of 768 canonical pages (42%)** are indexed. The earlier conclusion that
+"892 > 768 so every real page is indexed" was **wrong** — the 892 counts non-canonical
+URLs. **892 − 322 = 570 indexed URLs that are not in the sitemap** (duplicate residue).
+
+Sitemap-filtered reasons: Discovered – not indexed **430**, Crawled – not indexed **15**,
+Not found **1**. Every Discovered example shows `Last crawled: N/A` — never fetched.
+
+**All 768 sitemap URLs verified HTTP 200** (full crawl, 2026-07-27) — so the "Not found: 1"
+is stale 5-July data too. No canonical URL is broken.
+
+### Root cause of the 430: page weight, measured
+
+| Page | Total HTML | "All tool categories" block | Unique content |
+|------|-----------|------------------------------|----------------|
+| bmi-calculator | 261 KB | **185 KB (70%)** | ~1,919 words |
+| grade-slope-calculator | 245 KB | **182 KB (74%)** | ~1,429 words |
+
+Two unrelated tool pages differed in only ~27 KB of ~250 KB — **89% byte-identical**.
+`ToolLayout.astro` inlined every tool of every category on every page (764 links). The
+`<details>` collapse is visual only; all links ship in the HTML. Crawling 768 pages meant
+downloading ~142 MB of duplicated navigation. On a 3-week-old domain that is the entire
+crawl budget — hence 430 pages never fetched. Content itself is **not** thin (~1,400–1,900
+unique words/page); the boilerplate wrapper was the problem.
+
+| # | Fix | Status | Date | Notes |
+|---|-----|--------|------|-------|
+| 11 | 764-link site-wide block on every tool page | ✅ **Done** | 2026-07-27 | Current category stays server-rendered (~30 real links). Other 23 categories keep the same `<details>` accordions but load from the shared, cached `/search-index.json` on first expand — the identical lazy pattern `Header.astro:233` already uses for search, so the two share one browser cache. Server-rendered category link inside each accordion is the no-JS fallback and gives Google a real tool → hub path. **Measured: 250 KB → 117 KB (−53%), 764 → 57 unique links.** |
+
+**Verified in-browser before push:** each accordion fills with exactly the count on its label
+(Finance 34, Math 23, Physics 48, Islamic 16); **one** `search-index.json` request across four
+expansions; reopening does not duplicate; lazily-built links are **pixel-identical** to the old
+server-rendered markup (same classes, same 56 px height/229 px width when A/B'd in place);
+zero console errors; 23 no-JS fallback links present in the built HTML.
+
 ### Remaining actions
 
 1. **Click "VALIDATE FIX" on the Not found (404) row** (currently "Not started"). This is what
