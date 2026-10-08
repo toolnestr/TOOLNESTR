@@ -175,6 +175,7 @@ unique words/page); the boilerplate wrapper was the problem.
 | # | Fix | Status | Date | Notes |
 |---|-----|--------|------|-------|
 | 11 | 764-link site-wide block on every tool page | ✅ **Done** | 2026-07-27 | Current category stays server-rendered (~30 real links). Other 23 categories keep the same `<details>` accordions but load from the shared, cached `/search-index.json` on first expand — the identical lazy pattern `Header.astro:233` already uses for search, so the two share one browser cache. Server-rendered category link inside each accordion is the no-JS fallback and gives Google a real tool → hub path. **Measured: 250 KB → 117 KB (−53%), 764 → 57 unique links.** |
+| 12 | Site-Wide HTML Directory (`/tools/all/`) & Split Topical Sitemaps | ✅ **Done** | 2026-10-08 | Solves Semrush "713 pages have only one incoming internal link" and GSC "URL is unknown to Google" (~40% of site). Built `/tools/all/` directory page statically linking all 741 tools across 24 categories in semantic HTML with instant filter. Linked `/tools/all/` in Header desktop/mobile nav, Footer, and Homepage hero CTA. Built `scripts/generate-category-sitemaps.mjs` emitting 25 focused category XML sitemaps (`sitemap-networking.xml`, `sitemap-finance.xml`, etc.) and master index. Rebuild clean (770 pages, 0 errors). |
 
 **Verified in-browser before push:** each accordion fills with exactly the count on its label
 (Finance 34, Math 23, Physics 48, Islamic 16); **one** `search-index.json` request across four
