@@ -51,10 +51,9 @@ export function toolPageSchema(slug, { title, description, speakable } = {}) {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: site.url },
-        { '@type': 'ListItem', position: 2, name: 'Tools', item: `${site.url}/tools/` },
-        { '@type': 'ListItem', position: 3, name: category.name, item: `${site.url}/tools/${category.id}/` },
-        { '@type': 'ListItem', position: 4, name: breadcrumbLabel, item: pageUrl },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${site.url}/` },
+        { '@type': 'ListItem', position: 2, name: category.name, item: `${site.url}/tools/${category.id}/` },
+        { '@type': 'ListItem', position: 3, name: breadcrumbLabel, item: pageUrl },
       ],
     },
     {
